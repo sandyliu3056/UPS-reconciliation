@@ -5016,6 +5016,7 @@ const AUTH_CONFIG=window.UPS_AUTH_CONFIG||{};
    以及裡面填好的 url / key。少哪一個就講哪一個 —— 只說「缺少設定」
    會讓人對著畫面猜。 */
 function authMissing(){
+  if(typeof OPEN_MODE!=="undefined" && OPEN_MODE) return "";
   if(typeof LOCAL_MODE!=="undefined" && LOCAL_MODE) return "";
   if(!window.supabase) return LANG
     ? "supabase-js-2.112.3.js did not load. Open that file's URL directly: if it 404s, the file is not on the server next to index.html."
@@ -5044,6 +5045,15 @@ function authMissing(){
    Supabase 模式是 UUID,而 whoKey / cfgKeys / idbName 都綁著它。
    切換之後舊資料仍在舊 key 底下,由 claimLocalIdentity() 認領。 */
 const LOCAL_MODE = (AUTH_CONFIG.authMode === "local");
+/* 開放模式:不設密碼,開站就進來。對帳目前只在內部用,先不擋門。
+   要擋的時候把 auth-config.js 的 authMode 改成 supabase 就好 —— 資料存在
+   OPEN_ID 這把鑰匙底下,換模式之後由 claimLocalIdentity() 認領接回去。
+   沒有帳號可管,所以管理分頁收起來;也沒有登入,所以登出按鈕收起來。
+   雲端同步一併關掉:沒有登入就沒有 session,每存一次只會換來一則同步失敗
+   的提示,設定其實好好地在這台瀏覽器裡。 */
+const OPEN_MODE = (AUTH_CONFIG.authMode === "open");
+const OPEN_ID = "open";
+const OPEN_ME = {id:OPEN_ID, user:OPEN_ID, name:"UPS Reconciliation", role:"user"};
 const LOCAL_ACCOUNTS=[];
 const LOCAL_SESSION_KEY="ups_recon_local_session";
 /* 「保持登入」勾了才寫這把 —— localStorage 關瀏覽器也留著,下次開站免登入。
@@ -6067,6 +6077,7 @@ function exportChgCodes(){
 /* ---- 費率:每個帳號自己的一列 ---- */
 let CFG_SYNC=0;                 /* 最後一次寫回成功的時間,0 = 還沒寫過 */
 function cfgPush(text,name){
+  if(OPEN_MODE) return Promise.resolve(false);
   if(LOCAL_MODE){
     /* 本機帳號模式:用同步鑰匙寫進 local_settings(RPC)。
        Supabase 那邊還沒建表、或網路不通,設定仍在本機快取裡,不擋流程。 */
@@ -6096,6 +6107,7 @@ function cfgPush(text,name){
 /* 登入後把這個帳號的費率抓回來。抓不到就退回本機快取,
    再沒有就用預設值 —— 新帳號本來就是空白的,自己匯入。 */
 function cfgPull(){
+  if(OPEN_MODE) return restoreConfig();
   if(LOCAL_MODE){
     /* 本機快取先上,畫面不用等網路;雲端那份到了再蓋上去 ——
        換電腦登入時本機是空的,蓋上來的就是上次在別台電腦存的設定。
@@ -6158,6 +6170,7 @@ async function gunzipText(z,data){
    除了這一點,推、拉、刪的流程完全一樣,所以只在這裡分岔一次,
    底下三個函式共用。 */
 function histSync(){
+  if(OPEN_MODE) return null;
   if(!SYNC||!ME) return null;
   if(LOCAL_MODE){
     if(!ME.sync) return null;
@@ -6575,7 +6588,7 @@ function applyRole(){
   if(who) who.textContent = ME? (ME.name+" · "+(admin?(LANG?"admin":"管理者")
                                                     :(LANG?"user":"使用者"))) : "";
   const logout=$("#bLogout");
-  if(logout) logout.style.display=ME?"":"none";
+  if(logout) logout.style.display=(ME&&!OPEN_MODE)?"":"none";
   if(ME && ADMIN_ONLY.includes(currentTab()) && !admin) showTab("files");
 }
 
@@ -6594,6 +6607,7 @@ async function initAuth(){
     localStorage.removeItem("ups_reprice_accounts");
     localStorage.removeItem("ups_reprice_session");
   }catch(e){}
+  if(OPEN_MODE){ setMe(OPEN_ME); return; }
   if(LOCAL_MODE){
     let saved=null;
     try{ saved=JSON.parse(sessionStorage.getItem(LOCAL_SESSION_KEY)); }catch(e){}

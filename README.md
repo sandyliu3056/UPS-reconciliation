@@ -23,14 +23,28 @@ It answers two questions a month:
 5. **Read the two tables** — by customer, and by charge. Click a customer to
    scope the charge table to them. Export writes all three sheets.
 
+## Signing in
+
+There is no password. `auth-config.js` sets `authMode: "open"`, so the site
+opens straight into the app, everything is stored under one identity on the
+machine it is used from, and the cloud is left alone — settings and invoice
+history live in that browser only.
+
+That is a deliberate choice for an internal tool, not an oversight. Anyone who
+can reach the URL can use it and can read whatever has been imported into it,
+so it belongs behind something that controls who reaches the URL. To turn
+accounts on, set `authMode` to `"supabase"`: the sign-in gate, the Admin tab
+and the account sync come back, and the data saved while it was open is picked
+up again by the identity-claim prompt on first sign-in.
+
 ## Setup
 
 Rates, surcharges, size rules, channels and demand surcharges are configured
 here the same way as in the repricing tool, because reconciliation reprices:
 load a rate configuration file, or set them up on the tabs.
 
-Authentication is shared with the repricing tool — same Supabase project, same
-accounts, same passwords. See `SUPABASE_SETUP.md`.
+With `authMode: "supabase"` the accounts are shared with the repricing tool —
+same project, same passwords. See `SUPABASE_SETUP.md`.
 
 ## Relationship to the repricing tool
 
