@@ -474,6 +474,25 @@ td.cells{white-space:normal}
 .note.warn{color:var(--neg)}
 .note.plain{color:var(--neg)}
 .note b{color:var(--ink)} .note.warn b{color:var(--neg)}
+/* 擋下來的事情要看起來像被擋下來,不能跟旁邊的提醒長一樣 —— 這一則的意思是
+   「這幾個客戶沒有重算」,不是「順帶一提」。 */
+.note.block{
+  color:var(--neg); border:1.5px solid var(--neg); border-radius:7px;
+  padding:10px 12px; background:var(--panel);
+}
+.note.block b{color:var(--neg)}
+.note.block .who{display:block;margin-top:6px;color:var(--ink);line-height:1.8}
+.note.block .who code{
+  display:inline-block;margin:0 6px 4px 0;padding:1px 7px;
+  border:1px solid var(--neg);border-radius:4px;font-size:11.5px;color:var(--neg);
+}
+/* 沒重算的那幾列:整列壓下去,層級欄掛一個紅籤。看表的時候要一眼分得出
+   「這個客戶差很多」和「這個客戶根本沒算」。 */
+tr.blocked{opacity:.72}
+.lvlbad{
+  display:inline-block;padding:1px 7px;border-radius:4px;
+  border:1px solid var(--neg);color:var(--neg);font-size:11.5px;white-space:nowrap;
+}
 
 /* 附加費:Zone 直欄 + 固定金額網格 */
 .zonecols{display:grid;grid-template-columns:repeat(auto-fit,minmax(292px,1fr));gap:12px}
@@ -1240,7 +1259,8 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       <th class="num" data-i18n="th.reconprofit">Profit</th>
       <th class="num" data-i18n="th.reconmargin">Margin</th>
       <th class="num" data-i18n="th.reconrep">Recomputed</th>
-      <th class="num" data-i18n="th.recongap">vs UPS</th>
+      <th class="num" data-i18n="th.reconpgap">Billed vs recomputed</th>
+      <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
     <p class="hint" style="margin:11px 0 0;max-width:76ch" data-i18n="hint.reconcols">Profit is what the customer paid less what UPS charged. Recomputed is what the customer’s own rate level says the shipments should have cost; set against what UPS charged, it shows where the invoice differs from the agreement. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way.</p>
   </div>
@@ -1260,7 +1280,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       <th data-i18n="th.chgups">System code</th>
       <th class="num" data-i18n="th.reconrep">Recomputed</th>
       <th class="num" data-i18n="th.reconups">Charged by UPS</th>
-      <th class="num" data-i18n="th.recongap">vs UPS</th>
+      <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
   </div>
   </div>
@@ -5769,10 +5789,16 @@ function rlRename(id,name){
   e.name=name;
   return true;
 }
+/* 還有客戶指著這一層的話,誰。刪掉之後那些客戶會變成指向一個不存在的層級,
+   下次對帳就整批不重算 —— 與其事後才發現,不如當場擋住並說出是哪幾個。 */
+function rlUsers(id){
+  return cusReg().filter(c=>c.level===id).map(c=>c.name||c.code);
+}
 function rlDelete(id){
   const o=rlEnsure(); if(!o) return false;
   if(id===o.active) return false;        /* 現用的那一層不能刪 */
   if(o.list.length<=1) return false;
+  if(rlUsers(id).length) return false;   /* 還有人在用,先改派 */
   o.list=o.list.filter(x=>x.id!==id);
   delete o.cfg[id];
   return true;
@@ -5842,6 +5868,16 @@ function bindLevels(){
     }
     if(b.dataset.lvldel){
       const nm=rlName(b.dataset.lvldel);
+      /* 先看有沒有人在用。有的話直接擋下來,把名字列出來 —— 讓人知道要去改誰,
+         而不是刪完之後對帳時才發現一整批沒重算。 */
+      const users=rlUsers(b.dataset.lvldel);
+      if(users.length){
+        lvlMsg(L("「"+nm+"」還有 "+users.length+" 個客戶在用,不能刪。先到 Customers 把他們改派到別的層級:",
+                 "\""+nm+"\" is still assigned to "+users.length
+                 +" customer(s) and cannot be deleted. Reassign them under Customers first: ")
+               +users.join("、"), false);
+        return;
+      }
       if(!confirm(L("刪除「"+nm+"」?那一層的整份費率會一起消失,沒有復原。",
           "Delete \""+nm+"\"? That level's entire rate set goes with it, and there is no undo."))) return;
       if(rlDelete(b.dataset.lvldel)){
@@ -10180,18 +10216,44 @@ const reconTxt=v=>String(v==null?"":v).trim();
 
 /* 每一層的 cfg 只讀一次就留著。readConfig 會往設定裡補預設值,所以給它一份
    複本 —— 直接讀原件會改到收起來的那一層。
-   回傳 null 的意思是「這個層級已經不在了」,由呼叫端決定怎麼講,不要默默
-   退回現用層當作沒事。 */
+
+   這裡不做退讓。客戶沒指派層級、或指到一個已經刪掉的層級,都不重算,回一個
+   理由給呼叫端去講。以前的寫法是靜靜地套用現在使用中的那一層 —— 算得出數
+   字,報表看起來也正常,但那不是這個客戶的費率;而且畫面切換層級之後,同一
+   批資料會算出不同的答案。空著比一個看不出錯的錯數字安全。 */
+const RL_OK="", RL_NONE="none", RL_GONE="gone";
 const RECON_CFG=new Map();
-function reconCfgFor(level){
+function reconResolve(level){
   const o=rlStore();
-  if(!level||!o||level===o.active) return CFG;
-  if(RECON_CFG.has(level)) return RECON_CFG.get(level);
-  let cfg=null;
-  const raw=o.cfg[level];
-  if(raw){ try{ cfg=readConfig(JSON.parse(JSON.stringify(raw))); }catch(e){ cfg=null; } }
-  RECON_CFG.set(level,cfg);
-  return cfg;
+  if(!level) return {cfg:null, block:RL_NONE};
+  if(!o) return {cfg:null, block:RL_GONE};
+  if(level===o.active) return {cfg:CFG, block:RL_OK};
+  if(!o.list.some(x=>x.id===level)) return {cfg:null, block:RL_GONE};
+  if(!RECON_CFG.has(level)){
+    let cfg=null;
+    const raw=o.cfg[level];
+    if(raw){ try{ cfg=readConfig(JSON.parse(JSON.stringify(raw))); }catch(e){ cfg=null; } }
+    RECON_CFG.set(level,cfg);
+  }
+  const cfg=RECON_CFG.get(level);
+  return cfg ? {cfg, block:RL_OK} : {cfg:null, block:RL_GONE};
+}
+/* 只要拿設定、不在意理由的地方用這個。拿不到就是 null,不會替你挑一層。 */
+function reconCfgFor(level){ return reconResolve(level).cfg; }
+
+/* 匯入之前先問一次:這批訂單裡有哪些客戶還不能重算。等到跑完才講,人已經
+   在看數字了。 */
+function reconPreflight(codes){
+  const reg=cusReg(), byCode=new Map(reg.map(c=>[c.code,c]));
+  const none=[], gone=[], unknown=[];
+  for(const code of new Set(codes)){
+    const c=byCode.get(code);
+    if(!c){ unknown.push(code); continue; }
+    const b=reconResolve(c.level).block;
+    if(b===RL_NONE) none.push(c.name||code);
+    else if(b===RL_GONE) gone.push(c.name||code);
+  }
+  return {none, gone, unknown, blocked:none.length+gone.length+unknown.length};
 }
 
 /* --------------------------------------------------------------------
@@ -10297,19 +10359,22 @@ function reconRun(list){
   RECON_CFG.clear();
   const reg=cusReg();
   const byCode=new Map(reg.map(c=>[c.code,c]));
-  const orders=[], perCus=new Map(), lostLevel=new Set();
+  const orders=[], perCus=new Map(), lostLevel=new Set(), noLevel=new Set();
   for(const e of list){
     const c=byCode.get(e.cus)||{};
-    let cfg=reconCfgFor(c.level);
-    /* 客戶指到一個已經刪掉的層級。用現用的那一層算得出數字,但不能不說 ——
-       不說的話報表看起來一切正常,而它算的根本不是那個客戶的費率。 */
-    if(cfg===null){ lostLevel.add(e.cus); cfg=CFG; }
+    /* 每一張訂單都自己解析一次層級 —— 靠的是這張單的客戶,不是畫面上正在編輯
+       的那一層。同一批資料裡兩個客戶用不同層級,各算各的。 */
+    const {cfg, block}=reconResolve(c.level);
+    if(block===RL_NONE) noLevel.add(e.cus);
+    else if(block) lostLevel.add(e.cus);
     let cost=0, rep=0;
     const missTrk=[];
     for(const t of e.trks){
       const s=byTrk.get(t);
       if(!s){ missTrk.push(t); continue; }
       cost+=toNum(s.upsTotal);
+      /* UPS 收多少不需要費率表,照收;重算需要,沒有層級就不算。 */
+      if(!cfg) continue;
       try{
         const priced=priceShipment(cfg,s);
         rep+=cents(toNum(priced.total));
@@ -10329,29 +10394,41 @@ function reconRun(list){
       }catch(err){}
     }
     const o={ln:e.ln, order:e.order, cus:e.cus, date:e.date,
-             name:(c.name||e.cus), level:c.level||"",
+             name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
-             amt:e.amt, cost:cents(cost), rep:cents(rep)};
+             amt:e.amt, cost:cents(cost), rep:block?null:cents(rep)};
+    /* 毛利只要 WMS 和帳單,沒有層級也算得出來。另外兩個要重算,擋下來就留空。 */
     o.profit=cents(o.amt-o.cost);
-    o.gap=cents(o.rep-o.cost);
+    o.gap  = block?null:cents(o.rep-o.cost);   /* UPS 差異:帳單 vs 費率表 */
+    o.pgap = block?null:cents(o.amt-o.rep);    /* 定價差異:實收 vs 應收 */
     orders.push(o);
     let a=perCus.get(e.cus);
-    if(!a){ a={code:e.cus, name:o.name, level:o.level,
+    if(!a){ a={code:e.cus, name:o.name, level:o.level, block,
                orders:0, pkgs:0, found:0, amt:0, cost:0, rep:0}; perCus.set(e.cus,a); }
     a.orders++; a.pkgs+=o.pkgs; a.found+=o.found;
-    a.amt+=o.amt; a.cost+=o.cost; a.rep+=o.rep;
+    a.amt+=o.amt; a.cost+=o.cost; if(!block) a.rep+=o.rep;
   }
   const cus=[...perCus.values()].map(a=>{
-    a.amt=cents(a.amt); a.cost=cents(a.cost); a.rep=cents(a.rep);
-    a.profit=cents(a.amt-a.cost); a.gap=cents(a.rep-a.cost);
+    a.amt=cents(a.amt); a.cost=cents(a.cost);
+    a.rep=a.block?null:cents(a.rep);
+    a.profit=cents(a.amt-a.cost);
+    a.gap  = a.block?null:cents(a.rep-a.cost);
+    a.pgap = a.block?null:cents(a.amt-a.rep);
     a.margin=a.amt?a.profit/Math.abs(a.amt)*100:null;
     return a;
   }).sort((x,y)=>y.amt-x.amt);
+  /* 合計:重算那幾欄只加得起來的部分,擋下來的訂單不混進去 —— 混進去的話
+     合計會小於實際,而且看不出來少了誰。 */
   const tot=cus.reduce((t,a)=>({orders:t.orders+a.orders, pkgs:t.pkgs+a.pkgs,
       found:t.found+a.found, amt:cents(t.amt+a.amt), cost:cents(t.cost+a.cost),
-      rep:cents(t.rep+a.rep)}), {orders:0,pkgs:0,found:0,amt:0,cost:0,rep:0});
+      rep:cents(t.rep+(a.block?0:a.rep)),
+      repAmt:cents(t.repAmt+(a.block?0:a.amt)),
+      repCost:cents(t.repCost+(a.block?0:a.cost)),
+      blocked:t.blocked+(a.block?a.orders:0)}),
+      {orders:0,pkgs:0,found:0,amt:0,cost:0,rep:0,repAmt:0,repCost:0,blocked:0});
   tot.profit=cents(tot.amt-tot.cost);
-  tot.gap=cents(tot.rep-tot.cost);
+  tot.gap  = tot.blocked===tot.orders?null:cents(tot.rep-tot.repCost);
+  tot.pgap = tot.blocked===tot.orders?null:cents(tot.repAmt-tot.rep);
   tot.margin=tot.amt?tot.profit/Math.abs(tot.amt)*100:null;
   const chgRows=m=>[...m.values()].map(o=>({
       name:o.name, rep:cents(o.rep), ups:cents(o.ups), gap:cents(o.rep-o.ups)}))
@@ -10359,7 +10436,7 @@ function reconRun(list){
     .sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap)||Math.abs(b.ups)-Math.abs(a.ups));
   const byCus={};
   for(const [k,m] of chgBy) byCus[k]=chgRows(m);
-  return {orders, cus, tot, lostLevel:[...lostLevel],
+  return {orders, cus, tot, lostLevel:[...lostLevel], noLevel:[...noLevel],
           unmatched:orders.filter(o=>o.found<o.pkgs),
           chg:chgRows(chgAll), chgBy:byCus};
 }
@@ -10402,19 +10479,26 @@ function renderRecon(){
   const pc=v=>v==null?`<span class="empty">—</span>`
                      :(v<0?"-":"")+Math.abs(v).toFixed(1)+"%";
   const sign=v=>`<span class="mny ${v<0?"neg":(v>0?"pos":"")}">${money(v)}</span>`;
+  /* 沒重算的欄位一律留白。填 $0.00 會被當成「算出來是零」,那是另一回事。 */
+  const dash=`<span class="empty">—</span>`;
+  const mny=v=>v==null?dash:money(v);
   const tb=$("#tRecon")&&$("#tRecon").tBodies[0];
   if(tb) tb.innerHTML=r.cus.map(a=>
-    `<tr><td class="mono">${esc(a.code)}</td><td>${esc(a.name)}</td>
-      <td>${a.level?esc(cusLevelLabel(a.level)):`<span class="empty">—</span>`}</td>
+    `<tr${a.block?' class="blocked"':""}><td class="mono">${esc(a.code)}</td><td>${esc(a.name)}</td>
+      <td>${a.block
+            ? `<span class="lvlbad">${esc(a.block===RL_NONE
+                ? L("未指派","Not assigned") : L("層級已刪除","Level deleted"))}</span>`
+            : esc(cusLevelLabel(a.level))}</td>
       <td class="num">${a.orders}</td>
       <td class="num">${a.found===a.pkgs?a.pkgs:a.found+" / "+a.pkgs}</td>
       <td class="num">${money(a.amt)}</td>
       <td class="num">${money(a.cost)}</td>
       <td class="num">${sign(a.profit)}</td>
       <td class="num">${pc(a.margin)}</td>
-      <td class="num">${money(a.rep)}</td>
-      <td class="num">${sign(a.gap)}</td></tr>`).join("")
-    ||`<tr><td colspan="11" class="empty">—</td></tr>`;
+      <td class="num">${mny(a.rep)}</td>
+      <td class="num">${a.pgap==null?dash:sign(a.pgap)}</td>
+      <td class="num">${a.gap==null?dash:sign(a.gap)}</td></tr>`).join("")
+    ||`<tr><td colspan="12" class="empty">—</td></tr>`;
   const tf=$("#tRecon")&&$("#tRecon").tFoot;
   if(tf) tf.innerHTML=`<tr><td colspan="3"><b>${esc(L("合計","Total"))}</b></td>
       <td class="num"><b>${r.tot.orders}</b></td>
@@ -10423,19 +10507,35 @@ function renderRecon(){
       <td class="num"><b>${money(r.tot.cost)}</b></td>
       <td class="num"><b>${sign(r.tot.profit)}</b></td>
       <td class="num"><b>${pc(r.tot.margin)}</b></td>
-      <td class="num"><b>${money(r.tot.rep)}</b></td>
-      <td class="num"><b>${sign(r.tot.gap)}</b></td></tr>`;
+      <td class="num"><b>${mny(r.tot.rep)}</b></td>
+      <td class="num"><b>${r.tot.pgap==null?dash:sign(r.tot.pgap)}</b></td>
+      <td class="num"><b>${r.tot.gap==null?dash:sign(r.tot.gap)}</b></td></tr>`;
+
+  /* 擋下來的先講,而且跟一般提醒分開 —— 這幾個客戶的數字是缺的,不是差的。 */
+  const chips=ns=>`<span class="who">${ns.map(n=>`<code>${esc(n)}</code>`).join("")}</span>`;
+  const block=[];
+  if(r.noLevel.length) block.push(
+    `<b>${esc(L("這 "+r.noLevel.length+" 個客戶還沒指派費率層級,沒有重算。",
+      r.noLevel.length+" customer(s) have no rate level assigned, so nothing was recomputed for them."))}</b>`
+    +esc(L("到 Customers 指派層級之後再匯一次。這幾筆的重算、定價差異與 UPS 差異都是空的。",
+           "Assign a level under Customers, then import again. Recomputed and both variances are blank for these."))
+    +chips(r.noLevel.map(c=>cusNameOf(c))));
+  if(r.lostLevel.length) block.push(
+    `<b>${esc(L("這 "+r.lostLevel.length+" 個客戶指到的費率層級已經不存在,沒有重算。",
+      r.lostLevel.length+" customer(s) point at a rate level that no longer exists, so nothing was recomputed for them."))}</b>`
+    +esc(L("改派到一個還在的層級之後再匯一次。","Reassign them to a level that still exists, then import again."))
+    +chips(r.lostLevel.map(c=>cusNameOf(c))));
   const warn=[];
   if(r.unmatched.length) warn.push(L(
     "有 "+r.unmatched.length+" 張單的追蹤號在這期帳單上找不到,那幾件的 UPS 成本算 0。",
     r.unmatched.length+" order(s) have tracking numbers that are not in this invoice; those packages count as zero UPS cost."));
-  if(r.lostLevel.length) warn.push(L(
-    "這幾個客戶指到的費率層級已經不存在,暫時用現在使用中的層級重算:",
-    "These customers point at a rate level that no longer exists, so the level in use was applied instead: ")
-    +r.lostLevel.join(", "));
+  if(r.tot.blocked) warn.push(L(
+    "合計的重算與兩個差異只加了有重算的 "+(r.tot.orders-r.tot.blocked)+" 張單。",
+    "The recomputed total and both variances cover only the "+(r.tot.orders-r.tot.blocked)+" order(s) that were priced."));
   const w=$("#reconWarn");
-  if(w){ w.innerHTML=warn.map(t=>`<div class="note warn">${esc(t)}</div>`).join("");
-         w.hidden=!warn.length; }
+  if(w){ w.innerHTML=block.map(h=>`<div class="note block">${h}</div>`).join("")
+                    +warn.map(t=>`<div class="note warn">${esc(t)}</div>`).join("");
+         w.hidden=!(block.length||warn.length); }
   renderReconChg();
 }
 /* 逐項比對。看的範圍可以是全部,也可以單看一個客戶 —— 一個客戶用的是他自己
@@ -10493,23 +10593,29 @@ async function reconExport(){
   const r=RECON&&RECON.res; if(!r) return;
   const HD=n=>({v:n,t:"s",s:{bold:true,fill:"351C15",color:"FFFFFF",align:"left",wrap:true}});
   const M={fmt:"#,##0.00"};
-  const sum=[["Customer Code","Customer Name","Rate Level","Orders","Packages Matched",
-    "Packages","Billed to Customer","Charged by UPS","Profit","Margin %",
-    "Recomputed","Recomputed vs UPS"].map(HD)]
-   .concat(r.cus.map(a=>[a.code, a.name, a.level?cusLevelLabel(a.level):"",
+  /* 沒重算的欄位寫空白,不寫 0 —— 匯出去之後沒人分得出 0 是「算出來是零」
+     還是「沒算」,而這兩件事差很多。 */
+  const m=v=>v==null?"":{v,t:"n",s:M};
+  /* 沒重算的原因寫在自己一欄,篩得出來。 */
+  const why=b=>b===RL_NONE?"NOT PRICED — no rate level assigned"
+             :b===RL_GONE?"NOT PRICED — rate level deleted":"";
+  const lvl=x=>x.block?"":(x.level?cusLevelLabel(x.level):"");
+  const sum=[["Customer Code","Customer Name","Rate Level","Repricing Status","Orders",
+    "Packages Matched","Packages","Billed to Customer","Charged by UPS","Profit","Margin %",
+    "Recomputed","Billed vs Recomputed","UPS vs Recomputed"].map(HD)]
+   .concat(r.cus.map(a=>[a.code, a.name, lvl(a), why(a.block),
      a.orders, a.found, a.pkgs,
-     {v:a.amt,t:"n",s:M},{v:a.cost,t:"n",s:M},{v:a.profit,t:"n",s:M},
+     m(a.amt), m(a.cost), m(a.profit),
      {v:a.margin==null?0:+a.margin.toFixed(2),t:"n",s:{fmt:"0.00"}},
-     {v:a.rep,t:"n",s:M},{v:a.gap,t:"n",s:M}]));
-  const det=[["Order Number","Ship Date","Customer Code","Rate Level","Tracking Numbers",
-    "Packages","Packages Matched","Not On Invoice","Billed to Customer",
-    "Charged by UPS","Profit","Recomputed","Recomputed vs UPS"].map(HD)]
-   .concat(r.orders.map(o=>[o.order, o.date, o.cus, o.level?cusLevelLabel(o.level):"",
+     m(a.rep), m(a.pgap), m(a.gap)]));
+  const det=[["Order Number","Ship Date","Customer Code","Rate Level","Repricing Status",
+    "Tracking Numbers","Packages","Packages Matched","Not On Invoice","Billed to Customer",
+    "Charged by UPS","Profit","Recomputed","Billed vs Recomputed","UPS vs Recomputed"].map(HD)]
+   .concat(r.orders.map(o=>[o.order, o.date, o.cus, lvl(o), why(o.block),
      "", o.pkgs, o.found, o.missTrk.join(", "),
-     {v:o.amt,t:"n",s:M},{v:o.cost,t:"n",s:M},{v:o.profit,t:"n",s:M},
-     {v:o.rep,t:"n",s:M},{v:o.gap,t:"n",s:M}]));
+     m(o.amt), m(o.cost), m(o.profit), m(o.rep), m(o.pgap), m(o.gap)]));
   /* 追蹤號整串塞回去 —— 匯出的這份要能拿去對原檔,少了它就得回頭翻模板。 */
-  r.orders.forEach((o,i)=>{ det[i+1][4]=RECON.list[i]?RECON.list[i].trks.join(", "):""; });
+  r.orders.forEach((o,i)=>{ det[i+1][5]=RECON.list[i]?RECON.list[i].trks.join(", "):""; });
   /* 逐項那一張:全部一段,接著每個客戶各一段。分成幾十張分頁不好翻,
      多一欄 Scope 就能在同一張表上篩。 */
   const chgRows=[["Scope","Charge","Your Code","System Code","Recomputed",
@@ -10524,10 +10630,12 @@ async function reconExport(){
   for(const a of r.cus) push(a.code, (r.chgBy||{})[a.code]||[]);
 
   await xlWrite([
-    {name:"Summary", rows:sum, freeze:{r:1,c:0}, filter:"A1:L1",
-     cols:[{w:16},{w:26},{w:16},{w:9},{w:12},{w:11},{w:16},{w:15},{w:12},{w:11},{w:14},{w:17}]},
-    {name:"Orders", rows:det, freeze:{r:1,c:0}, filter:"A1:M1",
-     cols:[{w:20},{w:12},{w:16},{w:16},{w:34},{w:10},{w:12},{w:22},{w:16},{w:15},{w:12},{w:14},{w:17}]},
+    {name:"Summary", rows:sum, freeze:{r:1,c:0}, filter:"A1:N1",
+     cols:[{w:16},{w:26},{w:16},{w:30},{w:9},{w:12},{w:11},{w:16},{w:15},{w:12},{w:11},
+           {w:14},{w:19},{w:19}]},
+    {name:"Orders", rows:det, freeze:{r:1,c:0}, filter:"A1:O1",
+     cols:[{w:20},{w:12},{w:16},{w:16},{w:30},{w:34},{w:10},{w:12},{w:22},{w:16},{w:15},
+           {w:12},{w:14},{w:19},{w:19}]},
     {name:"Charges", rows:chgRows, freeze:{r:1,c:0}, filter:"A1:G1",
      cols:[{w:14},{w:40},{w:14},{w:20},{w:14},{w:16},{w:18}]}
   ], "WMS_Reconciliation.xlsx");
@@ -10555,10 +10663,17 @@ async function reconImport(file){
     reconMsg(L("有 "+p.issues.length+" 列不能收,整份沒有匯入。",
                p.issues.length+" row(s) rejected, nothing imported."),false);
     return; }
+  /* 跑之前先點名。等到跑完才說「這幾個沒算」,人已經在讀數字了。 */
+  const pf=reconPreflight(p.rows.map(r=>r.cus));
   const res=reconRun(p.rows);
   RECON={issues:[], res, list:p.rows};
   renderRecon();
-  reconMsg(L("已對帳 "+p.rows.length+" 張單。","Reconciled "+p.rows.length+" order(s)."),true);
+  if(pf.blocked)
+    reconMsg(L("已對帳 "+p.rows.length+" 張單,其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
+               "Reconciled "+p.rows.length+" order(s); "+pf.blocked
+               +" customer(s) were not repriced — see the notice below."),false);
+  else
+    reconMsg(L("已對帳 "+p.rows.length+" 張單。","Reconciled "+p.rows.length+" order(s)."),true);
 }
 
 function bindRecon(){
@@ -14884,7 +14999,8 @@ const I18N={
   "th.reconprofit":["毛利","Profit"],
   "th.reconmargin":["毛利率","Margin"],
   "th.reconrep":["系統重算","Recomputed"],
-  "th.recongap":["對 UPS 差異","vs UPS"],
+  "th.recongap":["UPS 差異","UPS vs recomputed"],
+  "th.reconpgap":["定價差異","Billed vs recomputed"],
   "hint.reconcols":["毛利是客戶實付減去 UPS 實收。系統重算是照該客戶的費率層級算出這幾件本來該是多少;拿它跟 UPS 實收比,看得出帳單與合約有沒有出入。「UPS 實收」不含帳戶層費用 —— 那些費用沒有追蹤號,對不到任何一張單;該不該計入由帳務決定,和儀表板的處理一致。",
     "Profit is what the customer paid less what UPS charged. Recomputed is what the customer's own rate level says the shipments should have cost; set against what UPS charged, it shows where the invoice differs from the agreement. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way."],
   "tab.setting":["⚙️ 設定","⚙️ Settings"],
