@@ -1655,7 +1655,11 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
         <th></th>
       </tr></thead><tbody></tbody></table></div>
       <div class="row" style="margin-top:9px">
-        <button class="act ghost" id="bLvlCopy" data-i18n="btn.lvlcopy">Duplicate this level</button>
+        <!-- 「複製這一層」先收起來:要另一份費率就匯出一份、改完再匯進來,
+             那條路留得下檔案、看得出改了什麼。程式(rlDuplicate)還在,
+             要叫回來把 hidden 拿掉即可。 -->
+        <button class="act ghost" id="bLvlCopy" hidden data-i18n="btn.lvlcopy">Duplicate this level</button>
+        <button class="act ghost" id="bLvlNew" data-i18n="btn.lvlnew">Add a rate level</button>
         <span id="lvlMsg" class="savenote"></span>
       </div>
     </div>
@@ -5801,6 +5805,18 @@ function rlDuplicate(name){
   o.list.push({id, name:name||(rlName(o.active)+L(" 複本"," copy"))});
   return id;
 }
+/* 開新的一層。內容用預設值起頭:有結構、有公布的門檻,沒有任何合約費率 ——
+   接下來切換過去,把那一層自己的費率設定檔載進來。
+   刻意不從現用那一層拷貝:拷出來的兩份一模一樣,過幾天沒人分得出哪一份動過。 */
+function rlAdd(name){
+  const o=rlEnsure(); if(!o) return null;
+  const id=rlNextId(o);
+  let seed={};
+  try{ seed=rlStrip(JSON.parse(JSON.stringify(DEFAULT_CONFIG))); }catch(e){ seed={}; }
+  o.cfg[id]=seed;
+  o.list.push({id, name:name||("Level "+(o.list.length+1))});
+  return id;
+}
 function rlRename(id,name){
   const o=rlEnsure(); if(!o) return false;
   const e=o.list.find(x=>x.id===id);
@@ -5850,6 +5866,21 @@ function renderLevels(){
            o.list.length+" level(s), "+rlHuman(total)+" in total."), true);
 }
 function bindLevels(){
+  $("#bLvlNew") && ($("#bLvlNew").onclick=()=>{
+    const o=rlEnsure(); if(!o) return;
+    const name=prompt(L("新層級的名稱:","Name for the new level:"),
+                      L("層級 ","Level ")+(o.list.length+1));
+    if(name==null) return;
+    const nm=String(name).trim();
+    if(!nm){ lvlMsg(L("請給它一個名稱。","Give it a name."),false); return; }
+    if(o.list.some(x=>(x.name||"").trim()===nm)){
+      lvlMsg(L("已經有一層叫「"+nm+"」了。","There is already a level called \""+nm+"\"."),false);
+      return; }
+    if(!rlAdd(nm)){ lvlMsg(L("新增失敗。","Could not add it."),false); return; }
+    CFG=readConfig(CFG.raw); DIRTY=true; renderLevels(); saveSettings();
+    lvlMsg(L("已新增「"+nm+"」,內容是預設值。要設它的費率,先切換過去,再載入那一層的費率設定檔。",
+             "Added \""+nm+"\" with default values. To set its rates, switch to it first, then load that level's rate configuration file."),true);
+  });
   $("#bLvlCopy") && ($("#bLvlCopy").onclick=()=>{
     const o=rlEnsure(); if(!o) return;
     const name=prompt(L("新層級的名稱:","Name for the new level:"),
@@ -15227,6 +15258,7 @@ const I18N={
   "th.lvlname":["層級名稱","Level"],
   "th.lvlstate":["目前使用","In use"],
   "th.lvlsize":["大小","Size"],
+  "btn.lvlnew":["新增費率層級","Add a rate level"],
   "btn.lvlcopy":["複製這一層","Duplicate this level"],
   "btn.lvluse":["切換到這一層","Switch to this"],
   "btn.rename":["改名","Rename"],
