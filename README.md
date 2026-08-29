@@ -64,6 +64,20 @@ Browser storage is separate (`ups_recon_*`), so the two never overwrite each
 other's saved configuration or invoice history on the same machine. The theme,
 zoom and brand keys are shared on purpose: the two should look like one product.
 
+## Replacing the icon with the original artwork
+
+The tab icon is an SVG trace of the two-speech-bubble mark, inlined in
+`index.html` and mirrored in `favicon.svg`. To use the original raster
+instead, byte for byte:
+
+1. On github.com, open this repo → **Add file → Upload files** → drop
+   `favicon.png` into the root → Commit.
+2. In `index.html`, change the icon link's `href` to `favicon.png` and its
+   `type` to `image/png` (or tell me and I will).
+
+A pasted image cannot reach the tooling as a file, only as a preview, which
+is why the icon here is a trace rather than the exact file.
+
 ## Publishing on GitHub Pages
 
 The site is the repository root — no build step. Turn it on once, in

@@ -1,55 +1,51 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- 兩個對話框:貓耳的在右上,狗耳的在左下,中間一顆心。
-     16px 的時候細節全部看不見,所以先讓形狀站住:深色圓角底、兩塊米白、
-     一點黃 —— 那三樣在最小的尺寸下還認得出來。 -->
-<rect width="64" height="64" rx="14" fill="#3E2B20"/>
+<!-- 兩個對話框斜著對角擺:貓在右上、狗在左下,尾巴朝中間的心。
+     16px 只剩三樣認得出來 —— 深色圓底、兩塊米白、一點黃,所以先讓那三樣站住。 -->
+<rect width="64" height="64" rx="15" fill="#3E2A20"/>
 
-<g stroke="#3B241A" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
-
-  <!-- 右上:貓 -->
-  <g transform="rotate(-9 45 21)">
-    <path d="M37.5 9.5 38.2 3.2 43.4 7.1Z" fill="#FAF5EC"/>
-    <path d="M52.6 9.5 53.3 3.2 48.1 7.1Z" fill="#FAF5EC"/>
-    <rect x="34" y="8" width="22" height="21" rx="5" fill="#FAF5EC"/>
-  </g>
-  <g transform="rotate(-9 45 21)" stroke="none">
-    <path d="M38.6 8.2 39 4.9 41.7 7Z" fill="#F7A6A0"/>
-    <path d="M51.5 8.2 51.1 4.9 48.4 7Z" fill="#F7A6A0"/>
-  </g>
-
-  <!-- 左下:狗。耳朵壓在框子後面,所以先畫 -->
-  <g transform="rotate(-9 19 43)">
-    <path d="M11 32.5c-4.6 0-6.6 4.2-6.6 9.4s2.2 9.6 6.6 9.6Z" fill="#B5793F"/>
-    <rect x="8" y="33" width="22" height="21" rx="5" fill="#FAF5EC"/>
-  </g>
-
-  <!-- 中間那顆心。用兩段圓弧收在一個下尖點,不要自己湊貝茲曲線 ——
-       湊出來的在 16px 會變成一支箭。 -->
-  <path d="M32 42.6 24.2 34.4a5.5 5.5 0 0 1 7.8-7.8 5.5 5.5 0 0 1 7.8 7.8Z"
-        fill="#EFA81C" transform="rotate(-14 32 34)"/>
-</g>
-
-<!-- 框子裡的字 -->
-<g stroke="#3B241A" stroke-width="2.4" stroke-linecap="round">
-  <g transform="rotate(-9 45 21)">
-    <path d="M38.5 16.5h13"/><path d="M38.5 22h13"/>
-  </g>
-  <g transform="rotate(-9 19 43)">
-    <path d="M12.5 41.5h13"/><path d="M12.5 47h13"/>
+<!-- ================= 左下:狗 ================= -->
+<g transform="rotate(-10 20 43)">
+  <!-- 垂耳,壓在框子後面先畫 -->
+  <path d="M14 36c-6.5 0-9 5.2-8 11 .8 4.6 4.4 6.4 8 5.6Z"
+        fill="#B5793F" stroke="#2E1C14" stroke-width="2.6" stroke-linejoin="round"/>
+  <!-- 框子,右下角一個小尾巴指向心 -->
+  <path d="M11 34h20a4 4 0 0 1 4 4v13a4 4 0 0 1-4 4H20l-3 4-1-4h-5a4 4 0 0 1-4-4V38a4 4 0 0 1 4-4Z"
+        fill="#FAF5EC" stroke="#2E1C14" stroke-width="2.7" stroke-linejoin="round"/>
+  <g stroke="#2E1C14" stroke-width="2.6" stroke-linecap="round">
+    <path d="M12.5 44.5h15"/><path d="M12.5 50h11"/>
   </g>
 </g>
 
-<!-- 兩邊的動態線 -->
-<g stroke="#EFA81C" stroke-width="2.5" stroke-linecap="round" fill="none">
-  <!-- 以心為圓心的同心弧,只取左上與右下兩段:看起來才像從心散出去,
-       而不是兩個獨立的括號擺在旁邊。 -->
-  <g transform="translate(32 34) rotate(-140)">
-    <path d="M10.2 -4.1a11 11 0 0 1 0 8.2"/>
-    <path d="M13.6 -5.5a14.7 14.7 0 0 1 0 11"/>
+<!-- ================= 右上:貓 ================= -->
+<g transform="rotate(-10 44 21)">
+  <!-- 兩隻尖耳,做胖一點。框子頂邊在 y≈9,耳朵露在上面的部分要夠寬,
+       描邊才不會把白底吃光,16px 下還看得出是白耳配粉紅內耳。 -->
+  <path d="M37 11 40 1 45.5 10Z" fill="#FAF5EC" stroke="#2E1C14" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M55 11 52 1 46.5 10Z" fill="#FAF5EC" stroke="#2E1C14" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M40.2 9 41.2 4 43.6 8.4Z" fill="#F5A39C"/>
+  <path d="M51.8 9 50.8 4 48.4 8.4Z" fill="#F5A39C"/>
+  <!-- 框子,左下角尾巴指向心 -->
+  <path d="M35 9h20a4 4 0 0 1 4 4v13a4 4 0 0 1-4 4h-5l-1 4-3-4H35a4 4 0 0 1-4-4V13a4 4 0 0 1 4-4Z"
+        fill="#FAF5EC" stroke="#2E1C14" stroke-width="2.7" stroke-linejoin="round"/>
+  <g stroke="#2E1C14" stroke-width="2.6" stroke-linecap="round">
+    <path d="M38 18h15"/><path d="M38 23.5h11"/>
   </g>
-  <g transform="translate(32 34) rotate(40)">
-    <path d="M10.2 -4.1a11 11 0 0 1 0 8.2"/>
-    <path d="M13.6 -5.5a14.7 14.7 0 0 1 0 11"/>
+</g>
+
+<!-- ================= 中間的心 ================= -->
+<path d="M32 41.6 24.6 33.8a5.1 5.1 0 0 1 7.4-7 5.1 5.1 0 0 1 7.4 7Z"
+      fill="#EFA81C" stroke="#2E1C14" stroke-width="2.5" stroke-linejoin="round"
+      transform="rotate(-12 32 32.5)"/>
+
+<!-- ================= 動態線,以心為圓心 ================= -->
+<g stroke="#EFA81C" stroke-width="2.6" stroke-linecap="round" fill="none">
+  <g transform="translate(32 32.5) rotate(-150)">
+    <path d="M8.5 -3.2a7.6 7.6 0 0 1 0 6.4"/>
+    <path d="M11.8 -4.4a10.8 10.8 0 0 1 0 8.8"/>
+  </g>
+  <g transform="translate(32 32.5) rotate(30)">
+    <path d="M8.5 -3.2a7.6 7.6 0 0 1 0 6.4"/>
+    <path d="M11.8 -4.4a10.8 10.8 0 0 1 0 8.8"/>
   </g>
 </g>
 </svg>
