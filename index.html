@@ -1114,56 +1114,48 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
        每一項帶編號。編號是流程 —— 01 建好帳戶,02 填好費率,03 收 WMS/TMS
        的檔,04 收 UPS 帳單,05 對出結果,06 看趨勢,07 查歷史。 -->
   <div class="navgrp" data-i18n="nav.cfg">Configuration</div>
-  <!-- 層級先於客戶:客戶要指層級,層級得先存在 —— 01/02 的順序就是依賴的方向。 -->
-  <button role="tab" aria-selected="false" data-p="rateset" class="display"><i class="nnum">01</i><span class="nico">🧭</span><span data-i18n="tab.rateset">Rate Level Management</span></button>
+  <button role="tab" aria-selected="false" data-p="general" class="display"><i class="nnum">01</i><span class="nico">⚙️</span><span data-i18n="tab.general">General Setting</span></button>
   <button role="tab" aria-selected="false" data-p="rate" class="display"><i class="nnum">02</i><span class="nico">👥</span><span data-i18n="tab.rate">Account &amp; Client Setup</span></button>
+  <button role="tab" aria-selected="false" data-p="cat" class="display"><i class="nnum">03</i><span class="nico">🚚</span><span data-i18n="tab.cat">Channels &amp; Surcharges</span></button>
+  <button role="tab" aria-selected="false" data-p="fill" class="display"><i class="nnum">04</i><span class="nico">💵</span><span data-i18n="tab.fill">Channel &amp; Surcharge Rates</span></button>
   <div class="navgrp" data-i18n="nav.data">Data Operations</div>
-  <!-- 03 與 05 是同一個 section 的兩種來意:資料進來,和結果出去。 -->
-  <button role="tab" aria-selected="false" data-p="wmsdata" class="display"><i class="nnum">03</i><span class="nico">📄</span><span data-i18n="tab.wmsdata">WMS / TMS Data</span></button>
-  <button role="tab" aria-selected="true" data-p="files" class="display"><i class="nnum">04</i><span class="nico">📥</span><span data-i18n="tab.files">Batch Invoice Import</span></button>
+  <button role="tab" aria-selected="false" data-p="wmsdata" class="display"><i class="nnum">05</i><span class="nico">📄</span><span data-i18n="tab.wmsdata">WMS / TMS Data</span></button>
+  <button role="tab" aria-selected="true" data-p="files" class="display"><i class="nnum">06</i><span class="nico">📥</span><span data-i18n="tab.files">Batch Invoice Import</span></button>
   <div class="navgrp" data-i18n="nav.recon">Reconciliation</div>
-  <button role="tab" aria-selected="false" data-p="cus" class="display"><i class="nnum">05</i><span class="nico">⚖️</span><span data-i18n="tab.cus">Reconciliation Analysis</span></button>
-  <button role="tab" aria-selected="false" data-p="analysis" class="display"><i class="nnum">06</i><span class="nico">📈</span><span data-i18n="tab.analysis">Analytics Dashboard</span></button>
-  <button role="tab" aria-selected="false" data-p="hist" class="display"><i class="nnum">07</i><span class="nico">🗂️</span><span data-i18n="tab.hist">Invoice History</span></button>
+  <button role="tab" aria-selected="false" data-p="cus" class="display"><i class="nnum">07</i><span class="nico">⚖️</span><span data-i18n="tab.cus">Reconciliation Analysis</span></button>
+  <button role="tab" aria-selected="false" data-p="analysis" class="display"><i class="nnum">08</i><span class="nico">📈</span><span data-i18n="tab.analysis">Analytics Dashboard</span></button>
+  <button role="tab" aria-selected="false" data-p="hist" class="display"><i class="nnum">09</i><span class="nico">🗂️</span><span data-i18n="tab.hist">Invoice History</span></button>
   <div class="navgrp" data-i18n="nav.adm">Administration</div>
-  <button role="tab" aria-selected="false" data-p="admin" class="display"><i class="nnum">08</i><span class="nico">🛡️</span><span data-i18n="tab.admin">User Administration</span></button>
-  <!-- 登入者名片:規格書側欄視覺稿最下面那一塊。 -->
-  <div class="navuser" id="navUser" hidden>
-    <span class="avatar" id="navAvatar">S</span>
-    <span class="nu-txt"><b id="navName"></b><i id="navRole"></i></span>
-  </div>
+  <button role="tab" aria-selected="false" data-p="admin" class="display"><i class="nnum">10</i><span class="nico">🛡️</span><span data-i18n="tab.admin">User Administration</span></button>
   <!-- 底下這幾顆收起來(HIDDEN_TABS),各自由上面兩個入口進去。按鈕留著是因為
        currentTab() 靠 aria-selected 找現在在哪一頁。 -->
   <button role="tab" aria-selected="false" data-p="setting" class="display" data-i18n="tab.setting">Rate levels</button>
   <button role="tab" aria-selected="false" data-p="rules"  class="display" data-i18n="tab.rules">Surcharge Setup</button>
-  <button role="tab" aria-selected="false" data-p="size"   class="display" data-i18n="tab.size">Size Rules</button>
   <button role="tab" aria-selected="false" data-p="chan"   class="display" data-i18n="tab.chan">Channels</button>
   <button role="tab" aria-selected="false" data-p="demand" class="display" data-i18n="tab.demand">Demand Surcharge</button>
   <button role="tab" aria-selected="false" data-p="code"   class="display" data-i18n="tab.code">Code Lookup</button>
+  <button role="tab" aria-selected="false" data-p="ratefill" class="display" data-i18n="tab.ratefill">Rate Entry</button>
 </aside>
 
 <!-- 設定底下的編號列。編號是真的順序:先有層級,才有客戶指到哪一層,
      再往下是那一層的各種規則。右邊那個選單是「現在編的是哪一層」——
      底價、附加費、尺寸、渠道、Demand 都吃它,換一層就是換一整本費率。 -->
 <div class="setnav" id="rateSide" hidden>
-  <!-- 順序照實際設定的先後,不照畫面好排:
-       先有層級 → 把那一層的規則設完 → 客戶指到哪一層 → 費用代碼 → 系統設定。
-       客戶排在費率後面是有道理的:指派的時候下拉要選得到層級,層級得先在。 -->
-  <!-- 01 帳戶與客戶:整個帳號一份的東西。
-       02 費率層級管理:先選層級,再編那一層的每一種規則 —— 規格書的
-       Rating Rules 與 Rate Level Management 在本系統是同一件事,
-       因為每一條費率規則本來就屬於某一層。 -->
-  <div class="setnav-tabs" data-g="rate">
-    <button data-r="cus"     data-i18n="rt.customers">1. Client Setup</button>
-  </div>
-  <div class="setnav-tabs" data-g="rateset" hidden>
+  <div class="setnav-tabs" data-g="general">
     <button data-r="setting" data-i18n="rt.levels">1. Level Setup</button>
     <button data-r="code2"   data-i18n="rt.chgcode">2. Charge Codes</button>
-    <button data-r="chan"    data-i18n="rt.chan">3. Channels</button>
-    <button data-r="rules"   data-i18n="rt.rules">4. Surcharges</button>
-    <button data-r="size"    data-i18n="rt.size">5. Size Rules</button>
-    <button data-r="demand"  data-i18n="rt.demand">6. Demand</button>
-    <button data-r="sys"     data-i18n="rt.sys">7. System</button>
+    <button data-r="sys"     data-i18n="rt.sys">3. System</button>
+  </div>
+  <div class="setnav-tabs" data-g="rate" hidden>
+    <button data-r="cus"     data-i18n="rt.customers">1. Client Setup</button>
+  </div>
+  <div class="setnav-tabs" data-g="cat" hidden>
+    <button data-r="chan"    data-i18n="rt.chan">1. Channels</button>
+    <button data-r="rules"   data-i18n="rt.rules">2. Surcharges</button>
+    <button data-r="demand"  data-i18n="rt.demand">3. Demand Surcharge</button>
+  </div>
+  <div class="setnav-tabs" data-g="fill" hidden>
+    <button data-r="ratefill" data-i18n="rt.ratefill">1. Rate Entry</button>
   </div>
   <label class="setnav-lvl" id="editLvlWrap">
     <span data-i18n="lbl.editing">Editing</span>
@@ -1288,109 +1280,46 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
 <!-- ==================== Surcharge Setup ==================== -->
 <section class="page" id="p-rules">
   <div class="lf sketch">
-    <h3 class="display"><span class="em">⛽</span><span data-i18n="hd.fuel">Fuel</span></h3>
-    <div class="row">
-      <label class="inlab" style="margin-left:0" data-i18n="lb.fuelsur">Fuel Surcharge</label>
-      <button class="act" id="bSetFuel" data-i18n="btn.setfuel">Set Fuel Percentage</button>
-      <button class="act alt" id="bFuelUrl" data-i18n="btn.fuelurl">Look Up UPS Fuel Percentage</button>
-    </div>
-    <dl class="kv" id="fuelKV" style="margin-top:10px"></dl>
-  </div>
-
-  <div class="lf sketch">
-    <h3 class="display"><span class="em">💵</span><span data-i18n="hd.acc">Surcharge Rates</span></h3>
-    <div class="row" style="margin-bottom:10px">
-      <label class="inlab" style="margin-left:0" data-i18n="th.chan">Channel</label>
-      <select id="accFilter"></select>
-      <label class="inlab" data-i18n="lb.search">Search</label>
-      <input id="accSearch" class="cell" style="width:150px;text-align:left">
-      <span id="accCount" style="color:var(--muted);font-size:12.5px"></span>
+    <h3 class="display"><span class="em">💲</span><span data-i18n="hd.accmgr">Surcharge Management</span>
+      <span class="pill ok" data-i18n="pill.shared">Account-wide</span></h3>
+    <p class="hint" style="margin:0 0 10px;max-width:78ch" data-i18n="hint.accmgr">Which surcharges exist. Adding one creates it in every rate level at once; each level fills its own rates under 04 Channel &amp; Surcharge Rates.</p>
+    <div class="row" style="margin-bottom:8px">
+      <label class="inlab" style="margin-left:0" data-i18n="lb.newacc">New surcharge</label>
+      <input id="newAccName" class="cell" style="text-align:left;width:190px">
+      <label class="inlab" data-i18n="lb.acctype">Billing</label>
+      <span class="foldwrap"><select class="fold" id="newAccType">
+        <option value="REPRICE" data-i18n="o.reprice">Repriced</option>
+        <option value="COPY INVOICE" data-i18n="o.copyinv">Copy invoice</option>
+        <option value="REPORT ONLY" data-i18n="o.reportonly">Report only</option></select></span>
+      <label class="bulkchk"><input type="checkbox" id="newAccFuel" checked><span data-i18n="lb.accfuelon">Fuel eligible</span></label>
+      <button class="act" id="bAddAcc" data-i18n="btn.addacc">Add surcharge</button>
+      <span class="savenote" id="accMgrMsg"></span>
     </div>
     <div class="row" style="margin-bottom:8px">
-      <button class="act" id="bCustomAcc" data-i18n="btn.customacc">Custom Surcharges…</button>
-      <button class="act" id="bSaveRates" data-i18n="btn.saverates">Save Rates</button>
-      <span id="saveNote" class="savenote"></span>
-      <button class="act ghost" id="bRemoveTicked" data-i18n="btn.removeticked">Remove Ticked</button>
-      <span class="tplgrp">
-        <button class="act ghost" id="bExportAcc" data-i18n="btn.exportacc">Export Accessorials Template</button>
-        <button class="act ghost" id="bImportAcc" data-i18n="btn.importacc">Import Accessorials Template</button>
-      </span>
-      <input type="file" id="fImportAcc" accept=".csv,.txt,.xlsx,.xls">
+      <button class="act ghost" id="bCustomAcc" data-i18n="btn.customacc">Custom Surcharges…</button>
+      <button class="act ghost" id="bAccPrev">👁 <span data-i18n="btn.accprev">Preview rates by level</span></button>
+      <span style="flex:1 1 auto"></span>
+      <label class="inlab" data-i18n="lb.show">Show</label>
+      <span class="foldwrap"><select class="fold" id="accMgrFilter">
+        <option value="all" data-i18n="o.all">All</option>
+        <option value="builtin" data-i18n="o.builtin">Built-in</option>
+        <option value="custom" data-i18n="o.custom">Custom</option></select></span>
+      <label class="inlab" data-i18n="lb.search">Search</label>
+      <input id="accMgrSearch" class="cell" style="width:150px;text-align:left">
+      <span id="accMgrCount" style="color:var(--muted);font-size:12.5px"></span>
     </div>
-    <!-- 載入設定檔的動作搬到「設定」分頁了。整份設定檔是一次取代全部渠道、
-         附加費、DIM、燃油、Demand 與申報價值級距,擺在這裡緊貼「儲存費率」,
-         看起來像只影響附加費 —— 位置本身在誤導人。這裡只留唯讀的指示:
-         在這一頁改費率的人仍然需要知道自己改的是哪一份。 -->
-    <div class="row" style="margin-bottom:12px">
-      <label class="inlab" style="margin-left:0" data-i18n="lb.cfgnow">Configuration in use</label>
-      <span id="cfgNowAcc" class="affsum"></span>
-      <span class="hint" style="margin:0" data-i18n="hint.cfgwhere">Load or replace it on the Settings tab.</span>
-    </div>
-
-    <div id="accChanName" class="subhd"></div>
-    <div id="accZoneCols" class="zonecols"></div>
-    <div class="subhd" data-i18n="hd.flat">Flat amounts</div>
-    <div id="accFlat" class="flatgrid"></div>
-    <div class="subhd" data-i18n="hd.dv">Declared value tiers</div>
-    <div class="row" style="margin-bottom:2px">
-      <button class="act" id="bDvOpen">🛡 <span data-i18n="btn.dvset">Set declared value rates</span></button>
-      <span id="dvSum" class="hint" style="margin:0"></span>
-    </div>
-
-
-    <div class="tablewrap hidden" style="display:none"><table id="tAcc"><thead><tr>
-      <th><input type="checkbox" id="accAll"></th>
+    <div class="tablewrap" style="max-height:52vh"><table id="tAccMgr"><thead><tr>
       <th data-i18n="th.feetype">Fee Type</th>
-      <th data-i18n="th.shiptype">Shipment Type</th>
-      <th data-i18n="th.zones">Zones</th>
-      <th data-i18n="th.amount">Amount</th>
+      <th data-i18n="th.acckind">Kind</th>
+      <th data-i18n="th.billing">Billing</th>
+      <th data-i18n="th.zonescale">Zone scale</th>
+      <th class="num" data-i18n="th.lvlfilled">Levels priced</th>
     </tr></thead><tbody></tbody></table></div>
-
+    <p class="hint" style="margin:9px 0 0;max-width:78ch" data-i18n="hint.acczone">Zone-scaled surcharges reuse each channel's own zones — the same zones as the base rates, only the rates differ.</p>
   </div>
 </section>
 
-<!-- ==================== Size Rules ==================== -->
-<section class="page" id="p-size">
-  <div class="lf sketch">
-    <h3 class="display"><span class="em">⚙</span><span data-i18n="hd.dimf">DIM Factor</span></h3>
-    <div class="row">
-      <label class="inlab" style="margin-left:0" data-i18n="lb.defdim">Default DIM factor</label>
-      <input class="cell num" id="defDim" style="width:80px">
-      <button class="act ghost" id="bChanDim" data-i18n="btn.chandim">Bulk set by channel</button>
-      <button class="act" id="bSaveDim" data-i18n="btn.save">Save</button>
-      <span class="savenote"></span>
-  </div>
 
-  <div class="lf sketch">
-    <h3 class="display"><span class="em">📏</span><span data-i18n="hd.rulesforce">Rules in Force</span></h3>
-    <div class="row" style="margin:10px 0 8px">
-      <label class="inlab" style="margin-left:0" data-i18n="th.chan">Channel</label>
-      <select id="sizeFilter"></select>
-      <button class="act ghost" id="bDefThr" data-i18n="btn.defthr">Default Thresholds</button>
-      <button class="act ghost" id="bBulkChan" data-i18n="btn.bulkchan">Bulk Set Channels</button>
-    </div>
-    <div class="tablewrap" style="max-height:52vh"><table id="tSize"><thead><tr>
-      <th data-i18n="th.chan">Channel</th>
-      <th class="num">LPS <span data-i18n="c.longest">Longest</span> (in)</th>
-      <th class="num">LPS <span data-i18n="c.weight">Weight</span> (lb)</th>
-      <th class="num">LPS <span data-i18n="c.cubic">Cubic</span> (in³)</th>
-      <th class="num">LPS L+G (in)</th>
-      <th class="num">LPS <span data-i18n="c.minwt">Min Wt</span> (lb)</th>
-      <th class="num">AHS <span data-i18n="c.weight">Weight</span> (lb)</th>
-      <th class="num">AHS <span data-i18n="c.longest">Longest</span> (in)</th>
-      <th class="num">AHS <span data-i18n="c.second">2nd Side</span> (in)</th>
-      <th class="num">AHS <span data-i18n="c.cubic">Cubic</span> (in³)</th>
-      <th class="num">AHS L+G (in)</th>
-      <th class="num">AHS <span data-i18n="c.minwt">Min Wt</span> (lb)</th>
-    </tr></thead><tbody></tbody></table></div>
-    <p class="hint" id="sizeFoot" style="margin-top:8px"></p>
-    <div class="row" style="margin-top:10px">
-      <button class="act" onclick="saveSettings()" data-i18n="btn.save">Save Settings</button>
-      <span class="savenote"></span>
-    </div>
-  </div>
-
-</section>
 
 <!-- ==================== 客戶對照 ====================
      帳單上沒有「這批貨是誰的」這個欄位。這一頁把帳單上有的東西(UPS 帳號、
@@ -1407,6 +1336,15 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
   <div class="lf sketch" id="cusCard">
     <h3 class="display"><span class="em">👤</span><span data-i18n="hd.cusreg">Customers</span></h3>
     <p class="hint" style="margin:0 0 11px;max-width:62ch" data-i18n="hint.cusreg">Your own list. Assign a rate level and this customer’s shipments are repriced at that level. The list is shared across the whole account and does not change when you switch levels.</p>
+    <div class="row" style="margin-bottom:8px">
+      <button class="act ghost" id="bCusPrev">👁 <span data-i18n="btn.cusprev">Preview client list</span></button>
+      <span style="flex:1 1 auto"></span>
+      <label class="inlab" data-i18n="th.cuslevel">Rate level</label>
+      <span class="foldwrap"><select class="fold" id="cusLvlFilter"></select></span>
+      <label class="inlab" data-i18n="lb.search">Search</label>
+      <input id="cusSearch" class="cell" style="width:150px;text-align:left">
+      <span id="cusCount" style="color:var(--muted);font-size:12.5px"></span>
+    </div>
     <div class="tablewrap" style="max-height:30vh"><table id="tCus"><thead><tr>
       <th data-i18n="th.cuscode">Code</th>
       <th data-i18n="th.cusname">Name</th>
@@ -1477,7 +1415,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       <span class="arrow">→</span>
       <span class="step"><i>📥</i><span class="stx"><b data-i18n="st.imp">Import the file</b><s data-i18n="st.imp2">Preview before commit</s></span></span>
       <span class="arrow">→</span>
-      <span class="step"><i>⚖️</i><span class="stx"><b data-i18n="st.res">Read the results</b><s data-i18n="st.res2">05 Reconciliation Analysis</s></span></span>
+      <span class="step"><i>⚖️</i><span class="stx"><b data-i18n="st.res">Read the results</b><s data-i18n="st.res2">07 Reconciliation Analysis</s></span></span>
     </div>
     <div class="row" style="margin-top:8px"><span id="reconMsg" class="savenote"></span></div>
   </div>
@@ -1553,7 +1491,8 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
 <!-- ==================== Channels ==================== -->
 <section class="page" id="p-chan">
   <div class="lf sketch">
-    <h3 class="display"><span class="em">➕</span><span data-i18n="hd.chandata">Add a new channel</span></h3>
+    <h3 class="display"><span class="em">➕</span><span data-i18n="hd.chandata">Add a new channel</span>
+      <span class="pill ok" data-i18n="pill.shared">Account-wide</span></h3>
     <div class="grid3" style="grid-template-columns:auto minmax(0,1fr)">
       <label data-i18n="lb.channame">Channel name</label>
       <input id="newChanName" class="cell" style="text-align:left;width:100%">
@@ -1565,12 +1504,49 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
         <span data-i18n="lb.chanon">Enable this channel</span></label>
       <button class="act" id="bAddChan" data-i18n="btn.addchan">Add channel</button>
     </div>
-    <p class="hint" style="margin:9px 0 0;max-width:760px" data-i18n="hint.addchan">A new channel appears on both the commercial and residential side, each with its own base rate table. Only a name that says Commercial or Residential itself stays on that one side.</p>
+    <p class="hint" style="margin:9px 0 0;max-width:760px" data-i18n="hint.addchan">Created in every rate level at once — each level prices it under 04. The reprice defaults (Ground, SurePost, the Air and Worldwide services) ship with their zones preloaded. A name that says Commercial or Residential itself stays on that one side; anything else appears on both.</p>
   </div>
 
 
   <div class="lf sketch">
-    <h3 class="display"><span class="em">②</span><span data-i18n="hd.ratestate">Rate table state</span></h3>
+    <h3 class="display"><span class="em">📋</span><span data-i18n="hd.allchan">Channels already set up</span></h3>
+    <div class="row" style="margin-bottom:8px">
+      <button class="act ghost" id="bDelChan" data-i18n="btn.delchan">Delete selected</button>
+      <button class="act" onclick="saveSettings()" data-i18n="btn.save">Save Settings</button>
+      <button class="act ghost" id="bChanPrev">👁 <span data-i18n="btn.chanprev">Preview rates by level</span></button>
+      <span class="savenote"></span>
+      <label class="inlab" data-i18n="lb.show">Show</label>
+      <span class="foldwrap"><select class="fold" id="chanFilter">
+        <option value="all" data-i18n="o.all">All</option>
+        <option value="builtin" data-i18n="o.builtin">Built-in</option>
+        <option value="custom" data-i18n="o.custom">Custom</option></select></span>
+      <label class="inlab" data-i18n="lb.search">Search</label>
+      <input id="chanSearch" class="cell" style="width:150px;text-align:left">
+      <span id="chanCount" style="color:var(--muted);font-size:12.5px"></span>
+    </div>
+    <div class="tablewrap"><table id="tChan"><thead><tr>
+      <th style="width:30px"></th>
+      <th data-i18n="lb.channame">Channel name</th>
+      <th data-i18n="th.zones">Zones</th>
+      <th data-i18n="th.ratestate">Base rates</th>
+      <th class="num" data-i18n="th.lvlfilled">Levels priced</th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<!-- ==================== 04 渠道與附加費費率(分層) ==================== -->
+<section class="page" id="p-ratefill">
+  <div class="lf sketch">
+    <h3 class="display"><span class="em">💵</span><span data-i18n="hd.ratefill">Channel &amp; Surcharge Rates</span>
+      <span class="pill" data-i18n="pill.perlvl">Per level</span>
+      <span id="fillLvlName" class="pill ok"></span></h3>
+    <p class="hint" style="margin:6px 0 8px;max-width:78ch" data-i18n="hint.ratefill">Everything on this page belongs to the level selected at top right. What exists is managed under 03 Channels &amp; Surcharges; this page only prices it.</p>
+    <div class="row">
+      <button class="act ghost" id="bFillPrev">👁 <span data-i18n="btn.fillprev">Preview this level's rates</span></button>
+    </div>
+  </div>
+  <div class="lf sketch">
+    <h3 class="display"><span class="em">🚚</span><span data-i18n="hd.baserate">Channel base rates</span></h3>
     <div class="row" style="margin-bottom:8px">
       <label class="inlab" style="margin-left:0" data-i18n="lb.pickrate">Rate table channel</label>
       <select id="rateChan" style="min-width:260px"></select>
@@ -1585,32 +1561,130 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
     <div id="rateState"></div>
   </div>
 
+<div class="lf sketch">
+    <h3 class="display"><span class="em">⛽</span><span data-i18n="hd.fuel">Fuel</span></h3>
+    <div class="row">
+      <label class="inlab" style="margin-left:0" data-i18n="lb.fuelsur">Fuel Surcharge</label>
+      <button class="act" id="bSetFuel" data-i18n="btn.setfuel">Set Fuel Percentage</button>
+      <button class="act alt" id="bFuelUrl" data-i18n="btn.fuelurl">Look Up UPS Fuel Percentage</button>
+    </div>
+    <dl class="kv" id="fuelKV" style="margin-top:10px"></dl>
+  </div>
+
   <div class="lf sketch">
-    <h3 class="display"><span class="em">📋</span><span data-i18n="hd.allchan">Channels already set up</span></h3>
+    <h3 class="display"><span class="em">💵</span><span data-i18n="hd.acc">Surcharge Rates</span></h3>
+    <div class="row" style="margin-bottom:10px">
+      <label class="inlab" style="margin-left:0" data-i18n="th.chan">Channel</label>
+      <select id="accFilter"></select>
+      <label class="inlab" data-i18n="lb.search">Search</label>
+      <input id="accSearch" class="cell" style="width:150px;text-align:left">
+      <span id="accCount" style="color:var(--muted);font-size:12.5px"></span>
+    </div>
     <div class="row" style="margin-bottom:8px">
-      <button class="act ghost" id="bDelChan" data-i18n="btn.delchan">Delete selected</button>
+      <button class="act" id="bCustomAcc" data-i18n="btn.customacc">Custom Surcharges…</button>
+      <button class="act" id="bSaveRates" data-i18n="btn.saverates">Save Rates</button>
+      <span id="saveNote" class="savenote"></span>
+      <button class="act ghost" id="bRemoveTicked" data-i18n="btn.removeticked">Remove Ticked</button>
+      <span class="tplgrp">
+        <button class="act ghost" id="bExportAcc" data-i18n="btn.exportacc">Export Accessorials Template</button>
+        <button class="act ghost" id="bImportAcc" data-i18n="btn.importacc">Import Accessorials Template</button>
+      </span>
+      <input type="file" id="fImportAcc" accept=".csv,.txt,.xlsx,.xls">
+    </div>
+    <!-- 載入設定檔的動作搬到「設定」分頁了。整份設定檔是一次取代全部渠道、
+         附加費、DIM、燃油、Demand 與申報價值級距,擺在這裡緊貼「儲存費率」,
+         看起來像只影響附加費 —— 位置本身在誤導人。這裡只留唯讀的指示:
+         在這一頁改費率的人仍然需要知道自己改的是哪一份。 -->
+    <div class="row" style="margin-bottom:12px">
+      <label class="inlab" style="margin-left:0" data-i18n="lb.cfgnow">Configuration in use</label>
+      <span id="cfgNowAcc" class="affsum"></span>
+      <span class="hint" style="margin:0" data-i18n="hint.cfgwhere">Load or replace it on the Settings tab.</span>
+    </div>
+
+    <div id="accChanName" class="subhd"></div>
+    <div id="accZoneCols" class="zonecols"></div>
+    <div class="subhd" data-i18n="hd.flat">Flat amounts</div>
+    <div id="accFlat" class="flatgrid"></div>
+    <div class="subhd" data-i18n="hd.dv">Declared value tiers</div>
+    <div class="row" style="margin-bottom:2px">
+      <button class="act" id="bDvOpen">🛡 <span data-i18n="btn.dvset">Set declared value rates</span></button>
+      <span id="dvSum" class="hint" style="margin:0"></span>
+    </div>
+
+
+    <div class="tablewrap hidden" style="display:none"><table id="tAcc"><thead><tr>
+      <th><input type="checkbox" id="accAll"></th>
+      <th data-i18n="th.feetype">Fee Type</th>
+      <th data-i18n="th.shiptype">Shipment Type</th>
+      <th data-i18n="th.zones">Zones</th>
+      <th data-i18n="th.amount">Amount</th>
+    </tr></thead><tbody></tbody></table></div>
+
+  </div>
+
+  <div class="lf sketch">
+    <h3 class="display"><span class="em">⚙</span><span data-i18n="hd.dimf">DIM Factor</span></h3>
+    <div class="row">
+      <label class="inlab" style="margin-left:0" data-i18n="lb.defdim">Default DIM factor</label>
+      <input class="cell num" id="defDim" style="width:80px">
+      <button class="act ghost" id="bChanDim" data-i18n="btn.chandim">Bulk set by channel</button>
+      <button class="act" id="bSaveDim" data-i18n="btn.save">Save</button>
+      <span class="savenote"></span>
+  </div>
+
+  <div class="lf sketch">
+    <h3 class="display"><span class="em">📏</span><span data-i18n="hd.rulesforce">Rules in Force</span></h3>
+    <div class="row" style="margin:10px 0 8px">
+      <label class="inlab" style="margin-left:0" data-i18n="th.chan">Channel</label>
+      <select id="sizeFilter"></select>
+      <button class="act ghost" id="bDefThr" data-i18n="btn.defthr">Default Thresholds</button>
+      <button class="act ghost" id="bBulkChan" data-i18n="btn.bulkchan">Bulk Set Channels</button>
+    </div>
+    <div class="tablewrap" style="max-height:52vh"><table id="tSize"><thead><tr>
+      <th data-i18n="th.chan">Channel</th>
+      <th class="num">LPS <span data-i18n="c.longest">Longest</span> (in)</th>
+      <th class="num">LPS <span data-i18n="c.weight">Weight</span> (lb)</th>
+      <th class="num">LPS <span data-i18n="c.cubic">Cubic</span> (in³)</th>
+      <th class="num">LPS L+G (in)</th>
+      <th class="num">LPS <span data-i18n="c.minwt">Min Wt</span> (lb)</th>
+      <th class="num">AHS <span data-i18n="c.weight">Weight</span> (lb)</th>
+      <th class="num">AHS <span data-i18n="c.longest">Longest</span> (in)</th>
+      <th class="num">AHS <span data-i18n="c.second">2nd Side</span> (in)</th>
+      <th class="num">AHS <span data-i18n="c.cubic">Cubic</span> (in³)</th>
+      <th class="num">AHS L+G (in)</th>
+      <th class="num">AHS <span data-i18n="c.minwt">Min Wt</span> (lb)</th>
+    </tr></thead><tbody></tbody></table></div>
+    <p class="hint" id="sizeFoot" style="margin-top:8px"></p>
+    <div class="row" style="margin-top:10px">
       <button class="act" onclick="saveSettings()" data-i18n="btn.save">Save Settings</button>
       <span class="savenote"></span>
-      <label class="inlab" data-i18n="lb.search">Search</label>
-      <input id="chanSearch" class="cell" style="width:150px;text-align:left">
-      <span id="chanCount" style="color:var(--muted);font-size:12.5px"></span>
     </div>
-    <div class="tablewrap"><table id="tChan"><thead><tr>
-      <th style="width:30px"></th>
-      <th data-i18n="lb.channame">Channel name</th>
-      <th data-i18n="th.zones">Zones</th>
-      <th data-i18n="th.ratestate">Base rates</th>
-      <th data-i18n="th.enabled">Enabled</th>
-    </tr></thead><tbody></tbody></table></div>
+  </div>
+
+
+  <div class="lf sketch">
+    <h3 class="display"><span class="em">⚡</span><span data-i18n="hd.demrate">Demand surcharge rates</span></h3>
+    <p class="hint" style="margin:0 0 9px;max-width:78ch" data-i18n="hint.demrate">Periods are defined under 03 → 3. Demand Surcharge; each level prices them here.</p>
+    <div class="subtabs" id="demRateTabs">
+      <button data-dr="pkg" aria-selected="true"  data-i18n="dt.pkg">Package surcharges</button>
+      <button data-dr="svc" aria-selected="false" data-i18n="dt.svc">Service level rates</button>
+    </div>
+    <div class="tablewrap" style="max-height:40vh"><table id="tDemRate"><thead></thead><tbody></tbody></table></div>
+    <div class="row" style="margin-top:10px">
+      <button class="act" id="bDemRateSave" data-i18n="btn.save">Save Settings</button>
+      <span class="savenote" id="demRateMsg"></span>
+    </div>
   </div>
 </section>
+
 
 <!-- ==================== Demand ==================== -->
 <section class="page" id="p-demand">
   <div class="lf sketch">
     <div class="row" style="justify-content:space-between">
       <h3 class="display" style="margin:0"><span class="em">⚡</span>
-        <span data-i18n="hd.demand">Demand Surcharge</span></h3>
+        <span data-i18n="hd.demand">Demand Surcharge</span>
+        <span class="pill ok" data-i18n="pill.shared">Account-wide</span></h3>
       <span><label class="inlab" data-i18n="lb.applydemand">Apply to repricing</label>
         <select id="demandOn"><option value="off">Off</option><option value="on">On</option></select></span>
     </div>
@@ -1630,8 +1704,13 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       <button class="act ghost" id="bAddPeriod" data-i18n="btn.addperiod">Add period</button>
       <button class="act ghost" id="bDelPeriod" data-i18n="btn.delperiod">Delete selected</button>
       <button class="act" onclick="saveSettings()" data-i18n="btn.savedemand">Save Demand settings</button>
+      <button class="act ghost" id="bDemPrev">👁 <span data-i18n="btn.demprev">Preview rates by level</span></button>
       <span class="savenote"></span>
+      <span style="flex:1 1 auto"></span>
+      <label class="inlab" data-i18n="lb.search">Search</label>
+      <input id="demSearch" class="cell" style="width:150px;text-align:left">
     </div>
+    <p class="hint" style="margin:10px 0 0;max-width:78ch" data-i18n="hint.demshare">Periods are shared by every rate level; each level prices them under 04 Channel &amp; Surcharge Rates.</p>
   </div>
 </section>
 
@@ -1907,7 +1986,16 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
              要叫回來把 hidden 拿掉即可。 -->
         <button class="act ghost" id="bLvlCopy" hidden data-i18n="btn.lvlcopy">Duplicate this level</button>
         <button class="act ghost" id="bLvlNew" data-i18n="btn.lvlnew">Add a rate level</button>
+        <button class="act ghost" id="bLvlPrev">👁 <span data-i18n="btn.lvlprev">Preview this level</span></button>
         <span id="lvlMsg" class="savenote"></span>
+        <span style="flex:1 1 auto"></span>
+        <label class="inlab" data-i18n="lb.sort">Sort</label>
+        <span class="foldwrap"><select class="fold" id="lvlSort">
+          <option value="created" data-i18n="o.created">By creation</option>
+          <option value="name" data-i18n="o.byname">By name</option>
+          <option value="size" data-i18n="o.bysize">By size</option></select></span>
+        <label class="inlab" data-i18n="lb.search">Search</label>
+        <input id="lvlSearch" class="cell" style="width:130px;text-align:left">
       </div>
     </div>
 
@@ -1935,6 +2023,33 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
         <button class="act ghost sm" id="bManualAlt" title="">⤓ 中文</button>
         <span id="resiSrcSum" class="affsum"></span>
       </div>
+    </div>
+
+    <!-- 啟用/停用:渠道、附加費、Demand 期間。全帳號一致,停用即不參與計價。 -->
+    <div class="sketch-soft" id="cardOnOff" style="padding:14px 16px;margin:0 0 14px">
+      <div class="subhd" style="margin-top:0" data-i18n="hd.onoff">🔌 Enable / Disable</div>
+      <p class="hint" style="margin:8px 0 10px;max-width:880px" data-i18n="hint.onoff">Account-wide. A disabled item is not priced and does not appear under 04 Channel &amp; Surcharge Rates.</p>
+      <div class="row" style="margin-bottom:8px">
+        <button class="act ghost" id="bSysPrev">👁 <span data-i18n="btn.sysprev">Preview account settings</span></button>
+        <span style="flex:1 1 auto"></span>
+        <label class="inlab" data-i18n="lb.show">Show</label>
+        <span class="foldwrap"><select class="fold" id="sysFilter">
+          <option value="all" data-i18n="o.all">All</option>
+          <option value="off" data-i18n="o.disabledonly">Disabled only</option></select></span>
+        <label class="inlab" data-i18n="lb.search">Search</label>
+        <input id="sysSearch" class="cell" style="width:150px;text-align:left">
+      </div>
+      <div class="subhd" data-i18n="th.chan">Channel</div>
+      <div class="tablewrap" style="max-height:30vh"><table id="tOnChan"><thead><tr>
+        <th data-i18n="lb.channame">Channel name</th><th data-i18n="th.zones">Zones</th>
+        <th style="width:130px" data-i18n="th.state">State</th>
+      </tr></thead><tbody></tbody></table></div>
+      <div class="subhd" data-i18n="th.feetype">Fee Type</div>
+      <div class="tablewrap" style="max-height:30vh"><table id="tOnAcc"><thead><tr>
+        <th data-i18n="th.feetype">Fee Type</th><th data-i18n="th.billing">Billing</th>
+        <th style="width:130px" data-i18n="th.state">State</th>
+      </tr></thead><tbody></tbody></table></div>
+      <p class="hint" style="margin:8px 0 0" data-i18n="hint.onoffdem">Demand as a whole switches on the Demand page; individual periods are removed there, not disabled.</p>
     </div>
 
     <!-- 附加費的燃油底 -->
@@ -3576,6 +3691,8 @@ function accZoneKey(cfg, zone){
    等於少收客戶的錢卻沒有人知道。
    注意「費率設成 0」不算 miss:那是有意義的設定(這項免費),不是漏填。 */
 function accLookup(cfg, feeType, channel, zone, issues, residential, missOut){
+  /* 帳號層級停用的附加費:不收、不報缺費率。停用是全帳號一致的系統設定。 */
+  if(((cfg.raw||{}).accessorial_disabled||[]).includes(feeType)) return 0;
   const t=cfg.raw.accessorial_rate_table||{};
   /* 舊範本的住宅費鍵名。桌面版 :17184 有這條退路,少了它,用舊 ACC 表
      匯出的設定會讓住宅費整批收 0。 */
@@ -5507,7 +5624,7 @@ const ADMIN_ONLY=["admin"];
 /* 費率設定的六個內頁不再各佔一顆頂層頁籤 —— 它們現在掛在「Rate Configuration」
    底下那條列上。程式和頁面都原封不動,只是不從上排進去。
    「cus」不在這裡:那一顆是每月要用的對帳,留在上排。 */
-const HIDDEN_TABS=["setting","rules","size","chan","demand","code"];
+const HIDDEN_TABS=["setting","rules","chan","demand","code","ratefill"];
 let LOGIN_ROWS=[];
 
 function authIdentity(user){
@@ -6182,6 +6299,7 @@ function rlAdd(name){
   const id=rlNextId(o);
   let seed={};
   try{ seed=rlStrip(JSON.parse(JSON.stringify(DEFAULT_CONFIG))); }catch(e){ seed={}; }
+  try{ rlSeedStructInto(seed); }catch(e){}
   o.cfg[id]=seed;
   o.list.push({id, name:name||("Level "+(o.list.length+1))});
   return id;
@@ -6207,6 +6325,102 @@ function rlDelete(id){
   delete o.cfg[id];
   return true;
 }
+/* ===== 帳號共用結構的同步 =====
+   渠道清單、附加費定義、Demand 期間、燃油適用、住/商判定、啟停狀態 ——
+   這些是「有什麼」,全帳號一份;各層只各自保留「收多少」。任何一處改了
+   結構,就把現用這份推進收起來的每一層:費率欄位絕不覆蓋,配對得上的
+   金額原樣留下,配不上的定義補進去、多出來的刪掉。 */
+function rlEachStash(fn){
+  const o=rlStore(); if(!o) return;
+  for(const id of Object.keys(o.cfg||{})){
+    const c=o.cfg[id];
+    if(c&&typeof c==="object") fn(c,id);
+  }
+}
+function channelNamesOf(raw){
+  const out=new Set();
+  const zn=(raw&&raw.builtin_service_zones)||{};
+  for(const svc of Object.keys(zn)){
+    out.add(channelSurchargeLabel(svc,false));
+    out.add(channelSurchargeLabel(svc,true));
+  }
+  for(const k of Object.keys((raw&&raw.accessorial_rate_table)||{})){
+    const ch=k.split("|||")[1];
+    if(ch) out.add(ch);
+  }
+  return [...out];
+}
+/* 自訂附加費在這一層要有格子可填。只補洞,絕不動已填的數字。 */
+function seedAccRowsInto(raw,mapping){
+  if(!raw) return;
+  const t=raw.accessorial_rate_table||(raw.accessorial_rate_table={});
+  const m=mapping||raw.dynamic_surcharge_mapping||{};
+  const chans=channelNamesOf(raw);
+  for(const c of Object.values(m)){
+    const nm=String((c&&c.name)||"").trim();
+    if(!nm) continue;
+    for(const ch of chans){
+      const k=nm+"|||"+ch;
+      if(!(k in t)) t[k]=0;
+    }
+  }
+}
+/* 一列 Demand 的身分是「起訖+類別」;金額(ah/lp/ovr、rate)屬於各層。 */
+function demandSyncInto(dd,sd){
+  dd.enabled=!!sd.enabled;
+  dd.service_group_names=JSON.parse(JSON.stringify(sd.service_group_names||[]));
+  dd.service_groups=JSON.parse(JSON.stringify(sd.service_groups||{}));
+  const sync=(key,idf,amts)=>{
+    const srows=Array.isArray(sd[key])?sd[key]:[];
+    const trows=Array.isArray(dd[key])?dd[key]:[];
+    const tmap=new Map(trows.map(r=>[idf(r),r]));
+    dd[key]=srows.map(r=>{
+      const n=JSON.parse(JSON.stringify(r));
+      const t=tmap.get(idf(r));
+      for(const a of amts) n[a]=t&&t[a]!==undefined?t[a]:"";
+      return n;
+    });
+  };
+  sync("special_rows",r=>[r.start,r.end,r.cat].join("|"),["ah","lp","ovr"]);
+  sync("service_rows",r=>[r.start,r.end,r.grp].join("|"),["rate"]);
+}
+function rlSyncShared(){
+  if(!CFG||!CFG.raw) return;
+  const src=CFG.raw;
+  rlEachStash(c=>{
+    const szn=src.builtin_service_zones||{};
+    const zn=c.builtin_service_zones||(c.builtin_service_zones={});
+    for(const k of Object.keys(szn)) if(!(k in zn)) zn[k]=szn[k];
+    for(const k of Object.keys(zn)) if(!(k in szn)) delete zn[k];
+    c.builtin_service_disabled=(src.builtin_service_disabled||[]).slice();
+    c.accessorial_disabled=(src.accessorial_disabled||[]).slice();
+    c.dynamic_surcharge_mapping=JSON.parse(JSON.stringify(src.dynamic_surcharge_mapping||{}));
+    c.accessorial_fuel_eligible=JSON.parse(JSON.stringify(src.accessorial_fuel_eligible||{}));
+    const g=c.global_rules||(c.global_rules={}), sg=src.global_rules||{};
+    g.resi_source=sg.resi_source||"system";
+    g.resi_api_url=String(sg.resi_api_url||"");
+    demandSyncInto(c.demand_config||(c.demand_config={}), src.demand_config||{});
+    seedAccRowsInto(c, src.dynamic_surcharge_mapping);
+  });
+}
+/* 新開層級的結構底:預設值之上,鋪上帳號現有的渠道/附加費/Demand 定義。
+   費率一律留白 —— reprice 的預設渠道與 Zone 由 DEFAULT_CONFIG 自帶。 */
+function rlSeedStructInto(seed){
+  if(!CFG||!CFG.raw) return seed;
+  const src=CFG.raw;
+  seed.builtin_service_zones=JSON.parse(JSON.stringify(src.builtin_service_zones||{}));
+  seed.builtin_service_disabled=(src.builtin_service_disabled||[]).slice();
+  seed.accessorial_disabled=(src.accessorial_disabled||[]).slice();
+  seed.dynamic_surcharge_mapping=JSON.parse(JSON.stringify(src.dynamic_surcharge_mapping||{}));
+  seed.accessorial_fuel_eligible=JSON.parse(JSON.stringify(src.accessorial_fuel_eligible||{}));
+  const g=seed.global_rules||(seed.global_rules={}), sg=src.global_rules||{};
+  g.resi_source=sg.resi_source||"system";
+  g.resi_api_url=String(sg.resi_api_url||"");
+  demandSyncInto(seed.demand_config||(seed.demand_config={}), src.demand_config||{});
+  /* demandSyncInto 以「目標既有金額」為準 —— 種子沒有既有金額,結果就是留白 */
+  seedAccRowsInto(seed, src.dynamic_surcharge_mapping);
+  return seed;
+}
 function lvlMsg(m,ok){
   const e=$("#lvlMsg");
   if(e){ e.textContent=m||""; e.className="savenote"+(m&&!ok?" bad":""); }
@@ -6217,7 +6431,12 @@ function renderLevels(){
   const tb=$("#tLvl")&&$("#tLvl").tBodies[0];
   if(!tb) return;
   const total=o.list.reduce((a,e)=>a+rlSize(e.id),0);
-  tb.innerHTML=o.list.map(e=>{
+  const lq=(($("#lvlSearch")||{}).value||"").trim().toLowerCase();
+  const sort=(($("#lvlSort")||{}).value)||"created";
+  let list=o.list.filter(e=>!lq||String(e.name||"").toLowerCase().includes(lq));
+  if(sort==="name") list=list.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  else if(sort==="size") list=list.slice().sort((a,b)=>rlSize(b.id)-rlSize(a.id));
+  tb.innerHTML=list.map(e=>{
     const on=e.id===o.active;
     return `<tr><td>${on?"<b>":""}${esc(e.name)}${on?"</b>":""}</td>
       <td>${on?`<span class="pill ok">${L("正在編輯","editing")}</span>`
@@ -6247,8 +6466,8 @@ function bindLevels(){
       return; }
     if(!rlAdd(nm)){ lvlMsg(L("新增失敗。","Could not add it."),false); return; }
     CFG=readConfig(CFG.raw); DIRTY=true; renderLevels(); saveSettings();
-    lvlMsg(L("已新增「"+nm+"」,內容是預設值。要設它的費率,先切換過去,再載入那一層的費率設定檔。",
-             "Added \""+nm+"\" with default values. To set its rates, switch to it first, then load that level's rate configuration file."),true);
+    lvlMsg(L("已新增「"+nm+"」:帳號現有的渠道、附加費與 Demand 期間已自動帶入,費率留白。切換過去後於 04 填寫,或載入那一層的費率設定檔。",
+             "Added \""+nm+"\" — the account's channels, surcharges and demand periods are carried in with rates left blank. Switch to it and fill them under 04, or load its rate configuration file."),true);
   });
   $("#bLvlCopy") && ($("#bLvlCopy").onclick=()=>{
     const o=rlEnsure(); if(!o) return;
@@ -6389,8 +6608,28 @@ function renderCustomers(){
   const per={};
   for(const a of ((RECON&&RECON.res&&RECON.res.cus)||[])) per[a.code]={n:a.orders, amt:a.amt};
   const reg=cusReg();
+  /* 篩選器的選項:全部/未指派/每一層。保住目前選擇,層級改名也跟著換字。 */
+  const lf=$("#cusLvlFilter");
+  if(lf){
+    const cur=lf.value||"__all";
+    lf.innerHTML=`<option value="__all">${L("全部層級","All levels")}</option>`
+      +`<option value="__none">${L("未指派","Unassigned")}</option>`
+      +lvlListAll().map(e=>`<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("");
+    lf.value=[...lf.options].some(o=>o.value===cur)?cur:"__all";
+  }
+  const lfv=(lf&&lf.value)||"__all";
+  const cq2=(($("#cusSearch")||{}).value||"").trim().toLowerCase();
+  const list2=reg.filter(c=>{
+    if(lfv==="__none"&&c.level) return false;
+    if(lfv!=="__all"&&lfv!=="__none"&&c.level!==lfv) return false;
+    if(cq2 && !String(c.code||"").toLowerCase().includes(cq2)
+           && !String(c.name||"").toLowerCase().includes(cq2)) return false;
+    return true;
+  });
+  if($("#cusCount")) $("#cusCount").textContent=LANG
+    ? `${list2.length} / ${reg.length} clients` : `顯示 ${list2.length} / ${reg.length} 位客戶`;
   const tb=$("#tCus")&&$("#tCus").tBodies[0];
-  if(tb) tb.innerHTML=reg.length?reg.map(c=>{
+  if(tb) tb.innerHTML=list2.length?list2.map(c=>{
     const p=per[c.code];
     const lv=cusLevelLabel(c.level);
     return `<tr><td class="mono">${esc(c.code)}</td><td>${esc(c.name||"")}</td>
@@ -6401,8 +6640,9 @@ function renderCustomers(){
         <button class="act sm danger" data-cusdel="${esc(c.code)}">${L("刪除","Delete")}</button>
       </td></tr>`;
   }).join("")
-    :`<tr><td colspan="5" class="empty">${L("還沒有客戶。先在下面新增一個。",
-       "No customers yet. Add one below.")}</td></tr>`;
+    :`<tr><td colspan="5" class="empty">${reg.length
+       ? L("沒有符合的客戶。","No matching client.")
+       : L("還沒有客戶。先在下面新增一個。","No customers yet. Add one below.")}</td></tr>`;
   renderChgCodes();
 }
 function renderChgCodes(){
@@ -7162,26 +7402,31 @@ const TAB_KEY="ups_recon_tab";
    "code2" 不是一個頁面 —— 費用代碼那張卡跟客戶名單同住在 p-cus 裡,靠
    showSetCards() 決定露哪一張。這樣不必把整塊 markup 搬家。 */
 /* 設定拆成兩個入口。分界不是畫面好排,是「這件事屬於誰」:
-   Setting  —— 整個帳號的:有哪些費率層級、有哪些客戶、費用代碼怎麼對外。
-   Rate Setup —— 某一層裡面的規則:渠道、附加費、尺寸、Demand、那一層的系統設定。
-   這條線正好就是 RATE_PER_LEVEL —— 右上角的 Editing 選單只在後面那一組出現,
-   前面那一組不出現,因為那三頁換層級也不會變。 */
-const SET_GROUPS={ rate:["cus"],
-                   rateset:["setting","code2","chan","rules","size","demand","sys"] };
+   General Setting —— 帳號機制:層級、費用代碼、系統設定。
+   Account & Client —— 客戶名單與層級指派。
+   渠道與附加費設置管理 —— 有哪些渠道/附加費/Demand 期間(全帳號共用)。
+   渠道與附加費費率 —— 那一層要收多少錢(唯一分層的一頁)。 */
+const SET_GROUPS={ general:["setting","code2","sys"],
+                   rate:["cus"],
+                   cat:["chan","rules","demand"],
+                   fill:["ratefill"] };
 const SET_ENTRANCES=Object.keys(SET_GROUPS);
-const RATE_TABS=[...SET_GROUPS.rate, ...SET_GROUPS.rateset];
-/* code2 = 費用代碼,現在跟 UPS 代碼查詢同住在 p-code:對外要送的代碼,和那個
-   代碼原本是什麼意思,本來就該在同一頁看。 */
-const RATE_PAGE={setting:"setting", cus:"cus", code2:"code", sys:"setting",
-                 rules:"rules", size:"size", chan:"chan", demand:"demand"};
-const setGroupOf=k=>SET_GROUPS.rateset.includes(k)?"rateset":"rate";
-/* 費用代碼掛在層級管理底下純粹是動線 —— 它是帳號共用的,不屬於任何一層,
-   所以「正在編輯哪一層」的選單在那一頁不出現,免得看起來像每層各一份代碼。 */
-const RATE_PER_LEVEL=new Set(SET_GROUPS.rateset.filter(k=>k!=="code2"));
+const RATE_TABS=[].concat(...Object.values(SET_GROUPS));
+/* code2 = 費用代碼,跟 UPS 代碼查詢同住在 p-code;sys 與 setting 共用
+   p-setting,由 showSetCards 決定露哪幾張卡。 */
+const RATE_PAGE={setting:"setting", sys:"setting", code2:"code", cus:"cus",
+                 chan:"chan", rules:"rules", demand:"demand", ratefill:"ratefill"};
+const setGroupOf=k=>{
+  for(const g of SET_ENTRANCES) if(SET_GROUPS[g].includes(k)) return g;
+  return "general";
+};
+/* 「正在編輯哪一層」只有 04 費率填寫那一頁需要:其他頁不是帳號共用,
+   就是層級機制本身,選單出現只會誤導人以為那一頁也分層。 */
+const RATE_PER_LEVEL=new Set(["ratefill"]);
 const RATE_HOME="setting";
 /* 每一組各自記自己停在哪 —— 從 Rate Setup 切到 Setting 再切回來,回到的是
-   Rate Setup 原本那一頁,不是從頭開始。 */
-let SET_LAST={rate:"cus", rateset:"setting"};
+   剛才那一個子頁,不是每次都被拉回第一頁。 */
+let SET_LAST={general:"setting", rate:"cus", cat:"chan", fill:"ratefill"};
 let SET_TAB="setting";
 function showTab(p){
   /* 管理分頁只有管理者能進。分頁按鈕本來就藏起來了,這裡是第二道 ——
@@ -7191,7 +7436,7 @@ function showTab(p){
   if(SET_ENTRANCES.includes(p)) return showSetTab(SET_LAST[p]||SET_GROUPS[p][0]);
   /* 在設定裡面 = 經由 showSetTab 進來的。左邊按「對帳」不算,即使它也是 p-cus。 */
   const inSet=RATE_ENTER;
-  /* 03 WMS/TMS Data 不是自己的頁面 —— 是對帳 section 的「資料」那一側。 */
+  /* 05 WMS/TMS Data 不是自己的頁面 —— 是對帳 section 的「資料」那一側。 */
   const lit=p;
   if(p==="wmsdata"){ p="cus"; }
   if(p==="cus" && typeof showCusTab==="function")
@@ -7227,18 +7472,19 @@ function showSetCards(which){
   /* 有幾個子頁共用同一個 section,差別只在露哪幾張卡。這樣不必把整塊 markup
      搬家 —— 搬家才是會把隔壁函式一起帶走的那種事。 */
   const show=(id,on)=>{ const e=$("#"+id); if(e) e.hidden=!on; };
-  /* 費用代碼那張卡搬到 p-code 去跟查詢同住了,這裡只剩客戶名單。 */
   if(which==="cus"||which===""){ show("cusCard",true); }
   if(which==="setting"||which==="sys"){
-    show("cardLvl",      which==="setting");   /* 1. 費率層級:只有層級表 */
-    show("cardCfgFile",  which==="sys");       /* 8. 系統設定:費率檔與燃油適用 */
+    /* 1. 層級設定:層級表+費率設定檔(載檔蓋到誰,取決於正在編哪一層,
+       兩張卡本來就該站在一起)。3. 系統設定:全帳號的東西 —— 燃油適用
+       與啟用/停用。 */
+    show("cardLvl",      which==="setting");
+    show("cardCfgFile",  which==="setting");
     show("cardFuelElig", which==="sys");
-    /* 兩個子頁共用一個 section,標題也得跟著換 —— 不然站在「8. 系統設定」
-       上面卻寫著「費率層級」。 */
+    show("cardOnOff",    which==="sys");
     const h=$("#setHead");
     if(h) h.textContent = which==="sys"
       ? L("系統設定","System configuration")
-      : L("費率層級","Rate levels");
+      : L("層級設定","Level setup");
   }
 }
 function rateSideSync(p){
@@ -7281,6 +7527,7 @@ function editLvlSync(p){
   sel.innerHTML=o.list.map(e=>
     `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("");
   sel.value=o.active;
+  if(typeof fillLvlSync==="function") fillLvlSync();
 }
 /* 設定底下的分頁只從這裡進。showTab 收的一律是真的頁面名稱,兩者不再混用 ——
    混用的時候,左邊按「對帳」和設定裡按「2. 客戶」長得一模一樣。 */
@@ -8279,13 +8526,67 @@ $("#demandTabs") && ($("#demandTabs").onclick=e=>{
 });
 $("#demandOn") && ($("#demandOn").onchange=e=>{
   (CFG.raw.demand_config||(CFG.raw.demand_config={})).enabled=(e.target.value==="on");
+  rlSyncShared();
   CFG=readConfig(CFG.raw); DIRTY=true;
   setStatus(LANG?("Demand "+e.target.value):("Demand 已"+(e.target.value==="on"?"開啟":"關閉")));
 });
+/* 期間的新增/刪除:定義即全帳號 —— 寫進現用層,再同步到每一層;
+   金額欄留白,各層到 04 自己填。 */
+$("#bAddPeriod") && ($("#bAddPeriod").onclick=()=>{
+  if(!CFG) return;
+  if(DEMAND_TAB!=="pkg"&&DEMAND_TAB!=="svc"){
+    setStatus(L("類別與對應由費率設定檔帶入,這裡只新增期間。",
+                "Categories and mapping come from the rate file; only periods are added here."));
+    return;
+  }
+  const start=prompt(L("開始日期(YYYY-MM-DD):","Start date (YYYY-MM-DD):"),"");
+  if(start==null) return;
+  const end=prompt(L("結束日期(YYYY-MM-DD):","End date (YYYY-MM-DD):"),"");
+  if(end==null) return;
+  const ok=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v).trim());
+  if(!ok(start)||!ok(end)){ setStatus(L("日期格式要是 YYYY-MM-DD。","Dates must be YYYY-MM-DD.")); return; }
+  const d=CFG.raw.demand_config||(CFG.raw.demand_config={});
+  let row;
+  if(DEMAND_TAB==="pkg"){
+    const cat=prompt(L("適用類別(留空=全部):","Category (blank = all):"),"")||"";
+    row={start:start.trim(), end:end.trim(), cat:String(cat).trim(), ah:"", lp:"", ovr:""};
+    (d.special_rows||(d.special_rows=[])).push(row);
+  }else{
+    const grp=prompt(L("服務類別名稱:","Service category:"),"")||"";
+    if(!String(grp).trim()){ setStatus(L("服務類別必填。","Service category is required.")); return; }
+    row={start:start.trim(), end:end.trim(), grp:String(grp).trim(), rate:""};
+    (d.service_rows||(d.service_rows=[])).push(row);
+  }
+  rlSyncShared();
+  CFG=readConfig(CFG.raw); DIRTY=true; saveSettings();
+  renderDemand(); if(typeof renderDemRate==="function") renderDemRate();
+  const nlv=(rlStore()&&rlStore().list.length)||1;
+  setStatus(L("已新增期間至全部 "+nlv+" 個層級,費率請至 04 填寫。",
+              "Period added to all "+nlv+" level(s) — rates to fill under 04."));
+});
+$("#bDelPeriod") && ($("#bDelPeriod").onclick=()=>{
+  if(!CFG) return;
+  if(DEMAND_TAB!=="pkg"&&DEMAND_TAB!=="svc"){
+    setStatus(L("這個分頁的內容不在這裡刪。","Rows on this tab are not deleted here.")); return; }
+  const ticked=[...document.querySelectorAll(".demc:checked")].map(c=>+c.value);
+  if(!ticked.length){ setStatus(L("請先勾選要刪的列。","Tick the rows to delete first.")); return; }
+  if(!confirm(L("要從所有層級刪除 "+ticked.length+" 段期間嗎?各層已填的費率會一併移除。",
+                "Delete "+ticked.length+" period(s) from every level? Their rates in each level go too."))) return;
+  const d=CFG.raw.demand_config||{};
+  const key=DEMAND_TAB==="pkg"?"special_rows":"service_rows";
+  const rows=Array.isArray(d[key])?d[key]:[];
+  d[key]=rows.filter((_,i)=>!ticked.includes(i));
+  rlSyncShared();
+  CFG=readConfig(CFG.raw); DIRTY=true; saveSettings();
+  renderDemand(); if(typeof renderDemRate==="function") renderDemRate();
+  setStatus(L("已自所有層級刪除。","Deleted from every level."));
+});
+$("#demSearch") && ($("#demSearch").oninput=()=>renderDemand());
 document.querySelectorAll('input[name="resiSrc"]').forEach(el=>{ el.onchange=()=>{
   const sel=document.querySelector('input[name="resiSrc"]:checked');
   const v=sel?sel.value:"system";
   (CFG.raw.global_rules||(CFG.raw.global_rules={})).resi_source=v;
+  rlSyncShared();
   if($("#resiApiBox")) $("#resiApiBox").style.display=(v==="api")?"":"none";
   /* 這裡以前改一下就直接寫進儲存。整頁唯一那顆「儲存設定」拿掉之後,
      這一區自己有一顆了 —— 和 Demand、附加費那幾頁同一個規矩:先改在
@@ -8297,6 +8598,7 @@ document.querySelectorAll('input[name="resiSrc"]').forEach(el=>{ el.onchange=()=
 };});
 $("#resiApiUrl") && ($("#resiApiUrl").onchange=e=>{
   (CFG.raw.global_rules||(CFG.raw.global_rules={})).resi_api_url=String(e.target.value||"").trim();
+  rlSyncShared();
   CFG=readConfig(CFG.raw); DIRTY=true;
   setStatus(L("API 端點已更新 —— 尚未儲存","API endpoint updated — not saved yet"));
 });
@@ -8328,6 +8630,7 @@ function closeResiSrc(keep){
     const was=JSON.parse(RS_SNAP);
     if((g.resi_source||"system")!==was.s || String(g.resi_api_url||"")!==was.u){
       g.resi_source=was.s; g.resi_api_url=was.u;
+      rlSyncShared();
       CFG=readConfig(CFG.raw);
       renderConfigTabs();
       setStatus(L("已放棄住/商來源的變更","Residential/Commercial source changes discarded"));
@@ -8395,6 +8698,12 @@ $("#rsX")      && ($("#rsX").onclick=()=>closeResiSrc());
 $("#rsClose")  && ($("#rsClose").onclick=()=>closeResiSrc());
 $("#rsSave")   && ($("#rsSave").onclick=saveResiSrc);
 $("#chanSearch") && ($("#chanSearch").oninput=()=>renderConfigTabs());
+$("#chanFilter") && ($("#chanFilter").onchange=()=>renderConfigTabs());
+$("#lvlSearch") && ($("#lvlSearch").oninput=()=>renderLevels());
+$("#lvlSort")   && ($("#lvlSort").onchange=()=>renderLevels());
+$("#cusSearch") && ($("#cusSearch").oninput=()=>renderCustomers());
+$("#cusLvlFilter") && ($("#cusLvlFilter").onchange=()=>renderCustomers());
+
 $("#rateChan") && ($("#rateChan").onchange=()=>renderConfigTabs());
 $("#bAddChan") && ($("#bAddChan").onclick=()=>{
   const n=($("#newChanName").value||"").trim();
@@ -8404,9 +8713,12 @@ $("#bAddChan") && ($("#bAddChan").onclick=()=>{
   CFG.raw.builtin_service_zones[n]=z;
   if(!$("#newChanOn").checked)
     (CFG.raw.builtin_service_disabled||(CFG.raw.builtin_service_disabled=[])).push(n);
-  CFG=readConfig(CFG.raw); DIRTY=true; renderConfigTabs();
+  rlSyncShared();
+  CFG=readConfig(CFG.raw); DIRTY=true; renderConfigTabs(); saveSettings();
   $("#newChanName").value=""; $("#newChanZones").value="";
-  setStatus((LANG?"Added channel ":"已新增渠道 ")+n);
+  const nlv=(rlStore()&&rlStore().list.length)||1;
+  setStatus(LANG?("Added channel "+n+" to all "+nlv+" level(s) — rates to fill under 04")
+                :("已新增渠道 "+n+" 至全部 "+nlv+" 個層級,費率請至 04 填寫"));
 });
 $("#bDelChan") && ($("#bDelChan").onclick=()=>{
   /* 勾的是服務名,底下可能是兩條真的 key(Ground Commercial / Residential)。
@@ -8414,10 +8726,13 @@ $("#bDelChan") && ($("#bDelChan").onclick=()=>{
   const fams=new Set([...document.querySelectorAll(".chanc:checked")].map(c=>c.value));
   if(!fams.size){ setStatus(LANG?"Tick a channel first":"請先勾選渠道"); return; }
   const t=Object.keys(CFG.raw.builtin_service_zones||{}).filter(k=>fams.has(svcOfChan(k)));
+  if(!confirm(LANG?("Delete "+fams.size+" channel(s) from every rate level? Their base-rate tables in other levels stay untouched but become orphaned.")
+                  :("要從所有層級刪除 "+fams.size+" 條渠道嗎?其他層已填的基本運費表不會被動,但會失去對應的渠道。"))) return;
   for(const s of t){ delete CFG.raw.builtin_service_zones[s];
     if(CFG.raw.channel_rule_overrides) delete CFG.raw.channel_rule_overrides[s]; }
-  CFG=readConfig(CFG.raw); DIRTY=true; renderConfigTabs();
-  setStatus((LANG?"Deleted ":"已刪除 ")+t.length);
+  rlSyncShared();
+  CFG=readConfig(CFG.raw); DIRTY=true; renderConfigTabs(); saveSettings();
+  setStatus((LANG?"Deleted from every level: ":"已自所有層級刪除:")+t.length);
 });
 $("#bExpRate") && ($("#bExpRate").onclick=()=>{
   const pick=($("#rateChan")||{}).value||"";
@@ -10374,7 +10689,9 @@ function renderConfigTabs(){
     else { f.nC+=loaded[svc+"|C"]||0; f.nR+=loaded[svc+"|R"]||0; }
   }
   const cq=(($("#chanSearch")||{}).value||"").toLowerCase();
-  const shown=chanFams.filter(f=>!cq||f.fam.toLowerCase().includes(cq));
+  const ckind=(($("#chanFilter")||{}).value)||"all";
+  const shown=chanFams.filter(f=>(!cq||f.fam.toLowerCase().includes(cq))
+    && (ckind==="all" || (ckind==="builtin")===BUILTIN_FAMS.has(f.fam)));
   const notLoaded=`<span style="color:var(--neg)">${LANG?"not loaded":"未載入"}</span>`;
   const rateCell=f=>{
     if(!f.nC&&!f.nR) return notLoaded;
@@ -10390,7 +10707,8 @@ function renderConfigTabs(){
         ? esc(f.zones.join(" / "))
         : `<span style="color:var(--neg)">${LANG?"not set":"未設定"}</span>`}</td>
      <td>${rateCell(f)}</td>
-     <td>${f.on?(LANG?"Yes":"是"):(LANG?"No":"否")}</td></tr>`).join("")
+     <td class="num">${(()=>{const c=countLevels(raw=>famPricedIn(raw,f.fam));
+        return lvlBadge(c.n,c.total);})()}${f.on?"":` <span class="empty">${LANG?"disabled":"已停用"}</span>`}</td></tr>`).join("")
     ||`<tr><td colspan="5" class="empty">—</td></tr>`;
   if($("#chanCount")) $("#chanCount").textContent = LANG
     ? `${shown.length} / ${chanFams.length} channels` : `顯示 ${shown.length} / ${chanFams.length} 條渠道`;
@@ -10399,7 +10717,7 @@ function renderConfigTabs(){
     /* 選單一條服務一個選項。值仍然帶著 |C —— 匯出讀的是它前半段的服務名,
        兩側的分頁是匯出時自己生的,不靠這個值決定。 */
     const cur=String(rc.value||"").split("|")[0];
-    rc.innerHTML=chanFams.map(f=>{
+    rc.innerHTML=chanFams.filter(f=>f.on).map(f=>{
       const v=f.members[0]+"|C";
       return `<option value="${esc(v)}"${f.members.includes(cur)?" selected":""}>${
         esc(f.fam)}</option>`;
@@ -10427,6 +10745,10 @@ function renderConfigTabs(){
   if(typeof paintResiSrcSum==="function") paintResiSrcSum();
   if($("#resiApiBox")) $("#resiApiBox").style.display=(_rs==="api")?"":"none";
   renderDemand();
+  if(typeof renderDemRate==="function") renderDemRate();
+  if(typeof renderAccMgr==="function") renderAccMgr();
+  if(typeof renderOnOff==="function") renderOnOff();
+  if(typeof fillLvlSync==="function") fillLvlSync();
 
   /* Settings 頁那一行摘要跟著設定走 —— 匯入別份設定檔之後,
      那一行還停在舊的內容會看起來像沒吃進去。 */
@@ -10482,23 +10804,424 @@ const DEMAND_DEF={
        hint:["每個渠道算哪一個類別。預設渠道已經對好,只有自己新增的需要指定。",
              "Which category each channel counts as. The default channels need no attention; only ones you added do."]},
 };
+/* 03-3 只管定義(哪幾段、適用什麼),金額欄不在這裡 —— 各層在 04 填。 */
+const DEMAND_AMTS={special_rows:["ah","lp","ovr"], service_rows:["rate"]};
 function renderDemand(){
   const d=DEMAND_DEF[DEMAND_TAB], cfgd=CFG.raw.demand_config||{};
   if($("#demandHint")) $("#demandHint").innerHTML=d.hint[LANG];
+  const amts=DEMAND_AMTS[d.key]||[];
+  const cols=d.cols.filter(c=>!amts.includes(c[0]));
   const th=$("#tDemand")&&$("#tDemand").querySelector("thead");
   if(th) th.innerHTML=`<tr><th style="width:30px"></th>`
-    +d.cols.map(c=>`<th>${LANG?c[2]:c[1]}</th>`).join("")+`</tr>`;
+    +cols.map(c=>`<th>${LANG?c[2]:c[1]}</th>`).join("")+`</tr>`;
   let data=cfgd[d.key];
   if(!Array.isArray(data)){
     data = data && typeof data==="object"
       ? Object.entries(data).map(([k,v])=>({chan:k,grp:v,name:k,members:v})) : [];
   }
+  const q=(($("#demSearch")||{}).value||"").trim().toLowerCase();
+  const rows=data.map((r,i)=>({r,i})).filter(({r})=>!q
+    || cols.some(c=>String(r[c[0]]??"").toLowerCase().includes(q)));
   const tb=$("#tDemand")&&$("#tDemand").tBodies[0];
-  if(tb) tb.innerHTML=data.length
-    ? data.map((r,i)=>`<tr><td><input type="checkbox" class="demc" value="${i}"></td>`
-        +d.cols.map(c=>`<td>${esc(r[c[0]]??"")}</td>`).join("")+`</tr>`).join("")
-    : `<tr><td colspan="${d.cols.length+1}" class="empty">${
-        LANG?"No rows. Demand is not charged.":"沒有資料,不加收 Demand。"}</td></tr>`;
+  if(tb) tb.innerHTML=rows.length
+    ? rows.map(({r,i})=>`<tr><td><input type="checkbox" class="demc" value="${i}"></td>`
+        +cols.map(c=>`<td>${esc(r[c[0]]??"")}</td>`).join("")+`</tr>`).join("")
+    : `<tr><td colspan="${cols.length+1}" class="empty">${
+        data.length?(LANG?"No match.":"沒有符合的列。")
+        :(LANG?"No rows. Demand is not charged.":"沒有資料,不加收 Demand。")}</td></tr>`;
+}
+
+/* ===== 04:Demand 費率(分層) ===== */
+let DEMRATE_TAB="pkg";
+function renderDemRate(){
+  const tbl=$("#tDemRate"); if(!tbl||!CFG) return;
+  const d=DEMAND_DEF[DEMRATE_TAB], cfgd=CFG.raw.demand_config||{};
+  const amts=DEMAND_AMTS[d.key]||[];
+  const defs=d.cols.filter(c=>!amts.includes(c[0]));
+  const acols=d.cols.filter(c=>amts.includes(c[0]));
+  tbl.querySelector("thead").innerHTML=`<tr>`
+    +defs.map(c=>`<th>${LANG?c[2]:c[1]}</th>`).join("")
+    +acols.map(c=>`<th class="num" style="width:130px">${LANG?c[2]:c[1]}</th>`).join("")+`</tr>`;
+  const data=Array.isArray(cfgd[d.key])?cfgd[d.key]:[];
+  tbl.tBodies[0].innerHTML=data.length
+    ? data.map((r,i)=>`<tr>`
+        +defs.map(c=>`<td>${esc(r[c[0]]??"")}</td>`).join("")
+        +acols.map(c=>`<td class="num"><input class="cell num demrate" data-i="${i}" data-k="${c[0]}"
+            style="width:110px" value="${esc(r[c[0]]??"")}" placeholder="${LANG?"blank":"待填"}"></td>`).join("")
+        +`</tr>`).join("")
+    : `<tr><td colspan="${d.cols.length}" class="empty">${
+        LANG?"No periods defined — add them under 03 → 3. Demand Surcharge."
+            :"還沒有期間 —— 請到「03 → 3. Demand Surcharge」新增。"}</td></tr>`;
+  tbl.querySelectorAll("input.demrate").forEach(e=>e.oninput=()=>{
+    const rows=CFG.raw.demand_config&&CFG.raw.demand_config[d.key];
+    if(rows&&rows[+e.dataset.i]) rows[+e.dataset.i][e.dataset.k]=e.target?e.target.value:e.value;
+    DIRTY=true;
+  });
+}
+function bindDemRate(){
+  const tabs=$("#demRateTabs");
+  if(tabs) tabs.onclick=e=>{
+    const b=e.target.closest("button[data-dr]"); if(!b) return;
+    DEMRATE_TAB=b.dataset.dr;
+    tabs.querySelectorAll("button").forEach(x=>
+      x.setAttribute("aria-selected",String(x===b)));
+    renderDemRate();
+  };
+  $("#bDemRateSave") && ($("#bDemRateSave").onclick=()=>{
+    CFG=readConfig(CFG.raw);
+    const ok=saveSettings();
+    const m=$("#demRateMsg");
+    if(m){ m.textContent=ok===false?L("儲存失敗。","Could not save."):L("已儲存。","Saved.");
+           m.className="savenote"+(ok===false?" bad":""); }
+    if(RATED&&SHIPS){ RATED=SHIPS.map(x=>priceShipment(CFG,x)); renderRate(); }
+  });
+}
+
+/* ===== 各層視角的小工具:清單頁的 n/N 徽章與各處預覽 ===== */
+function lvlListAll(){ const o=rlStore(); return o?o.list.slice():[{id:"L1",name:L("預設","Default")}]; }
+function lvlRawOf(id){
+  const o=rlStore(); if(!o) return CFG&&CFG.raw;
+  return id===o.active ? (CFG&&CFG.raw) : (o.cfg&&o.cfg[id]);
+}
+function famPricedIn(raw,fam){
+  const tabs=(raw&&raw.base_rate_tables)||[];
+  for(const tb of tabs){
+    if(svcOfChan(tb.service||"")===fam && Array.isArray(tb.rows) && tb.rows.length) return true;
+  }
+  return false;
+}
+function feePricedIn(raw,fee){
+  const t=(raw&&raw.accessorial_rate_table)||{};
+  for(const k of Object.keys(t)){
+    if(k.split("|||")[0]!==fee) continue;
+    const v=t[k];
+    if(v&&typeof v==="object"){ for(const z of Object.keys(v)) if(toNum(v[z])>0) return true; }
+    else if(toNum(v)>0) return true;
+  }
+  return false;
+}
+function lvlBadge(n,total){
+  return n===total?`<span class="pill ok">${n} / ${total}</span>`
+       : n===0   ?`<span class="empty">0 / ${total}</span>`
+       :          `<span class="pill">${n} / ${total}</span>`;
+}
+function countLevels(test){
+  const list=lvlListAll();
+  let n=0;
+  for(const e of list){ const raw=lvlRawOf(e.id); if(raw&&test(raw)) n++; }
+  return {n, total:list.length};
+}
+/* reprice 預設渠道:DEFAULT_CONFIG 自帶的那一批(含 Zone)。 */
+const BUILTIN_FAMS=new Set(Object.keys((DEFAULT_CONFIG&&DEFAULT_CONFIG.builtin_service_zones)||{}).map(k=>svcOfChan(k)));
+const BUILTIN_FEES=[...new Set(Object.keys((DEFAULT_CONFIG&&DEFAULT_CONFIG.accessorial_rate_table)||{}).map(k=>k.split("|||")[0]))];
+
+/* ===== 03-2 附加費管理 ===== */
+function accShapeOf(fee){
+  const t=(CFG&&CFG.raw.accessorial_rate_table)||{};
+  for(const k of Object.keys(t)) if(k.split("|||")[0]===fee)
+    return (t[k]&&typeof t[k]==="object") ? "zone" : "flat";
+  const dt=(DEFAULT_CONFIG.accessorial_rate_table||{});
+  for(const k of Object.keys(dt)) if(k.split("|||")[0]===fee)
+    return (dt[k]&&typeof dt[k]==="object") ? "zone" : "flat";
+  return "flat";
+}
+function accMgrRows(){
+  const dyn=(CFG&&CFG.raw.dynamic_surcharge_mapping)||{};
+  const dis=new Set((CFG&&CFG.raw.accessorial_disabled)||[]);
+  const rows=[];
+  for(const fee of BUILTIN_FEES)
+    rows.push({fee, kind:"builtin", type:"REPRICE", shape:accShapeOf(fee), on:!dis.has(fee)});
+  for(const [as,c] of Object.entries(dyn)){
+    const nm=String((c&&c.name)||"").trim();
+    if(!nm) continue;
+    rows.push({fee:nm, code:as, kind:"custom", type:normDynType(c.type),
+               shape:accShapeOf(nm), on:c.enabled!==false, fuel:c.fuel_eligible!==false});
+  }
+  return rows;
+}
+const DYN_TYPE_WORD={"REPRICE":["重新計價","Repriced"],
+  "COPY INVOICE":["照帳單收","Copy invoice"],"REPORT ONLY":["只列出不收","Report only"]};
+function renderAccMgr(){
+  const tb=$("#tAccMgr")&&$("#tAccMgr").tBodies[0];
+  if(!tb||!CFG) return;
+  const q=(($("#accMgrSearch")||{}).value||"").trim().toLowerCase();
+  const f=(($("#accMgrFilter")||{}).value)||"all";
+  const all=accMgrRows();
+  const rows=all.filter(r=>(f==="all"||r.kind===f)
+    && (!q || r.fee.toLowerCase().includes(q) || String(r.code||"").toLowerCase().includes(q)));
+  tb.innerHTML=rows.length?rows.map(r=>{
+    const c=countLevels(raw=>feePricedIn(raw,r.fee));
+    return `<tr${r.on?"":' style="opacity:.55"'}>
+      <td>${esc(r.fee)}${r.code?` <span class="mono" style="color:var(--muted);font-size:11px">${esc(r.code)}</span>`:""}${
+        r.on?"":` <span class="empty">${L("已停用","disabled")}</span>`}</td>
+      <td>${r.kind==="builtin"?L("內建","Built-in"):L("自訂","Custom")}</td>
+      <td>${(DYN_TYPE_WORD[r.type]||[r.type,r.type])[LANG]}</td>
+      <td>${r.shape==="zone"?L("依渠道 Zone","Channel zones"):L("單一費率","Flat")}</td>
+      <td class="num">${lvlBadge(c.n,c.total)}</td></tr>`;
+  }).join("")
+  :`<tr><td colspan="5" class="empty">${L("沒有符合的附加費。","No matching surcharge.")}</td></tr>`;
+  if($("#accMgrCount")) $("#accMgrCount").textContent=LANG
+    ? `${rows.length} / ${all.length} surcharges` : `顯示 ${rows.length} / ${all.length} 項`;
+}
+/* 手動新增自訂附加費:代碼可留空 —— 名稱本身就是對帳與費率表的身分。 */
+function accCodeFor(name){
+  const base=String(name).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,3)||"ACC";
+  const dyn=CFG.raw.dynamic_surcharge_mapping||{};
+  if(!(base in dyn)) return base;
+  for(let i=2;i<100;i++) if(!((base+i) in dyn)) return base+i;
+  return base+Date.now()%1000;
+}
+function bindAccMgr(){
+  $("#bAddAcc") && ($("#bAddAcc").onclick=()=>{
+    if(!CFG) return;
+    const nm=(($("#newAccName")||{}).value||"").trim();
+    const msg=$("#accMgrMsg");
+    const say=(t,ok)=>{ if(msg){ msg.textContent=t; msg.className="savenote"+(ok?"":" bad"); } };
+    if(!nm){ say(L("請填附加費名稱。","Surcharge name required."),false); return; }
+    const exists=accMgrRows().some(r=>r.fee.toLowerCase()===nm.toLowerCase());
+    if(exists){ say(L("「"+nm+"」已存在。","\""+nm+"\" already exists."),false); return; }
+    const dyn=CFG.raw.dynamic_surcharge_mapping||(CFG.raw.dynamic_surcharge_mapping={});
+    dyn[accCodeFor(nm)]={ar:"ACC", name:nm,
+      type:normDynType((($("#newAccType")||{}).value)||"REPRICE"),
+      fuel_eligible:!!(($("#newAccFuel")||{}).checked), enabled:true};
+    if(typeof dynLoad==="function") dynLoad(); else seedAccRowsInto(CFG.raw);
+    rlSyncShared();
+    CFG=readConfig(CFG.raw); DIRTY=true; saveSettings();
+    renderConfigTabs();
+    $("#newAccName").value="";
+    const nlv=lvlListAll().length;
+    say(L("已建立於全部 "+nlv+" 個層級,費率請至 04 填寫。",
+          "Created in all "+nlv+" level(s) — rates to fill under 04."),true);
+  });
+  $("#accMgrSearch") && ($("#accMgrSearch").oninput=renderAccMgr);
+  $("#accMgrFilter") && ($("#accMgrFilter").onchange=renderAccMgr);
+}
+
+/* ===== 系統設定:啟用/停用(全帳號) ===== */
+function renderOnOff(){
+  const tc=$("#tOnChan")&&$("#tOnChan").tBodies[0];
+  const ta=$("#tOnAcc")&&$("#tOnAcc").tBodies[0];
+  if((!tc&&!ta)||!CFG) return;
+  const q=(($("#sysSearch")||{}).value||"").trim().toLowerCase();
+  const f=(($("#sysFilter")||{}).value)||"all";
+  const zn=CFG.raw.builtin_service_zones||{};
+  const dis=new Set(CFG.raw.builtin_service_disabled||[]);
+  const fams=new Map();
+  for(const svc of Object.keys(zn).sort(chanSort)){
+    const fam=svcOfChan(svc);
+    if(!fams.has(fam)) fams.set(fam,{members:[],zones:[],on:false});
+    const o=fams.get(fam);
+    o.members.push(svc);
+    const z=String(zn[svc]||"").trim();
+    if(z&&!o.zones.includes(z)) o.zones.push(z);
+    if(!dis.has(svc)) o.on=true;
+  }
+  const stBtn=(kind,id,on)=>`<button class="act ghost sm" data-onoff="${esc(kind)}" data-id="${esc(id)}">${
+      on?L("停用","Disable"):L("啟用","Enable")}</button>${
+      on?"":` <span class="empty">${L("已停用","disabled")}</span>`}`;
+  if(tc){
+    const rows=[...fams.entries()]
+      .filter(([fam,o])=>(f!=="off"||!o.on)&&(!q||fam.toLowerCase().includes(q)));
+    tc.innerHTML=rows.length?rows.map(([fam,o])=>
+      `<tr${o.on?"":' style="opacity:.55"'}><td>${esc(fam)}</td>
+       <td class="wrap" style="font-size:11.5px">${esc(o.zones.join(" / ")||"—")}</td>
+       <td>${stBtn("chan",fam,o.on)}</td></tr>`).join("")
+      :`<tr><td colspan="3" class="empty">—</td></tr>`;
+  }
+  if(ta){
+    const rows=accMgrRows().filter(r=>(f!=="off"||!r.on)&&(!q||r.fee.toLowerCase().includes(q)));
+    ta.innerHTML=rows.length?rows.map(r=>
+      `<tr${r.on?"":' style="opacity:.55"'}><td>${esc(r.fee)}</td>
+       <td>${(DYN_TYPE_WORD[r.type]||[r.type,r.type])[LANG]}</td>
+       <td>${stBtn(r.kind==="custom"?"dyn":"acc", r.kind==="custom"?r.code:r.fee, r.on)}</td></tr>`).join("")
+      :`<tr><td colspan="3" class="empty">—</td></tr>`;
+  }
+}
+function bindOnOff(){
+  const hit=e=>{
+    const b=e.target.closest("button[data-onoff]"); if(!b||!CFG) return;
+    const kind=b.dataset.onoff, id=b.dataset.id;
+    if(kind==="chan"){
+      const zn=CFG.raw.builtin_service_zones||{};
+      const members=Object.keys(zn).filter(k=>svcOfChan(k)===id);
+      const dis=new Set(CFG.raw.builtin_service_disabled||[]);
+      const on=members.some(m=>!dis.has(m));
+      for(const m of members){ if(on) dis.add(m); else dis.delete(m); }
+      CFG.raw.builtin_service_disabled=[...dis];
+    }else if(kind==="acc"){
+      const dis=new Set(CFG.raw.accessorial_disabled||[]);
+      if(dis.has(id)) dis.delete(id); else dis.add(id);
+      CFG.raw.accessorial_disabled=[...dis];
+    }else if(kind==="dyn"){
+      const d=(CFG.raw.dynamic_surcharge_mapping||{})[id];
+      if(d) d.enabled=(d.enabled===false);
+    }
+    rlSyncShared();
+    CFG=readConfig(CFG.raw); DIRTY=true; saveSettings();
+    renderConfigTabs();
+    if(RATED&&SHIPS){ RATED=SHIPS.map(x=>priceShipment(CFG,x)); renderRate(); }
+  };
+  $("#tOnChan") && ($("#tOnChan").onclick=hit);
+  $("#tOnAcc")  && ($("#tOnAcc").onclick=hit);
+  $("#sysSearch") && ($("#sysSearch").oninput=renderOnOff);
+  $("#sysFilter") && ($("#sysFilter").onchange=renderOnOff);
+}
+
+/* ===== 預覽:各頁一顆按鈕,同一個放大縮小視窗 ===== */
+function pvLvlSelect(sel){
+  const list=lvlListAll(), act=(rlStore()||{}).active;
+  return `<div class="row" style="margin-bottom:10px">
+    <label class="inlab" style="margin-left:0">${L("層級","Level")}</label>
+    <span class="foldwrap"><select class="fold" id="${sel}">${
+      list.map(e=>`<option value="${esc(e.id)}"${e.id===act?" selected":""}>${esc(e.name)}</option>`).join("")
+    }</select></span></div>`;
+}
+function pvTable(headers,rows){
+  return `<div class="tablewrap" style="max-height:56vh"><table><thead><tr>${
+    headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${
+    rows.length?rows.join(""):`<tr><td colspan="${headers.length}" class="empty">—</td></tr>`
+  }</tbody></table></div>`;
+}
+function chanPrevHTML(lvlId){
+  const raw=lvlRawOf(lvlId)||{};
+  const zn=raw.builtin_service_zones||{};
+  const fams=new Map();
+  for(const svc of Object.keys(zn).sort(chanSort)){
+    const fam=svcOfChan(svc);
+    if(!fams.has(fam)) fams.set(fam,{zones:new Set(),nC:0,nR:0});
+    const z=String(zn[svc]||"").trim(); if(z) fams.get(fam).zones.add(z);
+  }
+  for(const tb of (raw.base_rate_tables||[])){
+    const fam=svcOfChan(tb.service||"");
+    if(!fams.has(fam)) continue;
+    if(tb.residential) fams.get(fam).nR+=(tb.rows||[]).length;
+    else fams.get(fam).nC+=(tb.rows||[]).length;
+  }
+  const rows=[...fams.entries()].map(([fam,o])=>{
+    const st=(o.nC||o.nR)
+      ? L("商業 "+o.nC+" 列 · 住宅 "+o.nR+" 列","Com "+o.nC+" · Res "+o.nR)
+      : `<span class="empty">${L("未匯入","not loaded")}</span>`;
+    return `<tr><td>${esc(fam)}</td><td class="wrap" style="font-size:11.5px">${
+      esc([...o.zones].join(" / ")||"—")}</td><td>${st}</td></tr>`;
+  });
+  return pvLvlSelect("pvChanLvl")
+    +pvTable([L("渠道","Channel"),"Zones",L("已匯入的基本運費","Base rates loaded")],rows)
+    +`<p class="hint" style="margin:9px 0 0">${
+      L("完整費率表請至「04 渠道與附加費費率 → 檢視已載費率」。",
+        "Full tables: 04 Channel & Surcharge Rates → View loaded rates.")}</p>`;
+}
+function accPrevHTML(lvlId){
+  const raw=lvlRawOf(lvlId)||{};
+  const t=raw.accessorial_rate_table||{};
+  const rows=accMgrRows().map(r=>{
+    let filled=0, total=0, lo=Infinity, hi=0;
+    for(const k of Object.keys(t)){
+      if(k.split("|||")[0]!==r.fee) continue;
+      const v=t[k];
+      const vals=(v&&typeof v==="object")?Object.values(v):[v];
+      for(const x of vals){ total++; const n=toNum(x); if(n>0){ filled++; lo=Math.min(lo,n); hi=Math.max(hi,n); } }
+    }
+    const rng=filled?(lo===hi?money(Math.round(lo*100)):money(Math.round(lo*100))+" – "+money(Math.round(hi*100)))
+                    :`<span class="empty">${L("未填","blank")}</span>`;
+    return `<tr${r.on?"":' style="opacity:.55"'}><td>${esc(r.fee)}</td>
+      <td>${r.shape==="zone"?L("依渠道 Zone","Channel zones"):L("單一費率","Flat")}</td>
+      <td class="num">${filled} / ${total||0}</td><td class="num">${rng}</td></tr>`;
+  });
+  return pvLvlSelect("pvAccLvl")
+    +pvTable([L("附加費","Fee type"),L("級距","Scale"),L("已填格數","Cells filled"),L("金額範圍","Range")],rows);
+}
+function demPrevHTML(lvlId){
+  const raw=lvlRawOf(lvlId)||{};
+  const d=raw.demand_config||{};
+  const pk=(Array.isArray(d.special_rows)?d.special_rows:[]).map(r=>
+    `<tr><td>${esc(r.start||"")} – ${esc(r.end||"")}</td><td>${esc(r.cat||L("全部","all"))}</td>
+     <td class="num">${esc(r.ah||"—")}</td><td class="num">${esc(r.lp||"—")}</td>
+     <td class="num">${esc(r.ovr||"—")}</td></tr>`);
+  const sv=(Array.isArray(d.service_rows)?d.service_rows:[]).map(r=>
+    `<tr><td>${esc(r.start||"")} – ${esc(r.end||"")}</td><td>${esc(r.grp||"")}</td>
+     <td class="num">${esc(r.rate||"—")}</td></tr>`);
+  return pvLvlSelect("pvDemLvl")
+    +`<div class="subhd" style="margin-top:0">${L("包裹附加費","Package surcharges")} · ${
+        d.enabled?L("Demand 已開啟","Demand ON"):L("Demand 關閉","Demand OFF")}</div>`
+    +pvTable([L("期間","Period"),L("類別","Category"),"AHS","LPS","OVR"],pk)
+    +`<div class="subhd">${L("服務類別費率","Service level rates")}</div>`
+    +pvTable([L("期間","Period"),L("類別","Category"),L("費率","Rate")],sv);
+}
+function lvlPrevHTML(lvlId){
+  const raw=lvlRawOf(lvlId)||{};
+  const zn=raw.builtin_service_zones||{};
+  const famAll=new Set(Object.keys(zn).map(k=>svcOfChan(k)));
+  let famPriced=0;
+  for(const f of famAll) if(famPricedIn(raw,f)) famPriced++;
+  let feePriced=0;
+  const fees=accMgrRows();
+  for(const r of fees) if(feePricedIn(raw,r.fee)) feePriced++;
+  const g=raw.global_rules||{};
+  const fuel=(raw.channel_fuel_percents&&Object.keys(raw.channel_fuel_percents).length)
+    ? L("依渠道設定","per channel")
+    : (g.fuel_percent?g.fuel_percent+" %":L("未設定","not set"));
+  const kv=(a,b)=>`<tr><td>${a}</td><td>${b}</td></tr>`;
+  return pvLvlSelect("pvLvlLvl")+pvTable([L("項目","Item"),L("狀態","State")],[
+    kv(L("渠道(已填基本運費 / 總數)","Channels priced / total"),famPriced+" / "+famAll.size),
+    kv(L("附加費(已填 / 總數)","Surcharges priced / total"),feePriced+" / "+fees.length),
+    kv(L("燃油率","Fuel"),fuel),
+    kv(L("預設材積除數","Default DIM"),esc(g.default_dim_factor||g.dim_factor||"139")),
+    kv("Demand",(raw.demand_config&&raw.demand_config.enabled)?L("開啟","on"):L("關閉","off")),
+  ]);
+}
+function sysPrevHTML(){
+  const raw=CFG.raw||{};
+  const g=raw.global_rules||{};
+  const dis=(raw.builtin_service_disabled||[]);
+  const adis=(raw.accessorial_disabled||[]);
+  const fe=raw.accessorial_fuel_eligible||{};
+  const feOff=Object.entries(fe).filter(([k,v])=>v===false).map(([k])=>k);
+  const kv=(a,b)=>`<tr><td>${a}</td><td>${b}</td></tr>`;
+  return pvTable([L("系統設定(全帳號)","System setting (account-wide)"),L("目前值","Current")],[
+    kv(L("住宅/商業判定來源","Residential classification"),
+       g.resi_source==="api"?"UPS API":L("系統規則","System rules")),
+    kv(L("停用的渠道","Disabled channels"),dis.length?esc([...new Set(dis.map(svcOfChan))].join("、")):L("無","none")),
+    kv(L("停用的附加費","Disabled surcharges"),adis.length?esc(adis.join("、")):L("無","none")),
+    kv(L("不收燃油的附加費","Fuel-excluded surcharges"),feOff.length?esc(feOff.join("、")):L("無 —— 全部收","none — all eligible")),
+  ]);
+}
+function cusPrevHTML(){
+  const rows=cusReg().map(c=>{
+    const lv=cusLevelLabel(c.level);
+    return `<tr><td class="mono">${esc(c.code)}</td><td>${esc(c.name||"")}</td>
+      <td>${lv?esc(lv):`<span class="empty">${L("未指派","unassigned")}</span>`}</td></tr>`;
+  });
+  return pvTable([L("代碼","Code"),L("名稱","Name"),L("費率層級","Rate level")],rows);
+}
+function bindPagePreviews(){
+  const wire=(btn,titleF,fn,selId)=>{
+    const b=$(btn); if(!b) return;
+    b.onclick=()=>{
+      const act=(rlStore()||{}).active;
+      const paint=id=>{
+        uiPreview(titleF(),fn(id));
+        const sel=selId&&$("#"+selId);
+        if(sel) sel.onchange=()=>paint(sel.value);
+      };
+      paint(act);
+    };
+  };
+  wire("#bChanPrev",()=>L("渠道費率預覽","Channel rates preview"),chanPrevHTML,"pvChanLvl");
+  wire("#bAccPrev", ()=>L("附加費費率預覽","Surcharge rates preview"),accPrevHTML,"pvAccLvl");
+  wire("#bDemPrev", ()=>L("Demand 費率預覽","Demand rates preview"),demPrevHTML,"pvDemLvl");
+  wire("#bLvlPrev", ()=>L("層級摘要","Level summary"),lvlPrevHTML,"pvLvlLvl");
+  $("#bFillPrev") && ($("#bFillPrev").onclick=()=>{
+    const act=(rlStore()||{}).active;
+    uiPreview(L("本層費率摘要","This level's rates"),lvlPrevHTML(act));
+    const sel=$("#pvLvlLvl"); if(sel) sel.closest(".row").style.display="none";
+  });
+  $("#bSysPrev") && ($("#bSysPrev").onclick=()=>uiPreview(L("帳號設定總覽","Account settings overview"),sysPrevHTML()));
+  $("#bCusPrev") && ($("#bCusPrev").onclick=()=>uiPreview(L("客戶清單","Client list"),cusPrevHTML()));
+}
+/* 04 標題上的層級名,跟右上角選單同一份資料 */
+function fillLvlSync(){
+  const e=$("#fillLvlName");
+  if(e) e.textContent=rlName((rlStore()||{}).active)||"";
 }
 
 /* 日期挑選器。桌面版是自己畫的月曆,不是系統控制項 ——
@@ -10700,6 +11423,7 @@ function dynSave(){
   }
   CFG.raw.dynamic_surcharge_mapping=m;
   dynSeedRateRows();
+  rlSyncShared();
   CFG=readConfig(CFG.raw);
   DIRTY=true;
   renderConfigTabs();
@@ -14254,6 +14978,7 @@ function closeAccFuel(keep){
   $("#afBg").classList.remove("on");
 }
 function saveAccFuel(){
+  rlSyncShared();
   if(saveSettings()===false) return;    /* 存不進去就別關,人還要能重試 */
   closeAccFuel(true);
   renderConfigTabs();
@@ -14971,6 +15696,7 @@ function gapApply(){
     nC++;
   }
   if(!nA&&!nC){ gapMsg(L("沒有勾選任何一項。","Nothing is ticked."),false); return; }
+  rlSyncShared();
   CFG=readConfig(CFG.raw); DIRTY=true;
   renderConfigTabs();
   const ok=saveSettings();
@@ -15825,8 +16551,8 @@ const I18N={
   "lb.chanon":["啟用此渠道","Enable this channel"],
   "btn.addchan":["新增渠道","Add channel"],
   "lb.pickrate":["選擇費率表渠道","Rate table channel"],
-  "hint.addchan":["新增的渠道商業與住宅兩側都會出現,各自一張基本運費表。只有名稱裡自己寫了 Commercial 或 Residential 的,才會只留在那一側。",
-    "A new channel appears on both the commercial and residential side, each with its own base rate table. Only a name that says Commercial or Residential itself stays on that one side."],
+  "hint.addchan":["新增即同步建立於所有費率層級,各層費率於 04 填寫。reprice 預設渠道(Ground、SurePost、Air 與 Worldwide 系列)已連同 Zone 自動帶入。名稱裡自己寫了 Commercial 或 Residential 的只留在那一側,其餘兩側都會出現。",
+    "Created in every rate level at once — each level prices it under 04. The reprice defaults (Ground, SurePost, the Air and Worldwide services) ship with their zones preloaded. A name that says Commercial or Residential itself stays on that one side; anything else appears on both."],
   "btn.exprate":["匯出基本運費表模板","Export base rate template"],
   "btn.imprate":["匯入已完成的基本運費表","Import completed base rates"],
   "btn.scanzone":["從帳單掃描 Zone","Scan zones from invoice"],
@@ -15928,7 +16654,7 @@ const I18N={
   "nav.recon":["對帳","Reconciliation"],
   "nav.adm":["管理","Administration"],
   "hd.reconempty":["還沒有對帳結果","No comparison yet"],
-  "hint.reconempty":["先到「04 帳單匯入」載入這一期的 UPS 帳單,再到「03 WMS / TMS 資料」匯入填好的模板 —— 檔案一收下,結果就出現在這裡。","Import this period's UPS invoice under Batch Invoice Import, then bring in the filled WMS/TMS template under WMS/TMS Data. The comparison appears here the moment the file is accepted."],
+  "hint.reconempty":["先到「06 帳單匯入」載入這一期的 UPS 帳單,再到「05 WMS / TMS 資料」匯入填好的模板 —— 檔案一收下,結果就出現在這裡。","Import this period's UPS invoice under Batch Invoice Import, then bring in the filled WMS/TMS template under WMS/TMS Data. The comparison appears here the moment the file is accepted."],
   "hd.loginhistory":["登入紀錄","Login History"],
   "hint.loginhistory":["由 Supabase 記錄成功登入，只有管理員可以查看。失敗登入與 IP 請至 Supabase Auth Logs 查看。",
     "Successful sign-ins recorded by Supabase. Only administrators can view this page. See Supabase Auth Logs for failed attempts and IP addresses."],
@@ -16119,7 +16845,7 @@ const I18N={
   "st.imp":["匯入檔案","Import the file"],
   "st.imp2":["先預覽,確認才寫入","Preview before commit"],
   "st.res":["讀取結果","Read the results"],
-  "st.res2":["05 對帳分析","05 Reconciliation Analysis"],
+  "st.res2":["07 對帳分析","07 Reconciliation Analysis"],
   "btn.recontplw":["WMS 模板","WMS template"],
   "btn.recontplt":["TMS 模板","TMS template"],
   "btn.reconimp":["導入填好的","Import filled"],
@@ -16142,14 +16868,60 @@ const I18N={
   "tab.setting":["🧭 費率層級","🧭 Rate levels"],
   "tab.rate":["帳戶與客戶","Account & Client Setup"],
   "tab.rateset":["費率層級管理","Rate Level Management"],
+  "tab.general":["一般設定","General Setting"],
+  "tab.cat":["渠道與附加費設置管理","Channels & Surcharges"],
+  "tab.fill":["渠道與附加費費率","Channel & Surcharge Rates"],
+  "tab.ratefill":["費率填寫","Rate Entry"],
+  "rt.ratefill":["1. 費率填寫","1. Rate Entry"],
+  "pill.shared":["不分層 · 全帳號共用","Account-wide"],
+  "pill.perlvl":["分層 · 每層一份","Per level"],
+  "hd.accmgr":["附加費管理","Surcharge Management"],
+  "hint.accmgr":["這裡決定「有哪些附加費」。新增一項即同步建立於所有費率層級;各層費率到「04 渠道與附加費費率」填寫。","Which surcharges exist. Adding one creates it in every rate level at once; each level fills its own rates under 04 Channel & Surcharge Rates."],
+  "lb.newacc":["新增附加費","New surcharge"],
+  "lb.acctype":["收費方式","Billing"],
+  "o.reprice":["重新計價","Repriced"],
+  "o.copyinv":["照帳單收","Copy invoice"],
+  "o.reportonly":["只列出不收","Report only"],
+  "lb.accfuelon":["收燃油","Fuel eligible"],
+  "btn.addacc":["新增附加費","Add surcharge"],
+  "btn.accprev":["預覽各層費率","Preview rates by level"],
+  "o.all":["全部","All"],
+  "o.builtin":["內建","Built-in"],
+  "o.custom":["自訂","Custom"],
+  "th.acckind":["類型","Kind"],
+  "th.billing":["收費方式","Billing"],
+  "th.zonescale":["級距","Zone scale"],
+  "th.lvlfilled":["已設費率層級","Levels priced"],
+  "hint.acczone":["依 Zone 級距的附加費沿用各渠道自己的 Zone —— 與基本運費同一套 Zone,只是費率不同。","Zone-scaled surcharges reuse each channel's own zones — the same zones as the base rates, only the rates differ."],
+  "hd.ratefill":["渠道與附加費費率","Channel & Surcharge Rates"],
+  "hint.ratefill":["這一頁全部屬於右上角「正在編輯」那一層。有哪些項目由「03 渠道與附加費設置管理」決定,這裡只填錢。","Everything on this page belongs to the level selected at top right. What exists is managed under 03 Channels & Surcharges; this page only prices it."],
+  "btn.fillprev":["預覽本層費率","Preview this level's rates"],
+  "hd.baserate":["渠道基本運費","Channel base rates"],
+  "hd.demrate":["Demand 附加費費率","Demand surcharge rates"],
+  "hint.demrate":["期間在「03 → 3. Demand Surcharge」定義;各層在這裡填費率。","Periods are defined under 03 → 3. Demand Surcharge; each level prices them here."],
+  "btn.chanprev":["預覽各層費率","Preview rates by level"],
+  "btn.demprev":["預覽各層費率","Preview rates by level"],
+  "hint.demshare":["期間為所有費率層級共用;各層費率到「04 渠道與附加費費率」填寫。","Periods are shared by every rate level; each level prices them under 04 Channel & Surcharge Rates."],
+  "btn.lvlprev":["預覽此層","Preview this level"],
+  "lb.sort":["排序","Sort"],
+  "o.created":["依建立順序","By creation"],
+  "o.byname":["依名稱","By name"],
+  "o.bysize":["依大小","By size"],
+  "hd.onoff":["🔌 啟用 / 停用","🔌 Enable / Disable"],
+  "hint.onoff":["全帳號一致。停用的附加費不參與計價;停用的渠道自「04 渠道與附加費費率」的清單收起。","Account-wide. A disabled surcharge is not priced; a disabled channel is removed from the pickers under 04 Channel & Surcharge Rates."],
+  "btn.sysprev":["預覽帳號設定","Preview account settings"],
+  "o.disabledonly":["僅停用","Disabled only"],
+  "th.state":["狀態","State"],
+  "hint.onoffdem":["Demand 整體開關在 Demand 分頁;個別期間在那裡刪除,不在此停用。","Demand as a whole switches on the Demand page; individual periods are removed there, not disabled."],
+  "btn.cusprev":["預覽客戶清單","Preview client list"],
   "rt.levels":["1. 層級設定","1. Level Setup"],
   "rt.customers":["1. 客戶設定","1. Client Setup"],
-  "rt.rules":["4. 附加費","4. Surcharges"],
+  "rt.rules":["2. 附加費管理","2. Surcharges"],
   "rt.size":["5. 尺寸規則","5. Size Rules"],
-  "rt.chan":["3. 渠道","3. Channels"],
-  "rt.demand":["6. Demand 附加費","6. Demand"],
-  "rt.chgcode":["2. 費用代碼","2. Charge Codes"],
-  "rt.sys":["7. 系統設定","7. System"],
+  "rt.chan":["1. 渠道管理","1. Channels"],
+  "rt.demand":["3. Demand Surcharge","3. Demand Surcharge"],
+  "rt.chgcode":["2. 費用代碼設置","2. Charge Codes"],
+  "rt.sys":["3. 系統設定","3. System"],
   "hd.analysis":["毛利分析","Profit analysis"],
   "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",
     "Nothing to analyse yet. This page reads the reconciliation — once the filled template is imported, the numbers land here and the whole analysis can be exported."],
@@ -16247,7 +17019,7 @@ const I18N={
   "btn.gapopen":["補上缺的設定","Fill in what is missing"],
   "hd.gapacc":["未知的附加費代碼","Unrecognised surcharge codes"],
   "hd.gapchan":["沒見過的服務","Services not in your channels"],
-  "hint.ratelvl":["每一層都是一份完整、各自獨立的費率。每一層隨時都在用 —— 重算的時候,每個客戶各照自己被指到的那一層計價,和這裡選哪一層無關。這一欄標的只是「現在編輯器打開的是哪一層」:右上角那個選單換一層,底下的附加費、尺寸、渠道、Demand 就是在改另一份。",
+  "hint.ratelvl":["每一層都是一份完整、各自獨立的費率。每一層隨時都在用 —— 重算的時候,每個客戶各照自己被指到的那一層計價,和這裡選哪一層無關。渠道、附加費、Demand 期間是全帳號共用的結構;各層要收多少,到「04 渠道與附加費費率」切到那一層填寫。",
     "Each level is a complete, independent set of rates. Every level is live at once — when shipments are repriced, each customer is priced at the level it is assigned to, whatever is selected here. This column marks only which level the editor currently has open: change the selector at top right and the surcharges, size rules, channels and demand below it belong to a different set."],
   "th.lvlname":["層級名稱","Level"],
   "th.lvlstate":["正在編輯","Editing"],
@@ -17749,6 +18521,7 @@ step("auth",()=>{
   bindUserAdmin();
   bindCustomers();
   bindLevels();
+  bindAccMgr(); bindOnOff(); bindDemRate(); bindPagePreviews();
   bindRecon();
   bindAnalysis();
   bindGap();
