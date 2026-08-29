@@ -5661,8 +5661,11 @@ function chgCatalog(){
    刻意不猜的:偏遠地區那四欄(CAC/CAR/HIC/HIR/AKR 各家帳單的用法不一致),
    以及 Demand 那幾欄 —— 它們是算出來的,本來就沒有對應的代碼。寧可留白,
    也不要寫一個看起來很篤定的錯代碼。完整代碼表在「代碼查詢」分頁。 */
+/* 這幾列認的是帳單行的類別(cls),不是代碼,所以問 upsBucketOf 問不出來 ——
+   補在這裡。純粹是給人看的參考,不參與比對。 */
 const CHG_CODE_ALIAS={
   "Base Rate":["003","FRT"],
+  "Fuel Surcharge":["FSC"],
   "DAS Commercial":["RDC"],
   "DAS Residential":["RDR"],
   "DAS Extended Commercial":["LDC"],
@@ -5675,15 +5678,40 @@ const CHG_CODE_ALIAS={
   "Return To Sender":["ISW"],
   "Missing PLD Fee":["NPF"]
 };
+/* 「系統代碼」這一欄以前照一份手寫的對照表(CODE_REF 的名稱 + CHG_CODE_ALIAS)
+   去湊,而真正把帳單行歸到哪一列的是 upsBucketOf。兩邊各走各的,結果就漂開了:
+   Remote Area 那四列明明認得 CAC / CAR / HIC / HIR / AKR,欄位卻是空白 —— 錢歸得
+   對,但畫面上看起來像「這一列沒有對應代碼」。
+
+   改成反過來問 upsBucketOf:把每一個認得的代碼都丟進去一次,它說歸哪一列,
+   就掛在哪一列底下。顯示和比對從此是同一個答案,不會再各自漂走。 */
+let CHG_CODE_IDX=null, CHG_CODE_IDX_FOR=null;
+function chgCodeIndex(){
+  if(CHG_CODE_IDX && CHG_CODE_IDX_FOR===CFG) return CHG_CODE_IDX;
+  const idx={};
+  const put=(bucket,code)=>{
+    if(!bucket||!code) return;
+    if(bucket===DASH_UNKNOWN||bucket===DASH_RECLASS) return;   /* 那兩個不是費用名稱 */
+    const a=idx[bucket]||(idx[bucket]=[]);
+    if(!a.includes(code)) a.push(code);
+  };
+  const seen=new Set();
+  const all=[].concat(Object.keys(CODE_REF||{}), Object.keys(ACC_CODE_MAP||{}),
+    Object.keys((CFG&&CFG.raw&&CFG.raw.dynamic_surcharge_mapping)||{}));
+  for(const c of all){
+    const u=String(c||"").trim().toUpperCase();
+    if(!u||seen.has(u)) continue;
+    seen.add(u);
+    try{ put(upsBucketOf({cls:"ACC",layer:"",code:u,net:1},false), u); }catch(e){}
+  }
+  /* 運費和燃油認的是 cls 不是代碼(FRT / FSC 那兩行),上面問不出來,補在這裡。 */
+  for(const [nm,list] of Object.entries(CHG_CODE_ALIAS))
+    for(const c of list) put(nm,c);
+  CHG_CODE_IDX=idx; CHG_CODE_IDX_FOR=CFG;
+  return idx;
+}
 function chgUpsCodes(name){
-  const out=[];
-  const add=c=>{ if(c && !out.includes(c)) out.push(c); };
-  for(const [c,d] of Object.entries(CODE_REF)) if(d===name) add(c);
-  for(const c of (CHG_CODE_ALIAS[name]||[])) add(c);
-  /* 自訂附加費是你自己登記的代碼,那一份最權威。 */
-  const dyn=(CFG&&CFG.raw&&CFG.raw.dynamic_surcharge_mapping)||{};
-  for(const [c,v] of Object.entries(dyn)) if(String((v||{}).name||"").trim()===name) add(c);
-  return out.sort();
+  return (chgCodeIndex()[name]||[]).slice().sort();
 }
 /* 對外要用的名字。沒設過就是內部名稱 —— 呼叫端不必自己判斷有沒有設。 */
 function chgLabel(name){
@@ -15127,8 +15155,8 @@ const I18N={
   "btn.assign":["指定","Assign"],
   "btn.cusexport":["匯出待指定清單","Export unassigned list"],
   "hd.chgcode":["費用代碼","Charge codes"],
-  "hint.chgcode":["本頁為檢視用,不能直接編輯 —— 代碼一律由「匯入代碼表」寫入。「系統代碼」是本工具辨識該項費用所依據的 UPS 代碼。留白代表它不是靠單一代碼認出來的(例如 Demand 那幾項是算出來的)—— 完整代碼表在「代碼查詢」分頁。右邊兩欄是你自己的代碼與名稱,未設定者沿用內部名稱。本頁不影響任何金額。",
-    "This page is a view, not a form: codes are set by importing the table. System code is what this tool matches to recognise the charge. Blank means no single code identifies it — the demand charges, for one, are computed. The full code table is on the Code Lookup tab. The two columns on the right are yours; unset keeps the internal name. No amount changes here."],
+  "hint.chgcode":["本頁為檢視用,不能直接編輯。「系統代碼」列出 UPS 可能用來開這筆費用的所有代碼:同一筆費用 UPS 會依住宅/商業、或依觸發原因拆成好幾個代碼,這裡把它們收在同一列,對帳時才是比一筆費用而不是比六筆。這一欄直接讀分桶用的那份邏輯,所以顯示的代碼和錢實際歸到哪一列永遠一致。留白代表這筆費用根本不靠代碼認:Demand 那幾項是依生效日算出來的,退件回程看的是段別而不是代碼。完整代碼表在「代碼查詢」分頁。右邊兩欄是你自己的代碼與名稱,未設定者沿用內部名稱。本頁不影響任何金額。",
+    "This page is a view, not a form. System code lists every code UPS may bill this charge under — several, where UPS splits one charge by residential/commercial or by what triggered it; they are folded into one row so reconciliation compares one charge, not six. The list is read from the same logic that assigns invoice lines, so it always agrees with where the money lands. Blank means no code identifies the charge at all: the demand charges are computed from effective dates, and an undeliverable return is recognised by its leg rather than a code. The full code table is on the Code Lookup tab. The two columns on the right are yours; unset keeps the internal name. No amount changes here."],
   "th.chgname":["費用(系統內部名稱)","Charge (internal name)"],
   "th.chgups":["系統代碼","System code"],
   "th.chgmine":["你的代碼","Your code"],
