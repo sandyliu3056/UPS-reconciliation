@@ -21,12 +21,28 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;max-width:100%;overflow-x:hidden}
+/* 版面:左邊一條固定的導覽,右邊是標題列 / 設定編號列 / 內容。
+   用具名格線區域,四個元素都還是 body 的直接子層 —— 一行 markup 都不用搬,
+   showTab 那些也完全不受影響。 */
 body{
-  background:var(--bg);color:var(--text);justify-content:flex-start;
+  margin:0;
+  background:var(--bg);color:var(--text);
   font-family:var(--bodyfam,"Microsoft JhengHei UI","Microsoft JhengHei",
               "PingFang TC","Noto Sans TC",sans-serif);
-  font-size:14px;line-height:1.55;display:flex;flex-direction:column;
+  font-size:14px;line-height:1.55;
+  display:grid;
+  /* body 上有 zoom(顯示大小那顆選單),100vh 會連同縮放一起打折 ——
+     90% 的時候底下就空出一條。除以縮放倍率補回來。 */
+  height:calc(100vh / var(--zoomf,1));
+  grid-template-columns:var(--navw,208px) minmax(0,1fr);
+  grid-template-rows:auto auto minmax(0,1fr) auto;
+  grid-template-areas:"title title" "nav setnav" "nav main" "nav status";
 }
+#tabs{grid-area:nav} .titlebar{grid-area:title}
+#rateSide{grid-area:setnav} main{grid-area:main}
+/* 狀態列以前沒有指定位置,格線就替它開了一列 —— 側欄因此差幾像素沒鋪到底。
+   有名字的位置就不會再自己長一列出來。 */
+.statusbar{grid-area:status}
 .num,.mono,td.num{font-family:"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
   font-variant-numeric:tabular-nums}
 svg.defs{position:absolute;width:0;height:0}
@@ -75,23 +91,79 @@ table,table *,input,select,.tablewrap{filter:none !important}
   border-radius:5px;padding:2px 9px}
 .titlebar button:hover{background:rgba(255,181,0,.25)}
 
-/* ---- 分頁條 ---- */
-/* 換行,不橫捲。原本是 overflow-x:auto 又把捲軸藏起來,視窗一窄
-   最後幾個分頁就被切掉,而且沒有任何跡象 —— 看起來就像那幾頁不見了。 */
-.tabstrip{background:var(--tab);border-bottom:2.5px solid var(--accent);
-  display:flex;flex-wrap:wrap;gap:4px 2px;padding:6px 10px 0;
-  flex:none;min-height:42px;align-items:flex-end}
-.tabstrip button{font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;
-  background:rgba(255,255,255,.42);color:var(--accent);
-  border:1.5px solid var(--accent);border-bottom:none;
-  border-radius:8px 8px 0 0;padding:7px 15px 6px;white-space:nowrap;
-  filter:var(--wob2,url(#wobble-soft))}
-.tabstrip button:hover{background:rgba(255,255,255,.72)}
-.tabstrip button[aria-selected=true]{background:var(--panel);padding-bottom:8px;margin-bottom:-2px}
-.tabstrip button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+/* ---- 左側導覽 ---- */
+/* 選中的那一顆用左邊一條粗邊表示,不用整顆換色 —— 深底上換色會糊掉,
+   一條邊在餘光裡也看得見。 */
+.nav{
+  background:var(--accent);border-right:2.5px solid var(--accent);
+  display:flex;flex-direction:column;gap:1px;
+  padding:10px 0 18px;overflow-y:auto;overflow-x:hidden;
+}
+.nav .navgrp{
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--tab);opacity:.5;padding:14px 16px 5px;
+}
+.nav .navgrp:first-child{padding-top:2px}
+.nav button{
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left;
+  background:transparent;color:var(--tab);border:0;
+  border-left:3px solid transparent;
+  padding:8px 14px 8px 13px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;opacity:.82;
+}
+.nav button:hover{background:rgba(255,255,255,.12);opacity:1}
+.nav button[aria-selected=true]{
+  background:var(--panel);color:var(--accent);opacity:1;
+  border-left-color:var(--tab);
+}
+.nav button:focus-visible{outline:2px solid var(--tab);outline-offset:-3px}
 
-main{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;
-  padding:12px 10px 0}
+/* ---- 設定底下的編號列 ---- */
+.setnav{
+  background:var(--tab);border-bottom:2.5px solid var(--accent);
+  display:flex;align-items:flex-end;gap:12px;padding:7px 12px 0;
+  flex-wrap:wrap;
+}
+.setnav-tabs{display:flex;flex-wrap:wrap;gap:3px;align-items:flex-end;min-width:0}
+.setnav-tabs button{
+  font:inherit;font-size:12.5px;cursor:pointer;padding:6px 13px 5px;
+  border:1.5px solid var(--accent);border-bottom:none;border-radius:7px 7px 0 0;
+  background:rgba(255,255,255,.42);color:var(--accent);
+  margin-bottom:-2.5px;opacity:.68;white-space:nowrap;
+}
+.setnav-tabs button:hover{opacity:.9;background:rgba(255,255,255,.72)}
+.setnav-tabs button[aria-selected=true]{
+  background:var(--panel);font-weight:700;opacity:1;padding-bottom:7px}
+.setnav-tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* 「正在編輯哪一層」。這一格決定底下每一頁在編誰,所以要一直看得見。 */
+.setnav-lvl{
+  margin-left:auto;display:flex;align-items:center;gap:7px;
+  font-size:11.5px;color:var(--accent);padding-bottom:6px;white-space:nowrap;
+}
+.setnav-lvl select{
+  font:inherit;font-size:12px;font-weight:600;
+  background:var(--panel);color:var(--accent);
+  border:1.5px solid var(--accent);border-radius:6px;padding:3px 8px;cursor:pointer;
+  max-width:230px;
+}
+.setnav-lvl select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.setnav-lvl[hidden]{display:none}
+
+main{min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 14px 0}
+
+/* 窄螢幕:導覽躺平成一條橫的,格線改成三列。 */
+@media (max-width:860px){
+  body{grid-template-columns:minmax(0,1fr);
+       grid-template-rows:auto auto auto minmax(0,1fr) auto;
+       grid-template-areas:"title" "nav" "setnav" "main" "status";
+       height:auto;min-height:calc(100vh / var(--zoomf,1))}
+  .nav{flex-direction:row;flex-wrap:wrap;gap:2px;padding:6px 8px;
+       border-right:0;border-bottom:2.5px solid var(--accent);overflow:visible}
+  .nav .navgrp{display:none}
+  .nav button{border-left:0;border-bottom:3px solid transparent;
+              border-radius:7px 7px 0 0;padding:6px 12px}
+  .nav button[aria-selected=true]{border-left:0;border-bottom-color:var(--tab)}
+}
 .page{display:none;max-width:none;margin:0;min-width:0}
 .page.on{display:block}
 #p-files{position:relative}
@@ -939,34 +1011,47 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
   <button id="bLogout" data-i18n="btn.logout">Sign out</button>
 </div>
 
-<div class="tabstrip" role="tablist" id="tabs">
-  <!-- 分頁順序照每月實際流程:天天用的(匯入 → 對帳 → 歷史 → 代碼)在前,
-       一次設好就很少動的費率設定收在後段,管理放最後。 -->
+<!-- 導覽改成左側直欄。橫排頁籤放得下六顆就滿了,而設定底下還有七個地方;
+     直欄一次看得完,加一項也不必重排。
+     元素換了,id 和 button[data-p] 沒換 —— showTab 和 applyRole 照舊。 -->
+<aside class="nav" role="tablist" id="tabs">
+  <div class="navgrp" data-i18n="nav.work">Monthly</div>
   <button role="tab" aria-selected="true"  data-p="files"  class="display" data-i18n="tab.files">Import Files</button>
   <button role="tab" aria-selected="false" data-p="cus"    class="display" data-i18n="tab.cus">Reconcile</button>
   <button role="tab" aria-selected="false" data-p="hist"   class="display" data-i18n="tab.hist">Invoice History</button>
   <button role="tab" aria-selected="false" data-p="code"   class="display" data-i18n="tab.code">Code Lookup</button>
-  <!-- 費率設定的七個地方都在這一個入口底下。它們是同一件事的七個面向:
-       某一層費率長什麼樣。分成七個頂層頁籤的時候,要改一層費率得在上排
-       來回找 —— 現在進來一次,底下那條列切就好。 -->
-  <button role="tab" aria-selected="false" data-p="rate"   class="display" data-i18n="tab.rate">Rate Configuration</button>
+  <div class="navgrp" data-i18n="nav.admin">Setup</div>
+  <!-- 設定底下的七個地方都掛在這一顆,由下面那條編號列切換。 -->
+  <button role="tab" aria-selected="false" data-p="rate"   class="display" data-i18n="tab.rate">Settings</button>
   <button role="tab" aria-selected="false" data-p="rules"  class="display" data-i18n="tab.rules">Surcharge Setup</button>
   <button role="tab" aria-selected="false" data-p="size"   class="display" data-i18n="tab.size">Size Rules</button>
   <button role="tab" aria-selected="false" data-p="chan"   class="display" data-i18n="tab.chan">Channels</button>
   <button role="tab" aria-selected="false" data-p="demand" class="display" data-i18n="tab.demand">Demand Surcharge</button>
-  <button role="tab" aria-selected="false" data-p="setting" class="display" data-i18n="tab.setting">Settings</button>
+  <button role="tab" aria-selected="false" data-p="setting" class="display" data-i18n="tab.setting">Rate levels</button>
   <button role="tab" aria-selected="false" data-p="admin"  class="display" data-i18n="tab.admin">Admin</button>
-</div>
+</aside>
 
-<!-- 七個費率頁共用這一條。擺在頁面外面,切分頁的時候它不重畫,位置也不會跳。
-     目前在哪一頁就亮哪一顆;走到對帳那一頁就整條收起來。 -->
-<div class="subtabs" id="rateSide" hidden>
-  <button data-r="setting" data-i18n="rt.levels">Rate levels &amp; base rates</button>
-  <button data-r="cus"     data-i18n="rt.customers">Customers</button>
-  <button data-r="rules"   data-i18n="rt.rules">Surcharges</button>
-  <button data-r="size"    data-i18n="rt.size">Size rules</button>
-  <button data-r="chan"    data-i18n="rt.chan">Channels</button>
-  <button data-r="demand"  data-i18n="rt.demand">Demand</button>
+<!-- 設定底下的編號列。編號是真的順序:先有層級,才有客戶指到哪一層,
+     再往下是那一層的各種規則。右邊那個選單是「現在編的是哪一層」——
+     底價、附加費、尺寸、渠道、Demand 都吃它,換一層就是換一整本費率。 -->
+<div class="setnav" id="rateSide" hidden>
+  <!-- 順序照實際設定的先後,不照畫面好排:
+       先有層級 → 把那一層的規則設完 → 客戶指到哪一層 → 費用代碼 → 系統設定。
+       客戶排在費率後面是有道理的:指派的時候下拉要選得到層級,層級得先在。 -->
+  <div class="setnav-tabs">
+    <button data-r="setting" data-i18n="rt.levels">1. Rate Levels</button>
+    <button data-r="rules"   data-i18n="rt.rules">2. Surcharges</button>
+    <button data-r="size"    data-i18n="rt.size">3. Size Rules</button>
+    <button data-r="chan"    data-i18n="rt.chan">4. Channels</button>
+    <button data-r="demand"  data-i18n="rt.demand">5. Demand</button>
+    <button data-r="cus"     data-i18n="rt.customers">6. Clients</button>
+    <button data-r="code2"   data-i18n="rt.chgcode">7. Charge Codes</button>
+    <button data-r="sys"     data-i18n="rt.sys">8. System</button>
+  </div>
+  <label class="setnav-lvl" id="editLvlWrap">
+    <span data-i18n="lbl.editing">Editing</span>
+    <select id="editLvl"></select>
+  </label>
 </div>
 
 <main>
@@ -1195,12 +1280,14 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
      兩個參考號)對到你自己的客戶代碼 —— 那個代碼才是以後接 WMS 的共通語言。
      這一頁不參與計價,任何金額都不會因為這裡設了什麼而改變。 -->
 <section class="page" id="p-cus">
-  <div class="subtabs" id="cusSide">
+  <!-- 這條在左側導覽有「對帳」、設定裡有「6. 客戶」之後就重複了,兩個入口
+       各自會把子頁停對地方。程式和事件都留著,拿掉 hidden 就回來。 -->
+  <div class="subtabs" id="cusSide" hidden>
     <button data-c="cus" aria-selected="true"  data-i18n="ct.cusreg">Customers</button>
     <button data-c="recon" aria-selected="false" data-i18n="ct.recon">Reconciliation</button>
   </div>
   <div id="cusPane">
-  <div class="lf sketch">
+  <div class="lf sketch" id="cusCard">
     <h3 class="display"><span class="em">👤</span><span data-i18n="hd.cusreg">Customers</span></h3>
     <p class="hint" style="margin:0 0 11px;max-width:62ch" data-i18n="hint.cusreg">Your own list. Assign a rate level and this customer’s shipments are repriced at that level. The list is shared across the whole account and does not change when you switch levels.</p>
     <div class="tablewrap" style="max-height:30vh"><table id="tCus"><thead><tr>
@@ -1640,12 +1727,12 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
 <!-- ==================== Settings ==================== -->
 <section class="page" id="p-setting">
   <div class="lf sketch">
-    <h3 class="display"><span class="em">🧭</span><span data-i18n="hd.setting">Rate levels &amp; base rates</span></h3>
+    <h3 class="display"><span class="em">🧭</span><span id="setHead">Rate levels</span></h3>
 
     <!-- 費率層級。一個帳號可以存好幾份完整的費率,一個客戶一份。
          擺在費率設定檔上面,因為「現在編的是哪一層」決定了那顆按鈕載進去的
          檔案會蓋到誰 —— 先看到層級,才不會載錯地方。 -->
-    <div class="sketch-soft" style="padding:14px 16px;margin:14px 0 14px">
+    <div class="sketch-soft" id="cardLvl" style="padding:14px 16px;margin:14px 0 14px">
       <div class="subhd" style="margin-top:0" data-i18n="hd.ratelvl">🧭 Rate levels</div>
       <p class="hint" style="margin:8px 0 10px;max-width:880px" data-i18n="hint.ratelvl">One account can hold several complete rate sets — one per customer. Everything on the pricing tabs belongs to the level in use; switching swaps the lot.</p>
       <div class="tablewrap" style="max-height:34vh"><table id="tLvl"><thead><tr>
@@ -1668,7 +1755,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
          最上面,不跟每期要調的欄位混在一起。載入與儲存放在同一處:載入只寫
          進這台電腦,要按儲存設定才會寫進帳號 —— 兩顆按鈕分在不同分頁時,
          第二步就是會被漏掉。 -->
-    <div class="sketch-soft" style="padding:14px 16px;margin:14px 0 14px">
+    <div class="sketch-soft" id="cardCfgFile" style="padding:14px 16px;margin:14px 0 14px">
       <div class="subhd" style="margin-top:0" data-i18n="hd.cfgfile">📄 Rate Configuration File</div>
       <p class="hint" style="margin:8px 0 10px;max-width:880px" data-i18n="hint.cfgshort">The account's complete pricing configuration. Loading one replaces the current configuration in full.</p>
       <div class="row">
@@ -1691,7 +1778,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
     </div>
 
     <!-- 附加費的燃油底 -->
-    <div class="sketch-soft" style="padding:14px 16px;margin:0 0 14px">
+    <div class="sketch-soft" id="cardFuelElig" style="padding:14px 16px;margin:0 0 14px">
       <div class="subhd" style="margin-top:0" data-i18n="hd.accfuel">⛽ Fuel Surcharge Eligibility</div>
       <p class="hint" style="margin:8px 0 10px" data-i18n="hint.accfuelset">Every surcharge is fuel-eligible by default. Exclude them individually here.</p>
       <div class="row">
@@ -6787,20 +6874,33 @@ function currentTab(){
 /* 你在看哪一頁。設定、費率、帳單歷史都是存著的,只有這件事以前每次
    重新整理都被丟掉 —— 明明什麼都還在,人卻被丟回匯入檔案那一頁。 */
 const TAB_KEY="ups_recon_tab";
-/* 費率設定底下的七個地方。順序照設定的先後:先有層級,才談客戶指到哪一層,
-   再往下是那一層的各種規則。 */
-const RATE_TABS=["setting","cus","rules","size","chan","demand"];
+/* 設定底下的七個地方。編號就是設定的先後:先有層級,才談客戶指到哪一層,
+   再往下是那一層的各種規則。
+   "code2" 不是一個頁面 —— 費用代碼那張卡跟客戶名單同住在 p-cus 裡,靠
+   showSetCards() 決定露哪一張。這樣不必把整塊 markup 搬家。 */
+const RATE_TABS=["setting","rules","size","chan","demand","cus","code2","sys"];
+const RATE_PAGE={setting:"setting", cus:"cus", code2:"cus", sys:"setting",
+                 rules:"rules", size:"size", chan:"chan", demand:"demand"};
+/* 這幾個是「某一層的費率」,右上角的層級選單對它們才有意義。
+   客戶名單和費用代碼是整個帳號共用的,不隨層級走。 */
+const RATE_PER_LEVEL=new Set(["setting","rules","size","chan","demand","sys"]);
 const RATE_HOME="setting";
+let SET_TAB="setting";
 function showTab(p){
   /* 管理分頁只有管理者能進。分頁按鈕本來就藏起來了,這裡是第二道 ——
      showTab() 是唯一的入口,擋在這裡,任何呼叫端都繞不過去。 */
   if(ADMIN_ONLY.includes(p) && !(ME && ME.role==="admin")) p="files";
-  /* 「費率設定」不是一個真的頁面,是七個頁面的入口。進來停在第一個。 */
-  if(p==="rate"){ p=RATE_HOME; }
-  /* 從費率設定的入口走到客戶那一頁,要停在客戶那一邊,不是對帳那一邊。 */
-  if(p==="cus" && RATE_ENTER && typeof showCusTab==="function") showCusTab("cus");
-  try{ localStorage.setItem(TAB_KEY,p); }catch(e){}
-  const inRate=RATE_TABS.includes(p);
+  /* 「設定」不是一個真的頁面,是八個地方的入口。回到上次停的那一個。 */
+  if(p==="rate") return showSetTab(SET_TAB||RATE_HOME);
+  /* 在設定裡面 = 經由 showSetTab 進來的。左邊按「對帳」不算,即使它也是 p-cus。 */
+  const inSet=RATE_ENTER;
+  if(p==="cus" && typeof showCusTab==="function")
+    /* 設定那條路停在客戶名單,左邊那條路停在對帳 —— 同一個 section,兩種來意。 */
+    showCusTab(inSet?"cus":"recon");
+  if(typeof showSetCards==="function") showSetCards(inSet?SET_TAB:"");
+  /* 記的是「回來要停在哪」。在設定裡就記設定的分頁,才不會回到頁面卻停錯子頁。 */
+  try{ localStorage.setItem(TAB_KEY, inSet?("set:"+SET_TAB):p); }catch(e){}
+  const inRate=inSet;
   document.querySelectorAll("#tabs button[data-p]").forEach(b=>
     b.setAttribute("aria-selected",
       b.dataset.p==="rate" ? (inRate && p!=="cus") : b.dataset.p===p));
@@ -6812,34 +6912,99 @@ function showTab(p){
   /* 層級表以前只有動過才重畫,所以載入設定之後第一次進來是一張空表。
      現在這一頁是費率設定的落點,進來就得是對的。 */
   if(p==="setting"&&typeof renderLevels==="function") renderLevels();
-  rateSideSync(p);
+  rateSideSync(inSet?SET_TAB:p);
 }
 /* 對帳那一頁跟客戶名單住在同一個 section,所以那條列在不在,要看現在停在
    哪一個子頁,不是只看 section。 */
 let RATE_ENTER=false;
+/* 客戶名單和費用代碼住在同一個 section。編號列上是兩個分頁,靠露哪一張卡
+   來分 —— 比把 markup 搬到兩個 section 安全,兩張卡的程式都不必動。 */
+function showSetCards(which){
+  /* 有幾個子頁共用同一個 section,差別只在露哪幾張卡。這樣不必把整塊 markup
+     搬家 —— 搬家才是會把隔壁函式一起帶走的那種事。 */
+  const show=(id,on)=>{ const e=$("#"+id); if(e) e.hidden=!on; };
+  if(which==="cus"||which==="code2"){
+    show("cusCard", which==="cus");
+    show("chgCard", which==="code2");
+  }else if(which===""){                    /* 從左邊直接進對帳:兩張都放回來 */
+    show("cusCard",true); show("chgCard",true);
+  }
+  if(which==="setting"||which==="sys"){
+    show("cardLvl",      which==="setting");   /* 1. 費率層級:只有層級表 */
+    show("cardCfgFile",  which==="sys");       /* 8. 系統設定:費率檔與燃油適用 */
+    show("cardFuelElig", which==="sys");
+    /* 兩個子頁共用一個 section,標題也得跟著換 —— 不然站在「8. 系統設定」
+       上面卻寫著「費率層級」。 */
+    const h=$("#setHead");
+    if(h) h.textContent = which==="sys"
+      ? L("系統設定","System configuration")
+      : L("費率層級","Rate levels");
+  }
+}
 function rateSideSync(p){
   const side=$("#rateSide");
   if(!side) return;
-  if(p==null){
-    const on=[...document.querySelectorAll(".page.on")][0];
-    p=on?on.id.replace(/^p-/,""):"";
-  }
-  const show = RATE_TABS.includes(p)
-    && !(p==="cus" && typeof CUS_TAB!=="undefined" && CUS_TAB!=="cus");
+  if(p==null) p=SET_TAB;
+  const page=RATE_PAGE[p]||p;
+  const on=[...document.querySelectorAll(".page.on")][0];
+  const cur=on?on.id.replace(/^p-/,""):"";
+  const show = RATE_TABS.includes(p) && cur===page
+    && !(page==="cus" && typeof CUS_TAB!=="undefined" && CUS_TAB!=="cus");
   side.hidden=!show;
-  [...side.children].forEach(b=>
+  const tabs=$(".setnav-tabs");
+  if(tabs) [...tabs.children].forEach(b=>
     b.setAttribute("aria-selected", String(b.dataset.r===p)));
-  /* 客戶那一頁被費率設定借用的時候,上排要亮的是「費率設定」那一顆。 */
+  /* 客戶那一頁被設定借用的時候,左邊要亮的是「設定」那一顆,不是「對帳」。 */
   const rb=document.querySelector('#tabs button[data-p="rate"]');
-  if(rb && p==="cus") rb.setAttribute("aria-selected", String(show));
+  const cb=document.querySelector('#tabs button[data-p="cus"]');
+  if(rb) rb.setAttribute("aria-selected", String(show));
+  if(cb && show && page==="cus") cb.setAttribute("aria-selected","false");
+  editLvlSync(p);
+}
+/* 右上角:現在編的是哪一層。這一格換了,底下每一頁編的就是另一本費率 ——
+   底價、附加費、尺寸、渠道、Demand 全部跟著換。
+   客戶名單和費用代碼是整個帳號共用的,那兩頁把這一格收起來,免得看起來
+   像「這份客戶名單只屬於某一層」。 */
+function editLvlSync(p){
+  const wrap=$("#editLvlWrap"), sel=$("#editLvl");
+  if(!wrap||!sel) return;
+  const per=RATE_PER_LEVEL.has(p||SET_TAB);
+  const o=(typeof rlStore==="function")?rlStore():null;
+  wrap.hidden=!(per&&o&&o.list&&o.list.length);
+  if(wrap.hidden) return;
+  sel.innerHTML=o.list.map(e=>
+    `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("");
+  sel.value=o.active;
+}
+/* 設定底下的分頁只從這裡進。showTab 收的一律是真的頁面名稱,兩者不再混用 ——
+   混用的時候,左邊按「對帳」和設定裡按「2. 客戶」長得一模一樣。 */
+function showSetTab(k){
+  if(!RATE_TABS.includes(k)) k=RATE_HOME;
+  SET_TAB=k;
+  RATE_ENTER=true;
+  try{ showTab(RATE_PAGE[k]||k); } finally { RATE_ENTER=false; }
 }
 function bindRateSide(){
   const side=$("#rateSide");
-  if(!side) return;
-  side.onclick=e=>{
+  if(side) side.onclick=e=>{
     const b=e.target.closest("button[data-r]"); if(!b) return;
-    RATE_ENTER=true;
-    try{ showTab(b.dataset.r); } finally { RATE_ENTER=false; }
+    showSetTab(b.dataset.r);
+  };
+  const sel=$("#editLvl");
+  if(sel) sel.onchange=e=>{
+    const id=e.target.value;
+    const o=rlStore();
+    if(!o||id===o.active){ editLvlSync(); return; }
+    const nm=rlName(id);
+    if(DIRTY && !confirm(L("有還沒儲存的變更。換一層會把現在這一層先存起來,然後換成「"+nm+"」。要繼續嗎?",
+        "There are unsaved changes. Switching stores this level first, then loads \""+nm+"\". Continue?"))){
+      editLvlSync(); return; }
+    if(rlSwitch(id)){
+      renderLevels(); renderConfigTabs();
+      if(typeof renderCustomers==="function") renderCustomers();
+      editLvlSync();
+      toast(L("現在編的是「"+nm+"」。","Now editing \""+nm+"\"."),true);
+    }else{ editLvlSync(); toast(L("切換失敗。","Could not switch."),false); }
   };
 }
 
@@ -14881,6 +15046,8 @@ let ZOOM=90;
 function applyZoom(v){
   ZOOM = ZOOMS.includes(+v) ? +v : 90;
   document.body.style.zoom = (ZOOM/100);
+  /* 版面用它把 100vh 補回來 —— 見 body 的 height。 */
+  document.body.style.setProperty("--zoomf", String(ZOOM/100));
   try{ localStorage.setItem(ZOOM_KEY,String(ZOOM)); }catch(e){}
   /* 畫布的尺寸是照元素量的,縮放之後要重量一次,不然時鐘和插圖會糊掉。 */
   if(typeof sceneResize==="function"){ try{ sceneResize(); spreadActors(); }catch(e){} }
@@ -15198,14 +15365,19 @@ const I18N={
   "th.reconpgap":["定價差異","Billed vs recomputed"],
   "hint.reconcols":["三個金額各問一件事。毛利是客戶實付減去 UPS 實收 —— 這一單真正賺多少。系統重算是照該客戶自己的費率層級算出這幾件本來該是多少:拿它跟客戶實付比,是定價差異(該收的有沒有收足);拿它跟 UPS 實收比,是 UPS 差異(帳單與合約有沒有出入)。客戶沒指派費率層級、或層級已被刪除時不重算,重算與兩個差異一律留空,不會拿別層的費率頂替。「UPS 實收」不含帳戶層費用 —— 那些費用沒有追蹤號,對不到任何一張單;該不該計入由帳務決定,和儀表板的處理一致。",
     "Each amount answers a different question. Profit is what the customer paid less what UPS charged — what the order actually made. Recomputed is what this customer's own rate level says the shipments should have cost: against what the customer was billed it gives the pricing variance (was enough charged), and against what UPS billed it gives the UPS variance (does the invoice match the agreement). A customer with no rate level, or one whose level has been deleted, is not repriced at all: recomputed and both variances stay blank rather than borrow another level's rates. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way."],
-  "tab.setting":["⚙️ 設定","⚙️ Settings"],
-  "tab.rate":["🧭 費率設定","🧭 Rate Configuration"],
-  "rt.levels":["費率層級與底價","Rate levels & base rates"],
-  "rt.customers":["客戶與指派","Customers"],
-  "rt.rules":["附加費","Surcharges"],
-  "rt.size":["尺寸規則","Size rules"],
-  "rt.chan":["渠道","Channels"],
-  "rt.demand":["Demand 附加費","Demand"],
+  "tab.setting":["🧭 費率層級","🧭 Rate levels"],
+  "tab.rate":["⚙️ 設定","⚙️ Settings"],
+  "rt.levels":["1. 費率層級","1. Rate Levels"],
+  "rt.customers":["6. 客戶","6. Clients"],
+  "rt.rules":["2. 附加費","2. Surcharges"],
+  "rt.size":["3. 尺寸規則","3. Size Rules"],
+  "rt.chan":["4. 渠道","4. Channels"],
+  "rt.demand":["5. Demand 附加費","5. Demand"],
+  "rt.chgcode":["7. 費用代碼","7. Charge Codes"],
+  "rt.sys":["8. 系統設定","8. System"],
+  "nav.work":["每月作業","Monthly"],
+  "nav.admin":["設定","Setup"],
+  "lbl.editing":["正在編輯","Editing"],
   "hd.setting":["費率層級與底價","Rate levels & base rates"],
   "hint.setting":["重新計價的一般行為設定,改動會存到你的帳號。","General repricing behaviour. Changes are saved to your account."],
   "hd.resisrc":["🔄 住宅／商業判定來源","🔄 Residential / Commercial Classification"],
@@ -16812,10 +16984,14 @@ step("tab", ()=>{
   let want="";
   try{ want=localStorage.getItem(TAB_KEY)||""; }catch(e){}
   if(!want||want==="files") return;
+  /* 設定底下的落點記成 set:xxx,走它自己的入口回去。 */
+  if(want.indexOf("set:")===0){
+    const k=want.slice(4);
+    if(RATE_TABS.includes(k)) showSetTab(k);
+    return;
+  }
   if(!document.getElementById("p-"+want)) return;   /* 舊的分頁名稱就忽略 */
-  /* 收在費率設定底下的那幾頁是正當的落點,照樣還原 —— 它們只是不在上排,
-     不是不能去。真正被隱藏的才回匯入頁。 */
-  if(HIDDEN_TABS.includes(want) && !RATE_TABS.includes(want)) return;
+  if(HIDDEN_TABS.includes(want)) return;            /* 收起來的就回匯入頁 */
   showTab(want);
 });
 
