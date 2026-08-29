@@ -906,7 +906,6 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
   <b class="display" id="appTitle">UPS RECONCILIATION</b>
   <span class="devby" id="appBy">DEVELOPED BY SANDY LIU</span>
   <div class="ctrls">
-    <select id="langSel"  title="Language"></select>
     <select id="zoomSel"  title="Display size"></select>
     <select id="brandSel" title="Theme"></select>
     <select id="themeSel" title="Colour"></select>
@@ -15022,7 +15021,7 @@ const I18N={
   "t.lines":["帳單筆數","Invoice Lines"], "t.inv":["發票","Invoices"],
   "t.tot":["UPS 收取總額","UPS Total"],
 };
-let LANG=1;   /* 0=中文 1=English。預設英文。 */
+let LANG=1;   /* 英文介面(全英文,無切換)。中文字串留在字典裡不影響。 */
 function T(k){ const v=I18N[k]; return v?v[LANG]:k; }
 function applyLang(){
   document.querySelectorAll("[data-i18n]").forEach(el=>{
@@ -16126,8 +16125,6 @@ function fillCodeFilter(){
 }
 function fillSelects(){
   fillCodeFilter(); fillWxSel();
-  $("#langSel").innerHTML=["English","中文"].map((v,i)=>
-    `<option value="${i}"${i===(LANG?0:1)?" selected":""}>${v}</option>`).join("");
   $("#brandSel").innerHTML=BRANDS.map(b=>
     `<option value="${b}"${b===BRAND?" selected":""}>${b}</option>`).join("");
   $("#themeSel").innerHTML=Object.keys(THEMES).map(k=>
@@ -16140,7 +16137,7 @@ function fillSelects(){
 }
 function fillThemeSel(){ fillSelects(); }
 
-$("#langSel").onchange=e=>{
+$("#langSel") && ($("#langSel").onchange=e=>{
   LANG = e.target.value==="0" ? 1 : 0;
   applyLang(); drawClock(); drawDateCard(); fillSelects(); applyRole();
   if(CFG) renderConfigTabs();
@@ -16152,7 +16149,7 @@ $("#langSel").onchange=e=>{
   /* 就緒狀態列、「為什麼不能按」、儲存結果都是 JS 畫的,不吃 data-i18n。
      applyLang() 已經處理,這裡只要補場景提示。 */
   if(typeof sceneDraw==="function") sceneDraw();
-};
+});
 $("#brandSel").onchange=e=>{ applyBrand(e.target.value); spreadActors(); sceneDraw(); };
 $("#themeSel").onchange=e=>{ applyTheme(e.target.value); drawClock(); drawDateCard(); };
 $("#tzSel").onchange=e=>{ TZI=+e.target.value; drawClock(); drawDateCard();
