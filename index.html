@@ -946,12 +946,27 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
   <button role="tab" aria-selected="false" data-p="cus"    class="display" data-i18n="tab.cus">Reconcile</button>
   <button role="tab" aria-selected="false" data-p="hist"   class="display" data-i18n="tab.hist">Invoice History</button>
   <button role="tab" aria-selected="false" data-p="code"   class="display" data-i18n="tab.code">Code Lookup</button>
+  <!-- 費率設定的七個地方都在這一個入口底下。它們是同一件事的七個面向:
+       某一層費率長什麼樣。分成七個頂層頁籤的時候,要改一層費率得在上排
+       來回找 —— 現在進來一次,底下那條列切就好。 -->
+  <button role="tab" aria-selected="false" data-p="rate"   class="display" data-i18n="tab.rate">Rate Configuration</button>
   <button role="tab" aria-selected="false" data-p="rules"  class="display" data-i18n="tab.rules">Surcharge Setup</button>
   <button role="tab" aria-selected="false" data-p="size"   class="display" data-i18n="tab.size">Size Rules</button>
   <button role="tab" aria-selected="false" data-p="chan"   class="display" data-i18n="tab.chan">Channels</button>
   <button role="tab" aria-selected="false" data-p="demand" class="display" data-i18n="tab.demand">Demand Surcharge</button>
   <button role="tab" aria-selected="false" data-p="setting" class="display" data-i18n="tab.setting">Settings</button>
   <button role="tab" aria-selected="false" data-p="admin"  class="display" data-i18n="tab.admin">Admin</button>
+</div>
+
+<!-- 七個費率頁共用這一條。擺在頁面外面,切分頁的時候它不重畫,位置也不會跳。
+     目前在哪一頁就亮哪一顆;走到對帳那一頁就整條收起來。 -->
+<div class="subtabs" id="rateSide" hidden>
+  <button data-r="setting" data-i18n="rt.levels">Rate levels &amp; base rates</button>
+  <button data-r="cus"     data-i18n="rt.customers">Customers</button>
+  <button data-r="rules"   data-i18n="rt.rules">Surcharges</button>
+  <button data-r="size"    data-i18n="rt.size">Size rules</button>
+  <button data-r="chan"    data-i18n="rt.chan">Channels</button>
+  <button data-r="demand"  data-i18n="rt.demand">Demand</button>
 </div>
 
 <main>
@@ -1625,7 +1640,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
 <!-- ==================== Settings ==================== -->
 <section class="page" id="p-setting">
   <div class="lf sketch">
-    <h3 class="display"><span class="em">⚙️</span><span data-i18n="hd.setting">Settings</span></h3>
+    <h3 class="display"><span class="em">🧭</span><span data-i18n="hd.setting">Rate levels &amp; base rates</span></h3>
 
     <!-- 費率層級。一個帳號可以存好幾份完整的費率,一個客戶一份。
          擺在費率設定檔上面,因為「現在編的是哪一層」決定了那顆按鈕載進去的
@@ -5144,7 +5159,10 @@ const ADMIN_ONLY=["admin"];
    目前不藏任何費率編輯頁:每一組費率層級的底價、尺寸規則、附加費、渠道都
    存在各自的層級裡(見 RL_KEYS),要幫某個客戶的層級設好,就得進這些頁編輯。
    之後若真有哪一頁確定用不到,再把名字加進來即可。 */
-const HIDDEN_TABS=[];
+/* 費率設定的六個內頁不再各佔一顆頂層頁籤 —— 它們現在掛在「Rate Configuration」
+   底下那條列上。程式和頁面都原封不動,只是不從上排進去。
+   「cus」不在這裡:那一顆是每月要用的對帳,留在上排。 */
+const HIDDEN_TABS=["setting","rules","size","chan","demand"];
 let LOGIN_ROWS=[];
 
 function authIdentity(user){
@@ -6028,8 +6046,11 @@ function showCusTab(which){
   const side=$("#cusSide");
   if(side) [...side.children].forEach(b=>
     b.setAttribute("aria-selected", b.dataset.c===CUS_TAB));
+  /* 在客戶名單那一邊才算是在費率設定裡面 —— 對帳是每月的工作,不是設定。 */
+  if(typeof rateSideSync==="function") rateSideSync();
 }
 function bindCustomers(){
+  bindRateSide();
   $("#cusSide") && ($("#cusSide").onclick=e=>{
     const b=e.target.closest("button[data-c]"); if(!b) return;
     showCusTab(b.dataset.c); renderCustomers();
@@ -6707,18 +6728,60 @@ function currentTab(){
 /* 你在看哪一頁。設定、費率、帳單歷史都是存著的,只有這件事以前每次
    重新整理都被丟掉 —— 明明什麼都還在,人卻被丟回匯入檔案那一頁。 */
 const TAB_KEY="ups_recon_tab";
+/* 費率設定底下的七個地方。順序照設定的先後:先有層級,才談客戶指到哪一層,
+   再往下是那一層的各種規則。 */
+const RATE_TABS=["setting","cus","rules","size","chan","demand"];
+const RATE_HOME="setting";
 function showTab(p){
   /* 管理分頁只有管理者能進。分頁按鈕本來就藏起來了,這裡是第二道 ——
      showTab() 是唯一的入口,擋在這裡,任何呼叫端都繞不過去。 */
   if(ADMIN_ONLY.includes(p) && !(ME && ME.role==="admin")) p="files";
+  /* 「費率設定」不是一個真的頁面,是七個頁面的入口。進來停在第一個。 */
+  if(p==="rate"){ p=RATE_HOME; }
+  /* 從費率設定的入口走到客戶那一頁,要停在客戶那一邊,不是對帳那一邊。 */
+  if(p==="cus" && RATE_ENTER && typeof showCusTab==="function") showCusTab("cus");
   try{ localStorage.setItem(TAB_KEY,p); }catch(e){}
+  const inRate=RATE_TABS.includes(p);
   document.querySelectorAll("#tabs button[data-p]").forEach(b=>
-    b.setAttribute("aria-selected", b.dataset.p===p));
+    b.setAttribute("aria-selected",
+      b.dataset.p==="rate" ? (inRate && p!=="cus") : b.dataset.p===p));
   document.querySelectorAll(".page").forEach(s=>
     s.classList.toggle("on", s.id==="p-"+p));
   sceneShow(p==="files");
   if(p==="admin"&&ME&&ME.role==="admin"){ loadLoginHistory(); loadUsers(); }
   if(p==="cus"&&typeof renderCustomers==="function") renderCustomers();
+  /* 層級表以前只有動過才重畫,所以載入設定之後第一次進來是一張空表。
+     現在這一頁是費率設定的落點,進來就得是對的。 */
+  if(p==="setting"&&typeof renderLevels==="function") renderLevels();
+  rateSideSync(p);
+}
+/* 對帳那一頁跟客戶名單住在同一個 section,所以那條列在不在,要看現在停在
+   哪一個子頁,不是只看 section。 */
+let RATE_ENTER=false;
+function rateSideSync(p){
+  const side=$("#rateSide");
+  if(!side) return;
+  if(p==null){
+    const on=[...document.querySelectorAll(".page.on")][0];
+    p=on?on.id.replace(/^p-/,""):"";
+  }
+  const show = RATE_TABS.includes(p)
+    && !(p==="cus" && typeof CUS_TAB!=="undefined" && CUS_TAB!=="cus");
+  side.hidden=!show;
+  [...side.children].forEach(b=>
+    b.setAttribute("aria-selected", String(b.dataset.r===p)));
+  /* 客戶那一頁被費率設定借用的時候,上排要亮的是「費率設定」那一顆。 */
+  const rb=document.querySelector('#tabs button[data-p="rate"]');
+  if(rb && p==="cus") rb.setAttribute("aria-selected", String(show));
+}
+function bindRateSide(){
+  const side=$("#rateSide");
+  if(!side) return;
+  side.onclick=e=>{
+    const b=e.target.closest("button[data-r]"); if(!b) return;
+    RATE_ENTER=true;
+    try{ showTab(b.dataset.r); } finally { RATE_ENTER=false; }
+  };
 }
 
 /* =====================================================================
@@ -15077,7 +15140,14 @@ const I18N={
   "hint.reconcols":["三個金額各問一件事。毛利是客戶實付減去 UPS 實收 —— 這一單真正賺多少。系統重算是照該客戶自己的費率層級算出這幾件本來該是多少:拿它跟客戶實付比,是定價差異(該收的有沒有收足);拿它跟 UPS 實收比,是 UPS 差異(帳單與合約有沒有出入)。客戶沒指派費率層級、或層級已被刪除時不重算,重算與兩個差異一律留空,不會拿別層的費率頂替。「UPS 實收」不含帳戶層費用 —— 那些費用沒有追蹤號,對不到任何一張單;該不該計入由帳務決定,和儀表板的處理一致。",
     "Each amount answers a different question. Profit is what the customer paid less what UPS charged — what the order actually made. Recomputed is what this customer's own rate level says the shipments should have cost: against what the customer was billed it gives the pricing variance (was enough charged), and against what UPS billed it gives the UPS variance (does the invoice match the agreement). A customer with no rate level, or one whose level has been deleted, is not repriced at all: recomputed and both variances stay blank rather than borrow another level's rates. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way."],
   "tab.setting":["⚙️ 設定","⚙️ Settings"],
-  "hd.setting":["設定","Settings"],
+  "tab.rate":["🧭 費率設定","🧭 Rate Configuration"],
+  "rt.levels":["費率層級與底價","Rate levels & base rates"],
+  "rt.customers":["客戶與指派","Customers"],
+  "rt.rules":["附加費","Surcharges"],
+  "rt.size":["尺寸規則","Size rules"],
+  "rt.chan":["渠道","Channels"],
+  "rt.demand":["Demand 附加費","Demand"],
+  "hd.setting":["費率層級與底價","Rate levels & base rates"],
   "hint.setting":["重新計價的一般行為設定,改動會存到你的帳號。","General repricing behaviour. Changes are saved to your account."],
   "hd.resisrc":["🔄 住宅／商業判定來源","🔄 Residential / Commercial Classification"],
   "lb.resisys":["系統設定","System Configuration"],
@@ -16683,7 +16753,9 @@ step("tab", ()=>{
   try{ want=localStorage.getItem(TAB_KEY)||""; }catch(e){}
   if(!want||want==="files") return;
   if(!document.getElementById("p-"+want)) return;   /* 舊的分頁名稱就忽略 */
-  if(HIDDEN_TABS.includes(want)) return;            /* 暫時隱藏的就回到匯入頁 */
+  /* 收在費率設定底下的那幾頁是正當的落點,照樣還原 —— 它們只是不在上排,
+     不是不能去。真正被隱藏的才回匯入頁。 */
+  if(HIDDEN_TABS.includes(want) && !RATE_TABS.includes(want)) return;
   showTab(want);
 });
 
