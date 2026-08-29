@@ -592,6 +592,56 @@ td.cells{white-space:normal}
 }
 /* 沒重算的那幾列:整列壓下去,層級欄掛一個紅籤。看表的時候要一眼分得出
    「這個客戶差很多」和「這個客戶根本沒算」。 */
+/* 03 資料頁的骨架:一列流程、兩張並排、一條步驟帶。 */
+.seg{display:inline-flex;border:1.5px solid var(--accent);border-radius:7px;overflow:hidden}
+.seg button{
+  font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border:0;
+  padding:5px 16px;background:var(--panel);color:var(--accent);
+}
+.seg button+button{border-left:1.5px solid var(--accent)}
+.seg button[aria-pressed="true"]{background:var(--tab)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.act.eye{border-color:#2f6b4f;color:#2f6b4f}
+.act.eye:hover{background:#e8f2ec}
+.duo{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  margin-top:12px}
+.mini{padding:12px 14px}
+.kv2{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:8px 0 0;font-size:12.5px}
+.kv2 dt{color:var(--muted)}
+.kv2 dd{margin:0;font-weight:600}
+.maprow{display:flex;align-items:center;gap:8px;font-size:12.5px;
+  padding:5px 0;border-bottom:1px dashed var(--line)}
+.maprow:last-of-type{border-bottom:0}
+.maprow span{color:var(--muted);flex:0 0 auto;font-family:"Cascadia Mono",Consolas,monospace;font-size:11.5px}
+.maprow i{font-style:normal;color:var(--muted);flex:0 0 auto}
+.maprow b{font-weight:600;min-width:0}
+.okdot{width:8px;height:8px;border-radius:50%;background:#2f6b4f;
+  margin-left:auto;flex:0 0 auto}
+.steps{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap;
+  margin-top:12px;padding:10px 12px;border-top:1.5px dashed var(--line)}
+.steps .step{display:flex;align-items:center;gap:8px;min-width:0}
+.steps .step i{font-style:normal;font-size:16px}
+.steps .step b{font-size:12px;display:block;line-height:1.25}
+.steps .step s{text-decoration:none;display:block;font-size:10.5px;color:var(--muted)}
+.steps .step b,.steps .step s{white-space:nowrap}
+.steps .stx{display:flex;flex-direction:column;min-width:0}
+.steps .arrow{align-self:center;color:var(--muted);opacity:.6}
+
+/* 預覽視窗的縮放列:小、齊、不搶戲。 */
+.pvzoom{display:flex;align-items:center;gap:4px;margin-left:auto;margin-right:8px}
+.pvzoom button{
+  font:inherit;font-size:14px;line-height:1;cursor:pointer;
+  width:26px;height:24px;border:1.5px solid var(--line);border-radius:6px;
+  background:var(--panel);color:var(--ink);display:grid;place-items:center;
+}
+.pvzoom button:hover{border-color:var(--accent)}
+.pvzoom button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.pvzoom i{font-style:normal;font-size:11.5px;color:var(--muted);
+  min-width:40px;text-align:center;font-variant-numeric:tabular-nums}
+.pvsum{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;
+  padding:2px 0 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.pvsum .neg{color:var(--neg);font-weight:600}
+
 /* 下載類的 <a> 借按鈕的衣服穿:連結藍在這套介面裡是雜訊。 */
 a.act{color:var(--accent);text-decoration:none;display:inline-block}
 a.act:visited{color:var(--accent)}
@@ -1064,8 +1114,9 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
        每一項帶編號。編號是流程 —— 01 建好帳戶,02 填好費率,03 收 WMS/TMS
        的檔,04 收 UPS 帳單,05 對出結果,06 看趨勢,07 查歷史。 -->
   <div class="navgrp" data-i18n="nav.cfg">Configuration</div>
-  <button role="tab" aria-selected="false" data-p="rate" class="display"><i class="nnum">01</i><span class="nico">👥</span><span data-i18n="tab.rate">Account &amp; Client Setup</span></button>
-  <button role="tab" aria-selected="false" data-p="rateset" class="display"><i class="nnum">02</i><span class="nico">🧭</span><span data-i18n="tab.rateset">Rate Level Management</span></button>
+  <!-- 層級先於客戶:客戶要指層級,層級得先存在 —— 01/02 的順序就是依賴的方向。 -->
+  <button role="tab" aria-selected="false" data-p="rateset" class="display"><i class="nnum">01</i><span class="nico">🧭</span><span data-i18n="tab.rateset">Rate Level Management</span></button>
+  <button role="tab" aria-selected="false" data-p="rate" class="display"><i class="nnum">02</i><span class="nico">👥</span><span data-i18n="tab.rate">Account &amp; Client Setup</span></button>
   <div class="navgrp" data-i18n="nav.data">Data Operations</div>
   <!-- 03 與 05 是同一個 section 的兩種來意:資料進來,和結果出去。 -->
   <button role="tab" aria-selected="false" data-p="wmsdata" class="display"><i class="nnum">03</i><span class="nico">📄</span><span data-i18n="tab.wmsdata">WMS / TMS Data</span></button>
@@ -1104,15 +1155,15 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
        因為每一條費率規則本來就屬於某一層。 -->
   <div class="setnav-tabs" data-g="rate">
     <button data-r="cus"     data-i18n="rt.customers">1. Client Setup</button>
-    <button data-r="code2"   data-i18n="rt.chgcode">2. Charge Codes</button>
   </div>
   <div class="setnav-tabs" data-g="rateset" hidden>
-    <button data-r="setting" data-i18n="rt.levels">1. Rate Levels</button>
-    <button data-r="chan"    data-i18n="rt.chan">2. Channels</button>
-    <button data-r="rules"   data-i18n="rt.rules">3. Surcharges</button>
-    <button data-r="size"    data-i18n="rt.size">4. Size Rules</button>
-    <button data-r="demand"  data-i18n="rt.demand">5. Demand</button>
-    <button data-r="sys"     data-i18n="rt.sys">6. System</button>
+    <button data-r="setting" data-i18n="rt.levels">1. Level Setup</button>
+    <button data-r="code2"   data-i18n="rt.chgcode">2. Charge Codes</button>
+    <button data-r="chan"    data-i18n="rt.chan">3. Channels</button>
+    <button data-r="rules"   data-i18n="rt.rules">4. Surcharges</button>
+    <button data-r="size"    data-i18n="rt.size">5. Size Rules</button>
+    <button data-r="demand"  data-i18n="rt.demand">6. Demand</button>
+    <button data-r="sys"     data-i18n="rt.sys">7. System</button>
   </div>
   <label class="setnav-lvl" id="editLvlWrap">
     <span data-i18n="lbl.editing">Editing</span>
@@ -1379,15 +1430,54 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
   <div class="lf sketch" id="reconTplCard">
     <h3 class="display"><span class="em">📄</span><span data-i18n="hd.recon">WMS / TMS data</span></h3>
     <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.recon">One order per row; every itemized charge is compared three ways on acceptance. Column rules and the TMS mapping are in the guide.</p>
+    <!-- 第一列:來源 → 模板 → 匯入 → 預覽,一條線就是整個流程。 -->
     <div class="row">
-      <label class="inlab" style="margin-left:0" data-i18n="lb.tpl">Template</label>
-      <button class="act ghost sm" id="bReconTplW" data-i18n="btn.recontplw">WMS template</button>
-      <button class="act ghost sm" id="bReconTplT" data-i18n="btn.recontplt">TMS template</button>
+      <label class="inlab" style="margin-left:0" data-i18n="lb.datasrc">Data source</label>
+      <span class="seg" id="reconSrcSeg" role="group">
+        <button type="button" data-src="WMS" aria-pressed="true">WMS</button>
+        <button type="button" data-src="TMS" aria-pressed="false">TMS</button>
+      </span>
+      <button class="act ghost sm" id="bReconTplDl" data-i18n="btn.tpldl">Download template</button>
       <button class="act" id="bReconImp" data-i18n="btn.reconimp">Import filled</button>
+      <button class="act ghost sm eye" id="bReconPrev" data-i18n="btn.datapv">👁 Preview</button>
+      <span style="flex:1 1 auto"></span>
       <a class="act ghost sm" href="doc/WMS_TMS_Template_Guide.pdf" download
          style="text-decoration:none" data-i18n="btn.tplpdf">Guide (PDF)</a>
       <input type="file" id="fRecon" accept=".xlsx,.xls,.csv,.txt" style="display:none">
-      <span style="flex:1 1 auto"></span>
+    </div>
+
+    <!-- 兩張並排:左邊是「進來了什麼」,右邊是「欄位怎麼對」。
+         對應是模板設計死的,所以右邊是宣告不是表單 —— 綠點的意思是
+         「這件事不用你設定」。 -->
+    <div class="duo">
+      <div class="sketch-soft mini">
+        <div class="subhd" style="margin-top:0" data-i18n="hd.orderdata">📦 Order data</div>
+        <dl class="kv2">
+          <dt data-i18n="lb.lastfile">File</dt><dd id="rdFile" class="mono">—</dd>
+          <dt data-i18n="lb.orders">Orders</dt><dd id="rdOrders">—</dd>
+          <dt data-i18n="lb.itemized">Itemized</dt><dd id="rdItems">—</dd>
+          <dt data-i18n="lb.state">Status</dt><dd id="rdState"><span class="empty">—</span></dd>
+        </dl>
+      </div>
+      <div class="sketch-soft mini">
+        <div class="subhd" style="margin-top:0" data-i18n="hd.mapping">🔗 Column mapping</div>
+        <div class="maprow"><span data-i18n="mp.trk">Tracking Numbers</span><i>→</i><b data-i18n="mp.trk2">Invoice tracking match</b><em class="okdot"></em></div>
+        <div class="maprow"><span data-i18n="mp.cus">Customer Code</span><i>→</i><b data-i18n="mp.cus2">Client directory</b><em class="okdot"></em></div>
+        <div class="maprow"><span data-i18n="mp.chg">37 charge columns</span><i>→</i><b data-i18n="mp.chg2">System charge names</b><em class="okdot"></em></div>
+        <div class="maprow"><span data-i18n="mp.amt">Total Amount</span><i>→</i><b data-i18n="mp.amt2">Whole-order total</b><em class="okdot"></em></div>
+        <p class="hint" style="margin:8px 0 0" data-i18n="mp.note">Fixed by the template — nothing to configure.</p>
+      </div>
+    </div>
+
+    <!-- 四步流程:一眼看懂路怎麼走。 -->
+    <div class="steps">
+      <span class="step"><i>🗄️</i><span class="stx"><b data-i18n="st.src">Choose source</b><s data-i18n="st.src2">WMS or TMS</s></span></span>
+      <span class="arrow">→</span>
+      <span class="step"><i>⬇️</i><span class="stx"><b data-i18n="st.dl">Download template</b><s data-i18n="st.dl2">Fill one order per row</s></span></span>
+      <span class="arrow">→</span>
+      <span class="step"><i>📥</i><span class="stx"><b data-i18n="st.imp">Import the file</b><s data-i18n="st.imp2">Preview before commit</s></span></span>
+      <span class="arrow">→</span>
+      <span class="step"><i>⚖️</i><span class="stx"><b data-i18n="st.res">Read the results</b><s data-i18n="st.res2">05 Reconciliation Analysis</s></span></span>
     </div>
     <div class="row" style="margin-top:8px"><span id="reconMsg" class="savenote"></span></div>
   </div>
@@ -1412,6 +1502,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
     <div class="row" style="margin-bottom:9px">
       <button class="act ghost sm" id="bReconRerun" hidden data-i18n="btn.reconrerun">Re-run comparison</button>
       <span style="flex:1 1 auto"></span>
+      <button class="act ghost sm eye" id="bResPrev" data-i18n="btn.respv">👁 Preview report</button>
       <button class="act ghost sm" id="bReconXls" data-i18n="btn.reconxls">Export reconciliation</button>
       <a class="act ghost sm" href="doc/WMS_TMS_Template_Guide.pdf" download
          style="text-decoration:none" data-i18n="btn.tplpdf">Guide (PDF)</a>
@@ -2669,6 +2760,23 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
     <div class="modalft" style="justify-content:center">
       <button class="act" id="dpClose" data-i18n="btn.close">Close</button>
     </div>
+  </div>
+</div>
+
+<!-- 通用預覽視窗 —— 規格書 Preview-first 的那扇門 -->
+<div class="modalbg" id="pvBg" role="dialog" aria-modal="true" aria-labelledby="pvTitle">
+  <div class="modal sketch" style="width:min(980px,100%)">
+    <div class="modalhd">
+      <span>👁 <span id="pvTitle"></span></span>
+      <span class="pvzoom">
+        <button type="button" id="pvOut" aria-label="縮小">−</button>
+        <i id="pvLv">100%</i>
+        <button type="button" id="pvIn" aria-label="放大">＋</button>
+        <button type="button" id="pvRst" style="width:auto;padding:0 8px">100%</button>
+      </span>
+      <button class="mx" type="button" id="pvX" aria-label="關閉">✕</button>
+    </div>
+    <div class="modalbody" style="overflow:auto"><div id="pvZ"></div></div>
   </div>
 </div>
 
@@ -7058,8 +7166,8 @@ const TAB_KEY="ups_recon_tab";
    Rate Setup —— 某一層裡面的規則:渠道、附加費、尺寸、Demand、那一層的系統設定。
    這條線正好就是 RATE_PER_LEVEL —— 右上角的 Editing 選單只在後面那一組出現,
    前面那一組不出現,因為那三頁換層級也不會變。 */
-const SET_GROUPS={ rate:["cus","code2"],
-                   rateset:["setting","chan","rules","size","demand","sys"] };
+const SET_GROUPS={ rate:["cus"],
+                   rateset:["setting","code2","chan","rules","size","demand","sys"] };
 const SET_ENTRANCES=Object.keys(SET_GROUPS);
 const RATE_TABS=[...SET_GROUPS.rate, ...SET_GROUPS.rateset];
 /* code2 = 費用代碼,現在跟 UPS 代碼查詢同住在 p-code:對外要送的代碼,和那個
@@ -7067,7 +7175,9 @@ const RATE_TABS=[...SET_GROUPS.rate, ...SET_GROUPS.rateset];
 const RATE_PAGE={setting:"setting", cus:"cus", code2:"code", sys:"setting",
                  rules:"rules", size:"size", chan:"chan", demand:"demand"};
 const setGroupOf=k=>SET_GROUPS.rateset.includes(k)?"rateset":"rate";
-const RATE_PER_LEVEL=new Set(SET_GROUPS.rateset);
+/* 費用代碼掛在層級管理底下純粹是動線 —— 它是帳號共用的,不屬於任何一層,
+   所以「正在編輯哪一層」的選單在那一頁不出現,免得看起來像每層各一份代碼。 */
+const RATE_PER_LEVEL=new Set(SET_GROUPS.rateset.filter(k=>k!=="code2"));
 const RATE_HOME="setting";
 /* 每一組各自記自己停在哪 —— 從 Rate Setup 切到 Setting 再切回來,回到的是
    Rate Setup 原本那一頁,不是從頭開始。 */
@@ -10698,6 +10808,7 @@ const RECON_COL={ order:"Order Number", trk:"Tracking Numbers",
 const RECON_AMT_ALIAS=["total amount","total amount billed to customer"];
 const RECON_REQ=["order","trk","cus","amt"];
 let RECON=null;
+let RECON_SRC="WMS";
 
 /* 重新整理之後留什麼 —— 這件事要講清楚,不能靠運氣。
    留的是匯進來的那幾列(訂單、追蹤號、客戶、向客戶收),不留算出來的數字:
@@ -11084,6 +11195,35 @@ function reconMsg(m,ok){
     if(e){ e.textContent=m||""; e.className="savenote"+(m&&!ok?" bad":""); }
   }
 }
+/* 通用預覽視窗:標題 + 任意內容,50%–200% 縮放。每一頁的 👁 都走這一扇門。 */
+let PV_S=1;
+function uiPreviewApply(){
+  const z=$("#pvZ"); if(!z) return;
+  z.style.transform="scale("+PV_S+")";
+  z.style.transformOrigin="top left";
+  z.style.width=(100/PV_S)+"%";
+  const lv=$("#pvLv"); if(lv) lv.textContent=Math.round(PV_S*100)+"%";
+}
+function uiPreview(title, html){
+  const bg=$("#pvBg"); if(!bg) return;
+  $("#pvTitle") && ($("#pvTitle").textContent=title||"");
+  $("#pvZ") && ($("#pvZ").innerHTML=html||"");
+  PV_S=1; uiPreviewApply();
+  bg.classList.add("on");
+}
+function uiPreviewClose(){ const bg=$("#pvBg"); if(bg) bg.classList.remove("on"); }
+function bindPreview(){
+  $("#pvIn")  && ($("#pvIn").onclick =()=>{ PV_S=Math.min(2,+(PV_S+.25).toFixed(2)); uiPreviewApply(); });
+  $("#pvOut") && ($("#pvOut").onclick=()=>{ PV_S=Math.max(.5,+(PV_S-.25).toFixed(2)); uiPreviewApply(); });
+  $("#pvRst") && ($("#pvRst").onclick=()=>{ PV_S=1; uiPreviewApply(); });
+  $("#pvX")   && ($("#pvX").onclick=uiPreviewClose);
+  $("#pvBg")  && ($("#pvBg").onclick=e=>{ if(e.target.id==="pvBg") uiPreviewClose(); });
+  document.addEventListener("keydown",e=>{
+    const bg=$("#pvBg");
+    if(!bg||!bg.classList.contains("on")) return;
+    if(e.key==="Escape") uiPreviewClose();
+  });
+}
 function reconIssueText(it){
   const at=it.at?L(" (與第 "+it.at+" 列重複)"," (already on line "+it.at+")"):"";
   switch(it.kind){
@@ -11107,6 +11247,14 @@ function renderRecon(){
   const onRes=RECON_VIEW==="res";
   const empty=$("#reconEmpty");
   if(empty) empty.hidden=!(onRes && !(RECON&&RECON.res));
+  /* 03 的訂單資料小卡:進來了什麼、算過了沒,四行講完。 */
+  const rows=(RECON&&RECON.list)||[];
+  $("#rdFile")   && ($("#rdFile").textContent=(RECON&&RECON.fname)||"—");
+  $("#rdOrders") && ($("#rdOrders").textContent=rows.length?String(rows.length):"—");
+  $("#rdItems")  && ($("#rdItems").textContent=rows.length?String(rows.filter(o=>o.chg).length):"—");
+  $("#rdState")  && ($("#rdState").innerHTML = RECON&&RECON.res
+      ? `<span class="pill ok">${esc(L("已比對","Compared"))}</span>`
+      : rows.length ? esc(L("待比對","Awaiting comparison")) : `<span class="empty">—</span>`);
   if(icard){
     icard.hidden=!iss;
     const tb=$("#tReconIss")&&$("#tReconIss").tBodies[0];
@@ -11310,31 +11458,34 @@ async function reconExport(){
   reconMsg(L("已匯出。","Exported."), true);
 }
 
-async function reconImport(file){
-  if(!file) return;
-  if(!CFG){ reconMsg(L("請先載入費率設定。","Load a rate configuration first."),false); return; }
-  if(!SHIPS||!SHIPS.length){
-    reconMsg(L("請先匯入這一期的 UPS 帳單,對帳要拿它來比。",
-               "Import this period's UPS invoice first — there is nothing to reconcile against."),false);
-    return; }
+/* 讀檔+解析,不寫入。回 {err} 或 {p, fname} —— 匯入與預覽共用同一條讀取路。 */
+async function reconRead(file){
+  if(!file) return {err:""};
+  if(!CFG) return {err:L("請先載入費率設定。","Load a rate configuration first.")};
+  if(!SHIPS||!SHIPS.length)
+    return {err:L("請先匯入這一期的 UPS 帳單,對帳要拿它來比。",
+                  "Import this period's UPS invoice first — there is nothing to reconcile against.")};
   reconMsg(L("讀取中…","Reading…"),true);
   let wb=null;
   try{ wb=await readWorkbookRows(file); }
-  catch(e){ reconMsg(L("這個檔案讀不開:","Could not read the file: ")+(e&&e.message||e),false); return; }
+  catch(e){ return {err:L("這個檔案讀不開:","Could not read the file: ")+(e&&e.message||e)}; }
   const rows=wb.sheets[RECON_SHEET] || wb.sheets[(wb.order||[])[0]] || wb.sheets[""];
-  if(!rows){ reconMsg(L("找不到 "+RECON_SHEET+" 分頁。","No "+RECON_SHEET+" sheet found."),false); return; }
-  const p=reconParse(rows);
-  if(p.err){ RECON=null; renderRecon(); reconRerunBtn(); reconMsg(p.err,false); return; }
+  if(!rows) return {err:L("找不到 "+RECON_SHEET+" 分頁。","No "+RECON_SHEET+" sheet found.")};
+  return {p:reconParse(rows), fname:(file&&file.name)||""};
+}
+/* 解析結果寫進系統。回傳 true 代表收下了。 */
+function reconAccept(p, fname){
+  if(p.err){ RECON=null; renderRecon(); reconRerunBtn(); reconMsg(p.err,false); return false; }
   if(p.issues.length){
     RECON={issues:p.issues, res:null, list:null};
-    renderRecon();
+    renderRecon(); reconRerunBtn();
     reconMsg(L("有 "+p.issues.length+" 列不能收,整份沒有匯入。",
                p.issues.length+" row(s) rejected, nothing imported."),false);
-    return; }
+    return false; }
   /* 跑之前先點名。等到跑完才說「這幾個沒算」,人已經在讀數字了。 */
   const pf=reconPreflight(p.rows.map(r=>r.cus));
   const res=reconRun(p.rows);
-  RECON={issues:[], res, list:p.rows, sumWarn:p.sumWarn||[]};
+  RECON={issues:[], res, list:p.rows, sumWarn:p.sumWarn||[], fname:fname||""};
   const kept=reconRowsSave(p.rows);
   reconRerunBtn();
   /* 檔一收下就把人帶到結果那一側 —— 匯入在 03,答案在 05,不讓人自己找。 */
@@ -11350,6 +11501,55 @@ async function reconImport(file){
                +(p.rows.some(r=>r.chg)?"(含逐項費用)":"")+"。",
                "Reconciled "+p.rows.length+" order(s)"
                +(p.rows.some(r=>r.chg)?" with itemized charges":"")+"."),true);
+  return true;
+}
+/* 直接匯入(測試與既有呼叫端用)。畫面上的匯入鈕走預覽那條路。 */
+async function reconImport(file){
+  const r=await reconRead(file);
+  if(r.err!==undefined && r.p===undefined){ if(r.err) reconMsg(r.err,false); return; }
+  reconAccept(r.p, r.fname);
+}
+/* 規格書的 Preview-first:先看見,確認了才寫入。 */
+async function reconPreviewImport(file){
+  const r=await reconRead(file);
+  if(r.err!==undefined && r.p===undefined){ if(r.err) reconMsg(r.err,false); return; }
+  const p=r.p;
+  if(p.err){ uiPreview(L("匯入預覽","Import preview"),
+    `<div class="note warn" style="margin:0">${esc(p.err)}</div>`); return; }
+  const rows=p.rows||[];
+  const itemized=rows.filter(x=>x.chg).length;
+  const sw=(p.sumWarn||[]).length;
+  const bad=(p.issues||[]).length;
+  const head=`<div class="pvsum">
+     <span><b>${esc(r.fname||"—")}</b></span>
+     <span>${rows.length} ${esc(L("張單","orders"))}</span>
+     <span>${itemized} ${esc(L("張含逐項費用","with itemized charges"))}</span>
+     <span class="${bad?"neg":""}">${bad} ${esc(L("列被退回","rejected rows"))}</span>
+     <span class="${sw?"neg":""}">${sw} ${esc(L("張合計不符","total mismatches"))}</span></div>`;
+  const sample=rows.slice(0,6).map(o=>`<tr>
+      <td class="mono">${esc(o.order)}</td><td class="mono">${esc(o.cus)}</td>
+      <td class="num">${o.trks.length}</td>
+      <td class="num">${o.chg?Object.keys(o.chg).length:0}</td>
+      <td class="num">${money(o.amt)}</td></tr>`).join("");
+  const issues=(p.issues||[]).slice(0,6).map(it=>
+      `<div class="note warn" style="margin:4px 0 0">${esc("第 "+it.ln+" 列:")}${esc(reconIssueText(it))}</div>`).join("")
+    +((p.issues||[]).length>6?`<div class="note warn">…</div>`:"");
+  const table=rows.length?`<div class="tablewrap" style="max-height:38vh;margin-top:10px"><table>
+     <thead><tr><th>${esc(L("訂單","Order"))}</th><th>${esc(L("客戶","Customer"))}</th>
+     <th class="num">${esc(L("件數","Pkgs"))}</th><th class="num">${esc(L("逐項欄","Charges"))}</th>
+     <th class="num">${esc(L("總額","Total"))}</th></tr></thead>
+     <tbody>${sample}</tbody></table></div>
+     ${rows.length>6?`<div class="hint" style="margin-top:6px">${esc(L("僅預覽前 6 列,共 "+rows.length+" 列。","Showing the first 6 of "+rows.length+" rows."))}</div>`:""}`:"";
+  const foot=`<div class="row" style="margin-top:12px">
+     <span class="grow"></span>
+     <button class="act ghost" id="pvCancel">${esc(L("取消","Cancel"))}</button>
+     ${bad? `<span class="note warn" style="margin:0">${esc(L("有退回列,整份不能匯入 —— 修正後重新選檔。","Rejected rows block the import — fix the file and choose it again."))}</span>`
+          : `<button class="act" id="pvConfirm">${esc(L("確認匯入","Confirm import"))}</button>`}</div>`;
+  uiPreview(L("匯入預覽","Import preview"), head+issues+table+foot);
+  const c=$("#pvConfirm");
+  if(c) c.onclick=()=>{ uiPreviewClose(); reconAccept(p, r.fname); };
+  const x=$("#pvCancel");
+  if(x) x.onclick=()=>{ uiPreviewClose(); reconMsg(L("已取消,什麼都沒有匯入。","Cancelled — nothing was imported."),true); };
 }
 
 /* --------------------------------------------------------------------
@@ -11525,18 +11725,62 @@ function bindAnalysis(){
 }
 
 function bindRecon(){
-  $("#bReconTplW") && ($("#bReconTplW").onclick=()=>{ reconTemplate("WMS").catch(e=>
+  /* 來源只影響下載哪一個檔名 —— 欄位是同一套,匯入端不分。 */
+  $("#reconSrcSeg") && ($("#reconSrcSeg").onclick=e=>{
+    const b=e.target.closest("button[data-src]"); if(!b) return;
+    RECON_SRC=b.dataset.src==="TMS"?"TMS":"WMS";
+    document.querySelectorAll("#reconSrcSeg button").forEach(x=>
+      x.setAttribute("aria-pressed", String(x.dataset.src===RECON_SRC)));
+  });
+  $("#bReconTplDl") && ($("#bReconTplDl").onclick=()=>{ reconTemplate(RECON_SRC).catch(e=>
     reconMsg(String(e&&e.message||e),false)); });
-  $("#bReconTplT") && ($("#bReconTplT").onclick=()=>{ reconTemplate("TMS").catch(e=>
-    reconMsg(String(e&&e.message||e),false)); });
+  /* 03 的預覽:有留著的資料就看資料,沒有就看模板欄位 —— 按下去一定有東西。 */
+  $("#bReconPrev") && ($("#bReconPrev").onclick=()=>{
+    const rows=(RECON&&RECON.list)||[];
+    if(rows.length){
+      const sample=rows.slice(0,8).map(o=>`<tr>
+        <td class="mono">${esc(o.order)}</td><td class="mono">${esc(o.cus)}</td>
+        <td class="num">${o.trks.length}</td>
+        <td class="num">${o.chg?Object.keys(o.chg).length:0}</td>
+        <td class="num">${money(o.amt)}</td></tr>`).join("");
+      uiPreview(L("目前留著的訂單資料","Order data on hand"),
+        `<div class="pvsum"><span><b>${esc((RECON&&RECON.fname)||"—")}</b></span>
+           <span>${rows.length} ${esc(L("張單","orders"))}</span>
+           <span>${rows.filter(o=>o.chg).length} ${esc(L("張含逐項費用","with itemized charges"))}</span></div>
+         <div class="tablewrap" style="max-height:44vh;margin-top:8px"><table>
+           <thead><tr><th>${esc(L("訂單","Order"))}</th><th>${esc(L("客戶","Customer"))}</th>
+           <th class="num">${esc(L("件數","Pkgs"))}</th><th class="num">${esc(L("逐項欄","Charges"))}</th>
+           <th class="num">${esc(L("總額","Total"))}</th></tr></thead><tbody>${sample}</tbody></table></div>`);
+    }else{
+      const hd=[RECON_COL.order,RECON_COL.trk,RECON_COL.cus,RECON_COL.date]
+        .concat(REPORT_MONEY,[RECON_COL.amt]);
+      uiPreview(L("模板欄位預覽","Template columns"),
+        `<p class="hint" style="margin:0 0 8px">${esc(L(
+          "識別四欄 → 三十七項費用 → 總收取金額。還沒有匯入任何資料。",
+          "Four identity columns, thirty-seven charges, then Total Amount. Nothing has been imported yet."))}</p>
+         <div class="tablewrap" style="max-height:44vh"><table><thead><tr>
+           ${hd.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead></table></div>`);
+    }
+  });
+  /* 05 的報表預覽:兩張結果表原樣放大看。 */
+  $("#bResPrev") && ($("#bResPrev").onclick=()=>{
+    const r=RECON&&RECON.res;
+    if(!r){ toast(L("還沒有對帳結果。","No comparison yet."),false); return; }
+    const t1=$("#tRecon"), t2=$("#tReconChg");
+    uiPreview(L("對帳報表預覽","Reconciliation report preview"),
+      `<div class="tablewrap">${t1?t1.outerHTML.replace(/ id="tRecon"/,""):""}</div>
+       <div class="tablewrap" style="margin-top:12px">${t2?t2.outerHTML.replace(/ id="tReconChg"/,""):""}</div>`);
+  });
   $("#bReconImp") && ($("#bReconImp").onclick=()=>$("#fRecon").click());
   $("#bReconRerun") && ($("#bReconRerun").onclick=()=>{
     reconRerunFrom(RECON&&RECON.list, false, RECON&&RECON.charges); });
   $("#fRecon") && ($("#fRecon").onchange=e=>{
     const f=e.target.files&&e.target.files[0];
     e.target.value="";
-    reconImport(f).catch(err=>reconMsg(String(err&&err.message||err),false));
+    /* 畫面上的匯入一律先預覽,看過才寫入 —— 規格書的 Preview-first。 */
+    reconPreviewImport(f).catch(err=>reconMsg(String(err&&err.message||err),false));
   });
+  bindPreview();
   $("#reconScope") && ($("#reconScope").onchange=e=>{
     RECON_SCOPE=e.target.value; renderReconChg(); });
   /* 表上點一個客戶,下面那張表就只看他 —— 比拉選單快,而且點的是眼睛已經
@@ -15849,6 +16093,33 @@ const I18N={
   "hint.recon":["一張訂單一列;檔案受理後逐項三方比對。欄位規範與 TMS 對應詳見填寫說明(PDF)。","One order per row; every itemized charge is compared three ways on acceptance. Column rules and the TMS mapping are in the guide."],
   "lb.tpl":["模板","Template"],
   "btn.tplpdf":["填寫說明(PDF)","Guide (PDF)"],
+  "lb.datasrc":["資料來源","Data source"],
+  "btn.tpldl":["下載模板","Download template"],
+  "btn.datapv":["👁 預覽","👁 Preview"],
+  "btn.respv":["👁 預覽報表","👁 Preview report"],
+  "hd.orderdata":["📦 訂單資料","📦 Order data"],
+  "hd.mapping":["🔗 欄位對應","🔗 Column mapping"],
+  "lb.lastfile":["檔案","File"],
+  "lb.orders":["訂單數","Orders"],
+  "lb.itemized":["含逐項","Itemized"],
+  "lb.state":["狀態","Status"],
+  "mp.trk":["Tracking Numbers","Tracking Numbers"],
+  "mp.trk2":["與帳單追蹤號比對","Invoice tracking match"],
+  "mp.cus":["Customer Code","Customer Code"],
+  "mp.cus2":["客戶名單(下拉)","Client directory"],
+  "mp.chg":["37 費用欄","37 charge columns"],
+  "mp.chg2":["系統費用名稱","System charge names"],
+  "mp.amt":["Total Amount","Total Amount"],
+  "mp.amt2":["整單總額","Whole-order total"],
+  "mp.note":["由模板固定,毋須設定。","Fixed by the template — nothing to configure."],
+  "st.src":["選擇來源","Choose source"],
+  "st.src2":["WMS 或 TMS","WMS or TMS"],
+  "st.dl":["下載模板","Download template"],
+  "st.dl2":["一張訂單一列","Fill one order per row"],
+  "st.imp":["匯入檔案","Import the file"],
+  "st.imp2":["先預覽,確認才寫入","Preview before commit"],
+  "st.res":["讀取結果","Read the results"],
+  "st.res2":["05 對帳分析","05 Reconciliation Analysis"],
   "btn.recontplw":["WMS 模板","WMS template"],
   "btn.recontplt":["TMS 模板","TMS template"],
   "btn.reconimp":["導入填好的","Import filled"],
@@ -15871,14 +16142,14 @@ const I18N={
   "tab.setting":["🧭 費率層級","🧭 Rate levels"],
   "tab.rate":["帳戶與客戶","Account & Client Setup"],
   "tab.rateset":["費率層級管理","Rate Level Management"],
-  "rt.levels":["1. 費率層級","1. Rate Levels"],
+  "rt.levels":["1. 層級設定","1. Level Setup"],
   "rt.customers":["1. 客戶設定","1. Client Setup"],
-  "rt.rules":["3. 附加費","3. Surcharges"],
-  "rt.size":["4. 尺寸規則","4. Size Rules"],
-  "rt.chan":["2. 渠道","2. Channels"],
-  "rt.demand":["5. Demand 附加費","5. Demand"],
+  "rt.rules":["4. 附加費","4. Surcharges"],
+  "rt.size":["5. 尺寸規則","5. Size Rules"],
+  "rt.chan":["3. 渠道","3. Channels"],
+  "rt.demand":["6. Demand 附加費","6. Demand"],
   "rt.chgcode":["2. 費用代碼","2. Charge Codes"],
-  "rt.sys":["6. 系統設定","6. System"],
+  "rt.sys":["7. 系統設定","7. System"],
   "hd.analysis":["毛利分析","Profit analysis"],
   "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",
     "Nothing to analyse yet. This page reads the reconciliation — once the filled template is imported, the numbers land here and the whole analysis can be exported."],
