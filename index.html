@@ -1300,6 +1300,9 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
     <div class="row" style="margin-top:9px">
       <input id="cusCode" class="cell" data-i18n-ph="ph.cuscode" style="width:150px;text-align:left">
       <input id="cusName" class="cell" data-i18n-ph="ph.cusname" style="width:190px;text-align:left">
+      <!-- 建檔的時候就選層級。留到之後再補的話,那個客戶的出貨會整批不重算 ——
+           在這裡選掉一次,比事後看紅框再回來補快。 -->
+      <select id="cusLvl" class="cell" style="width:190px"></select>
       <button class="act" id="bCusAdd" data-i18n="btn.cusadd">Add customer</button>
       <span id="cusMsg" class="savenote"></span>
     </div>
@@ -1734,7 +1737,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
          檔案會蓋到誰 —— 先看到層級,才不會載錯地方。 -->
     <div class="sketch-soft" id="cardLvl" style="padding:14px 16px;margin:14px 0 14px">
       <div class="subhd" style="margin-top:0" data-i18n="hd.ratelvl">🧭 Rate levels</div>
-      <p class="hint" style="margin:8px 0 10px;max-width:880px" data-i18n="hint.ratelvl">One account can hold several complete rate sets — one per customer. Everything on the pricing tabs belongs to the level in use; switching swaps the lot.</p>
+      <p class="hint" style="margin:8px 0 10px;max-width:880px" data-i18n="hint.ratelvl">Each level is a complete, independent set of rates. Every level is live at once — when shipments are repriced, each customer is priced at the level it is assigned to, whatever is selected here. This column marks only which level the editor currently has open: change the selector at top right and the surcharges, size rules, channels and demand below it belong to a different set.</p>
       <div class="tablewrap" style="max-height:34vh"><table id="tLvl"><thead><tr>
         <th data-i18n="th.lvlname">Level</th>
         <th data-i18n="th.lvlstate">In use</th>
@@ -5966,12 +5969,12 @@ function renderLevels(){
   tb.innerHTML=o.list.map(e=>{
     const on=e.id===o.active;
     return `<tr><td>${on?"<b>":""}${esc(e.name)}${on?"</b>":""}</td>
-      <td>${on?`<span class="pill ok">${L("使用中","in use")}</span>`
+      <td>${on?`<span class="pill ok">${L("正在編輯","editing")}</span>`
               :`<span class="empty">—</span>`}</td>
       <td class="num">${rlHuman(rlSize(e.id))}</td>
       <td class="row" style="gap:6px">
         ${on?"":`<button class="act ghost sm" data-lvluse="${esc(e.id)}">${
-            L("切換到這一層","Switch to this")}</button>`}
+            L("改編這一層","Edit this one")}</button>`}
         <button class="act ghost sm" data-lvlren="${esc(e.id)}">${L("改名","Rename")}</button>
         ${on||o.list.length<2?"":`<button class="act sm danger" data-lvldel="${esc(e.id)}">${
             L("刪除","Delete")}</button>`}
@@ -6077,6 +6080,15 @@ function cusEditNote(m){
   const e=$("#cusEditNote"); if(!e) return;
   e.textContent=m||""; e.style.display=m?"":"none";
 }
+/* 新增那一列的層級選單。預設落在現在編輯的那一層 —— 多半就是要指的那一層,
+   而且它是看得見的,不是背後偷偷指定。 */
+function cusFillNewLvl(){
+  const sel=$("#cusLvl"); if(!sel) return;
+  const o=rlStore(), list=(o&&o.list)||[];
+  sel.innerHTML=list.map(e=>`<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("")
+    +`<option value="">${esc(L("未指派費率層級","No rate level"))}</option>`;
+  sel.value=(o&&o.active)||"";
+}
 function openCusEdit(code){
   const c=cusReg().find(x=>x.code===code); if(!c) return;
   CUS_EDIT=code;
@@ -6120,6 +6132,7 @@ function saveCusEdit(){
 function renderCustomers(){
   if(!CFG) return;
   cusEnsure(); chgEnsure();
+  cusFillNewLvl();
   /* 「最近對帳」那一欄的來源是最後一次跑的對帳。以前它是靠規則從帳單的參考
      號猜出這一筆是誰的 —— 現在 WMS 的檔案自己就寫著客戶代號,不必猜了。 */
   const per={};
@@ -6210,9 +6223,17 @@ function bindCustomers(){
                 "A code needs at least 2 characters: letters, digits, . _ - only."),false); return; }
     if(cusReg().some(c=>c.code===code)){
       cusNote(L("這個代碼已經有了。","That code already exists."),false); return; }
-    cusSaveAnd(()=>CFG.raw.customers.push({code, name:name||code, level:""}));
+    const lvl=($("#cusLvl")&&$("#cusLvl").value)||"";
+    cusSaveAnd(()=>CFG.raw.customers.push({code, name:name||code, level:lvl}));
     $("#cusCode").value=""; $("#cusName").value="";
-    cusNote(L("已新增 "+code,"Added "+code),true);
+    cusFillNewLvl();
+    cusNote(lvl
+      ? L("已新增 "+code+",費率層級:"+rlName(lvl),
+          "Added "+code+" on "+rlName(lvl))
+      /* 沒選層級不是錯,但它的出貨不會被重算,現在就說,不要等到對帳。 */
+      : L("已新增 "+code+" —— 還沒指定費率層級,這個客戶的出貨不會被重算。",
+          "Added "+code+" — no rate level yet, so its shipments will not be repriced."),
+      !!lvl);
   });
   $("#cusEditX")      && ($("#cusEditX").onclick=closeCusEdit);
   $("#cusEditCancel") && ($("#cusEditCancel").onclick=closeCusEdit);
@@ -15298,8 +15319,8 @@ const I18N={
   "btn.cussave":["儲存客戶","Save customer"],
   "hint.cecode":["只能用英數字和 . _ -,至少兩個字。改了代碼,指向這個客戶的規則與人工指定會一併更新。",
     "Letters, digits, . _ - only, at least two characters. Change it and every rule and assignment pointing at this customer follows."],
-  "hint.celevel":["這個客戶的出貨會照這一層的費率重算。未指定者沿用目前使用中的層級。",
-    "This customer's shipments are repriced at this level. Unassigned customers fall back to the level currently in use."],
+  "hint.celevel":["這個客戶的出貨會照這一層的費率重算。沒有指定層級的客戶不會被重算 —— 不會借用別層的費率頂替。",
+    "This customer's shipments are repriced at this level. A customer with no level is not repriced at all — no other level's rates are borrowed to stand in."],
   "hd.cusrule":["規則","Rules"],
   "hint.cusrule":["由上往下比,第一個命中的算數 —— 所以順序會改變結果。一條規則可以抵掉幾十筆逐筆指定,而且以後的新訂單自己會命中。",
     "Matched top to bottom; the first hit wins, so the order matters. One rule stands in for dozens of one-by-one assignments, and new orders match it on their own."],
@@ -15453,14 +15474,14 @@ const I18N={
   "btn.gapopen":["補上缺的設定","Fill in what is missing"],
   "hd.gapacc":["未知的附加費代碼","Unrecognised surcharge codes"],
   "hd.gapchan":["沒見過的服務","Services not in your channels"],
-  "hint.ratelvl":["一個帳號可以存好幾份完整的費率,一個客戶一份。計價那幾個分頁上的東西都屬於「目前使用」的那一層,切換就整份換掉。",
-    "One account can hold several complete rate sets — one per customer. Everything on the pricing tabs belongs to the level in use; switching swaps the lot."],
+  "hint.ratelvl":["每一層都是一份完整、各自獨立的費率。每一層隨時都在用 —— 重算的時候,每個客戶各照自己被指到的那一層計價,和這裡選哪一層無關。這一欄標的只是「現在編輯器打開的是哪一層」:右上角那個選單換一層,底下的附加費、尺寸、渠道、Demand 就是在改另一份。",
+    "Each level is a complete, independent set of rates. Every level is live at once — when shipments are repriced, each customer is priced at the level it is assigned to, whatever is selected here. This column marks only which level the editor currently has open: change the selector at top right and the surcharges, size rules, channels and demand below it belong to a different set."],
   "th.lvlname":["層級名稱","Level"],
-  "th.lvlstate":["目前使用","In use"],
+  "th.lvlstate":["正在編輯","Editing"],
   "th.lvlsize":["大小","Size"],
   "btn.lvlnew":["新增費率層級","Add a rate level"],
   "btn.lvlcopy":["複製這一層","Duplicate this level"],
-  "btn.lvluse":["切換到這一層","Switch to this"],
+  "btn.lvluse":["改編這一層","Edit this one"],
   "btn.rename":["改名","Rename"],
   "hint.cfgshort":["這個帳號完整的計價設定。",
     "The account's complete pricing configuration."],
