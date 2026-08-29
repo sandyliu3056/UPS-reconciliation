@@ -108,8 +108,10 @@ table,table *,input,select,.tablewrap{filter:none !important}
   font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left;
   background:transparent;color:var(--tab);border:0;
   border-left:3px solid transparent;
-  padding:8px 14px 8px 13px;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;opacity:.82;
+  /* 換行而不是截字。「WMS / TMS Reconciliation」一行放不下,截成
+     「WMS / TMS Reconcil…」等於把最重要的那個字吃掉。 */
+  padding:8px 14px 8px 13px;line-height:1.35;overflow-wrap:break-word;
+  opacity:.82;
 }
 .nav button:hover{background:rgba(255,255,255,.12);opacity:1}
 .nav button[aria-selected=true]{
@@ -124,7 +126,13 @@ table,table *,input,select,.tablewrap{filter:none !important}
   display:flex;align-items:flex-end;gap:12px;padding:7px 12px 0;
   flex-wrap:wrap;
 }
+/* display:flex 蓋掉了 hidden 屬性自帶的 display:none —— 少了這一行,
+   rateSideSync() 把 hidden 設好了,這條列還是每一頁都畫得出來。 */
+.setnav[hidden]{display:none}
 .setnav-tabs{display:flex;flex-wrap:wrap;gap:3px;align-items:flex-end;min-width:0}
+/* 兩組編號列共用這一條,一次只露一組。display:flex 蓋掉了 hidden 的預設值,
+   不寫這一行的話收起來的那一組還是畫得出來。 */
+.setnav-tabs[hidden]{display:none}
 .setnav-tabs button{
   font:inherit;font-size:12.5px;cursor:pointer;padding:6px 13px 5px;
   border:1.5px solid var(--accent);border-bottom:none;border-radius:7px 7px 0 0;
@@ -661,6 +669,9 @@ tr.blocked{opacity:.72}
 /* Demand 子分頁 */
 .subtabs{display:flex;gap:3px;margin:14px 0 0;padding:0 4px;
   border-bottom:2px solid var(--accent);flex-wrap:wrap}
+/* 同 .setnav:display:flex 蓋掉 hidden 自帶的 display:none。客戶／對帳那條
+   子分頁在 markup 裡本來就標了 hidden,少這一行它還是畫得出來。 */
+.subtabs[hidden]{display:none}
 .subtabs button{font:inherit;font-size:13px;cursor:pointer;padding:7px 16px 6px;
   border:2px solid var(--accent);border-bottom:none;border-radius:8px 8px 0 0;
   background:transparent;color:var(--accent);margin-bottom:-2px;opacity:.62}
@@ -1015,20 +1026,27 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
      直欄一次看得完,加一項也不必重排。
      元素換了,id 和 button[data-p] 沒換 —— showTab 和 applyRole 照舊。 -->
 <aside class="nav" role="tablist" id="tabs">
+  <!-- 每月作業照做的先後排:帳單進來 → 對帳 → 看賺多少 → 要查再往歷史去。 -->
   <div class="navgrp" data-i18n="nav.work">Monthly</div>
-  <button role="tab" aria-selected="true"  data-p="files"  class="display" data-i18n="tab.files">Import Files</button>
-  <button role="tab" aria-selected="false" data-p="cus"    class="display" data-i18n="tab.cus">Reconcile</button>
-  <button role="tab" aria-selected="false" data-p="hist"   class="display" data-i18n="tab.hist">Invoice History</button>
-  <button role="tab" aria-selected="false" data-p="code"   class="display" data-i18n="tab.code">Code Lookup</button>
+  <button role="tab" aria-selected="true"  data-p="files"    class="display" data-i18n="tab.files">Import Files</button>
+  <button role="tab" aria-selected="false" data-p="cus"      class="display" data-i18n="tab.cus">WMS / TMS Reconciliation</button>
+  <button role="tab" aria-selected="false" data-p="analysis" class="display" data-i18n="tab.analysis">Analysis</button>
+  <button role="tab" aria-selected="false" data-p="hist"     class="display" data-i18n="tab.hist">Invoice History</button>
+  <!-- 設定分兩個入口,分界是「這件事屬於整個帳號,還是屬於某一層費率」:
+       Setting 是帳號的(有哪些層級、有哪些客戶、費用代碼怎麼對外),
+       Rate Setup 是某一層裡面的規則 —— 右上角那個 Editing 選單只對後者有意義。 -->
   <div class="navgrp" data-i18n="nav.admin">Setup</div>
-  <!-- 設定底下的七個地方都掛在這一顆,由下面那條編號列切換。 -->
-  <button role="tab" aria-selected="false" data-p="rate"   class="display" data-i18n="tab.rate">Settings</button>
+  <button role="tab" aria-selected="false" data-p="rate"     class="display" data-i18n="tab.rate">Setting</button>
+  <button role="tab" aria-selected="false" data-p="rateset"  class="display" data-i18n="tab.rateset">Rate Setup</button>
+  <button role="tab" aria-selected="false" data-p="admin"    class="display" data-i18n="tab.admin">Admin</button>
+  <!-- 底下這幾顆收起來(HIDDEN_TABS),各自由上面兩個入口進去。按鈕留著是因為
+       currentTab() 靠 aria-selected 找現在在哪一頁。 -->
+  <button role="tab" aria-selected="false" data-p="setting" class="display" data-i18n="tab.setting">Rate levels</button>
   <button role="tab" aria-selected="false" data-p="rules"  class="display" data-i18n="tab.rules">Surcharge Setup</button>
   <button role="tab" aria-selected="false" data-p="size"   class="display" data-i18n="tab.size">Size Rules</button>
   <button role="tab" aria-selected="false" data-p="chan"   class="display" data-i18n="tab.chan">Channels</button>
   <button role="tab" aria-selected="false" data-p="demand" class="display" data-i18n="tab.demand">Demand Surcharge</button>
-  <button role="tab" aria-selected="false" data-p="setting" class="display" data-i18n="tab.setting">Rate levels</button>
-  <button role="tab" aria-selected="false" data-p="admin"  class="display" data-i18n="tab.admin">Admin</button>
+  <button role="tab" aria-selected="false" data-p="code"   class="display" data-i18n="tab.code">Code Lookup</button>
 </aside>
 
 <!-- 設定底下的編號列。編號是真的順序:先有層級,才有客戶指到哪一層,
@@ -1038,15 +1056,17 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
   <!-- 順序照實際設定的先後,不照畫面好排:
        先有層級 → 把那一層的規則設完 → 客戶指到哪一層 → 費用代碼 → 系統設定。
        客戶排在費率後面是有道理的:指派的時候下拉要選得到層級,層級得先在。 -->
-  <div class="setnav-tabs">
+  <div class="setnav-tabs" data-g="rate">
     <button data-r="setting" data-i18n="rt.levels">1. Rate Levels</button>
+    <button data-r="cus"     data-i18n="rt.customers">2. Client Setup</button>
+    <button data-r="code2"   data-i18n="rt.chgcode">3. Charge Codes</button>
+  </div>
+  <div class="setnav-tabs" data-g="rateset" hidden>
+    <button data-r="chan"    data-i18n="rt.chan">1. Channels</button>
     <button data-r="rules"   data-i18n="rt.rules">2. Surcharges</button>
     <button data-r="size"    data-i18n="rt.size">3. Size Rules</button>
-    <button data-r="chan"    data-i18n="rt.chan">4. Channels</button>
-    <button data-r="demand"  data-i18n="rt.demand">5. Demand</button>
-    <button data-r="cus"     data-i18n="rt.customers">6. Clients</button>
-    <button data-r="code2"   data-i18n="rt.chgcode">7. Charge Codes</button>
-    <button data-r="sys"     data-i18n="rt.sys">8. System</button>
+    <button data-r="demand"  data-i18n="rt.demand">4. Demand</button>
+    <button data-r="sys"     data-i18n="rt.sys">5. System</button>
   </div>
   <label class="setnav-lvl" id="editLvlWrap">
     <span data-i18n="lbl.editing">Editing</span>
@@ -1307,33 +1327,16 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       <span id="cusMsg" class="savenote"></span>
     </div>
   </div>
-
-
-  <div class="lf sketch" id="chgCard">
-    <h3 class="display"><span class="em">🏷</span><span data-i18n="hd.chgcode">Charge codes</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:70ch" data-i18n="hint.chgcode">Give each charge your own code and name. Blank means the charge keeps the name shown here. Nothing about pricing changes — this is what gets sent out when the data leaves this tool.</p>
-    <div class="row">
-      <button class="act" id="bChgView" data-i18n="btn.chgview">View codes</button>
-      <span id="chgCount" class="affsum"></span>
-      <span style="flex:1 1 auto"></span>
-      <button class="act ghost sm" id="bChgExport" data-i18n="btn.chgexport">Export codes</button>
-      <button class="act ghost sm" id="bChgImport" data-i18n="btn.chgimport">Import codes</button>
-      <input type="file" id="fChgImport" accept=".csv,.txt,.xlsx,.xls" style="display:none">
-    </div>
   </div>
-  </div>
-
-  <!-- 共通語言的另一半:費用的名字。系統內部叫「Residential Surcharge」,
-       你們的會計科目可能叫別的,WMS 那邊又是另一個 —— 對外送資料時要送的是
-       你自己的代碼,不是這裡的欄名。填了才送,沒填就沿用原本的名稱。 -->
 
   <div id="reconPane" hidden>
   <div class="lf sketch">
     <h3 class="display"><span class="em">⚖️</span><span data-i18n="hd.recon">WMS / TMS reconciliation</span></h3>
     <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.recon">The invoice already holds the charge detail. This file adds the two facts it cannot know: which customer an order belongs to, and what that customer was billed. One order per row; for a multi-package order put every tracking number in one cell, separated by commas.</p>
     <div class="row">
-      <button class="act ghost sm" id="bReconTpl" data-i18n="btn.recontpl">Download template</button>
-      <button class="act" id="bReconImp" data-i18n="btn.reconimp">Import filled template</button>
+      <label class="inlab" style="margin-left:0" data-i18n="lb.tpl">Template</label>
+      <button class="act ghost sm" id="bReconTpl" data-i18n="btn.recontpl">Export</button>
+      <button class="act" id="bReconImp" data-i18n="btn.reconimp">Import filled</button>
       <input type="file" id="fRecon" accept=".xlsx,.xls,.csv,.txt" style="display:none">
       <span style="flex:1 1 auto"></span>
       <button class="act ghost sm" id="bReconRerun" hidden data-i18n="btn.reconrerun">Re-run comparison</button>
@@ -1794,7 +1797,21 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
 </section>
 
 <!-- ==================== Code Lookup ==================== -->
+<!-- 費用代碼:對外要送的名字,和那個代碼原本是什麼意思。以前分在兩個地方 ——
+     一邊在客戶名單旁邊,一邊在自己的分頁,而填代碼的人兩邊都要看。 -->
 <section class="page" id="p-code">
+  <div class="lf sketch" id="chgCard">
+    <h3 class="display"><span class="em">🏷</span><span data-i18n="hd.chgcode">Charge codes</span></h3>
+    <p class="hint" style="margin:0 0 11px;max-width:70ch" data-i18n="hint.chgcode">Give each charge your own code and name. Blank means the charge keeps the name shown here. Nothing about pricing changes — this is what gets sent out when the data leaves this tool.</p>
+    <div class="row">
+      <button class="act" id="bChgView" data-i18n="btn.chgview">View codes</button>
+      <span id="chgCount" class="affsum"></span>
+      <span style="flex:1 1 auto"></span>
+      <button class="act ghost sm" id="bChgExport" data-i18n="btn.chgexport">Export codes</button>
+      <button class="act ghost sm" id="bChgImport" data-i18n="btn.chgimport">Import codes</button>
+      <input type="file" id="fChgImport" accept=".csv,.txt,.xlsx,.xls" style="display:none">
+    </div>
+  </div>
   <div class="lf sketch">
     <h3 class="display"><span class="em">🔎</span><span data-i18n="hd.code">UPS Charge Code Lookup</span></h3>
     <p class="hint" data-i18n="hint.code"></p>
@@ -1814,6 +1831,65 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       <th data-i18n="th.ininv">In Invoice</th>
       <th class="num" data-i18n="th.count">Count</th>
     </tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<!-- ==================== Analysis ====================
+     對帳算出來的東西,換一個問法看:不是「這一期差在哪」,是「哪一層費率、
+     哪一個客戶在賺錢」。數字全部來自同一份 RECON.res,不另外算一次 ——
+     另外算就會有兩個版本的毛利。 -->
+<section class="page" id="p-analysis">
+  <div class="lf sketch" id="anaEmpty">
+    <h3 class="display"><span class="em">📈</span><span data-i18n="hd.analysis">Profit analysis</span></h3>
+    <p class="hint" style="margin:0 0 11px;max-width:70ch" data-i18n="hint.anaempty">This page reads the reconciliation. Import the filled template on WMS / TMS Reconciliation and the numbers land here.</p>
+    <div class="row">
+      <button class="act" id="bAnaGo" data-i18n="btn.anago">Go to reconciliation</button>
+    </div>
+  </div>
+
+  <div class="lf sketch" id="anaSumCard" hidden>
+    <h3 class="display"><span class="em">📈</span><span data-i18n="hd.analysis">Profit analysis</span></h3>
+    <div class="tiles" id="anaTiles"></div>
+  </div>
+
+  <div class="lf sketch" id="anaLvlCard" hidden>
+    <h3 class="display"><span class="em">🧭</span><span data-i18n="hd.analvl">By rate level</span></h3>
+    <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.analvl">Every client repriced at the same level, added up. A level whose margin sits well below the others is either priced wrong or carrying the wrong clients.</p>
+    <div class="tablewrap" style="max-height:44vh"><table id="tAnaLvl"><thead><tr>
+      <th data-i18n="th.cuslevel">Rate level</th>
+      <th class="num" data-i18n="th.anaclients">Clients</th>
+      <th class="num" data-i18n="th.reconorders">Orders</th>
+      <th class="num" data-i18n="th.reconbilled">Billed to customer</th>
+      <th class="num" data-i18n="th.reconups">Charged by UPS</th>
+      <th class="num" data-i18n="th.reconprofit">Profit</th>
+      <th class="num" data-i18n="th.reconmargin">Margin</th>
+      <th class="num" data-i18n="th.anashare">Share of profit</th>
+    </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
+  </div>
+
+  <div class="lf sketch" id="anaCusCard" hidden>
+    <h3 class="display"><span class="em">👤</span><span data-i18n="hd.anacus">By client</span></h3>
+    <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.anacus">Sorted by profit, largest first. Margin is profit over what the client was billed — a big client on a thin margin can be worth less than a small one on a fat margin.</p>
+    <div class="row" style="margin-bottom:9px">
+      <label class="inlab" style="margin-left:0" data-i18n="lb.anasort">Sort by</label>
+      <span class="foldwrap"><select id="anaSort" class="fold">
+        <option value="profit" data-i18n="opt.anaprofit">Profit</option>
+        <option value="margin" data-i18n="opt.anamargin">Margin</option>
+        <option value="amt" data-i18n="opt.anabilled">Billed</option>
+      </select></span>
+      <span style="flex:1 1 auto"></span>
+      <span id="anaCusSum" class="affsum"></span>
+    </div>
+    <div class="tablewrap" style="max-height:56vh"><table id="tAnaCus"><thead><tr>
+      <th data-i18n="th.cuscode">Code</th>
+      <th data-i18n="th.cusname">Name</th>
+      <th data-i18n="th.cuslevel">Rate level</th>
+      <th class="num" data-i18n="th.reconorders">Orders</th>
+      <th class="num" data-i18n="th.reconbilled">Billed to customer</th>
+      <th class="num" data-i18n="th.reconups">Charged by UPS</th>
+      <th class="num" data-i18n="th.reconprofit">Profit</th>
+      <th class="num" data-i18n="th.reconmargin">Margin</th>
+    </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
   </div>
 </section>
 
@@ -5256,7 +5332,7 @@ const ADMIN_ONLY=["admin"];
 /* 費率設定的六個內頁不再各佔一顆頂層頁籤 —— 它們現在掛在「Rate Configuration」
    底下那條列上。程式和頁面都原封不動,只是不從上排進去。
    「cus」不在這裡:那一顆是每月要用的對帳,留在上排。 */
-const HIDDEN_TABS=["setting","rules","size","chan","demand"];
+const HIDDEN_TABS=["setting","rules","size","chan","demand","code"];
 let LOGIN_ROWS=[];
 
 function authIdentity(user){
@@ -6899,20 +6975,32 @@ const TAB_KEY="ups_recon_tab";
    再往下是那一層的各種規則。
    "code2" 不是一個頁面 —— 費用代碼那張卡跟客戶名單同住在 p-cus 裡,靠
    showSetCards() 決定露哪一張。這樣不必把整塊 markup 搬家。 */
-const RATE_TABS=["setting","rules","size","chan","demand","cus","code2","sys"];
-const RATE_PAGE={setting:"setting", cus:"cus", code2:"cus", sys:"setting",
+/* 設定拆成兩個入口。分界不是畫面好排,是「這件事屬於誰」:
+   Setting  —— 整個帳號的:有哪些費率層級、有哪些客戶、費用代碼怎麼對外。
+   Rate Setup —— 某一層裡面的規則:渠道、附加費、尺寸、Demand、那一層的系統設定。
+   這條線正好就是 RATE_PER_LEVEL —— 右上角的 Editing 選單只在後面那一組出現,
+   前面那一組不出現,因為那三頁換層級也不會變。 */
+const SET_GROUPS={ rate:["setting","cus","code2"],
+                   rateset:["chan","rules","size","demand","sys"] };
+const SET_ENTRANCES=Object.keys(SET_GROUPS);
+const RATE_TABS=[...SET_GROUPS.rate, ...SET_GROUPS.rateset];
+/* code2 = 費用代碼,現在跟 UPS 代碼查詢同住在 p-code:對外要送的代碼,和那個
+   代碼原本是什麼意思,本來就該在同一頁看。 */
+const RATE_PAGE={setting:"setting", cus:"cus", code2:"code", sys:"setting",
                  rules:"rules", size:"size", chan:"chan", demand:"demand"};
-/* 這幾個是「某一層的費率」,右上角的層級選單對它們才有意義。
-   客戶名單和費用代碼是整個帳號共用的,不隨層級走。 */
-const RATE_PER_LEVEL=new Set(["setting","rules","size","chan","demand","sys"]);
+const setGroupOf=k=>SET_GROUPS.rateset.includes(k)?"rateset":"rate";
+const RATE_PER_LEVEL=new Set(SET_GROUPS.rateset);
 const RATE_HOME="setting";
+/* 每一組各自記自己停在哪 —— 從 Rate Setup 切到 Setting 再切回來,回到的是
+   Rate Setup 原本那一頁,不是從頭開始。 */
+let SET_LAST={rate:"setting", rateset:"chan"};
 let SET_TAB="setting";
 function showTab(p){
   /* 管理分頁只有管理者能進。分頁按鈕本來就藏起來了,這裡是第二道 ——
      showTab() 是唯一的入口,擋在這裡,任何呼叫端都繞不過去。 */
   if(ADMIN_ONLY.includes(p) && !(ME && ME.role==="admin")) p="files";
-  /* 「設定」不是一個真的頁面,是八個地方的入口。回到上次停的那一個。 */
-  if(p==="rate") return showSetTab(SET_TAB||RATE_HOME);
+  /* 兩個入口都不是真的頁面。回到那一組上次停的地方。 */
+  if(SET_ENTRANCES.includes(p)) return showSetTab(SET_LAST[p]||SET_GROUPS[p][0]);
   /* 在設定裡面 = 經由 showSetTab 進來的。左邊按「對帳」不算,即使它也是 p-cus。 */
   const inSet=RATE_ENTER;
   if(p==="cus" && typeof showCusTab==="function")
@@ -6921,15 +7009,17 @@ function showTab(p){
   if(typeof showSetCards==="function") showSetCards(inSet?SET_TAB:"");
   /* 記的是「回來要停在哪」。在設定裡就記設定的分頁,才不會回到頁面卻停錯子頁。 */
   try{ localStorage.setItem(TAB_KEY, inSet?("set:"+SET_TAB):p); }catch(e){}
-  const inRate=inSet;
+  /* 入口那兩顆自己不亮,交給 rateSideSync 決定亮哪一顆 —— 它才知道現在
+     停的是哪一組。在設定裡面的時候,底下的頁面按鈕一律不亮。 */
   document.querySelectorAll("#tabs button[data-p]").forEach(b=>
-    b.setAttribute("aria-selected",
-      b.dataset.p==="rate" ? (inRate && p!=="cus") : b.dataset.p===p));
+    b.setAttribute("aria-selected", String(
+      SET_ENTRANCES.includes(b.dataset.p) ? false : (!inSet && b.dataset.p===p))));
   document.querySelectorAll(".page").forEach(s=>
     s.classList.toggle("on", s.id==="p-"+p));
   sceneShow(p==="files");
   if(p==="admin"&&ME&&ME.role==="admin"){ loadLoginHistory(); loadUsers(); }
   if(p==="cus"&&typeof renderCustomers==="function") renderCustomers();
+  if(p==="analysis"&&typeof renderAnalysis==="function") renderAnalysis();
   /* 層級表以前只有動過才重畫,所以載入設定之後第一次進來是一張空表。
      現在這一頁是費率設定的落點,進來就得是對的。 */
   if(p==="setting"&&typeof renderLevels==="function") renderLevels();
@@ -6944,12 +7034,8 @@ function showSetCards(which){
   /* 有幾個子頁共用同一個 section,差別只在露哪幾張卡。這樣不必把整塊 markup
      搬家 —— 搬家才是會把隔壁函式一起帶走的那種事。 */
   const show=(id,on)=>{ const e=$("#"+id); if(e) e.hidden=!on; };
-  if(which==="cus"||which==="code2"){
-    show("cusCard", which==="cus");
-    show("chgCard", which==="code2");
-  }else if(which===""){                    /* 從左邊直接進對帳:兩張都放回來 */
-    show("cusCard",true); show("chgCard",true);
-  }
+  /* 費用代碼那張卡搬到 p-code 去跟查詢同住了,這裡只剩客戶名單。 */
+  if(which==="cus"||which===""){ show("cusCard",true); }
   if(which==="setting"||which==="sys"){
     show("cardLvl",      which==="setting");   /* 1. 費率層級:只有層級表 */
     show("cardCfgFile",  which==="sys");       /* 8. 系統設定:費率檔與燃油適用 */
@@ -6972,13 +7058,19 @@ function rateSideSync(p){
   const show = RATE_TABS.includes(p) && cur===page
     && !(page==="cus" && typeof CUS_TAB!=="undefined" && CUS_TAB!=="cus");
   side.hidden=!show;
-  const tabs=$(".setnav-tabs");
-  if(tabs) [...tabs.children].forEach(b=>
-    b.setAttribute("aria-selected", String(b.dataset.r===p)));
-  /* 客戶那一頁被設定借用的時候,左邊要亮的是「設定」那一顆,不是「對帳」。 */
-  const rb=document.querySelector('#tabs button[data-p="rate"]');
+  /* 兩組編號列共用一條,只露現在這一組。 */
+  const grp=setGroupOf(p);
+  document.querySelectorAll("#rateSide .setnav-tabs").forEach(d=>{
+    d.hidden = d.dataset.g!==grp;
+    [...d.children].forEach(b=>
+      b.setAttribute("aria-selected", String(b.dataset.r===p)));
+  });
+  /* 左邊亮的是這一組的入口,不是底下那一頁 —— 客戶那一頁兩條路都到得了。 */
+  SET_ENTRANCES.forEach(k=>{
+    const b=document.querySelector('#tabs button[data-p="'+k+'"]');
+    if(b) b.setAttribute("aria-selected", String(show && k===grp));
+  });
   const cb=document.querySelector('#tabs button[data-p="cus"]');
-  if(rb) rb.setAttribute("aria-selected", String(show));
   if(cb && show && page==="cus") cb.setAttribute("aria-selected","false");
   editLvlSync(p);
 }
@@ -7002,6 +7094,7 @@ function editLvlSync(p){
 function showSetTab(k){
   if(!RATE_TABS.includes(k)) k=RATE_HOME;
   SET_TAB=k;
+  SET_LAST[setGroupOf(k)]=k;
   RATE_ENTER=true;
   try{ showTab(RATE_PAGE[k]||k); } finally { RATE_ENTER=false; }
 }
@@ -11052,6 +11145,125 @@ async function reconImport(file){
                +" customer(s) were not repriced — see the notice below."),false);
   else
     reconMsg(L("已對帳 "+p.rows.length+" 張單。","Reconciled "+p.rows.length+" order(s)."),true);
+}
+
+/* --------------------------------------------------------------------
+   分析
+   -------------------------------------------------------------------- */
+/* 同一份對帳結果,換一個問法:不是「這一期差在哪」,是「哪一層費率、哪一個
+   客戶在賺錢」。每一個數字都取自 RECON.res,一律不另外算一次 —— 另外算就會
+   有兩個版本的毛利,而它們遲早會不一樣。 */
+let ANA_SORT="profit";
+function anaPct(v){ return v==null?"—":(v<0?"-":"")+Math.abs(v).toFixed(1)+"%"; }
+function renderAnalysis(){
+  const r=RECON&&RECON.res;
+  const has=!!(r&&r.cus&&r.cus.length);
+  const show=(id,on)=>{ const e=$("#"+id); if(e) e.hidden=!on; };
+  show("anaEmpty",!has);
+  ["anaSumCard","anaLvlCard","anaCusCard"].forEach(id=>show(id,has));
+  if(!has) return;
+  const t=r.tot;
+  const sign=v=>`<span class="mny ${v<0?"neg":(v>0?"pos":"")}">${money(v)}</span>`;
+  const pcCell=v=>v==null?`<span class="empty">—</span>`:anaPct(v);
+
+  const tiles=$("#anaTiles");
+  if(tiles) tiles.innerHTML=[
+    [L("向客戶收","Billed to client"), money(t.amt), ""],
+    [L("UPS 收","Charged by UPS"),     money(t.cost), ""],
+    [L("毛利","Profit"),               money(t.profit), "", t.profit<0],
+    [L("毛利率","Margin"),             anaPct(t.margin),
+      L(t.orders+" 張單 · "+r.cus.length+" 個客戶",
+        t.orders+" order"+(t.orders>1?"s":"")+" · "+r.cus.length
+        +" client"+(r.cus.length>1?"s":""))],
+  ].map(([k,v,sub,neg])=>`<div class="tile sketch-soft"><div class="k">${esc(k)}</div>
+    <div class="v${neg?" neg":""}">${v}</div>
+    <div class="sub">${esc(sub)||"&nbsp;"}</div></div>`).join("");
+
+  /* 依費率層級。沒有指定層級的客戶自成一列 —— 併進別人裡面會讓那一層的
+     毛利率看起來是別人的。 */
+  const byLvl=new Map();
+  for(const a of r.cus){
+    const key=a.level||"";
+    let o=byLvl.get(key);
+    if(!o){ o={level:key, n:0, orders:0, amt:0, cost:0}; byLvl.set(key,o); }
+    o.n++; o.orders+=a.orders; o.amt+=a.amt; o.cost+=a.cost;
+  }
+  const lvls=[...byLvl.values()].map(o=>{
+    o.amt=cents(o.amt); o.cost=cents(o.cost);
+    o.profit=cents(o.amt-o.cost);
+    o.margin=o.amt?o.profit/Math.abs(o.amt)*100:null;
+    /* 佔比拿總毛利當分母。總毛利是 0 就不畫 —— 除以 0 會得到 Infinity,
+       而畫面上出現 Infinity% 比空白更難解釋。 */
+    o.share=t.profit?o.profit/t.profit*100:null;
+    return o;
+  }).sort((x,y)=>y.profit-x.profit);
+  const lvlName=id=>id
+    ? (typeof cusLevelLabel==="function"?cusLevelLabel(id):id)
+    : L("未指定層級","No level assigned");
+  const lb=$("#tAnaLvl")&&$("#tAnaLvl").tBodies[0];
+  if(lb) lb.innerHTML=lvls.map(o=>
+    `<tr><td>${esc(lvlName(o.level))}</td>
+      <td class="num">${o.n}</td>
+      <td class="num">${o.orders}</td>
+      <td class="num">${money(o.amt)}</td>
+      <td class="num">${money(o.cost)}</td>
+      <td class="num">${sign(o.profit)}</td>
+      <td class="num">${pcCell(o.margin)}</td>
+      <td class="num">${pcCell(o.share)}</td></tr>`).join("");
+  const lf=$("#tAnaLvl")&&$("#tAnaLvl").tFoot;
+  if(lf) lf.innerHTML=`<tr><td><b>${esc(L("合計","Total"))}</b></td>
+      <td class="num"><b>${r.cus.length}</b></td>
+      <td class="num"><b>${t.orders}</b></td>
+      <td class="num"><b>${money(t.amt)}</b></td>
+      <td class="num"><b>${money(t.cost)}</b></td>
+      <td class="num"><b>${sign(t.profit)}</b></td>
+      <td class="num"><b>${pcCell(t.margin)}</b></td>
+      <td class="num"><b>${t.profit?"100.0%":"—"}</b></td></tr>`;
+
+  /* 依客戶。排序讓人自己選:大客戶薄毛利和小客戶厚毛利,哪一個要先看
+     不是這一頁該替人決定的。 */
+  const key=ANA_SORT;
+  const rows=r.cus.slice().sort((x,y)=>{
+    const a=x[key], b=y[key];
+    if(a==null&&b==null) return 0;
+    if(a==null) return 1;
+    if(b==null) return -1;
+    return b-a;
+  });
+  const cb=$("#tAnaCus")&&$("#tAnaCus").tBodies[0];
+  if(cb) cb.innerHTML=rows.map(a=>
+    `<tr><td class="mono">${esc(a.code)}</td>
+      <td>${esc(a.name||a.code)}</td>
+      <td>${a.level?esc(lvlName(a.level)):`<span class="empty">—</span>`}</td>
+      <td class="num">${a.orders}</td>
+      <td class="num">${money(a.amt)}</td>
+      <td class="num">${money(a.cost)}</td>
+      <td class="num">${sign(a.profit)}</td>
+      <td class="num">${pcCell(a.margin)}</td></tr>`).join("");
+  const cf=$("#tAnaCus")&&$("#tAnaCus").tFoot;
+  if(cf) cf.innerHTML=`<tr><td colspan="3"><b>${esc(L("合計","Total"))}</b></td>
+      <td class="num"><b>${t.orders}</b></td>
+      <td class="num"><b>${money(t.amt)}</b></td>
+      <td class="num"><b>${money(t.cost)}</b></td>
+      <td class="num"><b>${sign(t.profit)}</b></td>
+      <td class="num"><b>${pcCell(t.margin)}</b></td></tr>`;
+  const sum=$("#anaCusSum");
+  if(sum){
+    const best=rows.reduce((m,a)=>(m==null||a.profit>m.profit)?a:m,null);
+    sum.textContent = best
+      ? L("毛利最高:"+(best.name||best.code)+" "+money(best.profit),
+          "Top by profit: "+(best.name||best.code)+" "+money(best.profit))
+      : "";
+  }
+}
+function bindAnalysis(){
+  const go=$("#bAnaGo");
+  if(go) go.onclick=()=>{
+    showTab("cus");
+    if(typeof showCusTab==="function") showCusTab("recon");
+  };
+  const sel=$("#anaSort");
+  if(sel) sel.onchange=e=>{ ANA_SORT=e.target.value; renderAnalysis(); };
 }
 
 function bindRecon(){
@@ -15302,7 +15514,8 @@ const I18N={
   "tab.rules":["💲 附加費設定","💲 Surcharge Setup"],
   "tab.size":["📏 尺寸規則","📏 Size Rules"],
   "tab.chan":["🚚 渠道","🚚 Channels"],
-  "tab.cus":["⚖️ 對帳","⚖️ Reconcile"],
+  "tab.cus":["⚖️ WMS／TMS 對帳","⚖️ WMS / TMS Reconciliation"],
+  "tab.analysis":["📈 分析","📈 Analysis"],
   "ct.cusreg":["客戶","Customers"],
   "ct.chgcode":["費用代碼","Charge codes"],
   "ct.recon":["對帳","Reconciliation"],
@@ -15367,8 +15580,9 @@ const I18N={
   "hd.recon":["WMS / TMS 對帳","WMS / TMS reconciliation"],
   "hint.recon":["帳單本身已經有費用明細,這份檔案只補帳單不可能知道的兩件事:這張單是哪個客戶的,以及向那個客戶收了多少。一張系統單一列;一票多件時,把該單的追蹤號全部寫在同一格,用逗號分隔。",
     "The invoice already holds the charge detail. This file adds the two facts it cannot know: which customer an order belongs to, and what that customer was billed. One order per row; for a multi-package order put every tracking number in one cell, separated by commas."],
-  "btn.recontpl":["下載模板","Download template"],
-  "btn.reconimp":["匯入填好的模板","Import filled template"],
+  "lb.tpl":["模板","Template"],
+  "btn.recontpl":["導出","Export"],
+  "btn.reconimp":["導入填好的","Import filled"],
   "btn.reconxls":["匯出對帳結果","Export reconciliation"],
   "btn.reconrerun":["重新比對","Re-run comparison"],
   "hd.reconiss":["不能收的資料列","Rows that could not be accepted"],
@@ -15387,15 +15601,32 @@ const I18N={
   "hint.reconcols":["三個金額各問一件事。毛利是客戶實付減去 UPS 實收 —— 這一單真正賺多少。系統重算是照該客戶自己的費率層級算出這幾件本來該是多少:拿它跟客戶實付比,是定價差異(該收的有沒有收足);拿它跟 UPS 實收比,是 UPS 差異(帳單與合約有沒有出入)。客戶沒指派費率層級、或層級已被刪除時不重算,重算與兩個差異一律留空,不會拿別層的費率頂替。「UPS 實收」不含帳戶層費用 —— 那些費用沒有追蹤號,對不到任何一張單;該不該計入由帳務決定,和儀表板的處理一致。",
     "Each amount answers a different question. Profit is what the customer paid less what UPS charged — what the order actually made. Recomputed is what this customer's own rate level says the shipments should have cost: against what the customer was billed it gives the pricing variance (was enough charged), and against what UPS billed it gives the UPS variance (does the invoice match the agreement). A customer with no rate level, or one whose level has been deleted, is not repriced at all: recomputed and both variances stay blank rather than borrow another level's rates. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way."],
   "tab.setting":["🧭 費率層級","🧭 Rate levels"],
-  "tab.rate":["⚙️ 設定","⚙️ Settings"],
+  "tab.rate":["⚙️ 設定","⚙️ Setting"],
+  "tab.rateset":["💵 費率設定","💵 Rate Setup"],
   "rt.levels":["1. 費率層級","1. Rate Levels"],
-  "rt.customers":["6. 客戶","6. Clients"],
+  "rt.customers":["2. 客戶設定","2. Client Setup"],
   "rt.rules":["2. 附加費","2. Surcharges"],
   "rt.size":["3. 尺寸規則","3. Size Rules"],
-  "rt.chan":["4. 渠道","4. Channels"],
-  "rt.demand":["5. Demand 附加費","5. Demand"],
-  "rt.chgcode":["7. 費用代碼","7. Charge Codes"],
-  "rt.sys":["8. 系統設定","8. System"],
+  "rt.chan":["1. 渠道","1. Channels"],
+  "rt.demand":["4. Demand 附加費","4. Demand"],
+  "rt.chgcode":["3. 費用代碼","3. Charge Codes"],
+  "rt.sys":["5. 系統設定","5. System"],
+  "hd.analysis":["毛利分析","Profit analysis"],
+  "hint.anaempty":["這一頁讀的是對帳結果。到「WMS／TMS 對帳」導入填好的模板,數字就會出現在這裡。",
+    "This page reads the reconciliation. Import the filled template on WMS / TMS Reconciliation and the numbers land here."],
+  "btn.anago":["前往對帳","Go to reconciliation"],
+  "hd.analvl":["依費率層級","By rate level"],
+  "hint.analvl":["同一層費率的客戶加總起來。某一層的毛利率明顯低於其他層,不是費率訂錯,就是客戶放錯層。",
+    "Every client repriced at the same level, added up. A level whose margin sits well below the others is either priced wrong or carrying the wrong clients."],
+  "hd.anacus":["依客戶","By client"],
+  "hint.anacus":["毛利由高到低。大客戶薄毛利,可能還不如小客戶厚毛利 —— 所以兩個都看得到。",
+    "Sorted by profit, largest first. Margin is profit over what the client was billed — a big client on a thin margin can be worth less than a small one on a fat margin."],
+  "th.anaclients":["客戶數","Clients"],
+  "th.anashare":["佔總毛利","Share of profit"],
+  "lb.anasort":["排序","Sort by"],
+  "opt.anaprofit":["毛利","Profit"],
+  "opt.anamargin":["毛利率","Margin"],
+  "opt.anabilled":["向客戶收","Billed"],
   "nav.work":["每月作業","Monthly"],
   "nav.admin":["設定","Setup"],
   "lbl.editing":["正在編輯","Editing"],
@@ -16977,6 +17208,7 @@ step("auth",()=>{
   bindCustomers();
   bindLevels();
   bindRecon();
+  bindAnalysis();
   bindGap();
   $("#bLoginExport").onclick=()=>exportLoginHistory();
 });
