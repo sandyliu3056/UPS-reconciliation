@@ -6,7 +6,7 @@
 <title>UPS Reconciliation</title>
 <!-- 我的最愛圖示:貓、狗、金幣。內嵌成 data URI,
      所以不需要另一個檔案,也不會產生網路請求。 -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjwhLS0g5p+v5Z+65Zyo5bem44CB5biD5YG26LKT5Zyo5Y+zLOWFqemhhuWck+mgreS4puaOkizkuIvmlrnkuIDmnprph5HoibLli77nq6Ag4oCU4oCUIOWwjeW4s+W3peWFt+eahOWNsOiomOOAggogICAgIOWFqOmDqOeUqOWck+WSjOapouWckyzkuI3lho3mmK/lsI3oqbHmoYbmp4vlnJbjgIIKICAgICAxNnB4IOWPquWJqeWbm+aoo+iqjeW+l+WHuuS+hjrmt7HoibLlnJPlupXjgIHkuIDlnJjmqZjjgIHkuIDlnJjnmb3jgIHkuIDpu57ph5HjgIIgLS0+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE2IiBmaWxsPSIjM0UyQTIwIi8+Cgo8IS0tID09PT09PT09PT09PT09PT09IOW3pjrmn6/ln7ogPT09PT09PT09PT09PT09PT0KICAgICDlpKfnq4vogLPmmK/mn6/ln7rnmoToh4ks6ICz5bCW5pS25ZyT5LiN5pS25bCWIOKAlOKAlCDlsJbogLPmnIPot5/ospPmt7flnKjkuIDotbfjgIIKICAgICDlhanpmrvogLPmnLXpg73opoHnlZnlnKjoh6rlt7HpoK3kuIos5Yil5Ly45Yiw6LKT6YKj6YKK6KKr6JOL5o6J44CCCiAgICAg55m96by75qiR5b6e6aGN6aCt55u05LiL5o6l55m95Zi0LOaYr+afr+WfuuacgOWFuOWei+eahOiKseiJsuOAgiAtLT4KPGcgc3Ryb2tlPSIjMkUxQzE0IiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICA8cGF0aCBkPSJNOCAyNEM2LjUgMTQgOSA3LjUgMTQgNmM0LTEuMiA3IDQuMiA4IDEyLjZaIiBmaWxsPSIjRTg5QTRFIiBzdHJva2Utd2lkdGg9IjIuNCIvPgogIDxwYXRoIGQ9Ik0zMiAyM2MxLjUtOS41LTEtMTYuMi02LTE3LjUtNC0xLjEtNyA0LjYtOCAxM1oiIGZpbGw9IiNFODlBNEUiIHN0cm9rZS13aWR0aD0iMi40Ii8+CiAgPHBhdGggZD0iTTEwLjYgMTcuNWMtLjUtNSAuNi04LjIgMi45LTguOSAyLS42IDMuNyAyLjQgNC4zIDdaIiBmaWxsPSIjRjBCN0E4Ii8+CiAgPHBhdGggZD0iTTI5LjYgMTYuOGMuNy01LS4zLTguMy0yLjYtOS0yLS43LTMuOCAyLjMtNC41IDYuOFoiIGZpbGw9IiNGMEI3QTgiLz4KICA8ZWxsaXBzZSBjeD0iMjAiIGN5PSIzNCIgcng9IjE0IiByeT0iMTIuNSIgZmlsbD0iI0U4OUE0RSIgc3Ryb2tlLXdpZHRoPSIyLjYiLz4KICA8IS0tIOeZvem8u+aokSArIOeZveWYtDrkuIDnrYbpgKPotbfkvoYgLS0+CiAgPHBhdGggZD0iTTE3LjIgMjMuNGMwLTEuOSA1LjYtMS45IDUuNiAwbC45IDguNmMyLjkuNCA1LjIgMi45IDUuMiA1LjkgMCA0LjQtMy44IDcuNC04LjkgNy40cy04LjktMy04LjktNy40YzAtMyAyLjMtNS41IDUuMi01LjlaIgogICAgICAgIGZpbGw9IiNGQUY1RUMiIHN0cm9rZS13aWR0aD0iMi4yIi8+CjwvZz4KPCEtLSDkupTlrpjkuI3mj4/pgoos5o+P5LqGIDE2cHgg5pyD57OK5oiQ5LiA5ZyYIC0tPgo8ZWxsaXBzZSBjeD0iMTMiIGN5PSIzMiIgcng9IjIuMiIgcnk9IjIuNCIgZmlsbD0iIzJFMUMxNCIvPgo8ZWxsaXBzZSBjeD0iMjciIGN5PSIzMiIgcng9IjIuMiIgcnk9IjIuNCIgZmlsbD0iIzJFMUMxNCIvPgo8ZWxsaXBzZSBjeD0iMjAiIGN5PSIzNy4yIiByeD0iMi43IiByeT0iMi4xIiBmaWxsPSIjMkUxQzE0Ii8+CjxwYXRoIGQ9Ik0yMCAzOS4ydjJNMjAgNDEuMmMtMS4xIDEuNS0zLjIgMS41LTQuMS4yTTIwIDQxLjJjMS4xIDEuNSAzLjIgMS41IDQuMS4yIgogICAgICBmaWxsPSJub25lIiBzdHJva2U9IiMyRTFDMTQiIHN0cm9rZS13aWR0aD0iMS40IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPGVsbGlwc2UgY3g9IjEwIiBjeT0iMzgiIHJ4PSIyLjQiIHJ5PSIxLjYiIGZpbGw9IiNGMkE2OUIiLz4KCjwhLS0gPT09PT09PT09PT09PT09PT0g5Y+zOuW4g+WBtuiykyA9PT09PT09PT09PT09PT09PQogICAgIOW+jOeVqyzlo5PlnKjmn6/ln7rliY3pnaLkuIDpu57pu54s5YWp6aGG6aCt5omN5YOP6Z2g5Zyo5LiA6LW344CCCiAgICAg6ZuZ6Imy5biD5YG255qE6IeJOuiAs+acteWSjOmgremggua3seiJsiznnInlv4PnlZnkuIDlgIvnmb3oibLlgJIgVizol43nnLznnZvjgIIKICAgICDpnaLnvanlj6rliLDnnInmr5sg4oCU4oCUIOiTi+WIsOecvOedm+WwseiuiuWTiOWjq+Wlh+S6huOAgiAtLT4KPGcgc3Ryb2tlPSIjMkUxQzE0IiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICA8cGF0aCBkPSJNMzMuNSAyMSAzNSA3LjUgNDQuNSAxNS41WiIgZmlsbD0iIzhBNzQ2NiIgc3Ryb2tlLXdpZHRoPSIyLjQiLz4KICA8cGF0aCBkPSJNNTYuNSAyMi41IDU4LjUgOSA0OCAxNS44WiIgZmlsbD0iIzhBNzQ2NiIgc3Ryb2tlLXdpZHRoPSIyLjQiLz4KICA8cGF0aCBkPSJNMzYuMyAxNi44IDM3IDEwLjhsNC42IDQuM1oiIGZpbGw9IiNGMEI3QTgiLz4KICA8cGF0aCBkPSJNNTQgMTguMiA1NSAxMi4ybC01LjIgMy42WiIgZmlsbD0iI0YwQjdBOCIvPgogIDxlbGxpcHNlIGN4PSI0NSIgY3k9IjMxIiByeD0iMTMiIHJ5PSIxMiIgZmlsbD0iI0ZBRjVFQyIgc3Ryb2tlLXdpZHRoPSIyLjYiLz4KPC9nPgo8IS0tIOmgremggumbmeiJsumdoue9qTrlhannk6PlvoDlpJbmlpznmoToibLloYos55So6aCt5b2i5Ymq6KOB44CCCiAgICAg5YWp55Oj5LiK56uv5bm+5LmO55u456Kw44CB5LiL56uv5by16ZaLIOKAlOKAlCDkuK3plpPnlZnkuIvnmoTnmb3lsLHmmK/kuIrnqoTkuIvlr6znmoTlgJIgViwKICAgICDjgIzpgJnmmK/miJHlrrbpgqPpmrvjgI3nmoToqJjomZ/jgILoibLloYrkuI3mj4/pgoos6KKr5Ymq6KOB55qE5o+P6YKK5pyD5pa35Zyo5oCq5Zyw5pa544CCIC0tPgo8Y2xpcFBhdGggaWQ9InJoIj48ZWxsaXBzZSBjeD0iNDUiIGN5PSIzMSIgcng9IjEyIiByeT0iMTEiLz48L2NsaXBQYXRoPgo8ZyBjbGlwLXBhdGg9InVybCgjcmgpIiBmaWxsPSIjOEE3NDY2Ij4KICA8ZWxsaXBzZSBjeD0iMzguNiIgY3k9IjIyLjUiIHJ4PSI2LjYiIHJ5PSI5IiB0cmFuc2Zvcm09InJvdGF0ZSgyNiAzOC42IDIyLjUpIi8+CiAgPGVsbGlwc2UgY3g9IjUxLjQiIGN5PSIyMi41IiByeD0iNi42IiByeT0iOSIgdHJhbnNmb3JtPSJyb3RhdGUoLTI2IDUxLjQgMjIuNSkiLz4KPC9nPgo8IS0tIOiXjeecvOedmzrluIPlgbbospPnmoTmraPlrZfmqJnoqJgs5LiN5o+P6YKK55WZ5Lqu6bueIC0tPgo8ZWxsaXBzZSBjeD0iMzkuOCIgY3k9IjMzLjUiIHJ4PSIyLjUiIHJ5PSIyLjgiIGZpbGw9IiM1QjlCRDUiLz4KPGVsbGlwc2UgY3g9IjUwLjIiIGN5PSIzMy41IiByeD0iMi41IiByeT0iMi44IiBmaWxsPSIjNUI5QkQ1Ii8+CjxjaXJjbGUgY3g9IjQwLjUiIGN5PSIzMi43IiByPSIuOCIgZmlsbD0iI0ZBRjVFQyIvPgo8Y2lyY2xlIGN4PSI1MC45IiBjeT0iMzIuNyIgcj0iLjgiIGZpbGw9IiNGQUY1RUMiLz4KPHBhdGggZD0iTTQ1IDM3LjYgNDMuMyAzNS45aDMuNFoiIGZpbGw9IiNGMkE2OUIiLz4KPHBhdGggZD0iTTQ1IDM4djEuN000NSAzOS43Yy0xIDEuMi0yLjcgMS4yLTMuNS4yTTQ1IDM5LjdjMSAxLjIgMi43IDEuMiAzLjUuMiIKICAgICAgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMkUxQzE0IiBzdHJva2Utd2lkdGg9IjEuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cgo8IS0tID09PT09PT09PT09PT09PT09IOS4i+aWuTrph5HoibLli77nq6AgPT09PT09PT09PT09PT09PT0KICAgICDlnJPlvaLnq6AgKyDli74s5aOT5Zyo5YWp6aGG6aCt55qE5LiL57ej5q2j5LitIOKAlOKAlCDlsI3pgY7luLPjgIHok4vpgY7nq6DjgIIgLS0+CjxjaXJjbGUgY3g9IjMyLjUiIGN5PSI1Mi41IiByPSI4LjQiIGZpbGw9IiNFRkE4MUMiIHN0cm9rZT0iIzJFMUMxNCIgc3Ryb2tlLXdpZHRoPSIyLjQiLz4KPHBhdGggZD0iTTI4LjMgNTIuNSAzMS40IDU1LjggMzcgNDkuMiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMkUxQzE0IgogICAgICBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjwhLS0g5YWp5by15Zau5pOa5pac5pac55u45bCNOuWPs+S4iumCo+W8temVt+iyk+iAs+OAgeW3puS4i+mCo+W8teaQreS4gOmau+WeguS4i+eahOeLl+iAsywKICAgICDkuK3plpPkuIDmnprph5HoibLli74g4oCU4oCUIOWFqeS7veWWruWtkOWwjemBjuW4s+S6huOAguani+WclueFp+S9v+eUqOiAheaPkOS+m+eahOWclumHjee5quOAggogICAgIDE2cHgg5Y+q5YmpOua3seajleW6leOAgeWFqeWcmOeZveOAgeS4gOm7numHkSDigJTigJQg6KqN5b6X5Ye65L6G44CCIC0tPgo8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNSIgZmlsbD0iIzNBMjQxOCIvPgoKPCEtLSA9PT09PT09PT09PT0g5Y+z5LiKOuiyk+iAs+WWruaTmiA9PT09PT09PT09PT0KICAgICDogLPmnLXnn67ogIzlr6ws5bqV6YKK6JeP6YCy5Y2h54mH6KOhIOKAlOKAlCDlpKrlsJbmnIPorormiJDop5LjgIIgLS0+CjxnIHRyYW5zZm9ybT0icm90YXRlKDkgNDQgMjIpIj4KICA8ZyBzdHJva2U9IiMyQTE3MTAiIHN0cm9rZS13aWR0aD0iMi4xIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICAgIDxwYXRoIGQ9Ik0zMS44IDE2IDMzLjIgMi40IDQ0LjggOS42WiIgZmlsbD0iI0Y3RjFFNiIvPgogICAgPHBhdGggZD0iTTU3LjIgMTYgNTUuOCAyLjQgNDQuMiA5LjZaIiBmaWxsPSIjRjdGMUU2Ii8+CiAgPC9nPgogIDxwYXRoIGQ9Ik0zNC43IDExLjQgMzUuNCA1LjZsNSAzLjFaIiBmaWxsPSIjRjA4RTkyIi8+CiAgPHBhdGggZD0iTTU0LjMgMTEuNCA1My42IDUuNmwtNSAzLjFaIiBmaWxsPSIjRjA4RTkyIi8+CiAgPHJlY3QgeD0iMzEiIHk9IjkuNSIgd2lkdGg9IjI3IiBoZWlnaHQ9IjMwIiByeD0iNi41IgogICAgICAgIGZpbGw9IiNGN0YxRTYiIHN0cm9rZT0iIzJBMTcxMCIgc3Ryb2tlLXdpZHRoPSIyLjYiLz4KICA8cGF0aCBkPSJNMzYuNSAyMGgxNS41TTM2LjUgMjZoMTEuNSIgZmlsbD0ibm9uZSIKICAgICAgICBzdHJva2U9IiMyQTE3MTAiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjwvZz4KCjwhLS0gPT09PT09PT09PT09IOW3puS4izrni5fogLPllq7mk5ogPT09PT09PT09PT09IC0tPgo8ZyB0cmFuc2Zvcm09InJvdGF0ZSgtOSAyMCA0NCkiPgogIDxyZWN0IHg9IjciIHk9IjI5IiB3aWR0aD0iMjciIGhlaWdodD0iMjgiIHJ4PSI2LjUiCiAgICAgICAgZmlsbD0iI0Y3RjFFNiIgc3Ryb2tlPSIjMkExNzEwIiBzdHJva2Utd2lkdGg9IjIuNiIvPgogIDwhLS0g5Z6C6ICz6LK86JGX5bem57ej5b6A5LiL5o6bLOeqhOmVt+eahOS4gOeToyAtLT4KICA8cGF0aCBkPSJNMTQuNSAyOC43Yy03LS42LTEwLjYgNC4zLTEwIDEwLjUuNCA0LjYgMy4yIDcuNiA2LjUgNy4xCiAgICAgICAgICAgMy4xLS41IDQuOS0zLjUgNS4yLTcuOWwuNS05WiIKICAgICAgICBmaWxsPSIjOUM1RjIzIiBzdHJva2U9IiMyQTE3MTAiIHN0cm9rZS13aWR0aD0iMi40IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPHBhdGggZD0iTTExLjYgMzEuOGMtMi45LjktNC40IDMuOC00LjEgNy4yIiBmaWxsPSJub25lIgogICAgICAgIHN0cm9rZT0iIzdBNDUxNyIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDxwYXRoIGQ9Ik0yMC41IDQxaDEyTTIwLjUgNDdoOSIgZmlsbD0ibm9uZSIKICAgICAgICBzdHJva2U9IiMyQTE3MTAiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjwvZz4KCjwhLS0gPT09PT09PT09PT09IOS4remWkzrph5Hli77oiIflhanntYTlsI3li77lvKcgPT09PT09PT09PT09IC0tPgo8cGF0aCBkPSJNMjYgMzQgMzEuOCA0MC40IDQzIDI3LjgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0YyQTcxQiIKICAgICAgc3Ryb2tlLXdpZHRoPSI2IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPHBhdGggZD0iTTE5LjYgMjQuNmE4IDggMCAwIDEgNi0zLjRNMjEuNyAyOC42YTQuNiA0LjYgMCAwIDEgMy40LTIiIGZpbGw9Im5vbmUiCiAgICAgIHN0cm9rZT0iI0YyQTcxQiIgc3Ryb2tlLXdpZHRoPSIyLjEiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNNDUgNDIuOGE4IDggMCAwIDEtNiAzLjRNNDIuOSAzOC44YTQuNiA0LjYgMCAwIDEtMy40IDIiIGZpbGw9Im5vbmUiCiAgICAgIHN0cm9rZT0iI0YyQTcxQiIgc3Ryb2tlLXdpZHRoPSIyLjEiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K">
 <meta name="theme-color" content="#351c15">
 <style>
 :root{
@@ -561,6 +561,13 @@ td.cells{white-space:normal}
 /* 沒重算的那幾列:整列壓下去,層級欄掛一個紅籤。看表的時候要一眼分得出
    「這個客戶差很多」和「這個客戶根本沒算」。 */
 tr.blocked{opacity:.72}
+/* 三方對比的色點:琥珀=系統重算、棕=UPS 實收、綠=WMS/TMS 實收。
+   點在表頭上,金額欄一眼分得出誰是誰 —— 圖表之後也用同一組色。 */
+.srcdot{display:inline-block;width:8px;height:8px;border-radius:50%;
+  margin-right:6px;vertical-align:0;border:1px solid rgba(0,0,0,.25)}
+.srcdot.rep{background:#ffb500}
+.srcdot.ups{background:#d9a97e}
+.srcdot.wms{background:#7fc7a3}
 .lvlbad{
   display:inline-block;padding:1px 7px;border-radius:4px;
   border:1px solid var(--neg);color:var(--neg);font-size:11.5px;white-space:nowrap;
@@ -1311,9 +1318,11 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
 
   <div class="lf sketch" id="chgCard">
     <h3 class="display"><span class="em">🏷</span><span data-i18n="hd.chgcode">Charge codes</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:70ch" data-i18n="hint.chgcode">Give each charge your own code and name. Blank means the charge keeps the name shown here. Nothing about pricing changes — this is what gets sent out when the data leaves this tool.</p>
+    <p class="hint" style="margin:0 0 11px;max-width:70ch" data-i18n="hint.chgcode">Your codes are the shared language of UPS, this system and WMS/TMS. Column meanings, multi-code rows and the template workflow are in the guide.</p>
     <div class="row">
       <button class="act" id="bChgView" data-i18n="btn.chgview">View codes</button>
+      <a class="act ghost sm" href="doc/Charge_Codes_Guide.pdf" download
+         style="text-decoration:none" data-i18n="btn.chgpdf">Guide (PDF)</a>
       <span id="chgCount" class="affsum"></span>
       <span style="flex:1 1 auto"></span>
       <button class="act ghost sm" id="bChgExport" data-i18n="btn.chgexport">Export codes</button>
@@ -1384,9 +1393,11 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       <th data-i18n="th.chgname">Charge</th>
       <th data-i18n="th.chgmine">Your code</th>
       <th data-i18n="th.chgups">System code</th>
-      <th class="num" data-i18n="th.reconrep">Recomputed</th>
-      <th class="num" data-i18n="th.reconups">Charged by UPS</th>
+      <th class="num"><span class="srcdot rep"></span><span data-i18n="th.reconrep">Recomputed</span></th>
+      <th class="num"><span class="srcdot ups"></span><span data-i18n="th.reconups">Charged by UPS</span></th>
+      <th class="num"><span class="srcdot wms"></span><span data-i18n="th.chgwms">WMS/TMS billed</span></th>
       <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
+      <th class="num" data-i18n="th.chgbu">Billed vs UPS</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
   </div>
   </div>
@@ -10515,8 +10526,11 @@ const DYN_COLS=["AS Code","AR","Surcharge Name","Type","Fuel Eligible","Enabled"
    ===================================================================== */
 const RECON_SHEET="Shipments";
 const RECON_COL={ order:"Order Number", trk:"Tracking Numbers",
-                  cus:"Customer Code",  amt:"Total Amount Billed to Customer",
+                  cus:"Customer Code",  amt:"Total Amount",
                   date:"Ship Date" };
+/* 舊版模板的總額欄叫全名。已經發出去、填好一半的檔案不能因為改版就作廢,
+   兩個名字都收。 */
+const RECON_AMT_ALIAS=["total amount","total amount billed to customer"];
 const RECON_REQ=["order","trk","cus","amt"];
 let RECON=null;
 
@@ -10572,7 +10586,15 @@ function reconRerunFrom(rows, quiet){
     return false; }
   const pf=reconPreflight(rows.map(r=>r.cus));
   const res=reconRun(rows);
-  RECON={issues:[], res, list:rows};
+  /* 各項合計的檢查直接從列重建 —— 靠上一輪留下的話,重新整理回來就沒了。 */
+  const sw=[];
+  for(const r2 of rows){
+    if(!r2.chg) continue;
+    const sum=cents(Object.values(r2.chg).reduce((a,v)=>a+v,0));
+    const diff=cents(r2.amt-sum);
+    if(Math.abs(diff)>0.004) sw.push({ln:r2.ln, order:r2.order, sum, amt:r2.amt, diff});
+  }
+  RECON={issues:[], res, list:rows, sumWarn:sw};
   renderRecon(); reconRerunBtn();
   const head=quiet?L("已用留著的 "+rows.length+" 張單重新比對。",
                      "Re-compared the "+rows.length+" order(s) kept from last time.")
@@ -10634,18 +10656,30 @@ function reconPreflight(codes){
 /* --------------------------------------------------------------------
    模板
    -------------------------------------------------------------------- */
+/* 欄位太多,filter 範圍要用真的欄號算出來,寫死會少蓋。 */
+function xlColName(n){ let s=""; while(n>0){ s=String.fromCharCode(65+(n-1)%26)+s; n=Math.floor((n-1)/26); } return s; }
 async function reconTemplate(){
-  const hd=[RECON_COL.order,RECON_COL.trk,RECON_COL.cus,RECON_COL.amt,RECON_COL.date];
-  const req=new Set([RECON_COL.order,RECON_COL.trk,RECON_COL.cus,RECON_COL.amt]);
-  /* 必填的欄名反白,選填的用淺底。模板裡不寫任何說明文字 —— 說明是另一份
-     文件,混在一起的話同仁會在說明那一列上開始填資料。 */
+  /* 版式:識別四欄(凍結) → 三十七項費用各一欄 → 總收取金額固定最後。
+     費用欄名用系統自己的費用名稱 —— 來源系統(例如 TMS 把 AHS 和 LPS 都寫成
+     Delivery Surcharge)怎麼命名不影響:同仁把金額填進對的欄,含糊的名字
+     根本進不了系統。 */
+  const idc=[RECON_COL.order,RECON_COL.trk,RECON_COL.cus,RECON_COL.date];
+  const req=new Set([RECON_COL.order,RECON_COL.trk,RECON_COL.cus]);
   const H=n=>({v:n,t:"s",s:{bold:true,align:"left",
       fill:req.has(n)?"351C15":"EFE3CB", color:req.has(n)?"FFFFFF":"351C15"}});
+  /* 三種顏色三種身分:深棕=識別、琥珀=同仁要填的費用、綠=總額。
+     打開檔案不用讀說明,顏色先講一次規則。 */
+  const HC=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"8A6104",color:"FFFFFF"}});
+  const HT=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"1F5638",color:"FFFFFF"}});
   const CH=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
+  const hd=idc.map(H).concat(REPORT_MONEY.map(HC),[HT(RECON_COL.amt)]);
+  const nCol=hd.length;
   const reg=cusReg();
   const sheets=[
-    {name:RECON_SHEET, rows:[hd.map(H)], freeze:{r:1,c:0}, filter:"A1:E1",
-     cols:[{w:22},{w:38},{w:18},{w:30},{w:14}]},
+    {name:RECON_SHEET, rows:[hd], freeze:{r:1,c:4},
+     filter:"A1:"+xlColName(nCol)+"1",
+     cols:[{w:22},{w:38},{w:18},{w:14}]
+       .concat(REPORT_MONEY.map(()=>({w:16})),[{w:16}])},
     /* 客戶名單只是下拉選單的來源。Excel 的清單驗證一定要指向活頁簿裡的一個
        範圍,所以這一頁必須存在;但它不是給人填的,所以藏起來 —— 模板打開
        就只有一頁,要填哪裡沒有第二種解釋。 */
@@ -10659,9 +10693,10 @@ async function reconTemplate(){
     list:"Customers!$A$2:$A$"+(reg.length+1),
     title:L("代碼不在名單上","Unknown customer code"),
     msg:L("請從 Customers 分頁選一個代碼。","Pick a code from the Customers sheet.")}];
-  await xlWrite(sheets,"WMS_Reconciliation_Template.xlsx");
-  reconMsg(L("模板已下載,含客戶 "+reg.length+" 筆。",
-             "Template downloaded with "+reg.length+" customer(s)."), true);
+  await xlWrite(sheets,"WMS_TMS_Reconciliation_Template.xlsx");
+  reconMsg(L("模板已下載:識別四欄 + "+REPORT_MONEY.length+" 項費用 + 總收取金額,含客戶 "+reg.length+" 筆。",
+             "Template downloaded: 4 identity columns + "+REPORT_MONEY.length
+             +" itemized charges + Total Amount, with "+reg.length+" customer(s)."), true);
 }
 
 /* --------------------------------------------------------------------
@@ -10676,10 +10711,19 @@ function reconParse(sheetRows){
     const want=RECON_COL[k].toLowerCase();
     ix[k]=head.findIndex(h=>h.toLowerCase()===want);
   }
+  /* 舊模板的總額欄叫全名 —— 用別名再找一次,發出去的檔不作廢。 */
+  if(ix.amt<0) ix.amt=head.findIndex(h=>RECON_AMT_ALIAS.includes(h.toLowerCase()));
   const gone=RECON_REQ.filter(k=>ix[k]<0).map(k=>RECON_COL[k]);
   if(gone.length) return {err:L("模板少了這幾欄:","The template is missing these columns: ")
                               +gone.join(", ")};
-  const out=[], issues=[];
+  /* 逐項費用欄:名稱對得上系統費用名稱的才收。舊五欄模板一欄都對不上,
+     整段自然跳過 —— 同一支程式吃兩代模板。 */
+  const chgIx=[];
+  for(const nm of REPORT_MONEY){
+    const j=head.findIndex(h=>h.toLowerCase()===nm.toLowerCase());
+    if(j>=0) chgIx.push([nm,j]);
+  }
+  const out=[], issues=[], sumWarn=[];
   const seenOrder=new Map(), seenTrk=new Map();
   const known=new Set(cusReg().map(c=>c.code));
   for(let i=1;i<rows.length;i++){
@@ -10702,12 +10746,31 @@ function reconParse(sheetRows){
       issues.push({ln, kind:"dupOrder", what:order, at:seenOrder.get(order)}); continue; }
     const clash=trks.find(t=>seenTrk.has(t));
     if(clash){ issues.push({ln, kind:"dupTrk", what:clash, at:seenTrk.get(clash)}); continue; }
+    /* 逐項費用:填了才算。空格是「沒填」,0 是「填了零」—— 兩回事,
+       前者不進 chg,後者進。格式錯的整列退回,錯的數字進了比對只會害人。 */
+    const chg={}; let itemSum=0, nItem=0, badChg=null;
+    for(const [nm,j] of chgIx){
+      const raw=reconTxt(r[j]);
+      if(raw==="") continue;
+      if(!/^-?\d+(\.\d+)?$/.test(raw.replace(/[$,\s]/g,""))){ badChg={nm,raw}; break; }
+      const v=cents(toNum(raw.replace(/[$,\s]/g,"")));
+      chg[nm]=v; itemSum=cents(itemSum+v); nItem++;
+    }
+    if(badChg){ issues.push({ln, kind:"chgval", what:badChg.nm+": "+badChg.raw}); continue; }
     seenOrder.set(order,ln);
     for(const t of trks) seenTrk.set(t,ln);
-    out.push({ln, order, trks, cus,
-              amt:cents(toNum(amtRaw.replace(/[$,\s]/g,""))), date:cell("date")});
+    const amt=cents(toNum(amtRaw.replace(/[$,\s]/g,"")));
+    const row={ln, order, trks, cus, amt, date:cell("date")};
+    if(nItem){
+      row.chg=chg;
+      /* 各項合計對不上總額就記下來 —— 不擋,但要講。差額常是 TMS 自己的
+         服務費之類非 UPS 費用,也可能真的是漏填,由人判斷。 */
+      const diff=cents(amt-itemSum);
+      if(Math.abs(diff)>0.004) sumWarn.push({ln, order, sum:itemSum, amt, diff});
+    }
+    out.push(row);
   }
-  return {rows:out, issues};
+  return {rows:out, issues, sumWarn};
 }
 
 /* --------------------------------------------------------------------
@@ -10722,10 +10785,13 @@ function reconRun(list){
   const chgBump=(cus,name,side,v)=>{
     for(const m of [chgAll, (chgBy.get(cus)||chgBy.set(cus,new Map()).get(cus))]){
       let o=m.get(name);
-      if(!o){ o={name, rep:0, ups:0}; m.set(name,o); }
+      if(!o){ o={name, rep:0, ups:0, wms:0, wmsN:0}; m.set(name,o); }
       o[side]+=v;
+      /* wms 那一側要分得出「沒填」和「填了 0」:計次,0 次就顯示空格。 */
+      if(side==="wms") o.wmsN++;
     }
   };
+  let hasWms=false;
   const byTrk=new Map();
   for(const s of (SHIPS||[])){
     const k=reconTrk(s.tracking);
@@ -10768,6 +10834,13 @@ function reconRun(list){
         }
       }catch(err){}
     }
+    if(e.chg){
+      hasWms=true;
+      /* 沒重算的訂單,rep 和 ups 兩側都沒進逐項表 —— wms 也不進,
+         不然第三欄多算了別人沒算的單,三方對比歪一邊。 */
+      if(!block) for(const [nm,v] of Object.entries(e.chg))
+        chgBump(e.cus, nm, "wms", v);
+    }
     const o={ln:e.ln, order:e.order, cus:e.cus, date:e.date,
              name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
@@ -10806,13 +10879,16 @@ function reconRun(list){
   tot.pgap = tot.blocked===tot.orders?null:cents(tot.repAmt-tot.rep);
   tot.margin=tot.amt?tot.profit/Math.abs(tot.amt)*100:null;
   const chgRows=m=>[...m.values()].map(o=>({
-      name:o.name, rep:cents(o.rep), ups:cents(o.ups), gap:cents(o.rep-o.ups)}))
+      name:o.name, rep:cents(o.rep), ups:cents(o.ups), gap:cents(o.rep-o.ups),
+      /* wms 為 null = 這一項同仁沒填,和填 0 分開 —— 空格不是零。 */
+      wms:o.wmsN?cents(o.wms):null,
+      gapBU:o.wmsN?cents(o.wms-o.ups):null}))
     /* 差得最多的排前面 —— 三十七項裡真正要看的通常是前五項。 */
     .sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap)||Math.abs(b.ups)-Math.abs(a.ups));
   const byCus={};
   for(const [k,m] of chgBy) byCus[k]=chgRows(m);
   return {orders, cus, tot, lostLevel:[...lostLevel], noLevel:[...noLevel],
-          unmatched:orders.filter(o=>o.found<o.pkgs),
+          unmatched:orders.filter(o=>o.found<o.pkgs), hasWms,
           chg:chgRows(chgAll), chgBy:byCus};
 }
 
@@ -10828,6 +10904,7 @@ function reconIssueText(it){
   switch(it.kind){
     case "blank":    return L("必填欄位是空的:","Required field empty: ")+it.what;
     case "amt":      return L("金額不是數字:","Amount is not a number: ")+it.what;
+    case "chgval":   return L("費用欄的值不是數字:","Charge value is not a number: ")+it.what;
     case "cus":      return L("這個客戶代號沒有建檔:","No such customer code: ")+it.what;
     case "dupOrder": return L("單號重複:","Duplicate order number: ")+it.what+at;
     case "dupTrk":   return L("同一個追蹤號出現在兩張單上:",
@@ -10907,6 +10984,17 @@ function renderRecon(){
   if(r.tot.blocked) warn.push(L(
     "合計的重算與兩個差異只加了有重算的 "+(r.tot.orders-r.tot.blocked)+" 張單。",
     "The recomputed total and both variances cover only the "+(r.tot.orders-r.tot.blocked)+" order(s) that were priced."));
+  /* 各項合計對不上總額:不擋,但逐列點名。差額常是 TMS 自己的服務費之類
+     非 UPS 費用 —— 也可能真的漏填,講出來讓人判斷。 */
+  const sw=(RECON&&RECON.sumWarn)||[];
+  if(sw.length){
+    const show=sw.slice(0,6).map(w=>w.order+" ("+(w.diff>0?"+":"")+money(w.diff)+")").join(", ");
+    warn.push(L(
+      "有 "+sw.length+" 張單的各項費用合計與總收取金額不符:"+show
+        +(sw.length>6?" …":"")+"。差額可能是服務費等非 UPS 費用,也可能是漏填。",
+      sw.length+" order(s) whose itemized charges do not add up to the Total Amount: "+show
+        +(sw.length>6?" …":"")+". The difference may be non-carrier fees such as a service fee, or a missed entry."));
+  }
   const w=$("#reconWarn");
   if(w){ w.innerHTML=block.map(h=>`<div class="note block">${h}</div>`).join("")
                     +warn.map(t=>`<div class="note warn">${esc(t)}</div>`).join("");
@@ -10944,14 +11032,21 @@ function renderReconChg(){
         :`<span class="empty">—</span>`}</td>
       <td class="num">${money(o.rep)}</td>
       <td class="num">${money(o.ups)}</td>
-      <td class="num">${sign(o.gap)}</td></tr>`;
-  }).join("")||`<tr><td colspan="6" class="empty">—</td></tr>`;
-  const t=rows.reduce((a,o)=>({rep:cents(a.rep+o.rep), ups:cents(a.ups+o.ups)}),{rep:0,ups:0});
+      <td class="num">${o.wms==null?`<span class="empty">—</span>`:money(o.wms)}</td>
+      <td class="num">${sign(o.gap)}</td>
+      <td class="num">${o.gapBU==null?`<span class="empty">—</span>`:sign(o.gapBU)}</td></tr>`;
+  }).join("")||`<tr><td colspan="8" class="empty">—</td></tr>`;
+  /* wms 合計只加有填的那幾項 —— 空格不是零,混進去合計就低估。 */
+  const t=rows.reduce((a,o)=>({rep:cents(a.rep+o.rep), ups:cents(a.ups+o.ups),
+      wms:cents(a.wms+(o.wms||0)), wN:a.wN+(o.wms==null?0:1),
+      bu:cents(a.bu+(o.gapBU||0))}),{rep:0,ups:0,wms:0,wN:0,bu:0});
   const tf=$("#tReconChg")&&$("#tReconChg").tFoot;
   if(tf) tf.innerHTML=`<tr><td colspan="3"><b>${esc(L("合計","Total"))}</b></td>
       <td class="num"><b>${money(t.rep)}</b></td>
       <td class="num"><b>${money(t.ups)}</b></td>
-      <td class="num"><b>${sign(cents(t.rep-t.ups))}</b></td></tr>`;
+      <td class="num"><b>${t.wN?money(t.wms):`<span class="empty">—</span>`}</b></td>
+      <td class="num"><b>${sign(cents(t.rep-t.ups))}</b></td>
+      <td class="num"><b>${t.wN?sign(t.bu):`<span class="empty">—</span>`}</b></td></tr>`;
   const sum=$("#reconChgSum");
   if(sum){
     const over=rows.filter(o=>o.gap<-0.004).length;
@@ -10994,13 +11089,16 @@ async function reconExport(){
   /* 逐項那一張:全部一段,接著每個客戶各一段。分成幾十張分頁不好翻,
      多一欄 Scope 就能在同一張表上篩。 */
   const chgRows=[["Scope","Charge","Your Code","System Code","Recomputed",
-                  "Charged by UPS","Recomputed vs UPS"].map(HD)];
+                  "Charged by UPS","WMS/TMS Billed","UPS vs Recomputed","Billed vs UPS"].map(HD)];
   const chgName=n=>n===RECON_UNKNOWN?"Unrecognised codes":n;
   const push=(scope,list)=>{ for(const o of list) chgRows.push([
       scope, chgName(o.name),
       o.name===RECON_UNKNOWN?"":chgCodeOf(o.name),
       o.name===RECON_UNKNOWN?"":chgUpsCodes(o.name).join(" "),
-      {v:o.rep,t:"n",s:M},{v:o.ups,t:"n",s:M},{v:o.gap,t:"n",s:M}]); };
+      {v:o.rep,t:"n",s:M},{v:o.ups,t:"n",s:M},
+      o.wms==null?"":{v:o.wms,t:"n",s:M},
+      {v:o.gap,t:"n",s:M},
+      o.gapBU==null?"":{v:o.gapBU,t:"n",s:M}]); };
   push("ALL", r.chg||[]);
   for(const a of r.cus) push(a.code, (r.chgBy||{})[a.code]||[]);
 
@@ -11011,8 +11109,8 @@ async function reconExport(){
     {name:"Orders", rows:det, freeze:{r:1,c:0}, filter:"A1:O1",
      cols:[{w:20},{w:12},{w:16},{w:16},{w:30},{w:34},{w:10},{w:12},{w:22},{w:16},{w:15},
            {w:12},{w:14},{w:19},{w:19}]},
-    {name:"Charges", rows:chgRows, freeze:{r:1,c:0}, filter:"A1:G1",
-     cols:[{w:14},{w:40},{w:14},{w:20},{w:14},{w:16},{w:18}]}
+    {name:"Charges", rows:chgRows, freeze:{r:1,c:0}, filter:"A1:I1",
+     cols:[{w:14},{w:40},{w:14},{w:20},{w:14},{w:16},{w:16},{w:18},{w:16}]}
   ], "WMS_Reconciliation.xlsx");
   reconMsg(L("已匯出。","Exported."), true);
 }
@@ -11041,7 +11139,7 @@ async function reconImport(file){
   /* 跑之前先點名。等到跑完才說「這幾個沒算」,人已經在讀數字了。 */
   const pf=reconPreflight(p.rows.map(r=>r.cus));
   const res=reconRun(p.rows);
-  RECON={issues:[], res, list:p.rows};
+  RECON={issues:[], res, list:p.rows, sumWarn:p.sumWarn||[]};
   renderRecon();
   const kept=reconRowsSave(p.rows);
   reconRerunBtn();
@@ -15307,6 +15405,7 @@ const I18N={
   "ct.chgcode":["費用代碼","Charge codes"],
   "ct.recon":["對帳","Reconciliation"],
   "btn.chgview":["檢視代碼","View codes"],
+  "btn.chgpdf":["說明文件(PDF)","Guide (PDF)"],
   "th.cusrecon":["最近對帳","Last reconciliation"],
   "hd.reconchg":["逐項比對","By charge"],
   "hint.reconchg":["對到的那幾件出貨,每一項費用兩邊各算一次:照這個客戶的費率層級該收多少,以及 UPS 實際收了多少。差額就是帳單與合約的出入,差最多的排在最上面。",
@@ -15343,8 +15442,8 @@ const I18N={
   "btn.assign":["指定","Assign"],
   "btn.cusexport":["匯出待指定清單","Export unassigned list"],
   "hd.chgcode":["費用代碼","Charge codes"],
-  "hint.chgcode":["本頁為檢視用,不能直接編輯。「系統代碼」列出 UPS 可能用來開這筆費用的所有代碼:同一筆費用 UPS 會依住宅/商業、或依觸發原因拆成好幾個代碼,這裡把它們收在同一列,對帳時才是比一筆費用而不是比六筆。這一欄直接讀分桶用的那份邏輯,所以顯示的代碼和錢實際歸到哪一列永遠一致。留白代表這筆費用根本不靠代碼認:Demand 那幾項是依生效日算出來的,退件回程看的是段別而不是代碼。完整代碼表在「代碼查詢」分頁。右邊兩欄是你自己的代碼與名稱,未設定者沿用內部名稱。本頁不影響任何金額。",
-    "This page is a view, not a form. System code lists every code UPS may bill this charge under — several, where UPS splits one charge by residential/commercial or by what triggered it; they are folded into one row so reconciliation compares one charge, not six. The list is read from the same logic that assigns invoice lines, so it always agrees with where the money lands. Blank means no code identifies the charge at all: the demand charges are computed from effective dates, and an undeliverable return is recognised by its leg rather than a code. The full code table is on the Code Lookup tab. The two columns on the right are yours; unset keeps the internal name. No amount changes here."],
+  "hint.chgcode":["你的代碼是 UPS、本系統與 WMS/TMS 的共同語言。欄位意義、一列多碼與模板流程見說明文件(PDF)。",
+    "Your codes are the shared language of UPS, this system and WMS/TMS. Column meanings, multi-code rows and the template workflow are in the guide."],
   "th.chgname":["費用(系統內部名稱)","Charge (internal name)"],
   "th.chgups":["系統代碼","System code"],
   "th.chgmine":["你的代碼","Your code"],
@@ -15383,6 +15482,8 @@ const I18N={
   "th.reconmargin":["毛利率","Margin"],
   "th.reconrep":["系統重算","Recomputed"],
   "th.recongap":["UPS 差異","UPS vs recomputed"],
+  "th.chgwms":["WMS/TMS 實收","WMS/TMS billed"],
+  "th.chgbu":["實收 vs UPS","Billed vs UPS"],
   "th.reconpgap":["定價差異","Billed vs recomputed"],
   "hint.reconcols":["三個金額各問一件事。毛利是客戶實付減去 UPS 實收 —— 這一單真正賺多少。系統重算是照該客戶自己的費率層級算出這幾件本來該是多少:拿它跟客戶實付比,是定價差異(該收的有沒有收足);拿它跟 UPS 實收比,是 UPS 差異(帳單與合約有沒有出入)。客戶沒指派費率層級、或層級已被刪除時不重算,重算與兩個差異一律留空,不會拿別層的費率頂替。「UPS 實收」不含帳戶層費用 —— 那些費用沒有追蹤號,對不到任何一張單;該不該計入由帳務決定,和儀表板的處理一致。",
     "Each amount answers a different question. Profit is what the customer paid less what UPS charged — what the order actually made. Recomputed is what this customer's own rate level says the shipments should have cost: against what the customer was billed it gives the pricing variance (was enough charged), and against what UPS billed it gives the UPS variance (does the invoice match the agreement). A customer with no rate level, or one whose level has been deleted, is not repriced at all: recomputed and both variances stay blank rather than borrow another level's rates. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way."],
