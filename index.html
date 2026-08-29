@@ -14524,39 +14524,51 @@ const THEMES={
     STRIPE:"#43474e",NEG:"#f0a48c",RUN:"#c08a3e",RUNH:"#9c6d2d",
     RUN2:"#6e7480",RUN2H:"#585d67"},
 };
-/* 品牌:同一支工具的兩張臉。Tally 是手繪素描那一套,Scoobi 是圓角積木那一套。
-   Theme 選單選的是這個,Colour 選單照舊 —— 兩者互不影響,四種組合都成立。 */
-const BRANDS=["Tally","Scoobi"];
+/* 品牌:同一支工具的三張臉。Tally 是手繪素描那一套,Scoobi 是圓角積木那一套,
+   Mochi 是圓潤的對帳桌 —— 沒有抖線,圓角更大,場景是一座秤。
+   Theme 選單選的是這個,Colour 選單照舊 —— 兩者互不影響,所有組合都成立。 */
+const BRANDS=["Tally","Scoobi","Mochi"];
 const BRAND_KEY="ups_reprice_brand";
 let BRAND="Tally";
 function applyBrand(name){
   BRAND = BRANDS.includes(name)?name:"Tally";
   const tally = BRAND==="Tally";
+  const mochi = BRAND==="Mochi";
   const r=document.documentElement.style;
   /* Tally:抖線塗層開著,邊框本身要收掉 —— 兩層邊會變成雙框。
-     Scoobi:塗層關著,實線邊就是唯一的邊,不畫的話整頁沒有框。 */
+     Scoobi / Mochi:塗層關著,實線邊就是唯一的邊,不畫的話整頁沒有框。 */
   r.setProperty("--wob",   tally?"url(#wobble)":"none");
   r.setProperty("--wob2",  tally?"url(#wobble-soft)":"none");
-  r.setProperty("--rad",   tally?"9px":"14px");
-  r.setProperty("--bw",    tally?"2px":"2px");
-  r.setProperty("--bstyle",tally?"solid":"solid");
+  /* 圓角是 Mochi 唯一靠 CSS 說的話 —— 場景圓潤,面板跟著圓潤才是同一套。 */
+  r.setProperty("--rad",   tally?"9px":(mochi?"18px":"14px"));
+  r.setProperty("--bw",    "2px");
+  r.setProperty("--bstyle","solid");
   r.setProperty("--bcol",  tally?"var(--accent)":"var(--line)");
-  /* 標題字:Tally 走手繪字,Scoobi 走一般介面字 */
+  /* 標題字:Tally 走手繪字,Mochi 走圓體,Scoobi 走一般介面字 */
   const hand='"Reprice Sketch","王漢宗標楷體空心","Sketch Block","芫荽","Iansui",'
             +'"LXGW WenKai TC","霞鶩文楷 TC","Segoe Print","Ink Free"';
-  r.setProperty("--dispfam", tally ? hand+',sans-serif' : 'inherit');
+  const round='"Varela Round","Quicksand","Nunito","M PLUS Rounded 1c",'
+             +'"jf-openhuninn","Microsoft JhengHei UI","PingFang TC","Noto Sans TC"';
+  r.setProperty("--dispfam", tally ? hand+',sans-serif'
+                           : mochi ? round+',sans-serif' : 'inherit');
   /* 標題:Scoobi 用空心描邊字 —— 那是這個品牌的臉。
-     沒有描邊字型的機器上,用 text-stroke 加透明填色做出同樣的效果。 */
+     沒有描邊字型的機器上,用 text-stroke 加透明填色做出同樣的效果。
+     Mochi 是實心圓體,描邊會把圓潤的字掐細,所以跟 Tally 一樣填滿。 */
   r.setProperty("--titlefam", tally
     ? hand+',sans-serif'
-    : '"王漢宗標楷體空心","Sketch Block","Reprice Sketch",'
-      +'"Microsoft JhengHei UI",sans-serif');
-  r.setProperty("--titlefill", tally ? "var(--tab)" : "transparent");
-  r.setProperty("--titlestroke", tally ? "0" : "1.2px");
-  /* Tally 的手繪風是整套介面,不是只有標題 —— 桌面版整個視窗都是手寫字。 */
+    : mochi
+      ? round+',sans-serif'
+      : '"王漢宗標楷體空心","Sketch Block","Reprice Sketch",'
+        +'"Microsoft JhengHei UI",sans-serif');
+  r.setProperty("--titlefill", (tally||mochi) ? "var(--tab)" : "transparent");
+  r.setProperty("--titlestroke", (tally||mochi) ? "0" : "1.2px");
+  /* Tally 的手繪風是整套介面,不是只有標題 —— 桌面版整個視窗都是手寫字。
+     Mochi 同理:圓體要鋪滿整頁,只圓標題會變成兩種調性打架。 */
   r.setProperty("--bodyfam", tally
     ? hand+',"Microsoft JhengHei UI",sans-serif'
-    : '"Microsoft JhengHei UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif');
+    : mochi
+      ? round+',sans-serif'
+      : '"Microsoft JhengHei UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif');
   try{ localStorage.setItem(BRAND_KEY,BRAND); }catch(e){}
 }
 
@@ -15468,9 +15480,197 @@ function drawCat(g,a,t){
   hearts(g,a,t);
 }
 
+/* 柯基。長身、短腿、大立耳,白胸白鼻樑。耳朵是唯一不能省的 ——
+   垂耳配這個身形會讀成米格魯。停下來時整個後半身跟著尾巴擺,
+   那是柯基的招牌動作,只搖尾巴看不出來是哪一種狗。 */
+function drawCorgi(g,a,t){
+  const walking=a.act==="walk", wagging=a.act==="wag";
+  const f=a.dir<0?-1:1;
+  const st=walking?Math.sin(t/9)*2.6:0;
+  const wig=wagging?Math.sin(t/4.5)*2.6:0;            /* 扭屁股 */
+  const wag=Math.sin(t/(wagging?2.2:5))*(wagging?10:5);
+  const x=a.x, y=a.y;
+  const blink=(Math.floor(t/7)+a.seed)%50===0;
+  shadow(g,x,y,21);
+  g.strokeStyle=INK; g.lineWidth=2.1; g.lineJoin="round"; g.lineCap="round";
+
+  /* 短腿:只露一小截。腿一長整隻就變柴犬。 */
+  for(const dx of [-13,-6,6,13]){
+    const lx=x+dx*f+st*(dx<0?1:-1)+(dx<0?wig:0);
+    limb(g,lx,y-11,lx,y-4,COR_CREAM,5.8);
+    g.lineWidth=1.8; g.fillStyle=COR_CREAM;
+    g.beginPath(); g.ellipse(lx,y-3,3.6,2.3,0,0,7); g.fill(); g.stroke();
+    g.lineWidth=2.1;
+  }
+  /* 短尾:Pembroke 是一顆圓球,不是一條 */
+  g.fillStyle=COR_COAT;
+  g.beginPath(); g.ellipse(x-20*f+wig,y-24+wag*0.25,6,6.4,0,0,7);
+  g.fill(); g.stroke();
+  blob(g,x-19+wig*0.4,y-26,x+19,y-9,COR_COAT,8.5);   /* 長、低、圓 */
+  /* 白肚要整片留在身體裡。橢圓畫出下緣就會蓋到腿,看起來像浮在腿前面。 */
+  patch(g,x+6*f,y-14.6,11.5,4.2,COR_CREAM);
+
+  const hx=x+18*f, hy=y-33;
+  /* 大立耳。先畫才會壓在頭後面 */
+  for(const sd of [-1,1]){
+    g.fillStyle=COR_COAT; g.beginPath();
+    g.moveTo(hx+sd*3.5,hy-7);
+    g.quadraticCurveTo(hx+sd*12,hy-23,hx+sd*13.5,hy-4.5);
+    g.closePath(); g.fill(); g.stroke();
+    patch(g,hx+sd*9.6,hy-11,2.5,4.4,BLUSH);
+  }
+  blob(g,hx-11.5,hy-11,hx+11.5,hy+11,COR_COAT,8.5);
+  patch(g,hx+1.5*f,hy-4,3.4,7,COR_CREAM);            /* 額頭到鼻樑的白線 */
+  patch(g,hx+4*f,hy+4.5,8.6,6,COR_CREAM);            /* 白口鼻 */
+  for(const sd of [-1,1]){
+    if(blink){ g.lineWidth=1.9; g.beginPath();
+      g.moveTo(hx+sd*5.2-2.2,hy-2); g.lineTo(hx+sd*5.2+2.2,hy-2); g.stroke();
+      g.lineWidth=2.1; }
+    else dot(g,hx+sd*5.2,hy-2,2.1,2.3);
+    patch(g,hx+sd*9.2,hy+2.5,3,1.8,BLUSH);
+  }
+  dot(g,hx+3.4*f,hy+3.4,2.5,1.9);                    /* 鼻 */
+  if(wagging){
+    g.font='700 12px "Varela Round","Comic Sans MS",system-ui'; g.fillStyle=INK;
+    g.fillText(LANG?"woof!":"汪！",hx+13*f,hy-16);
+  }
+  hearts(g,a,t);
+}
+
+/* 布偶貓。奶白身配深色重點(耳、臉、前腳、尾巴尖)加一雙藍眼睛 ——
+   這兩樣少一樣就只是一隻白貓。被摸會整隻癱在地上,品種名就是這麼來的。 */
+function drawRagdoll(g,a,t){
+  const walking=a.act==="walk", flop=a.act==="flop";
+  const bob=walking?Math.abs(Math.sin(t/5))*1.5:0;
+  const x=a.x, y=a.y-bob, f=a.dir<0?-1:1;
+  const sway=Math.sin(t/7)*4;
+  const blink=(Math.floor(t/7)+a.seed)%44===0;
+  const sleep=a.act==="sit"&&(Math.floor(t/280)%2===1);
+  shadow(g,x,y,flop?24:16);
+  g.strokeStyle=INK; g.lineWidth=2.1; g.lineJoin="round"; g.lineCap="round";
+
+  if(flop){
+    /* 癱:攤在地上,頭側著,腳往外伸,眼睛瞇成兩道彎。 */
+    /* 癱著的尾巴也要蓬,只是攤在地上 */
+    g.save(); g.lineCap="round";
+    for(const [c,w] of [[INK,9.4],[RAG_COAT,6.6]]){
+      g.strokeStyle=c; g.lineWidth=w;
+      g.beginPath(); g.moveTo(x-14,y-10);
+      g.quadraticCurveTo(x-24,y-12,x-30,y-5); g.stroke();
+    }
+    g.restore();
+    g.fillStyle=RAG_PT; g.strokeStyle=INK; g.lineWidth=2.1;
+    g.beginPath(); g.ellipse(x-31,y-4.5,4.6,4,0,0,7); g.fill(); g.stroke();
+    for(const dx of [-4,6]){
+      limb(g,x+dx,y-11,x+dx+9*f,y-5,RAG_COAT,5);
+      g.fillStyle=RAG_PT; g.beginPath();
+      g.ellipse(x+dx+11*f,y-4.6,3.4,2.4,0,0,7); g.fill(); g.stroke();
+    }
+    blob(g,x-17,y-19,x+15,y-2,RAG_COAT,8.5);
+    const fx=x+19*f, fy=y-16;
+    for(const sd of [-1,1]){
+      g.fillStyle=RAG_PT; g.beginPath();
+      g.moveTo(fx+sd*2.5,fy-7);
+      g.quadraticCurveTo(fx+sd*10,fy-17,fx+sd*11.5,fy-3);
+      g.closePath(); g.fill(); g.stroke();
+    }
+    blob(g,fx-11,fy-10,fx+11,fy+10,RAG_COAT,8.5);
+    patch(g,fx+1.5*f,fy+1.5,6.6,6,RAG_PT);            /* 面罩同樣只罩中間 */
+    g.strokeStyle=INK; g.lineWidth=1.9;
+    for(const sd of [-1,1]){
+      g.beginPath(); g.moveTo(fx+sd*5-2.4,fy-1);
+      g.quadraticCurveTo(fx+sd*5,fy-3.6,fx+sd*5+2.4,fy-1); g.stroke();
+    }
+    g.lineWidth=2.1;
+    g.fillStyle="#e0707a"; g.beginPath();
+    g.moveTo(fx+2*f,fy+4.4); g.lineTo(fx+2*f-2.2,fy+2.4);
+    g.lineTo(fx+2*f+2.2,fy+2.4); g.closePath(); g.fill();
+    hearts(g,a,t);
+    return;
+  }
+
+  /* 尾巴:長、蓬、彎,尖端深色。布偶貓的尾巴幾乎跟身體一樣長 ——
+     畫短了尖端那顆深色球會變成棒棒糖,不是貓尾巴。 */
+  const tbx=walking?x-13*f:x-12, tby=walking?y-16:y-13;
+  const ttx=walking?x-27*f:x-25, tty=(walking?y-29:y-37)+sway;
+  const tcx=(tbx+ttx)/2-5*(walking?f:1), tcy=tby-12;
+  g.save(); g.lineCap="round";
+  for(const [c,w] of [[INK,9.4],[RAG_COAT,6.6]]){
+    g.strokeStyle=c; g.lineWidth=w;
+    g.beginPath(); g.moveTo(tbx,tby);
+    g.quadraticCurveTo(tcx,tcy,ttx,tty); g.stroke();
+  }
+  g.restore();
+  g.fillStyle=RAG_PT; g.strokeStyle=INK; g.lineWidth=2.1;
+  g.beginPath(); g.ellipse(ttx,tty,4.8,4.4,0,0,7); g.fill(); g.stroke();
+
+  if(walking){
+    for(const dx of [-9,-3,4,10]){
+      const sw2=Math.sin(t/5+(dx<0?0:Math.PI))*3;
+      const lx=x+dx*f+sw2;
+      limb(g,lx,y-13,lx,y-4,RAG_COAT,4.6);
+      g.lineWidth=1.8; g.fillStyle=RAG_PT;
+      g.beginPath(); g.ellipse(lx,y-3,3.4,2.2,0,0,7); g.fill(); g.stroke();
+      g.lineWidth=2.1;
+    }
+    blob(g,x-14,y-23,x+14,y-9,RAG_COAT,8);
+  }else{
+    /* 坐姿:下寬上窄的一團,圓角比一般貓大一號 —— 毛長,輪廓要蓬。 */
+    const bw=14,bh=25;
+    g.fillStyle=RAG_COAT; g.beginPath();
+    g.moveTo(x-bw,y);
+    g.quadraticCurveTo(x-bw-1.5,y-bh*0.6,x-bw*0.5,y-bh);
+    g.quadraticCurveTo(x,y-bh-4,x+bw*0.5,y-bh);
+    g.quadraticCurveTo(x+bw+1.5,y-bh*0.6,x+bw,y);
+    g.closePath(); g.fill(); g.stroke();
+    for(const dx of [-5,4]){                          /* 前腳是深色重點 */
+      g.fillStyle=RAG_PT;
+      g.beginPath(); g.ellipse(x+dx,y-2.6,4.2,2.8,0,0,7); g.fill(); g.stroke();
+    }
+  }
+  const hx=x+(walking?14*f:0), hy=walking?y-25:y-35;
+  for(const sd of [-1,1]){                            /* 耳朵是深色重點 */
+    g.fillStyle=RAG_PT; g.beginPath();
+    g.moveTo(hx+sd*3.5,hy-8);
+    g.quadraticCurveTo(hx+sd*11,hy-21,hx+sd*12.5,hy-4);
+    g.closePath(); g.fill(); g.stroke();
+    patch(g,hx+sd*8.8,hy-9.5,2.2,3.6,BLUSH);
+  }
+  blob(g,hx-12,hy-11,hx+12,hy+11,RAG_COAT,8.5);
+  /* 臉上的重點色只罩眼睛和鼻子那一塊,兩頰和額頭要留奶白 ——
+     罩滿整張臉就變成一顆深色球,認不出是貓。 */
+  patch(g,hx,hy+1.5,7.4,7,RAG_PT);
+  for(const sd of [-1,1]){
+    if(blink||sleep){ g.lineWidth=1.9; g.beginPath();
+      g.moveTo(hx+sd*5-2.3,hy-1.5); g.lineTo(hx+sd*5+2.3,hy-1.5); g.stroke();
+      g.lineWidth=2.1; }
+    else{
+      g.fillStyle=RAG_EYE;                            /* 藍眼睛 */
+      g.beginPath(); g.ellipse(hx+sd*5,hy-1.5,3,3.3,0,0,7); g.fill(); g.stroke();
+      dot(g,hx+sd*5,hy-1,1.4,1.7);
+    }
+    patch(g,hx+sd*9,hy+3.4,3,1.8,BLUSH);
+    g.strokeStyle=INK; g.lineWidth=.9;
+    for(const dy of [-.5,2.2]){ g.beginPath();
+      g.moveTo(hx+sd*9.6,hy+2+dy); g.lineTo(hx+sd*17,hy+dy*1.7); g.stroke(); }
+    g.lineWidth=2.1;
+  }
+  g.fillStyle="#e0707a"; g.beginPath();
+  g.moveTo(hx,hy+4); g.lineTo(hx-2.2,hy+2); g.lineTo(hx+2.2,hy+2);
+  g.closePath(); g.fill();
+  if(sleep){ g.font='700 12px "Varela Round",system-ui'; g.fillStyle=INK;
+    g.fillText("z",hx+16,hy-14); g.fillText("z",hx+21,hy-21); }
+  hearts(g,a,t);
+}
+
 let INK="#351c15", BOX="#8a6104", PAPER="#fffdf7",
     CAT_COAT="#f2ece1", CAT_MARK="#cfc7b8",
     DOG_COAT="#f5efe6", DOG_MARK="#b5793f";
+/* Mochi 的兩隻。認的是品種特徵,不是「一隻狗一隻貓」:
+   柯基 —— 大立耳、長身短腿、白胸白鼻樑、圓屁股短尾。垂耳就變米格魯了。
+   布偶貓 —— 奶白身配深色重點(耳、臉、腳、尾),藍眼睛,毛蓬。 */
+const COR_COAT="#e0a259", COR_CREAM="#fdf5e8",
+      RAG_COAT="#f9f2e7", RAG_PT="#7d5c49", RAG_EYE="#5aa6d6";
 /* 顯示場景的唯一入口。三個地方原本各自寫 style.display,
    顯示之後都沒有重量尺寸 —— 那就是動畫不見的原因。 */
 function sceneShow(on){
@@ -15491,22 +15691,33 @@ function sceneResize(){
   SCENE.W=r.width; SCENE.H=r.height;
   SCENE.ctx.setTransform(SCENE.dpr,0,0,SCENE.dpr,0,0);
 }
+/* 角色跟著品牌換。Tally 是貨場、Scoobi 是倉庫,兩個工人加一貓一狗;
+   Mochi 是一張對帳桌,場地就這麼大 —— 工人擠進去就沒地方擺秤,
+   所以只留柯基和布偶貓兩隻,而且是不同的兩隻,不是原本那對換色。 */
+function buildActors(){
+  SCENE.actors = BRAND==="Mochi"
+    ? [
+        {kind:"corgi",  x:120,y:160,seed:17,act:"walk",dir:1, tgt:300,love:0},
+        {kind:"ragdoll",x:300,y:160,seed:41,act:"sit", dir:-1,love:0},
+      ]
+    : [
+        /* 襯衫和背心必須是對比色 —— 同色系疊起來只會看成衣服上一塊補丁 */
+        {kind:"worker",x:72, y:150,seed:11,act:"walk",dir:1, box:false,tgt:230,
+         coat:"#5b86b8",vest:"#e8762c",hat:"#ffb500",hair:"#3a2b20",love:0},
+        {kind:"worker",x:214,y:156,seed:29,act:"idle",dir:-1,box:true, tgt:92,
+         coat:"#d8d2c6",vest:"#5b9e6b",hat:"#e8762c",hair:"#6b4a2e",love:0},
+        {kind:"dog",   x:150,y:162,seed:53,act:"walk",dir:1, tgt:300,love:0},
+        {kind:"cat",   x:334,y:160,seed:71,act:"sit",love:0},
+      ];
+  spreadActors();
+}
 function sceneInit(){
   SCENE.cv=$("#scene"); if(!SCENE.cv) return;
   SCENE.ctx=SCENE.cv.getContext("2d");
   const cs=getComputedStyle(document.documentElement);
   INK=cs.getPropertyValue("--accent").trim()||INK;
   sceneResize(); addEventListener("resize",()=>{ sceneResize(); spreadActors(); });
-  SCENE.actors=[
-    /* 襯衫和背心必須是對比色 —— 同色系疊起來只會看成衣服上一塊補丁 */
-    {kind:"worker",x:72, y:150,seed:11,act:"walk",dir:1, box:false,tgt:230,
-     coat:"#5b86b8",vest:"#e8762c",hat:"#ffb500",hair:"#3a2b20",love:0},
-    {kind:"worker",x:214,y:156,seed:29,act:"idle",dir:-1,box:true, tgt:92,
-     coat:"#d8d2c6",vest:"#5b9e6b",hat:"#e8762c",hair:"#6b4a2e",love:0},
-    {kind:"dog",   x:150,y:162,seed:53,act:"walk",dir:1, tgt:300,love:0},
-    {kind:"cat",   x:334,y:160,seed:71,act:"sit",love:0},
-  ];
-  spreadActors();
+  buildActors();
   /* 摸摸。桌面版的場景可以點角色互動( _pet_at),這裡同樣。 */
   SCENE.cv.style.cursor="pointer";
   SCENE.cv.title = LANG?"Click an animal":"點一下摸摸";
@@ -15520,9 +15731,12 @@ function sceneInit(){
     }
     if(best&&bd<42){
       best.love=SCENE.t;
-      /* 點下去各有各的反應:狗抬腿尿尿,貓炸毛,工人揮手。 */
+      /* 點下去各有各的反應:狗抬腿尿尿,貓炸毛,工人揮手。
+         柯基扭屁股搖尾巴,布偶貓整隻癱下去 —— 兩個都是品種的招牌動作。 */
       if(best.kind==="dog"){ best.act="pee";  best.wait=90; }
       else if(best.kind==="cat"){ best.act="puff"; best.wait=110; }
+      else if(best.kind==="corgi"){ best.act="wag"; best.wait=110; }
+      else if(best.kind==="ragdoll"){ best.act="flop"; best.wait=170; }
       else { best.act="wave"; best.wait=70; }
     }
   });
@@ -15530,10 +15744,13 @@ function sceneInit(){
   else sceneDraw();
 }
 /* 角色沿著整條場景散開,不要全擠在左邊。
-   Tally 左三分之一是棚子和貨櫃,所以人往右擺;Scoobi 左邊是貨架。 */
+   Tally 左三分之一是棚子和貨櫃,所以人往右擺;Scoobi 左邊是貨架;
+   Mochi 左邊只有一個矮帳本櫃,讓兩隻分站秤的兩側,畫面才平衡。 */
 function spreadActors(){
   const W=SCENE.W||900;
-  const lead = BRAND==="Tally" ? Math.min(0.42*W, 420) : Math.min(0.18*W, 190);
+  const lead = BRAND==="Tally" ? Math.min(0.42*W, 420)
+             : BRAND==="Mochi" ? Math.min(0.10*W, 110)
+             : Math.min(0.18*W, 190);
   const span = Math.max(160, W-lead-70);
   const a=SCENE.actors;
   if(!a.length) return;
@@ -15563,6 +15780,36 @@ function sceneStep(){
   for(const a of SCENE.actors) a.y=FLR;
   if(SCENE.t%3) return;
   for(const a of SCENE.actors){
+    /* 布偶貓不吃雷這一套 —— 這個品種出了名的不驚不乍,而且 Mochi 是室內。
+       牠只有兩種狀態:坐著、慢慢走;被摸了就癱一陣子。 */
+    if(a.kind==="ragdoll"){
+      if(a.act==="flop"){ if(--a.wait<=0) a.act="sit"; continue; }
+      if(a.act==="walk"){
+        a.x += 0.36*a.dir;
+        if(a.x>a.tgt || a.x<a.home-10){ a.dir*=-1; a.x+=0.36*a.dir; }
+        if(--a.wait<=0){ a.act="sit"; a.wait=240+((a.seed*37)%300); }
+      }else if(--a.wait<=0){
+        a.act="walk"; a.dir=Math.random()<0.5?-1:1;
+        a.wait=170+((a.seed*53)%240);
+      }
+      continue;
+    }
+    /* 柯基走得比一般狗慢 —— 腿就那麼短。走到頭停下來扭一下再折返。 */
+    if(a.kind==="corgi"){
+      const Wc=SCENE.W||640;
+      if(a.act==="wag"){ if(--a.wait<=0) a.act="walk"; continue; }
+      if(a.act==="walk"){
+        a.x += 0.62*a.dir;
+        if((a.dir>0&&a.x>=a.tgt)||(a.dir<0&&a.x<=a.tgt)){
+          a.dir*=-1;
+          a.tgt = a.dir>0? Math.min(Wc-50,a.x+150) : Math.max(50,a.x-150);
+          a.act = Math.random()<0.55?"wag":"idle";
+          a.wait = a.act==="wag"?70:40;
+        }
+      }else if(--a.wait<=0) a.act="walk";
+      a.x=Math.max(40,Math.min(Wc-40,a.x));
+      continue;
+    }
     if(a.kind==="cat"){
       /* 打雷會嚇到。雷是全場同一瞬間,所以讀 FLASH 而不是自己擲骰。 */
       /* 閃電那一幀就要嚇到 —— 慢一幀看起來像先聽到雷才反應。 */
@@ -15899,6 +16146,127 @@ function drawTallyYard(g,W,H){
   g.strokeStyle=ink; g.lineWidth=1.8;
   skLine(g,10,FLR,W-10,FLR,3);
 }
+
+/* Mochi 的圓角方框。Tally 那套是抖線,這一套一條抖線都不要 ——
+   圓潤是這個品牌唯一在說的事,混一點手繪就毀了。 */
+function roRect(g,x,y,w,h,r,fill){
+  g.beginPath(); g.roundRect(x,y,w,h,r);
+  if(fill){ g.fillStyle=fill; g.fill(); }
+  g.stroke();
+}
+/* Mochi:一張對帳桌。左邊帳本櫃,中間一座秤 —— 左盤是 UPS 帳單,
+   右盤是訂單,秤桿晃幾下停平,平了跳一個勾,然後重來。
+   這支工具一個月就是在做這件事,所以場景畫的是這件事,不是又一個倉庫。 */
+function drawMochiDesk(g,W,H){
+  const FLR=H-14, t=SCENE.t;
+  const paper=pal("--panel","#fffdf7"), line=pal("--line","#caa356"),
+        tab=pal("--tab","#ffb500"), ink=INK;
+  const soft=blendHex(paper,line,.22), soft2=blendHex(paper,line,.42);
+  g.lineJoin="round"; g.lineCap="round";
+
+  /* 兩扇圓窗,天色照當地時間走 */
+  const wins=[[W*0.70,44,21],[W*0.84,44,21]];
+  g.lineWidth=2;
+  for(const [wx,wy,wr] of wins){
+    const sky=g.createLinearGradient(0,wy-wr,0,wy+wr);
+    sky.addColorStop(0,skyColour("top")); sky.addColorStop(1,skyColour("bot"));
+    g.beginPath(); g.arc(wx,wy,wr,0,7);
+    g.fillStyle=sky; g.fill(); g.strokeStyle=ink; g.stroke();
+  }
+  /* 窗外的天氣只畫在窗格裡 */
+  g.save();
+  g.beginPath();
+  for(const [wx,wy,wr] of wins){ g.moveTo(wx+wr,wy); g.arc(wx,wy,wr,0,7); }
+  g.clip();
+  drawSunMoon(g,W,74); drawWeather(g,W,92,t);
+  g.restore();
+  g.strokeStyle=ink;
+  for(const [wx,wy,wr] of wins){
+    g.lineWidth=2; g.beginPath(); g.arc(wx,wy,wr,0,7); g.stroke();
+    g.lineWidth=1.5;
+    g.beginPath(); g.moveTo(wx-wr,wy); g.lineTo(wx+wr,wy); g.stroke();
+    g.beginPath(); g.moveTo(wx,wy-wr); g.lineTo(wx,wy+wr); g.stroke();
+  }
+
+  /* 左邊:帳本櫃兩層。過期的帳期就住在這裡。 */
+  const cx0=18, cw=118, cy0=FLR-92;
+  g.strokeStyle=ink; g.lineWidth=2;
+  roRect(g,cx0,cy0,cw,92,10,soft);
+  g.lineWidth=1.8;
+  g.beginPath(); g.moveTo(cx0,cy0+46); g.lineTo(cx0+cw,cy0+46); g.stroke();
+  const books=[tab,BOX,blendHex(tab,ink,.35),soft2,BOX,tab];
+  for(let r=0;r<2;r++) for(let b=0;b<3;b++){
+    const bw2=26+((b*7+r*3)%8), bx=cx0+9+b*34, by2=cy0+8+r*46;
+    g.lineWidth=1.8;
+    roRect(g,bx,by2,bw2,34,5,books[(r*3+b)%books.length]);
+    g.lineWidth=1.3;
+    g.beginPath(); g.moveTo(bx+4,by2+9); g.lineTo(bx+bw2-4,by2+9); g.stroke();
+  }
+
+  /* ---- 秤 ----
+     一輪 460 幀:先左右晃,晃幅遞減,後段停平並跳出勾。
+     停平那一刻才是重點,所以晃的時間短、平的時間長。 */
+  const cyc=(t%460)/460;
+  const tilt = cyc<0.6 ? Math.sin(cyc*Math.PI*7)*0.22*(1-cyc/0.6) : 0;
+  const mp = cyc>=0.62 ? Math.min(1,(cyc-0.62)/0.08) : 0;
+
+  /* 支點要夠高:盤子連上面的東西垂下來大約 36,壓太低會蓋到走過去的貓狗。 */
+  const px=Math.round(W*0.46), py=FLR-100, half=54;
+  g.strokeStyle=ink; g.lineWidth=2;
+  g.beginPath();                                     /* 底座 */
+  g.moveTo(px-26,FLR); g.lineTo(px-16,FLR-11);
+  g.lineTo(px+16,FLR-11); g.lineTo(px+26,FLR);
+  g.closePath(); g.fillStyle=soft2; g.fill(); g.stroke();
+  roRect(g,px-5,py+2,10,FLR-13-py,5,soft);           /* 立柱 */
+
+  const lx=px-Math.cos(tilt)*half, ly=py-Math.sin(tilt)*half;
+  const rx=px+Math.cos(tilt)*half, ry=py+Math.sin(tilt)*half;
+  g.lineWidth=7.5; g.strokeStyle=ink;                /* 秤桿:深色打底 */
+  g.beginPath(); g.moveTo(lx,ly); g.lineTo(rx,ry); g.stroke();
+  g.lineWidth=4.4; g.strokeStyle=tab;                /* 亮色疊上去 */
+  g.beginPath(); g.moveTo(lx,ly); g.lineTo(rx,ry); g.stroke();
+  g.strokeStyle=ink; g.lineWidth=2;
+  g.beginPath(); g.arc(px,py,6,0,7); g.fillStyle=soft; g.fill(); g.stroke();
+
+  /* 吊繩永遠垂直 —— 盤子不會跟著秤桿轉,那是秤看起來對的關鍵。
+     繩子要留得夠長:盤上的東西疊起來會往上長,繩短了帳單會頂到秤桿。 */
+  const pan=(ax,ay)=>{
+    g.lineWidth=1.6;
+    g.beginPath(); g.moveTo(ax,ay); g.lineTo(ax,ay+22); g.stroke();
+    g.lineWidth=2;
+    g.beginPath(); g.moveTo(ax-18,ay+22);
+    g.quadraticCurveTo(ax,ay+36,ax+18,ay+22);
+    g.closePath(); g.fillStyle=soft2; g.fill(); g.stroke();
+  };
+  pan(lx,ly);                                        /* 左盤:帳單三張 */
+  for(let k=0;k<3;k++) roRect(g,lx-11+k*1.5,ly+15-k*4.6,20,7,2,paper);
+  pan(rx,ry);                                        /* 右盤:訂單兩箱 */
+  roRect(g,rx-11,ry+11,13,11,3,BOX);
+  roRect(g,rx+1,ry+14,11,8,3,tab);
+
+  if(mp>0){                                          /* 對平了,跳一個勾 */
+    g.save(); g.globalAlpha=mp;
+    const by=py-24-mp*4;
+    g.beginPath(); g.arc(px,by,13,0,7);
+    g.fillStyle=tab; g.fill(); g.strokeStyle=ink; g.lineWidth=2.2; g.stroke();
+    g.lineWidth=3.4;
+    g.beginPath();
+    g.moveTo(px-5.5,by); g.lineTo(px-1.5,by+4.4); g.lineTo(px+6,by-5);
+    g.stroke(); g.restore();
+  }
+
+  /* 右邊:疊起來的包裹 */
+  const sx=W-104;
+  g.strokeStyle=ink; g.lineWidth=2;
+  roRect(g,sx,FLR-30,44,30,7,BOX);
+  roRect(g,sx+7,FLR-54,32,24,7,tab);
+  g.lineWidth=1.5;
+  g.beginPath(); g.moveTo(sx+22,FLR-30); g.lineTo(sx+22,FLR); g.stroke();
+  g.beginPath(); g.moveTo(sx+23,FLR-54); g.lineTo(sx+23,FLR-30); g.stroke();
+
+  g.strokeStyle=ink; g.lineWidth=2;                  /* 地板 */
+  g.beginPath(); g.moveTo(10,FLR); g.lineTo(W-10,FLR); g.stroke();
+}
 function sceneDraw(){
   const g=SCENE.ctx; if(!g) return;
   const W=SCENE.W,H=SCENE.H,t=SCENE.t;
@@ -15914,6 +16282,15 @@ function sceneDraw(){
     skRect(g,3,3,W-6,H-6,101,sky);
     drawTallyYard(g,W,H);
     drawWeather(g,W,H,t);
+  }else if(BRAND==="Mochi"){
+    /* Mochi:圓潤的對帳桌。連外框都是圓角 —— 方角一出現就跟場景打架。 */
+    g.beginPath(); g.roundRect(3,3,W-6,H-6,16);
+    g.fillStyle=pal("--bg","#f4ecdc"); g.fill();
+    g.strokeStyle=INK; g.lineWidth=2; g.stroke();
+    drawMochiDesk(g,W,H);
+    g.fillStyle=INK;
+    g.font='600 13px "Varela Round","Quicksand",system-ui';
+    g.fillText(LANG?"Tap the corgi or the cat!":"點一下柯基或貓！",20,24);
   }else{
     /* Scoobi:室內倉庫。招牌、窗、左邊貨架、橫貫全寬的輸送帶、右邊堆高機。 */
     skRect(g,3,3,W-6,H-6,101,pal("--bg","#f4ecdc"));
@@ -15981,6 +16358,8 @@ function sceneDraw(){
   for(const a of SCENE.actors){
     if(a.kind==="worker") drawWorker(g,a,t);
     else if(a.kind==="dog") drawDog(g,a,t);
+    else if(a.kind==="corgi") drawCorgi(g,a,t);
+    else if(a.kind==="ragdoll") drawRagdoll(g,a,t);
     else drawCat(g,a,t);
   }
 }
@@ -16150,7 +16529,8 @@ $("#langSel") && ($("#langSel").onchange=e=>{
      applyLang() 已經處理,這裡只要補場景提示。 */
   if(typeof sceneDraw==="function") sceneDraw();
 });
-$("#brandSel").onchange=e=>{ applyBrand(e.target.value); spreadActors(); sceneDraw(); };
+/* 換品牌要重建角色,不是只重排 —— Mochi 的兩隻跟另外兩套不是同一批。 */
+$("#brandSel").onchange=e=>{ applyBrand(e.target.value); buildActors(); sceneDraw(); };
 $("#themeSel").onchange=e=>{ applyTheme(e.target.value); drawClock(); drawDateCard(); };
 $("#tzSel").onchange=e=>{ TZI=+e.target.value; drawClock(); drawDateCard();
   if(WX.live) fetchWx(); };
