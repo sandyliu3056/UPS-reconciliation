@@ -6,7 +6,7 @@
 <title>UPS Reconciliation</title>
 <!-- 我的最愛圖示:貓、狗、金幣。內嵌成 data URI,
      所以不需要另一個檔案,也不會產生網路請求。 -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjwhLS0g5YWp5YCL5bCN6Kmx5qGG5pac6JGX5bCN6KeS5pO6Ouiyk+WcqOWPs+S4iuOAgeeLl+WcqOW3puS4iyzlsL7lt7TmnJ3kuK3plpPnmoTlv4PjgIIKICAgICAxNnB4IOWPquWJqeS4ieaoo+iqjeW+l+WHuuS+hiDigJTigJQg5rex6Imy5ZyT5bqV44CB5YWp5aGK57Gz55m944CB5LiA6bue6buDLOaJgOS7peWFiOiuk+mCo+S4ieaoo+ermeS9j+OAgiAtLT4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTUiIGZpbGw9IiMzRTJBMjAiLz4KCjwhLS0gPT09PT09PT09PT09PT09PT0g5bem5LiLOueLlyA9PT09PT09PT09PT09PT09PSAtLT4KPGcgdHJhbnNmb3JtPSJyb3RhdGUoLTEwIDIwIDQzKSI+CiAgPCEtLSDlhanpmrvlnoLogLMs5aOT5Zyo5qGG5a2Q5b6M6Z2i5YWI55Wr44CC6YO95Z6C5Zyo5bem5YG0IOKAlOKAlCDlj7PlgbTmmK/li77li77lkozmoYblrZDlsL7lt7QsCiAgICAgICDmlL7kuI3kuIvnrKzkuozpmrss5YWp6Zq755aK5Zyo5bem6YKK5Y+N6ICM5LiA55y85bCx5piv54uX55qE5Z6C6ICz44CC5b6M6Z2i6YKj6Zq75rex5LiA6bue44CCIC0tPgogIDxwYXRoIGQ9Ik0xNSAzNGMtOC41IDAtMTEgNi05LjYgMTIuNCAxIDQuOCA0LjggNi42IDguOCA1LjhaIgogICAgICAgIGZpbGw9IiNBNTZBMzQiIHN0cm9rZT0iIzJFMUMxNCIgc3Ryb2tlLXdpZHRoPSIyLjYiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cGF0aCBkPSJNMTguNSAzNS41Yy01LjYgLjQtNy40IDUuMi02LjQgOS44LjggMy44IDMuOCA1LjIgNi44IDQuNloiCiAgICAgICAgZmlsbD0iI0I1NzkzRiIgc3Ryb2tlPSIjMkUxQzE0IiBzdHJva2Utd2lkdGg9IjIuNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgogIDwhLS0g5qGG5a2QLOWPs+S4i+inkuS4gOWAi+Wwj+WwvuW3tOaMh+WQkeWLvuWLviAtLT4KICA8cGF0aCBkPSJNMTEgMzRoMjBhNCA0IDAgMCAxIDQgNHYxM2E0IDQgMCAwIDEtNCA0SDIwbC0zIDQtMS00aC01YTQgNCAwIDAgMS00LTRWMzhhNCA0IDAgMCAxIDQtNFoiCiAgICAgICAgZmlsbD0iI0ZBRjVFQyIgc3Ryb2tlPSIjMkUxQzE0IiBzdHJva2Utd2lkdGg9IjIuNyIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgogIDxnIHN0cm9rZT0iIzJFMUMxNCIgc3Ryb2tlLXdpZHRoPSIyLjYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+CiAgICA8cGF0aCBkPSJNMTIuNSA0NC41aDE1Ii8+PHBhdGggZD0iTTEyLjUgNTBoMTEiLz4KICA8L2c+CjwvZz4KCjwhLS0gPT09PT09PT09PT09PT09PT0g5Y+z5LiKOuiykyA9PT09PT09PT09PT09PT09PSAtLT4KPGcgdHJhbnNmb3JtPSJyb3RhdGUoLTEwIDQ0IDIxKSI+CiAgPCEtLSDlhanpmrvlsJbogLMs5YGa6IOW5LiA6bue44CC5qGG5a2Q6aCC6YKK5ZyoIHniiYg5LOiAs+actemcsuWcqOS4iumdoueahOmDqOWIhuimgeWkoOWvrCwKICAgICAgIOaPj+mCiuaJjeS4jeacg+aKiueZveW6leWQg+WFiSwxNnB4IOS4i+mChOeci+W+l+WHuuaYr+eZveiAs+mFjeeyiee0heWFp+iAs+OAgiAtLT4KICA8cGF0aCBkPSJNMzcgMTEgNDAgMSA0NS41IDEwWiIgZmlsbD0iI0ZBRjVFQyIgc3Ryb2tlPSIjMkUxQzE0IiBzdHJva2Utd2lkdGg9IjIuNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgogIDxwYXRoIGQ9Ik01NSAxMSA1MiAxIDQ2LjUgMTBaIiBmaWxsPSIjRkFGNUVDIiBzdHJva2U9IiMyRTFDMTQiIHN0cm9rZS13aWR0aD0iMi40IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CiAgPHBhdGggZD0iTTQwLjIgOSA0MS4yIDQgNDMuNiA4LjRaIiBmaWxsPSIjRjVBMzlDIi8+CiAgPHBhdGggZD0iTTUxLjggOSA1MC44IDQgNDguNCA4LjRaIiBmaWxsPSIjRjVBMzlDIi8+CiAgPCEtLSDmoYblrZAs5bem5LiL6KeS5bC+5be05oyH5ZCR5b+DIC0tPgogIDxwYXRoIGQ9Ik0zNSA5aDIwYTQgNCAwIDAgMSA0IDR2MTNhNCA0IDAgMCAxLTQgNGgtNWwtMSA0LTMtNEgzNWE0IDQgMCAwIDEtNC00VjEzYTQgNCAwIDAgMSA0LTRaIgogICAgICAgIGZpbGw9IiNGQUY1RUMiIHN0cm9rZT0iIzJFMUMxNCIgc3Ryb2tlLXdpZHRoPSIyLjciIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8ZyBzdHJva2U9IiMyRTFDMTQiIHN0cm9rZS13aWR0aD0iMi42IiBzdHJva2UtbGluZWNhcD0icm91bmQiPgogICAgPHBhdGggZD0iTTM4IDE4aDE1Ii8+PHBhdGggZD0iTTM4IDIzLjVoMTEiLz4KICA8L2c+CjwvZz4KCjwhLS0gPT09PT09PT09PT09PT09PT0g5Lit6ZaT55qE5Yu+5Yu+ID09PT09PT09PT09PT09PT09CiAgICAg5bCN5biz5bel5YW355So5omT5Yu+5q+U5oSb5b+D6LK85YiH44CC5rex6Imy5LiA562G5Zyo5LiL55W25o+P6YKKLOm7g+iJsuS4gOethueWiuS4iuWOuywKICAgICDlnJPop5LmlLblsL4g4oCU4oCUIDE2cHgg5LiL6YKE5piv5riF5qWa55qE5LiA5YCL5Yu+44CCIC0tPgo8ZyBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgogIDxwYXRoIGQ9Ik0yNy44IDMzIDMxLjIgMzYuOCAzOC40IDI3IiBzdHJva2U9IiMyRTFDMTQiIHN0cm9rZS13aWR0aD0iNiIvPgogIDxwYXRoIGQ9Ik0yNy44IDMzIDMxLjIgMzYuOCAzOC40IDI3IiBzdHJva2U9IiNFRkE4MUMiIHN0cm9rZS13aWR0aD0iMy40Ii8+CjwvZz4KCjwhLS0gPT09PT09PT09PT09PT09PT0g5YuV5oWL57eaLOS7peWLvuWLvueCuuWck+W/gyA9PT09PT09PT09PT09PT09PSAtLT4KPGcgc3Ryb2tlPSIjRUZBODFDIiBzdHJva2Utd2lkdGg9IjIuNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBmaWxsPSJub25lIj4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzMiAzMi41KSByb3RhdGUoLTE1MCkiPgogICAgPHBhdGggZD0iTTguNSAtMy4yYTcuNiA3LjYgMCAwIDEgMCA2LjQiLz4KICAgIDxwYXRoIGQ9Ik0xMS44IC00LjRhMTAuOCAxMC44IDAgMCAxIDAgOC44Ii8+CiAgPC9nPgogIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDMyIDMyLjUpIHJvdGF0ZSgzMCkiPgogICAgPHBhdGggZD0iTTguNSAtMy4yYTcuNiA3LjYgMCAwIDEgMCA2LjQiLz4KICAgIDxwYXRoIGQ9Ik0xMS44IC00LjRhMTAuOCAxMC44IDAgMCAxIDAgOC44Ii8+CiAgPC9nPgo8L2c+Cjwvc3ZnPgo=">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjwhLS0g5p+v5Z+65Zyo5bem44CB5biD5YG26LKT5Zyo5Y+zLOWFqemhhuWck+mgreS4puaOkizkuIvmlrnkuIDmnprph5HoibLli77nq6Ag4oCU4oCUIOWwjeW4s+W3peWFt+eahOWNsOiomOOAggogICAgIOWFqOmDqOeUqOWck+WSjOapouWckyzkuI3lho3mmK/lsI3oqbHmoYbmp4vlnJbjgIIKICAgICAxNnB4IOWPquWJqeWbm+aoo+iqjeW+l+WHuuS+hjrmt7HoibLlnJPlupXjgIHkuIDlnJjmqZjjgIHkuIDlnJjnmb3jgIHkuIDpu57ph5HjgIIgLS0+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE2IiBmaWxsPSIjM0UyQTIwIi8+Cgo8IS0tID09PT09PT09PT09PT09PT09IOW3pjrmn6/ln7ogPT09PT09PT09PT09PT09PT0KICAgICDlpKfnq4vogLPmmK/mn6/ln7rnmoToh4ks6ICz5bCW5pS25ZyT5LiN5pS25bCWIOKAlOKAlCDlsJbogLPmnIPot5/ospPmt7flnKjkuIDotbfjgIIKICAgICDlhanpmrvogLPmnLXpg73opoHnlZnlnKjoh6rlt7HpoK3kuIos5Yil5Ly45Yiw6LKT6YKj6YKK6KKr6JOL5o6J44CCCiAgICAg55m96by75qiR5b6e6aGN6aCt55u05LiL5o6l55m95Zi0LOaYr+afr+WfuuacgOWFuOWei+eahOiKseiJsuOAgiAtLT4KPGcgc3Ryb2tlPSIjMkUxQzE0IiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICA8cGF0aCBkPSJNOCAyNEM2LjUgMTQgOSA3LjUgMTQgNmM0LTEuMiA3IDQuMiA4IDEyLjZaIiBmaWxsPSIjRTg5QTRFIiBzdHJva2Utd2lkdGg9IjIuNCIvPgogIDxwYXRoIGQ9Ik0zMiAyM2MxLjUtOS41LTEtMTYuMi02LTE3LjUtNC0xLjEtNyA0LjYtOCAxM1oiIGZpbGw9IiNFODlBNEUiIHN0cm9rZS13aWR0aD0iMi40Ii8+CiAgPHBhdGggZD0iTTEwLjYgMTcuNWMtLjUtNSAuNi04LjIgMi45LTguOSAyLS42IDMuNyAyLjQgNC4zIDdaIiBmaWxsPSIjRjBCN0E4Ii8+CiAgPHBhdGggZD0iTTI5LjYgMTYuOGMuNy01LS4zLTguMy0yLjYtOS0yLS43LTMuOCAyLjMtNC41IDYuOFoiIGZpbGw9IiNGMEI3QTgiLz4KICA8ZWxsaXBzZSBjeD0iMjAiIGN5PSIzNCIgcng9IjE0IiByeT0iMTIuNSIgZmlsbD0iI0U4OUE0RSIgc3Ryb2tlLXdpZHRoPSIyLjYiLz4KICA8IS0tIOeZvem8u+aokSArIOeZveWYtDrkuIDnrYbpgKPotbfkvoYgLS0+CiAgPHBhdGggZD0iTTE3LjIgMjMuNGMwLTEuOSA1LjYtMS45IDUuNiAwbC45IDguNmMyLjkuNCA1LjIgMi45IDUuMiA1LjkgMCA0LjQtMy44IDcuNC04LjkgNy40cy04LjktMy04LjktNy40YzAtMyAyLjMtNS41IDUuMi01LjlaIgogICAgICAgIGZpbGw9IiNGQUY1RUMiIHN0cm9rZS13aWR0aD0iMi4yIi8+CjwvZz4KPCEtLSDkupTlrpjkuI3mj4/pgoos5o+P5LqGIDE2cHgg5pyD57OK5oiQ5LiA5ZyYIC0tPgo8ZWxsaXBzZSBjeD0iMTMiIGN5PSIzMiIgcng9IjIuMiIgcnk9IjIuNCIgZmlsbD0iIzJFMUMxNCIvPgo8ZWxsaXBzZSBjeD0iMjciIGN5PSIzMiIgcng9IjIuMiIgcnk9IjIuNCIgZmlsbD0iIzJFMUMxNCIvPgo8ZWxsaXBzZSBjeD0iMjAiIGN5PSIzNy4yIiByeD0iMi43IiByeT0iMi4xIiBmaWxsPSIjMkUxQzE0Ii8+CjxwYXRoIGQ9Ik0yMCAzOS4ydjJNMjAgNDEuMmMtMS4xIDEuNS0zLjIgMS41LTQuMS4yTTIwIDQxLjJjMS4xIDEuNSAzLjIgMS41IDQuMS4yIgogICAgICBmaWxsPSJub25lIiBzdHJva2U9IiMyRTFDMTQiIHN0cm9rZS13aWR0aD0iMS40IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPGVsbGlwc2UgY3g9IjEwIiBjeT0iMzgiIHJ4PSIyLjQiIHJ5PSIxLjYiIGZpbGw9IiNGMkE2OUIiLz4KCjwhLS0gPT09PT09PT09PT09PT09PT0g5Y+zOuW4g+WBtuiykyA9PT09PT09PT09PT09PT09PQogICAgIOW+jOeVqyzlo5PlnKjmn6/ln7rliY3pnaLkuIDpu57pu54s5YWp6aGG6aCt5omN5YOP6Z2g5Zyo5LiA6LW344CCCiAgICAg6ZuZ6Imy5biD5YG255qE6IeJOuiAs+acteWSjOmgremggua3seiJsiznnInlv4PnlZnkuIDlgIvnmb3oibLlgJIgVizol43nnLznnZvjgIIKICAgICDpnaLnvanlj6rliLDnnInmr5sg4oCU4oCUIOiTi+WIsOecvOedm+WwseiuiuWTiOWjq+Wlh+S6huOAgiAtLT4KPGcgc3Ryb2tlPSIjMkUxQzE0IiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICA8cGF0aCBkPSJNMzMuNSAyMSAzNSA3LjUgNDQuNSAxNS41WiIgZmlsbD0iIzhBNzQ2NiIgc3Ryb2tlLXdpZHRoPSIyLjQiLz4KICA8cGF0aCBkPSJNNTYuNSAyMi41IDU4LjUgOSA0OCAxNS44WiIgZmlsbD0iIzhBNzQ2NiIgc3Ryb2tlLXdpZHRoPSIyLjQiLz4KICA8cGF0aCBkPSJNMzYuMyAxNi44IDM3IDEwLjhsNC42IDQuM1oiIGZpbGw9IiNGMEI3QTgiLz4KICA8cGF0aCBkPSJNNTQgMTguMiA1NSAxMi4ybC01LjIgMy42WiIgZmlsbD0iI0YwQjdBOCIvPgogIDxlbGxpcHNlIGN4PSI0NSIgY3k9IjMxIiByeD0iMTMiIHJ5PSIxMiIgZmlsbD0iI0ZBRjVFQyIgc3Ryb2tlLXdpZHRoPSIyLjYiLz4KPC9nPgo8IS0tIOmgremggumbmeiJsumdoue9qTrlhannk6PlvoDlpJbmlpznmoToibLloYos55So6aCt5b2i5Ymq6KOB44CCCiAgICAg5YWp55Oj5LiK56uv5bm+5LmO55u456Kw44CB5LiL56uv5by16ZaLIOKAlOKAlCDkuK3plpPnlZnkuIvnmoTnmb3lsLHmmK/kuIrnqoTkuIvlr6znmoTlgJIgViwKICAgICDjgIzpgJnmmK/miJHlrrbpgqPpmrvjgI3nmoToqJjomZ/jgILoibLloYrkuI3mj4/pgoos6KKr5Ymq6KOB55qE5o+P6YKK5pyD5pa35Zyo5oCq5Zyw5pa544CCIC0tPgo8Y2xpcFBhdGggaWQ9InJoIj48ZWxsaXBzZSBjeD0iNDUiIGN5PSIzMSIgcng9IjEyIiByeT0iMTEiLz48L2NsaXBQYXRoPgo8ZyBjbGlwLXBhdGg9InVybCgjcmgpIiBmaWxsPSIjOEE3NDY2Ij4KICA8ZWxsaXBzZSBjeD0iMzguNiIgY3k9IjIyLjUiIHJ4PSI2LjYiIHJ5PSI5IiB0cmFuc2Zvcm09InJvdGF0ZSgyNiAzOC42IDIyLjUpIi8+CiAgPGVsbGlwc2UgY3g9IjUxLjQiIGN5PSIyMi41IiByeD0iNi42IiByeT0iOSIgdHJhbnNmb3JtPSJyb3RhdGUoLTI2IDUxLjQgMjIuNSkiLz4KPC9nPgo8IS0tIOiXjeecvOedmzrluIPlgbbospPnmoTmraPlrZfmqJnoqJgs5LiN5o+P6YKK55WZ5Lqu6bueIC0tPgo8ZWxsaXBzZSBjeD0iMzkuOCIgY3k9IjMzLjUiIHJ4PSIyLjUiIHJ5PSIyLjgiIGZpbGw9IiM1QjlCRDUiLz4KPGVsbGlwc2UgY3g9IjUwLjIiIGN5PSIzMy41IiByeD0iMi41IiByeT0iMi44IiBmaWxsPSIjNUI5QkQ1Ii8+CjxjaXJjbGUgY3g9IjQwLjUiIGN5PSIzMi43IiByPSIuOCIgZmlsbD0iI0ZBRjVFQyIvPgo8Y2lyY2xlIGN4PSI1MC45IiBjeT0iMzIuNyIgcj0iLjgiIGZpbGw9IiNGQUY1RUMiLz4KPHBhdGggZD0iTTQ1IDM3LjYgNDMuMyAzNS45aDMuNFoiIGZpbGw9IiNGMkE2OUIiLz4KPHBhdGggZD0iTTQ1IDM4djEuN000NSAzOS43Yy0xIDEuMi0yLjcgMS4yLTMuNS4yTTQ1IDM5LjdjMSAxLjIgMi43IDEuMiAzLjUuMiIKICAgICAgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMkUxQzE0IiBzdHJva2Utd2lkdGg9IjEuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cgo8IS0tID09PT09PT09PT09PT09PT09IOS4i+aWuTrph5HoibLli77nq6AgPT09PT09PT09PT09PT09PT0KICAgICDlnJPlvaLnq6AgKyDli74s5aOT5Zyo5YWp6aGG6aCt55qE5LiL57ej5q2j5LitIOKAlOKAlCDlsI3pgY7luLPjgIHok4vpgY7nq6DjgIIgLS0+CjxjaXJjbGUgY3g9IjMyLjUiIGN5PSI1Mi41IiByPSI4LjQiIGZpbGw9IiNFRkE4MUMiIHN0cm9rZT0iIzJFMUMxNCIgc3Ryb2tlLXdpZHRoPSIyLjQiLz4KPHBhdGggZD0iTTI4LjMgNTIuNSAzMS40IDU1LjggMzcgNDkuMiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMkUxQzE0IgogICAgICBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K">
 <meta name="theme-color" content="#351c15">
 <style>
 :root{
@@ -907,7 +907,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
   <span class="devby" id="appBy">DEVELOPED BY SANDY LIU</span>
   <div class="ctrls">
     <select id="zoomSel"  title="Display size"></select>
-    <select id="brandSel" title="Theme"></select>
+    <select id="brandSel" title="Scene"></select>
     <select id="themeSel" title="Colour"></select>
     <select id="tzSel"    title="Clock"></select>
     <select id="wxSel"    title="Weather" hidden></select>
@@ -14524,39 +14524,33 @@ const THEMES={
     STRIPE:"#43474e",NEG:"#f0a48c",RUN:"#c08a3e",RUNH:"#9c6d2d",
     RUN2:"#6e7480",RUN2H:"#585d67"},
 };
-/* 品牌:同一支工具的兩張臉。Tally 是手繪素描那一套,Scoobi 是圓角積木那一套。
-   Theme 選單選的是這個,Colour 選單照舊 —— 兩者互不影響,四種組合都成立。 */
-const BRANDS=["Tally","Scoobi"];
+/* 品牌:兩套場景,同一支工具的兩張臉。
+   Recon 是戶外的卸貨月台,Audit 是室內的掃描稽核區 —— 貨進來、掃過、對完帳。
+   Colour 選單照舊,兩者互不影響。 */
+const BRANDS=["Recon","Audit"];
 const BRAND_KEY="ups_reprice_brand";
-let BRAND="Tally";
+let BRAND="Recon";
 function applyBrand(name){
-  BRAND = BRANDS.includes(name)?name:"Tally";
-  const tally = BRAND==="Tally";
+  BRAND = BRANDS.includes(name)?name:"Recon";
+  const audit = BRAND==="Audit";
   const r=document.documentElement.style;
-  /* Tally:抖線塗層開著,邊框本身要收掉 —— 兩層邊會變成雙框。
-     Scoobi:塗層關著,實線邊就是唯一的邊,不畫的話整頁沒有框。 */
-  r.setProperty("--wob",   tally?"url(#wobble)":"none");
-  r.setProperty("--wob2",  tally?"url(#wobble-soft)":"none");
-  r.setProperty("--rad",   tally?"9px":"14px");
-  r.setProperty("--bw",    tally?"2px":"2px");
-  r.setProperty("--bstyle",tally?"solid":"solid");
-  r.setProperty("--bcol",  tally?"var(--accent)":"var(--line)");
-  /* 標題字:Tally 走手繪字,Scoobi 走一般介面字 */
-  const hand='"Reprice Sketch","王漢宗標楷體空心","Sketch Block","芫荽","Iansui",'
-            +'"LXGW WenKai TC","霞鶩文楷 TC","Segoe Print","Ink Free"';
-  r.setProperty("--dispfam", tally ? hand+',sans-serif' : 'inherit');
-  /* 標題:Scoobi 用空心描邊字 —— 那是這個品牌的臉。
-     沒有描邊字型的機器上,用 text-stroke 加透明填色做出同樣的效果。 */
-  r.setProperty("--titlefam", tally
-    ? hand+',sans-serif'
-    : '"王漢宗標楷體空心","Sketch Block","Reprice Sketch",'
-      +'"Microsoft JhengHei UI",sans-serif');
-  r.setProperty("--titlefill", tally ? "var(--tab)" : "transparent");
-  r.setProperty("--titlestroke", tally ? "0" : "1.2px");
-  /* Tally 的手繪風是整套介面,不是只有標題 —— 桌面版整個視窗都是手寫字。 */
-  r.setProperty("--bodyfam", tally
-    ? hand+',"Microsoft JhengHei UI",sans-serif'
-    : '"Microsoft JhengHei UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif');
+  /* 抖線塗層關著,實線邊就是唯一的邊。
+     Recon 的角收小 —— 帳冊是方的;Audit 收得圓一點,是辦公室不是倉庫。 */
+  r.setProperty("--wob",   "none");
+  r.setProperty("--wob2",  "none");
+  r.setProperty("--rad",   audit?"10px":"5px");
+  r.setProperty("--bw",    "2px");
+  r.setProperty("--bstyle","solid");
+  r.setProperty("--bcol",  audit?"var(--line)":"var(--accent)");
+  const ui='"Microsoft JhengHei UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif';
+  r.setProperty("--dispfam", "inherit");
+  /* 標題實心 —— 帳冊上的字要實實在在,不用空心描邊。
+     Audit 的標題走等寬字:稽核看的是對齊的數字。 */
+  r.setProperty("--titlefam", audit
+    ? 'Consolas,"Cascadia Mono","Menlo",'+ui : ui);
+  r.setProperty("--titlefill", "var(--tab)");
+  r.setProperty("--titlestroke", "0");
+  r.setProperty("--bodyfam", ui);
   try{ localStorage.setItem(BRAND_KEY,BRAND); }catch(e){}
 }
 
@@ -15173,11 +15167,11 @@ function hearts(g,a,t){
   if(t-a.love>70) a.love=0;
 }
 
-/* 戶外而且在下雨或下雪才要雨具。Scoobi 是倉庫裡面,不用穿。
-   WX 與 BRAND 都在後面才宣告,但這個函式只在繪圖時被呼叫,
-   那時兩個都已經有值了。 */
+/* 下雨或下雪才要雨具。月台是戶外,天氣一來人和寵物都要穿。
+   WX 在後面才宣告,但這個函式只在繪圖時被呼叫,那時已經有值了。 */
 function outdoorWet(){
-  return typeof BRAND!=="undefined" && BRAND==="Tally"
+  /* Audit 在室內,不論外面下什麼都不用雨具。 */
+  return typeof BRAND!=="undefined" && BRAND==="Recon"
       && typeof WX!=="undefined"
       && (WX.mode==="rain"||WX.mode==="snow"||WX.mode==="storm");
 }
@@ -15272,7 +15266,7 @@ function drawWorker(g,a,t){
   hearts(g,a,t);
 }
 
-/* 狗:垂耳、粗尾上翹、身上有色塊 */
+/* 柯基:大立耳、短腿、身體低長、白鼻樑白胸 —— 家裡那隻。 */
 /* 雨衣:蓋在身體上的一層,加一個帽兜。顏色用主題的金色,
    和工人的傘同一組,看起來才像同一套裝備。 */
 function coatOver(g,x,y,w,hh,hx,hy,hr,seed){
@@ -15301,17 +15295,18 @@ function drawDog(g,a,t){
   shadow(g,x,y,20);
   g.strokeStyle=INK; g.lineWidth=2.1; g.lineJoin="round";
   /* 粗尾上翹 */
-  limb(g,x-15*f,y-20,x-24*f,y-31+wag,DOG_COAT,7);
+  limb(g,x-15*f,y-17,x-24*f,y-28+wag,DOG_COAT,7);
   g.lineWidth=2.1;
   const st=a.act==="walk"?Math.sin(t/9)*3:0;
   const pee=a.act==="pee";
+  /* 柯基的短腿:比一般狗短一截,身體跟著壓低 */
   for(const dx of [-11,-4,5,12]){
     /* 尿尿時後腿抬起來 */
     const up=(pee&&dx===-11)?8:0;
     const lx=x+dx*f+st*(dx<0?1:-1);
-    limb(g,lx,y-13-up,lx,y-3-up,DOG_COAT,5.4);
+    limb(g,lx,y-10-up,lx,y-3-up,DOG_COAT,5.4);
     g.lineWidth=1.8;
-    blob(g,lx-4,y-4.5-up,lx+4,y-up,DOG_COAT,2.6);
+    blob(g,lx-4,y-4.5-up,lx+4,y-up,DOG_MARK,2.6);   /* 白襪 */
   }
   if(pee){
     g.save(); g.strokeStyle="#e8c65a"; g.lineWidth=1.6; g.lineCap="round";
@@ -15325,14 +15320,24 @@ function drawDog(g,a,t){
     g.restore();
     g.strokeStyle=INK; g.lineWidth=2.1;
   }
-  blob(g,x-16,y-25,x+16,y-6,DOG_COAT,8);
-  patch(g,x-6*f,y-19,7,5,DOG_MARK);                    /* 身上的色塊 */
-  const hx=x+17*f, hy=y-36;
+  blob(g,x-17,y-22,x+17,y-5,DOG_COAT,8);               /* 身體低而長 */
+  patch(g,x+8*f,y-14,6.5,5,DOG_MARK);                  /* 白胸 */
+  const hx=x+17*f, hy=y-33;
+  /* 立耳:畫在頭之前,耳根被頭蓋住只露上半 —— 柯基的大三角耳,耳尖收圓 */
+  g.fillStyle=DOG_COAT;
+  for(const sd of [-1,1]){
+    g.beginPath();
+    g.moveTo(hx+sd*3.5,hy-6);
+    g.lineTo(hx+sd*8.5,hy-25);
+    g.quadraticCurveTo(hx+sd*11.5,hy-27.5,hx+sd*12.8,hy-23.5);
+    g.lineTo(hx+sd*14.5,hy-3);
+    g.closePath(); g.fill(); g.stroke();
+    patch(g,hx+sd*9.6,hy-16,2.8,5,BLUSH);              /* 內耳 */
+  }
   /* 雨衣蓋在身體上、頭之前畫,帽兜才會壓在耳朵後面 */
-  if(wet) coatOver(g,x,y-4,17,23,hx,hy,13,a.seed);
+  if(wet) coatOver(g,x,y-3,17,21,hx,hy,13,a.seed);
   blob(g,hx-13.5,hy-12,hx+13.5,hy+12,DOG_COAT,7);
-  for(const sd of [-1,1])                              /* 垂耳 */
-    blob(g,hx+sd*13-5,hy-9,hx+sd*13+5,hy+7,DOG_MARK,4.5);
+  patch(g,hx,hy-6.5,3,5.5,DOG_MARK);                   /* 額頭白鼻樑 */
   patch(g,hx+5*f,hy+4,8,5.5,DOG_MARK);
   for(const sd of [-1,1]){
     if(blink){ g.lineWidth=1.9; g.beginPath();
@@ -15350,8 +15355,8 @@ function drawDog(g,a,t){
   hearts(g,a,t);
 }
 
-/* 貓:尖耳、細尾、坐姿。身體是下寬上窄貼在地上的一團,
-   不是兩隻腳站著 —— 站姿會看成別的動物。 */
+/* 布偶貓:白身藍眼,耳朵尾巴海豹色,眉心一個白色倒 V —— 家裡那隻。
+   身體是下寬上窄貼在地上的一團,不是兩隻腳站著 —— 站姿會看成別的動物。 */
 function drawCat(g,a,t){
   const walking=a.act==="walk";
   const step=walking?Math.sin(t/5)*3:0;
@@ -15365,16 +15370,16 @@ function drawCat(g,a,t){
   shadow(g,x,y,puff?18:15);
   g.strokeStyle=INK; g.lineWidth=2.1; g.lineJoin="round";
 
-  /* 尾巴:炸毛時豎起來變粗 */
+  /* 尾巴:海豹色的蓬尾,比一般貓粗。炸毛時豎起來更粗 */
   if(puff){
-    limb(g,x+10,y-14,x+16,y-46,CAT_COAT,9);
+    limb(g,x+10,y-14,x+16,y-46,CAT_MARK,9);
     g.strokeStyle=INK; g.lineWidth=1.4;
     for(const [tx,ty] of [[13,-24],[18,-33],[12,-40]]){
       g.beginPath(); g.moveTo(x+tx,y+ty); g.lineTo(x+tx+7,y+ty-5); g.stroke();
     }
   }else{
     limb(g,x-(walking?12*hfPre:-11),y-(walking?16:14),
-         x-(walking?20*hfPre:-21),y-(walking?30:30)+sway,CAT_COAT,4.2);
+         x-(walking?20*hfPre:-21),y-(walking?30:30)+sway,CAT_MARK,5.4);
   }
   g.strokeStyle=INK; g.lineWidth=2.1;
 
@@ -15432,12 +15437,17 @@ function drawCat(g,a,t){
     walking?14:(puff?bw+4:bw+2), walking?16:bh-2,
     x+hxo, hy, puff?15:13, a.seed);
   for(const sd of [-1,1]){
-    g.fillStyle=CAT_COAT; g.beginPath();
-    g.moveTo(x+sd*4,hy-8); g.lineTo(x+hxo+sd*10,hy-22); g.lineTo(x+hxo+sd*13,hy-4);
+    g.fillStyle=CAT_MARK; g.beginPath();                 /* 海豹色尖耳 */
+    /* 耳根要窄:深色耳朵一寬,兩隻就連成一頂帽子。兩耳之間留白。 */
+    g.moveTo(x+hxo+sd*5.5,hy-6.5); g.lineTo(x+hxo+sd*10.5,hy-20);
+    g.lineTo(x+hxo+sd*13,hy-3);
     g.closePath(); g.fill(); g.stroke();
-    patch(g,x+hxo+sd*9,hy-11,2.6,4.4,BLUSH);
+    patch(g,x+hxo+sd*9.6,hy-10.5,2.2,3.6,BLUSH);
   }
   blob(g,x+hxo-11,hy-10,x+hxo+11,hy+10,CAT_COAT,7);
+  /* 頭頂兩瓣海豹色,中間留白 —— 白色倒 V 的臉,遠遠就認得出是布偶。
+     色塊收在輪廓線裡面,蓋到描邊會像破圖。 */
+  for(const sd of [-1,1]) patch(g,x+hxo+sd*6.4,hy-6.4,4.2,2.8,CAT_MARK);
   for(const sd of [-1,1]){
     if(puff){                                  /* 炸毛時眼睛瞪大 */
       g.fillStyle="#fff";
@@ -15446,7 +15456,10 @@ function drawCat(g,a,t){
     }
     else if(blink||sleep){ g.lineWidth=1.9; g.beginPath();
       g.moveTo(x+sd*5.4-2.2,hy-1); g.lineTo(x+sd*5.4+2.2,hy-1); g.stroke(); g.lineWidth=2.1; }
-    else dot(g,x+hxo+sd*4.6,hy-1,2.1,2.3);
+    else{                                      /* 藍眼睛:布偶的正字標記 */
+      patch(g,x+hxo+sd*4.6,hy-1,2.2,2.4,CAT_EYE);
+      dot(g,x+hxo+sd*4.6,hy-.7,1,1.1);
+    }
     patch(g,x+hxo+sd*8.4,hy+4,3.2,1.8,BLUSH);
     cheekLines(g,x+hxo,hy,sd);
     g.strokeStyle=INK; g.lineWidth=.9;
@@ -15468,9 +15481,10 @@ function drawCat(g,a,t){
   hearts(g,a,t);
 }
 
+/* 柯基:橘身白斑。布偶貓:白身,耳朵尾巴是海豹色的重點色 —— 就是家裡那兩隻。 */
 let INK="#351c15", BOX="#8a6104", PAPER="#fffdf7",
-    CAT_COAT="#f2ece1", CAT_MARK="#cfc7b8",
-    DOG_COAT="#f5efe6", DOG_MARK="#b5793f";
+    CAT_COAT="#faf6ee", CAT_MARK="#9b8878", CAT_EYE="#5b9bd5",
+    DOG_COAT="#e2a05a", DOG_MARK="#f7f2e8";
 /* 顯示場景的唯一入口。三個地方原本各自寫 style.display,
    顯示之後都沒有重量尺寸 —— 那就是動畫不見的原因。 */
 function sceneShow(on){
@@ -15530,16 +15544,18 @@ function sceneInit(){
   else sceneDraw();
 }
 /* 角色沿著整條場景散開,不要全擠在左邊。
-   Tally 左三分之一是棚子和貨櫃,所以人往右擺;Scoobi 左邊是貨架。 */
+   左半邊是貨車、地磅和天秤,所以人往右擺。 */
 function spreadActors(){
   const W=SCENE.W||900;
-  const lead = BRAND==="Tally" ? Math.min(0.42*W, 420) : Math.min(0.18*W, 190);
+  /* 左側被場景佔掉的寬度:Recon 是貨車和月台,Audit 是掃描架和稽核桌。
+     用比例算,窄視窗下家具才不會壓到角色。 */
+  const lead = BRAND==="Audit" ? Math.min(0.50*W, 470) : Math.min(0.52*W, 500);
   const span = Math.max(160, W-lead-70);
   const a=SCENE.actors;
   if(!a.length) return;
-  /* 平均分配時貓是最後一個,會落在最右邊 —— Scoobi 那裡是堆高機
-     和高架,貓擠在角落。把貓抽出來擺中間,其餘的平均分。 */
-  const cat = BRAND==="Scoobi" ? a.find(x=>x.kind==="cat") : null;
+  /* 平均分配時貓是最後一個,會落在最右邊角落。
+     把貓抽出來擺中間,其餘的平均分。 */
+  const cat = a.find(x=>x.kind==="cat");
   const rest = cat ? a.filter(x=>x!==cat) : a;
   rest.forEach((act,i)=>{
     act.x = lead + span*(i+0.5)/rest.length;
@@ -15813,20 +15829,20 @@ function blendHex(a,b,t){
   return "#"+f(r1,r2)+f(g1,g2)+f(b1,b2);
 }
 
-/* Tally:寬扁的戶外貨場。左邊是招牌寫 TALLY 的棚子,中間貨櫃堆,
-   右邊留空給走動的角色,太陽在右上。地平線壓在很低的位置。 */
-function drawTallyYard(g,W,H){
-  const FLR=H-14;
-  const ink=INK, paper=pal("--panel","#fffdf7"), line=pal("--line","#caa356");
+/* 卸貨月台:一輛貨車倒車靠上月台,車尾門開著,棧板上一疊箱子。
+   月台上一台地磅 —— 計費重量就是在這裡量出來的。
+   後面立著一座天秤,左盤放包裹、右盤放帳單,慢慢搖;兩邊對平的那一刻
+   秤頂亮出金勾:帳對上了。招牌掛在天秤後面的門型架上。
+   戶外場景,所以天空、太陽月亮、天氣都是整片畫,不是關在窗格裡。 */
+function drawDock(g,W,H,t){
+  const FLR=H-14, paper=pal("--panel","#fffdf7"), line=pal("--line","#caa356"),
+        gold=pal("--tab","#ffb500"), sInk=skyInk();
 
   drawSunMoon(g,W,H);
 
-  /* 停著的雲:大小高度都不一樣 */
-  const sInk=skyInk();
+  /* 停著的雲。避開左邊的貨車(車頂到 y≈58),所以往右擺、往上收。 */
   g.strokeStyle=sInk; g.lineWidth=1.5;
-  /* 雲避開左邊的棚子(屋頂到 y≈56),所以往右擺、往上收 */
-  for(const [cx,cy,cs] of [[W*0.42,30,.85],[W*0.55,20,.6],[W*0.68,34,.75],
-                           [W*0.80,22,.55],[W*0.90,32,.68]]){
+  for(const [cx,cy,cs] of [[W*0.46,26,.8],[W*0.62,18,.6],[W*0.78,30,.7],[W*0.92,20,.55]]){
     g.fillStyle = darkSky() ? blendHex(paper,"#4a5a7a",.25) : paper;
     g.beginPath();
     g.ellipse(cx,cy,19*cs,7*cs,0,0,7);
@@ -15836,146 +15852,284 @@ function drawTallyYard(g,W,H){
   }
   /* 幾隻鳥 */
   g.strokeStyle=sInk; g.lineWidth=1.4;
-  for(const [bx,by] of [[W*0.60,52],[W*0.64,44],[W*0.68,56]]){
+  for(const [bx,by] of [[W*0.66,50],[W*0.70,42],[W*0.74,54]]){
     g.beginPath(); g.moveTo(bx-6,by); g.quadraticCurveTo(bx,by-5,bx+6,by); g.stroke();
   }
-  /* 遠山壓在地平線上、很扁,而且畫在角色之前 —— 高過人物就會像穿過去。 */
-  g.fillStyle=blendHex(paper,line,.42);
-  for(const [hp,hw,hh] of [[0.58,180,15],[0.76,130,11],[0.92,150,13]]){
-    const hx=W*hp;
-    g.beginPath(); g.moveTo(hx-hw/2,FLR);
-    g.quadraticCurveTo(hx,FLR-hh*2.2,hx+hw/2,FLR);
-    g.closePath(); g.fill(); g.strokeStyle=ink; g.lineWidth=1.3; g.stroke();
-  }
+  /* 遠處圍籬:壓在地平線上、比人矮,而且要畫在角色之前 ——
+     太高會像牆把人關起來,太低又會被腳蓋掉,所以只留一截 20px 的下緣。 */
+  g.strokeStyle=INK; g.lineWidth=1.4;
+  const fx0=W*0.52, fw=W*0.5, fy=FLR-20;
+  skRect(g,fx0,fy,fw,20,90,blendHex(paper,line,.26));
+  for(let k=1;k<8;k++) skLine(g,fx0+k*fw/8,fy+3,fx0+k*fw/8,FLR-2,91+k);
+  g.lineWidth=2;
 
-  /* 棚子:左邊三分之一,寬扁,屋頂略拱 */
-  /* 棚子要明顯高過人:工人連安全帽約 65px,所以棚身給 100。 */
-  const bx0=14, bw=Math.min(400,W*0.36), bh=100, by=FLR-bh;
-  g.strokeStyle=ink; g.lineWidth=2;
-  skRect(g,bx0,by,bw,bh,31,blendHex(paper,line,.25));
-  g.fillStyle=blendHex(paper,line,.45);
-  g.beginPath();
-  g.moveTo(bx0-10,by+5);
-  g.quadraticCurveTo(bx0+bw/2,by-22,bx0+bw+10,by+5);
-  g.lineTo(bx0+bw+10,by+11);
-  g.quadraticCurveTo(bx0+bw/2,by-14,bx0-10,by+11);
-  g.closePath(); g.fill(); g.stroke();
-  /* 招牌 */
-  const sgw=bw*0.52, sgx=bx0+bw*0.24;
-  skRect(g,sgx,by+22,sgw,21,32,ink);
-  g.fillStyle=pal("--tab","#ffb500"); g.textAlign="center";
-  g.font='700 15px "Reprice Sketch","Segoe Print","Ink Free",system-ui';
-  g.fillText("TALLY",sgx+sgw/2,by+38);
-  g.textAlign="left";
-  /* 捲門兩扇 */
-  for(const d of [0.06,0.52]){
-    const dx=bx0+bw*d, dw=bw*0.36, dy=by+52, dh=bh-52;
-    skRect(g,dx,dy,dw,dh,33,paper);
-    g.lineWidth=1.1;
-    for(let k=1;k<4;k++) skLine(g,dx,dy+k*dh/4,dx+dw,dy+k*dh/4,33+k);
+  /* ---- 貨車:車廂在左、車頭在右,倒車靠著月台。
+         車廂要明顯高過人(工人連安全帽約 65px),所以車廂給 78。 ---- */
+  g.strokeStyle=INK; g.lineWidth=2;
+  const tx=16, tw=210, th=78, ty=FLR-24-th;
+  skRect(g,tx,ty,tw,th,20,paper);                       /* 車廂 */
+  g.lineWidth=1.2;
+  for(let k=1;k<6;k++) skLine(g,tx+k*tw/6,ty+6,tx+k*tw/6,ty+th-6,22+k); /* 側板直紋 */
+  g.lineWidth=2;
+  skRect(g,tx+8,ty+14,tw-16,26,28,gold);                /* 車身色帶 */
+  /* 車尾在左邊 —— 車頭朝右,所以車是倒著靠上月台的。
+     尾門開著一扇,露出裡面兩排箱子。 */
+  skRect(g,tx+6,ty+8,50,th-16,30,blendHex(paper,INK,.12));
+  for(let r=0;r<2;r++) for(let c=0;c<2;c++)
+    skRect(g,tx+11+c*22,ty+14+r*26,19,22,32+r*2+c,BOX);
+  /* 車頭:駕駛室比車廂矮一截,加擋風玻璃 */
+  const cbx=tx+tw, cbw=54, cbh=52;
+  skRect(g,cbx,FLR-24-cbh,cbw,cbh,40,gold);
+  skRect(g,cbx+8,FLR-24-cbh+7,cbw-16,20,42,blendHex(paper,"#8fc2e6",.45));
+  g.lineWidth=1.4;
+  skLine(g,cbx+cbw,FLR-40,cbx+cbw+7,FLR-30,44);         /* 保險桿 */
+  g.lineWidth=2;
+  /* 輪子:車廂兩顆、車頭一顆 */
+  g.fillStyle=INK;
+  for(const wx of [tx+42,tx+tw-46,cbx+34]){
+    g.beginPath(); g.arc(wx,FLR-16,9,0,7); g.fill();
+    g.fillStyle=paper; g.beginPath(); g.arc(wx,FLR-16,3.4,0,7); g.fill();
+    g.fillStyle=INK;
+  }
+  /* 月台檯面與斜坡:貨車就停在這一階旁邊 */
+  g.strokeStyle=INK; g.lineWidth=2;
+  skRect(g,4,FLR-24,cbx+cbw+16,10,46,blendHex(paper,line,.28));
+
+  /* ---- 地磅:秤台加顯示窗。跑報表時顯示窗就是進度條,平常顯示一個勾。 ---- */
+  const sx=cbx+cbw+40;
+  skRect(g,sx,FLR-10,64,10,50,blendHex(paper,INK,.22));   /* 秤台 */
+  skRect(g,sx+66,FLR-34,26,34,52,paper);                  /* 立柱顯示器 */
+  skRect(g,sx+70,FLR-30,18,10,54,blendHex(paper,INK,.08));
+  if(SCENE.progress>0){
+    g.fillStyle=gold;
+    g.fillRect(sx+71.5,FLR-28.5,15*Math.min(1,SCENE.progress),7);
+  }else{
+    g.strokeStyle=gold; g.lineWidth=2; g.lineCap="round";
+    g.beginPath(); g.moveTo(sx+74,FLR-25.5); g.lineTo(sx+77,FLR-23);
+    g.lineTo(sx+84,FLR-29); g.stroke();
+    g.strokeStyle=INK;
+  }
+  g.lineWidth=2;
+  skRect(g,sx+10,FLR-36,40,26,56,gold);                   /* 秤上的箱子 */
+  g.lineWidth=1.3; skLine(g,sx+30,FLR-36,sx+30,FLR-10,58); g.lineWidth=2;
+
+  /* ---- 天秤:對帳的本體。盤面永遠水平,歪的是樑不是盤。
+         盤要夠寬才看得出上面放的是箱子和帳單,細細一根會看成路燈。 ---- */
+  const bcx=sx+132, bpy=FLR-84, tilt=Math.sin(t/70)*0.12;
+  skRect(g,bcx-22,FLR-9,44,9,60,blendHex(paper,INK,.25));  /* 底座 */
+  g.lineWidth=3; skLine(g,bcx,FLR-9,bcx,bpy,61);           /* 柱 */
+  const ex1=bcx-46*Math.cos(tilt), ey1=bpy+46*Math.sin(tilt),
+        ex2=bcx+46*Math.cos(tilt), ey2=bpy-46*Math.sin(tilt);
+  g.lineWidth=3; skLine(g,ex1,ey1,ex2,ey2,62);             /* 樑 */
+  dot(g,bcx,bpy,3.2,3.2);
+  for(const [ex,ey,side] of [[ex1,ey1,-1],[ex2,ey2,1]]){
+    const pyn=ey+22;
+    g.lineWidth=1.5;
+    skLine(g,ex,ey,ex-14,pyn,64+side); skLine(g,ex,ey,ex+14,pyn,66+side);
+    g.lineWidth=2.4; skLine(g,ex-18,pyn,ex+18,pyn,68+side);
+    if(side<0){                                            /* 左盤:包裹 */
+      skRect(g,ex-14,pyn-23,28,22,70,gold);
+      g.lineWidth=1.4; skLine(g,ex,pyn-23,ex,pyn-1,71);
+    }else{                                                 /* 右盤:帳單 */
+      skRect(g,ex-11,pyn-27,22,26,72,paper);
+      g.lineWidth=1.2;
+      for(let k=1;k<5;k++) skLine(g,ex-7,pyn-27+k*5,ex+7,pyn-27+k*5,73+k);
+    }
     g.lineWidth=2;
   }
-
-  /* 貨櫃堆:兩疊。一個貨櫃跟人差不多高,不然看起來像紙箱。 */
-  g.lineWidth=1.9;
-  for(const [cx,rows] of [[bx0+bw+34,2],[bx0+bw+210,1]]){
-    for(let r=0;r<rows;r++){
-      const cw=160, ch=52, cy2=FLR-ch*(r+1)-2;
-      skRect(g,cx,cy2,cw,ch,40+r,r?blendHex(paper,line,.3):pal("--tab","#ffb500"));
-      /* 浪板直紋 */
-      g.lineWidth=1.1;
-      for(let k=1;k<9;k++) skLine(g,cx+k*cw/9,cy2+5,cx+k*cw/9,cy2+ch-5,45+k+r*9);
-      /* 上下橫樑,少了這個會像一塊木板 */
-      g.lineWidth=1.6;
-      skLine(g,cx+2,cy2+6,cx+cw-2,cy2+6,60+r);
-      skLine(g,cx+2,cy2+ch-6,cx+cw-2,cy2+ch-6,62+r);
-      /* 門把 */
-      g.lineWidth=1.4;
-      skLine(g,cx+cw*0.5,cy2+12,cx+cw*0.5,cy2+ch-12,64+r);
-      g.lineWidth=1.9;
-    }
+  /* 對平那一刻:秤頂亮出金勾,越接近水平越亮 —— 帳對上了。
+     勾要落在樑和招牌中間那段空檔,不然會壓到招牌。 */
+  const lvl=1-Math.min(1,Math.abs(Math.sin(t/70))/0.22);
+  if(lvl>0){
+    g.save(); g.globalAlpha=lvl;
+    g.strokeStyle=gold; g.lineWidth=4.5; g.lineCap="round"; g.lineJoin="round";
+    g.beginPath(); g.moveTo(bcx-9,bpy-15); g.lineTo(bcx-2,bpy-8);
+    g.lineTo(bcx+11,bpy-24); g.stroke();
+    g.restore(); g.strokeStyle=INK; g.lineWidth=2;
   }
+
+  /* ---- 招牌:掛在門型架上,架子跨過天秤上方。
+         橫樑要高過金勾(秤頂 -24),留一段空檔才不會擠在一起。 ---- */
+  const gx0=sx-10, gx1=bcx+74, gy=FLR-132;
+  g.lineWidth=2.4;
+  skLine(g,gx0,FLR-10,gx0,gy,80); skLine(g,gx1,FLR-10,gx1,gy,81);
+  skLine(g,gx0,gy,gx1,gy,82);
+  skRect(g,(gx0+gx1)/2-62,gy-26,124,26,84,paper);
+  g.fillStyle=INK; g.textAlign="center";
+  g.font='700 16px "Microsoft JhengHei UI",system-ui';
+  g.fillText("RECON",(gx0+gx1)/2,gy-8); g.textAlign="left";
+
   /* 地平線 */
-  g.strokeStyle=ink; g.lineWidth=1.8;
+  g.strokeStyle=INK; g.lineWidth=1.8;
   skLine(g,10,FLR,W-10,FLR,3);
 }
+
+/* 掃描稽核區:室內。左邊一條滾輪輸送帶把箱子送進門型掃描架,
+   掃描線由上往下掃過,箱子通過的那一刻頭上跳出一個金勾 —— 這一件對上了。
+   右邊是稽核桌:一疊帳單、印章、計算機、桌燈。牆上釘著已經蓋章的單子。
+   室內場景,所以天氣只出現在窗格裡,不是整片畫。 */
+function drawAuditHall(g,W,H,t){
+  const FLR=H-14, paper=pal("--panel","#fffdf7"), line=pal("--line","#caa356"),
+        gold=pal("--tab","#ffb500");
+  g.strokeStyle=INK; g.lineWidth=2; g.lineJoin="round";
+
+  /* 後牆:比背景深一點的一片,加一道腰線。
+     線要壓在角色頭頂以上 —— 工人連安全帽約 65px,低於這個就會切過臉。 */
+  g.fillStyle=blendHex(pal("--bg","#f4ecdc"),line,.14);
+  g.fillRect(4,4,W-8,FLR-4);
+  g.strokeStyle=blendHex(INK,paper,.55); g.lineWidth=1.4;
+  g.beginPath(); g.moveTo(6,FLR-92); g.lineTo(W-6,FLR-92); g.stroke();
+  g.strokeStyle=INK; g.lineWidth=2;
+
+  /* 招牌 */
+  skRect(g,24,12,132,28,20,paper);
+  g.fillStyle=INK; g.textAlign="center";
+  g.font='700 15px Consolas,"Cascadia Mono",monospace';
+  g.fillText("AUDIT",90,32); g.textAlign="left";
+
+  /* 窗:天氣只畫在這幾格裡面 */
+  g.lineWidth=1.6;
+  for(let k=0;k<3;k++){
+    const wx=W*0.56+k*58;
+    const wsky=g.createLinearGradient(0,14,0,44);
+    wsky.addColorStop(0, skyColour("top"));
+    wsky.addColorStop(1, skyColour("bot"));
+    skRect(g,wx,14,44,30,30+k,wsky);
+    skLine(g,wx+22,14,wx+22,44,34+k);
+    skLine(g,wx,29,wx+44,29,38+k);
+  }
+
+  /* 牆上釘著已經對完的單子:紙、幾行字、金色圓章 */
+  g.lineWidth=1.5;
+  for(const [px,py] of [[W*0.40,46],[W*0.40+34,56]]){
+    skRect(g,px,py,26,32,90+px,paper);
+    g.lineWidth=1;
+    for(let k=1;k<4;k++) skLine(g,px+4,py+k*6,px+22,py+k*6,92+px+k);
+    g.lineWidth=1.5; g.strokeStyle=gold;
+    g.beginPath(); g.arc(px+17,py+24,5,0,7); g.stroke();
+    g.beginPath(); g.moveTo(px+14.5,py+24); g.lineTo(px+16.5,py+26.2);
+    g.lineTo(px+20,py+21.5); g.stroke();
+    g.strokeStyle=INK;
+    dot(g,px+13,py-1,1.4,1.4);                       /* 圖釘 */
+  }
+
+  /* ---- 輸送帶與掃描架 ---- */
+  /* 帶面壓在腰線以下、角色起點以左,箱子不會跟貓狗重疊。 */
+  const bx0=20, bx1=W*0.30, by=FLR-34;
+  g.lineWidth=2;
+  skRect(g,bx0,by,bx1-bx0,10,70,blendHex(paper,INK,.28));
+  /* 滾輪:帶面上一排小圓,跟著時間轉 */
+  g.strokeStyle=blendHex(INK,paper,.4); g.lineWidth=1.2;
+  for(let rx=bx0+8; rx<bx1-4; rx+=13){
+    g.beginPath(); g.arc(rx,by+5,3.2,0,7); g.stroke();
+    g.beginPath(); g.moveTo(rx,by+5);
+    g.lineTo(rx+Math.cos(t/6)*3.2,by+5+Math.sin(t/6)*3.2); g.stroke();
+  }
+  g.strokeStyle=INK; g.lineWidth=2;
+  for(const lx of [bx0+16,(bx0+bx1)/2,bx1-16]) skLine(g,lx,by+10,lx,FLR,72);
+
+  /* 門型掃描架:跨在帶子上。掃描線由上往下,掃到底再回到頂。 */
+  const ax=bx0+(bx1-bx0)*0.52, aw=34, ah=44;
+  g.lineWidth=2.4;
+  skRect(g,ax-aw/2,by-ah,7,ah,74,blendHex(paper,line,.3));
+  skRect(g,ax+aw/2-7,by-ah,7,ah,75,blendHex(paper,line,.3));
+  skRect(g,ax-aw/2-3,by-ah-9,aw+6,10,76,blendHex(paper,line,.45));
+  const scan=(t%60)/60;
+  g.save();
+  g.strokeStyle=gold; g.lineWidth=2.2; g.globalAlpha=.9;
+  g.beginPath();
+  g.moveTo(ax-aw/2+7, by-ah+6+scan*(ah-12));
+  g.lineTo(ax+aw/2-7, by-ah+6+scan*(ah-12));
+  g.stroke(); g.restore();
+  g.strokeStyle=INK; g.lineWidth=2;
+
+  /* 箱子沿著帶子走。跑報表時走快一點 —— 帶子動起來就是進度在動。 */
+  const sp=SCENE.progress>0?1.4:0.8, span=bx1-bx0-16;
+  for(let i=0;i<3;i++){
+    const p=(((t*sp/60)+i*0.34)%1);
+    const cx=bx0+8+p*span;
+    skRect(g,cx-9,by-16,18,16,80+i,gold);
+    g.lineWidth=1.2; skLine(g,cx,by-16,cx,by,82+i); g.lineWidth=2;
+    /* 剛通過掃描架的那一段,箱子頭上跳一個金勾 */
+    const d=cx-ax;
+    if(d>0 && d<26){
+      g.save(); g.globalAlpha=1-d/26;
+      g.strokeStyle=gold; g.lineWidth=3; g.lineCap="round"; g.lineJoin="round";
+      g.beginPath(); g.moveTo(cx-6,by-24); g.lineTo(cx-2,by-20);
+      g.lineTo(cx+6,by-31); g.stroke();
+      g.restore(); g.strokeStyle=INK; g.lineWidth=2;
+    }
+  }
+
+  /* ---- 稽核桌 ---- */
+  const dx=W*0.34, dw=W*0.12, dy=FLR-30;
+  skRect(g,dx,dy,dw,6,84,blendHex(paper,line,.35));     /* 桌面 */
+  g.lineWidth=1.8;
+  skLine(g,dx+5,dy+6,dx+5,FLR,85);
+  skLine(g,dx+dw-5,dy+6,dx+dw-5,FLR,86);
+  /* 一疊帳單:三張錯開,最上面那張蓋了章 */
+  g.lineWidth=1.6;
+  for(let k=0;k<3;k++){
+    const px=dx+7+k*2.2, py=dy-5-k*4;
+    skRect(g,px,py,24,6,88+k,paper);
+  }
+  /* 最上面那張蓋了章:章要壓在紙上,不是浮在旁邊 */
+  g.strokeStyle=gold; g.lineWidth=1.5;
+  g.beginPath(); g.arc(dx+20,dy-10,3.6,0,7); g.stroke();
+  g.beginPath(); g.moveTo(dx+18.2,dy-10); g.lineTo(dx+19.6,dy-8.4);
+  g.lineTo(dx+22.2,dy-12); g.stroke();
+  g.strokeStyle=INK; g.lineWidth=1.8;
+  /* 印章:握把加底座,壓在紙堆右邊 */
+  skRect(g,dx+dw-26,dy-9,12,9,92,blendHex(paper,INK,.3));
+  skRect(g,dx+dw-23,dy-17,6,8,93,INK);
+  /* 計算機:一塊螢幕加兩排鍵 */
+  skRect(g,dx+dw-13,dy-12,11,12,94,paper);
+  g.lineWidth=1; skLine(g,dx+dw-11,dy-9,dx+dw-4,dy-9,95);
+  for(let r=0;r<2;r++) for(let c=0;c<3;c++)
+    dot(g,dx+dw-10.5+c*2.6,dy-5+r*3,.8,.8);
+  g.lineWidth=1.8;
+  /* 桌燈:彎桿加燈罩,燈光打在紙堆上 */
+  const lx2=dx+2;
+  skLine(g,lx2,dy,lx2,dy-22,96);
+  skLine(g,lx2,dy-22,lx2+12,dy-26,97);
+  g.fillStyle=gold;
+  g.beginPath(); g.moveTo(lx2+8,dy-22); g.lineTo(lx2+18,dy-30);
+  g.lineTo(lx2+21,dy-22); g.closePath(); g.fill(); g.stroke();
+  g.save(); g.globalAlpha=.16; g.fillStyle=gold;
+  g.beginPath(); g.moveTo(lx2+10,dy-22); g.lineTo(lx2+34,dy-2);
+  g.lineTo(lx2+4,dy-2); g.closePath(); g.fill(); g.restore();
+
+  /* 地板線 */
+  g.strokeStyle=INK; g.lineWidth=1.8;
+  skLine(g,10,FLR,W-10,FLR,3);
+}
+
 function sceneDraw(){
   const g=SCENE.ctx; if(!g) return;
   const W=SCENE.W,H=SCENE.H,t=SCENE.t;
   g.clearRect(0,0,W,H);
   g.lineWidth=2.2; g.strokeStyle=INK;
 
-  if(BRAND==="Tally"){
-    /* 天空要漸層才畫得出「天頂藍、地平線橘」。單色只能二選一。 */
+  if(BRAND==="Audit"){
+    /* 室內:底是地板色,天空和天氣只從窗格看得到。 */
+    skRect(g,3,3,W-6,H-6,101,pal("--bg","#f4ecdc"));
+    drawAuditHall(g,W,H,t);
+    g.save();
+    g.beginPath();
+    for(let k=0;k<3;k++) g.rect(W*0.56+k*58,14,44,30);
+    g.clip();
+    drawSunMoon(g,W,58);
+    drawWeather(g,W,80,t);
+    g.restore();
+  }else{
+    /* 戶外:天空要漸層才畫得出「天頂藍、地平線橘」。單色只能二選一。 */
     const sky=g.createLinearGradient(0,3,0,H-22);
     sky.addColorStop(0, skyColour("top"));
     sky.addColorStop(0.62, blendHex(skyColour("top"),skyColour("bot"),.55));
     sky.addColorStop(1, skyColour("bot"));
     skRect(g,3,3,W-6,H-6,101,sky);
-    drawTallyYard(g,W,H);
+    drawDock(g,W,H,t);
     drawWeather(g,W,H,t);
-  }else{
-    /* Scoobi:室內倉庫。招牌、窗、左邊貨架、橫貫全寬的輸送帶、右邊堆高機。 */
-    skRect(g,3,3,W-6,H-6,101,pal("--bg","#f4ecdc"));
-    const FLR=H-14, paper=pal("--panel","#fffdf7");
-    g.strokeStyle=INK; g.lineWidth=2;
-    skRect(g,26,14,140,30,20,paper);
-    g.fillStyle=INK; g.textAlign="center";
-    g.font='700 16px "Reprice Sketch","Segoe Print","Ink Free",system-ui';
-    g.fillText("Scoobi",96,35); g.textAlign="left";
-    g.lineWidth=1.6;
-    for(let k=0;k<4;k++){
-      const wx=200+k*64;
-      const wsky=g.createLinearGradient(0,16,0,44);
-      wsky.addColorStop(0, skyColour("top"));
-      wsky.addColorStop(1, skyColour("bot"));
-      skRect(g,wx,16,40,28,30+k,wsky);
-      skLine(g,wx+20,16,wx+20,44,34+k);
-      skLine(g,wx,30,wx+40,30,38+k);
-    }
-    const shx=20, shw=104, shy=FLR-78;
-    g.lineWidth=1.8;
-    for(let r=0;r<3;r++){
-      const ry=shy+r*26;
-      skLine(g,shx,ry+24,shx+shw,ry+24,52+r);
-      for(let b=0;b<3;b++) skRect(g,shx+4+b*33,ry+4,28,19,55+r*3+b,BOX);
-    }
-    skLine(g,shx,shy,shx,FLR,60); skLine(g,shx+shw,shy,shx+shw,FLR,61);
-    /* 輸送帶要高過角色頭頂,不然帶子會從貓狗身上穿過去。
-       貓最高約 45px(身體 30 + 頭 15),所以帶底至少留 52。 */
-    const by=FLR-72, bx0=shx+shw+22, bx1=W-120;
-    g.lineWidth=2;
-    skRect(g,bx0,by,bx1-bx0,11,70,blendHex(INK,paper,.3));
-    if(SCENE.progress>0){
-      g.fillStyle=pal("--tab","#ffb500");
-      g.fillRect(bx0+2,by+2,(bx1-bx0-4)*Math.min(1,SCENE.progress),7);
-    }
-    g.fillStyle=pal("--tab","#ffb500");
-    for(let x=bx0+30+((t/3)%36); x<bx1-8; x+=36){
-      g.beginPath(); g.arc(x,by+5.5,2.2,0,7); g.fill();
-    }
-    g.strokeStyle=INK; g.lineWidth=2;
-    for(const lx of [bx0+30,(bx0+bx1)/2,bx1-30]) skLine(g,lx,by+11,lx,FLR,72);
-    g.lineWidth=1.8;
-    skRect(g,W-66,FLR-64,42,64,80,paper);
-    for(let r=1;r<4;r++) skLine(g,W-66,FLR-64+r*16,W-24,FLR-64+r*16,82+r);
-    skRect(g,W-108,FLR-24,28,18,86,pal("--tab","#ffb500"));
-    skRect(g,W-112,FLR-40,18,16,87,BOX);
-    g.fillStyle=INK;
-    for(const wx of [W-102,W-86]){ g.beginPath(); g.arc(wx,FLR,4,0,7); g.fill(); }
-    g.strokeStyle=INK; g.lineWidth=1.8;
-    skLine(g,10,FLR,W-10,FLR,3);
-    /* 窗外的天氣:只畫在窗格範圍內 */
-    g.save();
-    g.beginPath();
-    for(let k=0;k<4;k++) g.rect(200+k*64,16,40,28);
-    g.clip();
-    drawSunMoon(g,W,60);
-    drawWeather(g,W,80,t);
-    g.restore();
-    g.fillStyle=INK;
-    g.font='600 13px "Reprice Sketch","Segoe Print","Ink Free",system-ui';
-    g.fillText(LANG?"Tap the cat or the dog!":"\u9ede\u4e00\u4e0b\u8c93\u6216\u72d7\uff01", bx0+8, FLR-64);
   }
 
   for(const a of SCENE.actors){
@@ -16125,8 +16279,8 @@ function fillCodeFilter(){
 }
 function fillSelects(){
   fillCodeFilter(); fillWxSel();
-  $("#brandSel").innerHTML=BRANDS.map(b=>
-    `<option value="${b}"${b===BRAND?" selected":""}>${b}</option>`).join("");
+  $("#brandSel") && ($("#brandSel").innerHTML=BRANDS.map(b=>
+    `<option value="${b}"${b===BRAND?" selected":""}>${b}</option>`).join(""));
   $("#themeSel").innerHTML=Object.keys(THEMES).map(k=>
     `<option value="${k}"${k===THEME?" selected":""}>${LANG?k:THEMES[k].zh}</option>`).join("");
   $("#tzSel").innerHTML=TZ.map((z,i)=>
@@ -16150,7 +16304,8 @@ $("#langSel") && ($("#langSel").onchange=e=>{
      applyLang() 已經處理,這裡只要補場景提示。 */
   if(typeof sceneDraw==="function") sceneDraw();
 });
-$("#brandSel").onchange=e=>{ applyBrand(e.target.value); spreadActors(); sceneDraw(); };
+$("#brandSel") && ($("#brandSel").onchange=e=>{
+  applyBrand(e.target.value); spreadActors(); sceneDraw(); });
 $("#themeSel").onchange=e=>{ applyTheme(e.target.value); drawClock(); drawDateCard(); };
 $("#tzSel").onchange=e=>{ TZI=+e.target.value; drawClock(); drawDateCard();
   if(WX.live) fetchWx(); };
