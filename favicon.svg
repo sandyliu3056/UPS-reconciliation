@@ -5,10 +5,13 @@
 
 <!-- ================= 左下:狗 ================= -->
 <g transform="rotate(-10 20 43)">
-  <!-- 垂耳,壓在框子後面先畫 -->
-  <path d="M14 36c-6.5 0-9 5.2-8 11 .8 4.6 4.4 6.4 8 5.6Z"
-        fill="#B5793F" stroke="#2E1C14" stroke-width="2.6" stroke-linejoin="round"/>
-  <!-- 框子,右下角一個小尾巴指向心 -->
+  <!-- 兩隻垂耳,壓在框子後面先畫。都垂在左側 —— 右側是勾勾和框子尾巴,
+       放不下第二隻,兩隻疊在左邊反而一眼就是狗的垂耳。後面那隻深一點。 -->
+  <path d="M15 34c-8.5 0-11 6-9.6 12.4 1 4.8 4.8 6.6 8.8 5.8Z"
+        fill="#A56A34" stroke="#2E1C14" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M18.5 35.5c-5.6 .4-7.4 5.2-6.4 9.8.8 3.8 3.8 5.2 6.8 4.6Z"
+        fill="#B5793F" stroke="#2E1C14" stroke-width="2.4" stroke-linejoin="round"/>
+  <!-- 框子,右下角一個小尾巴指向勾勾 -->
   <path d="M11 34h20a4 4 0 0 1 4 4v13a4 4 0 0 1-4 4H20l-3 4-1-4h-5a4 4 0 0 1-4-4V38a4 4 0 0 1 4-4Z"
         fill="#FAF5EC" stroke="#2E1C14" stroke-width="2.7" stroke-linejoin="round"/>
   <g stroke="#2E1C14" stroke-width="2.6" stroke-linecap="round">
@@ -32,12 +35,15 @@
   </g>
 </g>
 
-<!-- ================= 中間的心 ================= -->
-<path d="M32 41.6 24.6 33.8a5.1 5.1 0 0 1 7.4-7 5.1 5.1 0 0 1 7.4 7Z"
-      fill="#EFA81C" stroke="#2E1C14" stroke-width="2.5" stroke-linejoin="round"
-      transform="rotate(-12 32 32.5)"/>
+<!-- ================= 中間的勾勾 =================
+     對帳工具用打勾比愛心貼切。深色一筆在下當描邊,黃色一筆疊上去,
+     圓角收尾 —— 16px 下還是清楚的一個勾。 -->
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M27.8 33 31.2 36.8 38.4 27" stroke="#2E1C14" stroke-width="6"/>
+  <path d="M27.8 33 31.2 36.8 38.4 27" stroke="#EFA81C" stroke-width="3.4"/>
+</g>
 
-<!-- ================= 動態線,以心為圓心 ================= -->
+<!-- ================= 動態線,以勾勾為圓心 ================= -->
 <g stroke="#EFA81C" stroke-width="2.6" stroke-linecap="round" fill="none">
   <g transform="translate(32 32.5) rotate(-150)">
     <path d="M8.5 -3.2a7.6 7.6 0 0 1 0 6.4"/>
