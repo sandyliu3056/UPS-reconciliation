@@ -14525,28 +14525,28 @@ const THEMES={
     RUN2:"#6e7480",RUN2H:"#585d67"},
 };
 /* 品牌:兩套場景,同一支工具的兩張臉。
-   Recon 是戶外的卸貨月台,Audit 是室內的掃描稽核區 —— 貨進來、掃過、對完帳。
+   Recon 是戶外的卸貨月台,Boop 是室內的掃描稽核區 —— 貨進來、掃過、對完帳。
    Colour 選單照舊,兩者互不影響。 */
-const BRANDS=["Recon","Audit"];
+const BRANDS=["Recon","Boop"];
 const BRAND_KEY="ups_reprice_brand";
 let BRAND="Recon";
 function applyBrand(name){
   BRAND = BRANDS.includes(name)?name:"Recon";
-  const audit = BRAND==="Audit";
+  const boop = BRAND==="Boop";
   const r=document.documentElement.style;
   /* 抖線塗層關著,實線邊就是唯一的邊。
-     Recon 的角收小 —— 帳冊是方的;Audit 收得圓一點,是辦公室不是倉庫。 */
+     Recon 的角收小 —— 帳冊是方的;Boop 收得圓一點,是辦公室不是倉庫。 */
   r.setProperty("--wob",   "none");
   r.setProperty("--wob2",  "none");
-  r.setProperty("--rad",   audit?"10px":"5px");
+  r.setProperty("--rad",   boop?"10px":"5px");
   r.setProperty("--bw",    "2px");
   r.setProperty("--bstyle","solid");
-  r.setProperty("--bcol",  audit?"var(--line)":"var(--accent)");
+  r.setProperty("--bcol",  boop?"var(--line)":"var(--accent)");
   const ui='"Microsoft JhengHei UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif';
   r.setProperty("--dispfam", "inherit");
   /* 標題實心 —— 帳冊上的字要實實在在,不用空心描邊。
-     Audit 的標題走等寬字:稽核看的是對齊的數字。 */
-  r.setProperty("--titlefam", audit
+     Boop 的標題走等寬字:稽核看的是對齊的數字。 */
+  r.setProperty("--titlefam", boop
     ? 'Consolas,"Cascadia Mono","Menlo",'+ui : ui);
   r.setProperty("--titlefill", "var(--tab)");
   r.setProperty("--titlestroke", "0");
@@ -15170,7 +15170,7 @@ function hearts(g,a,t){
 /* 下雨或下雪才要雨具。月台是戶外,天氣一來人和寵物都要穿。
    WX 在後面才宣告,但這個函式只在繪圖時被呼叫,那時已經有值了。 */
 function outdoorWet(){
-  /* Audit 在室內,不論外面下什麼都不用雨具。 */
+  /* Boop 在室內,不論外面下什麼都不用雨具。 */
   return typeof BRAND!=="undefined" && BRAND==="Recon"
       && typeof WX!=="undefined"
       && (WX.mode==="rain"||WX.mode==="snow"||WX.mode==="storm");
@@ -15181,7 +15181,12 @@ function drawWorker(g,a,t){
   const sw=a.act==="walk"?Math.sin(t/8+a.seed)*2.6:0;
   const lift=a.act==="lift"?6:0;
   const blink=(Math.floor(t/7)+a.seed)%48===0;
-  shadow(g,x,y,17);
+  const skin=a.skin||SKIN;
+  shadow(g,x,y,17*(a.build||1));
+  /* 體型:以腳底為圓心整個人等比縮放。所有座標都是絕對值,
+     所以縮放只能包在最外層,不能改個別數字。 */
+  g.save();
+  if(a.build&&a.build!==1){ g.translate(x,y); g.scale(a.build,a.build); g.translate(-x,-y); }
   g.strokeStyle=INK; g.lineWidth=2.1; g.lineJoin="round";
 
   /* 腿短、鞋寬且往外攤 —— 鞋是最容易畫小的一塊 */
@@ -15238,20 +15243,63 @@ function drawWorker(g,a,t){
     g.beginPath(); g.moveTo(x-10.6,y-28); g.lineTo(x+10.6,y-28); g.stroke();
     g.strokeStyle=INK; g.lineWidth=2.1;
   }
-  for(const [hx2,hy2] of hands) blob(g,hx2-4.6,hy2-4,hx2+4.6,hy2+5,SKIN,4);
+  for(const [hx2,hy2] of hands) blob(g,hx2-4.6,hy2-4,hx2+4.6,hy2+5,skin,4);
   if(a.box){ blob(g,x-11,y-50,x+11,y-36,BOX,2.5);
     g.beginPath(); g.moveTo(x-11,y-43); g.lineTo(x+11,y-43); g.stroke(); }
 
   /* 頭:比身體寬,幾乎佔全高四成 */
   const hy=y-51;
-  for(const sd of [-1,1]) blob(g,x+sd*14-3.2,hy+1,x+sd*14+3.2,hy+8,SKIN,2.5);
-  blob(g,x-14.5,hy-14,x+14.5,hy+13,SKIN,6.5);
-  /* 安全帽:半圓 + 帽簷 */
+  for(const sd of [-1,1]) blob(g,x+sd*14-3.2,hy+1,x+sd*14+3.2,hy+8,skin,2.5);
+  /* 後髮:丸子頭和馬尾在頭後面,要先畫。前髮等頭畫完才蓋上去。 */
+  const style=a.hairStyle||"fringe";
+  g.fillStyle=a.hair;
+  if(style==="bun"){
+    g.beginPath(); g.ellipse(x,hy-22,7,6.5,0,0,7); g.fill(); g.stroke();
+  }else if(style==="pony"){
+    g.beginPath(); g.ellipse(x-17,hy-2,5.5,11,0.35,0,7); g.fill(); g.stroke();
+  }
+  blob(g,x-14.5,hy-14,x+14.5,hy+13,skin,6.5);
+  /* 前髮:貼在額頭上的一片,兩側收在耳朵前面。帽子還會再蓋掉一部分,
+     所以只要露出瀏海那一條就夠。 */
+  g.fillStyle=a.hair; g.lineWidth=2.1;
+  g.beginPath();
+  g.moveTo(x-14.2,hy-6);
+  g.quadraticCurveTo(x-13,hy-15,x,hy-15.5);
+  g.quadraticCurveTo(x+13,hy-15,x+14.2,hy-6);
+  if(style==="fringe"){                       /* 齊瀏海:下緣平,中間一個小尖 */
+    g.quadraticCurveTo(x+7,hy-9,x,hy-8);
+    g.quadraticCurveTo(x-7,hy-9,x-14.2,hy-6);
+  }else{                                      /* 旁分:一側長一側短 */
+    g.quadraticCurveTo(x+2,hy-11,x-6,hy-7);
+    g.quadraticCurveTo(x-10,hy-6,x-14.2,hy-6);
+  }
+  g.closePath(); g.fill(); g.stroke();
+  /* 帽款:戶外月台一律安全帽,室內就各戴各的 —— 頭帶式耳機或鴨舌帽。 */
+  const indoor = typeof BRAND!=="undefined" && BRAND!=="Recon";
+  const hatKind = indoor ? (a.indoorHat||"cap") : "helmet";
   g.lineWidth=2.4; g.fillStyle=a.hat;
-  g.beginPath(); g.ellipse(x,hy-10,14,14,0,Math.PI,0); g.closePath();
-  g.fill(); g.stroke();
-  blob(g,x-17.5,hy-13,x+17.5,hy-6,a.hat,3.4);
-  g.lineWidth=2.1;
+  if(hatKind==="helmet"){
+    g.beginPath(); g.ellipse(x,hy-10,14,14,0,Math.PI,0); g.closePath();
+    g.fill(); g.stroke();
+    blob(g,x-17.5,hy-13,x+17.5,hy-6,a.hat,3.4);         /* 帽簷一圈 */
+  }else if(hatKind==="cap"){
+    g.beginPath(); g.ellipse(x,hy-10,13.5,12,0,Math.PI,0); g.closePath();
+    g.fill(); g.stroke();
+    blob(g,x+2,hy-12.5,x+21,hy-7.5,a.hat,2.6);          /* 帽簷只在前面 */
+    g.lineWidth=1.4;                                     /* 頭頂那顆釦子 */
+    g.beginPath(); g.arc(x,hy-21.5,1.8,0,7); g.fill(); g.stroke();
+    g.lineWidth=2.4;
+  }else{                                                 /* 頭帶式耳機 */
+    g.strokeStyle=a.hat; g.lineWidth=3.4;
+    g.beginPath(); g.arc(x,hy-4,15,Math.PI*1.12,Math.PI*1.88); g.stroke();
+    g.strokeStyle=INK; g.lineWidth=2.1;
+    for(const sd of [-1,1]) blob(g,x+sd*15-3.4,hy-7,x+sd*15+3.4,hy+2,a.hat,2.6);
+    g.lineWidth=1.8;                                     /* 麥克風桿 */
+    g.beginPath(); g.moveTo(x-15,hy+1);
+    g.quadraticCurveTo(x-13,hy+8,x-7,hy+7); g.stroke();
+    dot(g,x-6,hy+7,1.8,1.8);
+  }
+  g.strokeStyle=INK; g.lineWidth=2.1;
   for(const sd of [-1,1]){
     if(blink){ g.lineWidth=1.9;
       g.beginPath(); g.moveTo(x+sd*5.6-2.1,hy-1.4);
@@ -15260,10 +15308,32 @@ function drawWorker(g,a,t){
     patch(g,x+sd*10,hy+3.3,3.4,1.9,BLUSH);
     cheekLines(g,x,hy,sd);
   }
+  /* 眼鏡:兩個圓框加鼻樑。畫在眼睛之後,不然框會被眼睛蓋掉。 */
+  if(a.glasses){
+    g.strokeStyle=INK; g.lineWidth=1.5;
+    for(const sd of [-1,1]){
+      g.beginPath(); g.ellipse(x+sd*5.6,hy-1.4,4.4,4,0,0,7); g.stroke();
+      g.beginPath(); g.moveTo(x+sd*10,hy-1.8); g.lineTo(x+sd*13.6,hy-2.6); g.stroke();
+    }
+    g.beginPath(); g.moveTo(x-1.2,hy-1.4); g.lineTo(x+1.2,hy-1.4); g.stroke();
+    g.lineWidth=2.1;
+  }
   g.strokeStyle=INK; g.lineWidth=1.9; g.lineCap="round";
   g.beginPath(); g.ellipse(x,hy+3.4,4.4,3.6,0,
     18*Math.PI/180,162*Math.PI/180); g.stroke();   /* 微笑 */
+  /* 短鬍子:沿著下巴一圈,不蓋到嘴。要比髮色再深一點,
+     跟膚色只差一階的話會看成陰影,不是鬍子。 */
+  if(a.beard){
+    g.strokeStyle=blendHex(a.hair,INK,.45); g.lineWidth=3.6;
+    g.beginPath(); g.ellipse(x,hy+2.2,10.4,10,0,
+      24*Math.PI/180,156*Math.PI/180); g.stroke();
+    g.lineWidth=2.4;                                  /* 上唇那一撇 */
+    g.beginPath(); g.moveTo(x-5,hy+0.6);
+    g.quadraticCurveTo(x,hy+2.2,x+5,hy+0.6); g.stroke();
+    g.strokeStyle=INK; g.lineWidth=2.1;
+  }
   hearts(g,a,t);
+  g.restore();
 }
 
 /* 柯基:大立耳、短腿、身體低長、白鼻樑白胸 —— 家裡那隻。 */
@@ -15512,11 +15582,15 @@ function sceneInit(){
   INK=cs.getPropertyValue("--accent").trim()||INK;
   sceneResize(); addEventListener("resize",()=>{ sceneResize(); spreadActors(); });
   SCENE.actors=[
-    /* 襯衫和背心必須是對比色 —— 同色系疊起來只會看成衣服上一塊補丁 */
+    /* 襯衫和背心必須是對比色 —— 同色系疊起來只會看成衣服上一塊補丁。
+       兩個人的髮型、眼鏡、體型、膚色都不一樣,遠看才分得出是兩個人,
+       不是同一個人複製兩份。 */
     {kind:"worker",x:72, y:150,seed:11,act:"walk",dir:1, box:false,tgt:230,
-     coat:"#5b86b8",vest:"#e8762c",hat:"#ffb500",hair:"#3a2b20",love:0},
+     coat:"#5b86b8",vest:"#e8762c",hat:"#ffb500",hair:"#3a2b20",love:0,
+     build:0.94,skin:"#ffe0bf",hairStyle:"bun",   indoorHat:"headset",glasses:true},
     {kind:"worker",x:214,y:156,seed:29,act:"idle",dir:-1,box:true, tgt:92,
-     coat:"#d8d2c6",vest:"#5b9e6b",hat:"#e8762c",hair:"#6b4a2e",love:0},
+     coat:"#d8d2c6",vest:"#5b9e6b",hat:"#e8762c",hair:"#6b4a2e",love:0,
+     build:1.07,skin:"#e3b183",hairStyle:"fringe",indoorHat:"cap",    beard:true},
     {kind:"dog",   x:150,y:162,seed:53,act:"walk",dir:1, tgt:300,love:0},
     {kind:"cat",   x:334,y:160,seed:71,act:"sit",love:0},
   ];
@@ -15547,9 +15621,9 @@ function sceneInit(){
    左半邊是貨車、地磅和天秤,所以人往右擺。 */
 function spreadActors(){
   const W=SCENE.W||900;
-  /* 左側被場景佔掉的寬度:Recon 是貨車和月台,Audit 是掃描架和稽核桌。
+  /* 左側被場景佔掉的寬度:Recon 是貨車和月台,Boop 是掃描架和稽核桌。
      用比例算,窄視窗下家具才不會壓到角色。 */
-  const lead = BRAND==="Audit" ? Math.min(0.50*W, 470) : Math.min(0.52*W, 500);
+  const lead = BRAND==="Boop" ? Math.min(0.50*W, 470) : Math.min(0.52*W, 500);
   const span = Math.max(160, W-lead-70);
   const a=SCENE.actors;
   if(!a.length) return;
@@ -15968,7 +16042,7 @@ function drawDock(g,W,H,t){
    掃描線由上往下掃過,箱子通過的那一刻頭上跳出一個金勾 —— 這一件對上了。
    右邊是稽核桌:一疊帳單、印章、計算機、桌燈。牆上釘著已經蓋章的單子。
    室內場景,所以天氣只出現在窗格裡,不是整片畫。 */
-function drawAuditHall(g,W,H,t){
+function drawBoopHall(g,W,H,t){
   const FLR=H-14, paper=pal("--panel","#fffdf7"), line=pal("--line","#caa356"),
         gold=pal("--tab","#ffb500");
   g.strokeStyle=INK; g.lineWidth=2; g.lineJoin="round";
@@ -15985,7 +16059,7 @@ function drawAuditHall(g,W,H,t){
   skRect(g,24,12,132,28,20,paper);
   g.fillStyle=INK; g.textAlign="center";
   g.font='700 15px Consolas,"Cascadia Mono",monospace';
-  g.fillText("AUDIT",90,32); g.textAlign="left";
+  g.fillText("BOOP",90,32); g.textAlign="left";
 
   /* 窗:天氣只畫在這幾格裡面 */
   g.lineWidth=1.6;
@@ -16110,10 +16184,10 @@ function sceneDraw(){
   g.clearRect(0,0,W,H);
   g.lineWidth=2.2; g.strokeStyle=INK;
 
-  if(BRAND==="Audit"){
+  if(BRAND==="Boop"){
     /* 室內:底是地板色,天空和天氣只從窗格看得到。 */
     skRect(g,3,3,W-6,H-6,101,pal("--bg","#f4ecdc"));
-    drawAuditHall(g,W,H,t);
+    drawBoopHall(g,W,H,t);
     g.save();
     g.beginPath();
     for(let k=0;k<3;k++) g.rect(W*0.56+k*58,14,44,30);
