@@ -1637,8 +1637,9 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       </div>
     </div>
 
-    <!-- 住/商判定來源:和燃油底同一個形狀 —— 摘要一行,點進去設,裡面存 -->
-    <div class="sketch-soft" style="padding:14px 16px;margin:14px 0 14px">
+    <!-- 住/商判定來源:目前用不到(對帳只看差異,不靠地址 API 判住/商),
+         先隱藏。要叫回來把下面這個 div 的 hidden 拿掉即可,程式與視窗都還在。 -->
+    <div class="sketch-soft" hidden style="padding:14px 16px;margin:14px 0 14px">
       <div class="subhd" style="margin-top:0" data-i18n="hd.resisrc">🔄 Residential / Commercial Classification</div>
       <p class="hint" style="margin:8px 0 10px" data-i18n="hint.resisrc">This field takes the proxy endpoint only — the UPS credentials live on the proxy.</p>
       <div class="row">
@@ -5117,6 +5118,12 @@ const SYNC=AUTH || ((window.supabase && AUTH_CONFIG.url && AUTH_CONFIG.anonKey)
   : null);
 let ME=null;
 const ADMIN_ONLY=["admin"];
+/* 暫時隱藏分頁的機制:頁面和程式都留著,只是不顯示在上排;把名字放進這個
+   陣列就收起來,拿掉就叫回來 —— 一行的事,不必找回被刪的程式。
+   目前不藏任何費率編輯頁:每一組費率層級的底價、尺寸規則、附加費、渠道都
+   存在各自的層級裡(見 RL_KEYS),要幫某個客戶的層級設好,就得進這些頁編輯。
+   之後若真有哪一頁確定用不到,再把名字加進來即可。 */
+const HIDDEN_TABS=[];
 let LOGIN_ROWS=[];
 
 function authIdentity(user){
@@ -6584,7 +6591,8 @@ function setMe(m){
 function applyRole(){
   const admin = ME && ME.role==="admin";
   document.querySelectorAll("#tabs button[data-p]").forEach(b=>{
-    b.style.display = (!ME || (ADMIN_ONLY.includes(b.dataset.p)&&!admin))
+    b.style.display = (!ME || HIDDEN_TABS.includes(b.dataset.p)
+        || (ADMIN_ONLY.includes(b.dataset.p)&&!admin))
       ? "none" : "";
   });
   const gate=$("#gate"), app=$("#app");
@@ -16257,6 +16265,7 @@ step("tab", ()=>{
   try{ want=localStorage.getItem(TAB_KEY)||""; }catch(e){}
   if(!want||want==="files") return;
   if(!document.getElementById("p-"+want)) return;   /* 舊的分頁名稱就忽略 */
+  if(HIDDEN_TABS.includes(want)) return;            /* 暫時隱藏的就回到匯入頁 */
   showTab(want);
 });
 
