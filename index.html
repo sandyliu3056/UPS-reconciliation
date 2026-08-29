@@ -105,14 +105,37 @@ table,table *,input,select,.tablewrap{filter:none !important}
 }
 .nav .navgrp:first-child{padding-top:2px}
 .nav button{
-  font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left;
+  font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;text-align:left;
   background:transparent;color:var(--tab);border:0;
   border-left:3px solid transparent;
-  /* 換行而不是截字。「WMS / TMS Reconciliation」一行放不下,截成
-     「WMS / TMS Reconcil…」等於把最重要的那個字吃掉。 */
-  padding:8px 14px 8px 13px;line-height:1.35;overflow-wrap:break-word;
-  opacity:.82;
+  padding:7px 10px 7px 11px;opacity:.82;
+  display:flex;align-items:flex-start;gap:7px;min-width:0;
 }
+/* 換行而不是截字 —— 截成「Reconcil…」等於把最重要的那個字吃掉。 */
+.nav button>span[data-i18n]{white-space:normal;line-height:1.3;min-width:0;
+  overflow-wrap:break-word}
+/* 編號小籤:規格書的 01–08。字小、色淡,是路標不是標題。 */
+.nav .nnum{
+  font-style:normal;font-family:"Cascadia Mono",Consolas,monospace;
+  font-size:10px;letter-spacing:.05em;opacity:.55;flex:0 0 auto;
+  width:16px;padding-top:2px;
+}
+.nav .nico{flex:0 0 auto;font-size:12.5px;filter:saturate(.9)}
+.nav button[aria-selected=true] .nnum{opacity:.85}
+/* 登入者名片:貼在側欄最下面,規格書視覺稿的那一塊。 */
+.navuser{
+  margin-top:auto;display:flex;align-items:center;gap:9px;
+  padding:12px 13px 4px;border-top:1px solid rgba(255,181,0,.22);
+}
+.navuser .avatar{
+  width:26px;height:26px;border-radius:50%;flex:0 0 auto;
+  background:var(--tab);color:var(--accent);font-weight:700;font-size:13px;
+  display:grid;place-items:center;
+}
+.navuser .nu-txt{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.navuser b{color:var(--tab);font-size:12px;font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.navuser i{font-style:normal;color:var(--tab);opacity:.55;font-size:10.5px}
 .nav button:hover{background:rgba(255,255,255,.12);opacity:1}
 .nav button[aria-selected=true]{
   background:var(--panel);color:var(--accent);opacity:1;
@@ -168,6 +191,7 @@ main{min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 14px 0}
   .nav{flex-direction:row;flex-wrap:wrap;gap:2px;padding:6px 8px;
        border-right:0;border-bottom:2.5px solid var(--accent);overflow:visible}
   .nav .navgrp{display:none}
+  .nav .navuser{display:none}
   .nav button{border-left:0;border-bottom:3px solid transparent;
               border-radius:7px 7px 0 0;padding:6px 12px}
   .nav button[aria-selected=true]{border-left:0;border-bottom-color:var(--tab)}
@@ -568,6 +592,9 @@ td.cells{white-space:normal}
 }
 /* 沒重算的那幾列:整列壓下去,層級欄掛一個紅籤。看表的時候要一眼分得出
    「這個客戶差很多」和「這個客戶根本沒算」。 */
+/* 下載類的 <a> 借按鈕的衣服穿:連結藍在這套介面裡是雜訊。 */
+a.act{color:var(--accent);text-decoration:none;display:inline-block}
+a.act:visited{color:var(--accent)}
 tr.blocked{opacity:.72}
 /* 三方對比的色點:綠=向客戶收、琥珀=系統重算、棕=UPS 實收。
    點在表頭上,金額欄一眼分得出誰是誰 —— 之後的圖表也用同一組色。 */
@@ -1033,19 +1060,27 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
      直欄一次看得完,加一項也不必重排。
      元素換了,id 和 button[data-p] 沒換 —— showTab 和 applyRole 照舊。 -->
 <aside class="nav" role="tablist" id="tabs">
-  <!-- 每月作業照做的先後排:帳單進來 → 對帳 → 看賺多少 → 要查再往歷史去。 -->
-  <div class="navgrp" data-i18n="nav.work">Monthly</div>
-  <button role="tab" aria-selected="true"  data-p="files"    class="display" data-i18n="tab.files">Import Files</button>
-  <button role="tab" aria-selected="false" data-p="cus"      class="display" data-i18n="tab.cus">WMS / TMS Reconciliation</button>
-  <button role="tab" aria-selected="false" data-p="analysis" class="display" data-i18n="tab.analysis">Analysis</button>
-  <button role="tab" aria-selected="false" data-p="hist"     class="display" data-i18n="tab.hist">Invoice History</button>
-  <!-- 設定分兩個入口,分界是「這件事屬於整個帳號,還是屬於某一層費率」:
-       Setting 是帳號的(有哪些層級、有哪些客戶、費用代碼怎麼對外),
-       Rate Setup 是某一層裡面的規則 —— 右上角那個 Editing 選單只對後者有意義。 -->
-  <div class="navgrp" data-i18n="nav.admin">Setup</div>
-  <button role="tab" aria-selected="false" data-p="rate"     class="display" data-i18n="tab.rate">Setting</button>
-  <button role="tab" aria-selected="false" data-p="rateset"  class="display" data-i18n="tab.rateset">Rate Setup</button>
-  <button role="tab" aria-selected="false" data-p="admin"    class="display" data-i18n="tab.admin">Admin</button>
+  <!-- 順序與分組照規格書的側欄視覺稿:設定 → 資料作業 → 對帳 → 管理,
+       每一項帶編號。編號是流程 —— 01 建好帳戶,02 填好費率,03 收 WMS/TMS
+       的檔,04 收 UPS 帳單,05 對出結果,06 看趨勢,07 查歷史。 -->
+  <div class="navgrp" data-i18n="nav.cfg">Configuration</div>
+  <button role="tab" aria-selected="false" data-p="rate" class="display"><i class="nnum">01</i><span class="nico">👥</span><span data-i18n="tab.rate">Account &amp; Client Setup</span></button>
+  <button role="tab" aria-selected="false" data-p="rateset" class="display"><i class="nnum">02</i><span class="nico">🧭</span><span data-i18n="tab.rateset">Rate Level Management</span></button>
+  <div class="navgrp" data-i18n="nav.data">Data Operations</div>
+  <!-- 03 與 05 是同一個 section 的兩種來意:資料進來,和結果出去。 -->
+  <button role="tab" aria-selected="false" data-p="wmsdata" class="display"><i class="nnum">03</i><span class="nico">📄</span><span data-i18n="tab.wmsdata">WMS / TMS Data</span></button>
+  <button role="tab" aria-selected="true" data-p="files" class="display"><i class="nnum">04</i><span class="nico">📥</span><span data-i18n="tab.files">Batch Invoice Import</span></button>
+  <div class="navgrp" data-i18n="nav.recon">Reconciliation</div>
+  <button role="tab" aria-selected="false" data-p="cus" class="display"><i class="nnum">05</i><span class="nico">⚖️</span><span data-i18n="tab.cus">Reconciliation Analysis</span></button>
+  <button role="tab" aria-selected="false" data-p="analysis" class="display"><i class="nnum">06</i><span class="nico">📈</span><span data-i18n="tab.analysis">Analytics Dashboard</span></button>
+  <button role="tab" aria-selected="false" data-p="hist" class="display"><i class="nnum">07</i><span class="nico">🗂️</span><span data-i18n="tab.hist">Invoice History</span></button>
+  <div class="navgrp" data-i18n="nav.adm">Administration</div>
+  <button role="tab" aria-selected="false" data-p="admin" class="display"><i class="nnum">08</i><span class="nico">🛡️</span><span data-i18n="tab.admin">User Administration</span></button>
+  <!-- 登入者名片:規格書側欄視覺稿最下面那一塊。 -->
+  <div class="navuser" id="navUser" hidden>
+    <span class="avatar" id="navAvatar">S</span>
+    <span class="nu-txt"><b id="navName"></b><i id="navRole"></i></span>
+  </div>
   <!-- 底下這幾顆收起來(HIDDEN_TABS),各自由上面兩個入口進去。按鈕留著是因為
        currentTab() 靠 aria-selected 找現在在哪一頁。 -->
   <button role="tab" aria-selected="false" data-p="setting" class="display" data-i18n="tab.setting">Rate levels</button>
@@ -1063,17 +1098,21 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
   <!-- 順序照實際設定的先後,不照畫面好排:
        先有層級 → 把那一層的規則設完 → 客戶指到哪一層 → 費用代碼 → 系統設定。
        客戶排在費率後面是有道理的:指派的時候下拉要選得到層級,層級得先在。 -->
+  <!-- 01 帳戶與客戶:整個帳號一份的東西。
+       02 費率層級管理:先選層級,再編那一層的每一種規則 —— 規格書的
+       Rating Rules 與 Rate Level Management 在本系統是同一件事,
+       因為每一條費率規則本來就屬於某一層。 -->
   <div class="setnav-tabs" data-g="rate">
-    <button data-r="setting" data-i18n="rt.levels">1. Rate Levels</button>
-    <button data-r="cus"     data-i18n="rt.customers">2. Client Setup</button>
-    <button data-r="code2"   data-i18n="rt.chgcode">3. Charge Codes</button>
+    <button data-r="cus"     data-i18n="rt.customers">1. Client Setup</button>
+    <button data-r="code2"   data-i18n="rt.chgcode">2. Charge Codes</button>
   </div>
   <div class="setnav-tabs" data-g="rateset" hidden>
-    <button data-r="chan"    data-i18n="rt.chan">1. Channels</button>
-    <button data-r="rules"   data-i18n="rt.rules">2. Surcharges</button>
-    <button data-r="size"    data-i18n="rt.size">3. Size Rules</button>
-    <button data-r="demand"  data-i18n="rt.demand">4. Demand</button>
-    <button data-r="sys"     data-i18n="rt.sys">5. System</button>
+    <button data-r="setting" data-i18n="rt.levels">1. Rate Levels</button>
+    <button data-r="chan"    data-i18n="rt.chan">2. Channels</button>
+    <button data-r="rules"   data-i18n="rt.rules">3. Surcharges</button>
+    <button data-r="size"    data-i18n="rt.size">4. Size Rules</button>
+    <button data-r="demand"  data-i18n="rt.demand">5. Demand</button>
+    <button data-r="sys"     data-i18n="rt.sys">6. System</button>
   </div>
   <label class="setnav-lvl" id="editLvlWrap">
     <span data-i18n="lbl.editing">Editing</span>
@@ -1337,19 +1376,26 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
   </div>
 
   <div id="reconPane" hidden>
-  <div class="lf sketch">
-    <h3 class="display"><span class="em">⚖️</span><span data-i18n="hd.recon">WMS / TMS reconciliation</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.recon">The invoice already holds what UPS charged. This file adds what it cannot know: which customer an order belongs to, and what that customer was billed. One order per row on Shipments; for a multi-package order put every tracking number in one cell, separated by commas. The Charges sheet is optional — fill it in and every charge is compared three ways: what you billed, what the rate level says, what UPS charged.</p>
+  <div class="lf sketch" id="reconTplCard">
+    <h3 class="display"><span class="em">📄</span><span data-i18n="hd.recon">WMS / TMS data</span></h3>
+    <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.recon">One order per row; every itemized charge is compared three ways on acceptance. Column rules and the TMS mapping are in the guide.</p>
     <div class="row">
       <label class="inlab" style="margin-left:0" data-i18n="lb.tpl">Template</label>
-      <button class="act ghost sm" id="bReconTpl" data-i18n="btn.recontpl">Export</button>
+      <button class="act ghost sm" id="bReconTplW" data-i18n="btn.recontplw">WMS template</button>
+      <button class="act ghost sm" id="bReconTplT" data-i18n="btn.recontplt">TMS template</button>
       <button class="act" id="bReconImp" data-i18n="btn.reconimp">Import filled</button>
+      <a class="act ghost sm" href="doc/WMS_TMS_Template_Guide.pdf" download
+         style="text-decoration:none" data-i18n="btn.tplpdf">Guide (PDF)</a>
       <input type="file" id="fRecon" accept=".xlsx,.xls,.csv,.txt" style="display:none">
       <span style="flex:1 1 auto"></span>
-      <button class="act ghost sm" id="bReconRerun" hidden data-i18n="btn.reconrerun">Re-run comparison</button>
-      <button class="act ghost sm" id="bReconXls" data-i18n="btn.reconxls">Export reconciliation</button>
     </div>
     <div class="row" style="margin-top:8px"><span id="reconMsg" class="savenote"></span></div>
+  </div>
+
+  <!-- 05 那一側還沒有結果時的空狀態:講清楚路怎麼走,不留白牆。 -->
+  <div class="lf sketch" id="reconEmpty" hidden>
+    <h3 class="display"><span class="em">⚖️</span><span data-i18n="hd.reconempty">No comparison yet</span></h3>
+    <p class="hint" style="margin:0;max-width:70ch" data-i18n="hint.reconempty">Import this period's UPS invoice under Batch Invoice Import, then bring in the filled WMS/TMS template under WMS/TMS Data. The comparison appears here the moment the file is accepted.</p>
   </div>
 
   <div class="lf sketch" id="reconIssueCard" hidden>
@@ -1363,6 +1409,14 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
 
   <div class="lf sketch" id="reconResCard" hidden>
     <h3 class="display"><span class="em">📊</span><span data-i18n="hd.reconres">By customer</span></h3>
+    <div class="row" style="margin-bottom:9px">
+      <button class="act ghost sm" id="bReconRerun" hidden data-i18n="btn.reconrerun">Re-run comparison</button>
+      <span style="flex:1 1 auto"></span>
+      <button class="act ghost sm" id="bReconXls" data-i18n="btn.reconxls">Export reconciliation</button>
+      <a class="act ghost sm" href="doc/WMS_TMS_Template_Guide.pdf" download
+         style="text-decoration:none" data-i18n="btn.tplpdf">Guide (PDF)</a>
+      <span id="reconMsg2" class="savenote"></span>
+    </div>
     <div id="reconWarn" hidden></div>
     <div class="tablewrap" style="max-height:56vh"><table id="tRecon"><thead><tr>
       <th data-i18n="th.cuscode">Code</th>
@@ -1378,7 +1432,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       <th class="num" data-i18n="th.reconpgap">Billed vs recomputed</th>
       <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
-    <p class="hint" style="margin:11px 0 0;max-width:76ch" data-i18n="hint.reconcols">Each amount answers a different question. Profit is what the customer paid less what UPS charged — what the order actually made. Recomputed is what this customer’s own rate level says the shipments should have cost: against what the customer was billed it gives the pricing variance (was enough charged), and against what UPS billed it gives the UPS variance (does the invoice match the agreement). A customer with no rate level, or one whose level has been deleted, is not repriced at all: recomputed and both variances stay blank rather than borrow another level’s rates. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way.</p>
+    <p class="hint" style="margin:11px 0 0;max-width:76ch" data-i18n="hint.reconcols">Each customer is repriced at its assigned rate level; billed, recomputed and UPS amounts yield the pricing and UPS variances. Definitions and edge cases are in the guide.</p>
   </div>
 
   <div class="lf sketch" id="reconChgCard" hidden>
@@ -6916,8 +6970,19 @@ function applyRole(){
   if(app)  app.style.display  = ME?"":"none";
   sceneShow(!!ME && currentTab()==="files");
   const who=$("#who");
-  if(who) who.textContent = ME? (ME.name+" · "+(admin?(LANG?"admin":"管理者")
-                                                    :(LANG?"user":"使用者"))) : "";
+  const roleWord = admin?(LANG?"Administrator":"管理者"):(LANG?"User":"使用者");
+  if(who) who.textContent = ME? (ME.name+" · "+roleWord) : "";
+  /* 側欄底的名片與標題列同一份資料 —— 兩處不一致比沒有更糟。 */
+  const nu=$("#navUser");
+  if(nu){
+    nu.hidden=!ME;
+    if(ME){
+      $("#navName") && ($("#navName").textContent=ME.name||ME.user||"");
+      $("#navRole") && ($("#navRole").textContent=roleWord);
+      $("#navAvatar") && ($("#navAvatar").textContent=
+        String(ME.name||ME.user||"?").trim().charAt(0).toUpperCase()||"?");
+    }
+  }
   const logout=$("#bLogout");
   if(logout) logout.style.display=(ME&&!OPEN_MODE)?"":"none";
   if(ME && ADMIN_ONLY.includes(currentTab()) && !admin) showTab("files");
@@ -6993,8 +7058,8 @@ const TAB_KEY="ups_recon_tab";
    Rate Setup —— 某一層裡面的規則:渠道、附加費、尺寸、Demand、那一層的系統設定。
    這條線正好就是 RATE_PER_LEVEL —— 右上角的 Editing 選單只在後面那一組出現,
    前面那一組不出現,因為那三頁換層級也不會變。 */
-const SET_GROUPS={ rate:["setting","cus","code2"],
-                   rateset:["chan","rules","size","demand","sys"] };
+const SET_GROUPS={ rate:["cus","code2"],
+                   rateset:["setting","chan","rules","size","demand","sys"] };
 const SET_ENTRANCES=Object.keys(SET_GROUPS);
 const RATE_TABS=[...SET_GROUPS.rate, ...SET_GROUPS.rateset];
 /* code2 = 費用代碼,現在跟 UPS 代碼查詢同住在 p-code:對外要送的代碼,和那個
@@ -7006,7 +7071,7 @@ const RATE_PER_LEVEL=new Set(SET_GROUPS.rateset);
 const RATE_HOME="setting";
 /* 每一組各自記自己停在哪 —— 從 Rate Setup 切到 Setting 再切回來,回到的是
    Rate Setup 原本那一頁,不是從頭開始。 */
-let SET_LAST={rate:"setting", rateset:"chan"};
+let SET_LAST={rate:"cus", rateset:"setting"};
 let SET_TAB="setting";
 function showTab(p){
   /* 管理分頁只有管理者能進。分頁按鈕本來就藏起來了,這裡是第二道 ——
@@ -7016,17 +7081,22 @@ function showTab(p){
   if(SET_ENTRANCES.includes(p)) return showSetTab(SET_LAST[p]||SET_GROUPS[p][0]);
   /* 在設定裡面 = 經由 showSetTab 進來的。左邊按「對帳」不算,即使它也是 p-cus。 */
   const inSet=RATE_ENTER;
+  /* 03 WMS/TMS Data 不是自己的頁面 —— 是對帳 section 的「資料」那一側。 */
+  const lit=p;
+  if(p==="wmsdata"){ p="cus"; }
   if(p==="cus" && typeof showCusTab==="function")
     /* 設定那條路停在客戶名單,左邊那條路停在對帳 —— 同一個 section,兩種來意。 */
     showCusTab(inSet?"cus":"recon");
+  if(!inSet && p==="cus" && typeof reconView==="function")
+    reconView(lit==="wmsdata"?"data":"res");
   if(typeof showSetCards==="function") showSetCards(inSet?SET_TAB:"");
   /* 記的是「回來要停在哪」。在設定裡就記設定的分頁,才不會回到頁面卻停錯子頁。 */
-  try{ localStorage.setItem(TAB_KEY, inSet?("set:"+SET_TAB):p); }catch(e){}
+  try{ localStorage.setItem(TAB_KEY, inSet?("set:"+SET_TAB):lit); }catch(e){}
   /* 入口那兩顆自己不亮,交給 rateSideSync 決定亮哪一顆 —— 它才知道現在
      停的是哪一組。在設定裡面的時候,底下的頁面按鈕一律不亮。 */
   document.querySelectorAll("#tabs button[data-p]").forEach(b=>
     b.setAttribute("aria-selected", String(
-      SET_ENTRANCES.includes(b.dataset.p) ? false : (!inSet && b.dataset.p===p))));
+      SET_ENTRANCES.includes(b.dataset.p) ? false : (!inSet && b.dataset.p===lit))));
   document.querySelectorAll(".page").forEach(s=>
     s.classList.toggle("on", s.id==="p-"+p));
   sceneShow(p==="files");
@@ -10833,7 +10903,11 @@ function reconParse(sheetRows){
 
 /* 欄位太多,filter 範圍要用真的欄號算出來,寫死會少蓋。 */
 function xlColName(n){ let s=""; while(n>0){ s=String.fromCharCode(65+(n-1)%26)+s; n=Math.floor((n-1)/26); } return s; }
-async function reconTemplate(){
+async function reconTemplate(src){
+  /* WMS 和 TMS 各下各的檔。欄位是同一套 —— 逐項拆欄本來就是為了讓來源系統
+     的欄名(TMS 把 AHS/LPS 混成 Delivery Surcharge)進不了系統;分開下載是
+     讓兩邊的同仁各拿各的檔、各填各的,不會兩個系統填進同一份互相蓋。 */
+  src=(src==="TMS")?"TMS":"WMS";
   /* 版式:識別四欄(凍結) → 三十七項費用各一欄 → 總收取金額固定最後。
      費用欄名用系統自己的費用名稱 —— 來源系統(例如 TMS 把 AHS 和 LPS 都寫成
      Delivery Surcharge)怎麼命名不影響:同仁把金額填進對的欄,含糊的名字
@@ -10867,9 +10941,9 @@ async function reconTemplate(){
     list:"Customers!$A$2:$A$"+(reg.length+1),
     title:L("代碼不在名單上","Unknown customer code"),
     msg:L("請從 Customers 分頁選一個代碼。","Pick a code from the Customers sheet.")}];
-  await xlWrite(sheets,"WMS_TMS_Reconciliation_Template.xlsx");
-  reconMsg(L("模板已下載:識別四欄 + "+REPORT_MONEY.length+" 項費用 + 總收取金額,含客戶 "+reg.length+" 筆。",
-             "Template downloaded: 4 identity columns + "+REPORT_MONEY.length
+  await xlWrite(sheets, src+"_Reconciliation_Template.xlsx");
+  reconMsg(L(src+" 模板已下載:識別四欄 + "+REPORT_MONEY.length+" 項費用 + 總收取金額,含客戶 "+reg.length+" 筆。",
+             src+" template downloaded: 4 identity columns + "+REPORT_MONEY.length
              +" itemized charges + Total Amount, with "+reg.length+" customer(s)."), true);
 }
 
@@ -10993,9 +11067,22 @@ function reconRun(list){
 /* --------------------------------------------------------------------
    畫面
    -------------------------------------------------------------------- */
+/* 03(資料)與 05(結果)是同一個 section 的兩種來意 —— 卡片分邊露。 */
+let RECON_VIEW="res";
+function reconView(mode){
+  RECON_VIEW=(mode==="data")?"data":"res";
+  const show=(id,on)=>{ const e=$("#"+id); if(e&&on===false) e.hidden=true;
+                        else if(e&&on===true) e.hidden=false; };
+  show("reconTplCard", RECON_VIEW==="data");
+  /* 結果那幾張交給 renderRecon 決定 —— 它知道現在有沒有結果。 */
+  if(typeof renderRecon==="function") renderRecon();
+}
 function reconMsg(m,ok){
-  const e=$("#reconMsg");
-  if(e){ e.textContent=m||""; e.className="savenote"+(m&&!ok?" bad":""); }
+  /* 兩個入口各有一條狀態列,訊息兩邊都寫 —— 人站在哪一邊都看得到。 */
+  for(const id of ["#reconMsg","#reconMsg2"]){
+    const e=$(id);
+    if(e){ e.textContent=m||""; e.className="savenote"+(m&&!ok?" bad":""); }
+  }
 }
 function reconIssueText(it){
   const at=it.at?L(" (與第 "+it.at+" 列重複)"," (already on line "+it.at+")"):"";
@@ -11017,6 +11104,9 @@ function reconIssueText(it){
 function renderRecon(){
   const card=$("#reconResCard"), icard=$("#reconIssueCard");
   const iss=RECON&&RECON.issues&&RECON.issues.length?RECON.issues:null;
+  const onRes=RECON_VIEW==="res";
+  const empty=$("#reconEmpty");
+  if(empty) empty.hidden=!(onRes && !(RECON&&RECON.res));
   if(icard){
     icard.hidden=!iss;
     const tb=$("#tReconIss")&&$("#tReconIss").tBodies[0];
@@ -11029,8 +11119,8 @@ function renderRecon(){
       iss.length+" row(s) could not be accepted, so nothing was imported. Fix them and import again.");
   }
   const r=RECON&&RECON.res;
-  if(card) card.hidden=!r;
-  if(!r) return;
+  if(card) card.hidden=!r||!onRes;
+  if(!r||!onRes){ if(typeof renderReconChg==="function") renderReconChg(); return; }
   const pc=v=>v==null?`<span class="empty">—</span>`
                      :(v<0?"-":"")+Math.abs(v).toFixed(1)+"%";
   const sign=v=>`<span class="mny ${v<0?"neg":(v>0?"pos":"")}">${money(v)}</span>`;
@@ -11110,8 +11200,8 @@ let RECON_SCOPE="";
 function renderReconChg(){
   const card=$("#reconChgCard");
   const r=RECON&&RECON.res;
-  if(card) card.hidden=!(r&&r.chg&&r.chg.length);
-  if(!r||!r.chg) return;
+  if(card) card.hidden=!(r&&r.chg&&r.chg.length&&RECON_VIEW==="res");
+  if(!r||!r.chg||RECON_VIEW!=="res") return;
   const sel=$("#reconScope");
   if(sel){
     const keep=RECON_SCOPE;
@@ -11245,9 +11335,11 @@ async function reconImport(file){
   const pf=reconPreflight(p.rows.map(r=>r.cus));
   const res=reconRun(p.rows);
   RECON={issues:[], res, list:p.rows, sumWarn:p.sumWarn||[]};
-  renderRecon();
   const kept=reconRowsSave(p.rows);
   reconRerunBtn();
+  /* 檔一收下就把人帶到結果那一側 —— 匯入在 03,答案在 05,不讓人自己找。 */
+  if(RECON_VIEW==="data" && typeof showTab==="function") showTab("cus");
+  else renderRecon();
   if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
   if(pf.blocked)
     reconMsg(L("已對帳 "+p.rows.length+" 張單,其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
@@ -11433,7 +11525,9 @@ function bindAnalysis(){
 }
 
 function bindRecon(){
-  $("#bReconTpl") && ($("#bReconTpl").onclick=()=>{ reconTemplate().catch(e=>
+  $("#bReconTplW") && ($("#bReconTplW").onclick=()=>{ reconTemplate("WMS").catch(e=>
+    reconMsg(String(e&&e.message||e),false)); });
+  $("#bReconTplT") && ($("#bReconTplT").onclick=()=>{ reconTemplate("TMS").catch(e=>
     reconMsg(String(e&&e.message||e),false)); });
   $("#bReconImp") && ($("#bReconImp").onclick=()=>$("#fRecon").click());
   $("#bReconRerun") && ($("#bReconRerun").onclick=()=>{
@@ -15583,7 +15677,14 @@ const I18N={
   "th.pkgdim":["包裹尺寸","Package Dimensions"],
   "th.keydim":["原始鍵入尺寸","Detail Keyed Dimensions"],
   "th.net":["淨額","Net Amount"],
-  "tab.admin":["🛡️ 管理員","🛡️ Admin"],
+  "tab.admin":["使用者管理","User Administration"],
+  "tab.wmsdata":["WMS / TMS 資料","WMS / TMS Data"],
+  "nav.cfg":["設定","Configuration"],
+  "nav.data":["資料作業","Data Operations"],
+  "nav.recon":["對帳","Reconciliation"],
+  "nav.adm":["管理","Administration"],
+  "hd.reconempty":["還沒有對帳結果","No comparison yet"],
+  "hint.reconempty":["先到「04 帳單匯入」載入這一期的 UPS 帳單,再到「03 WMS / TMS 資料」匯入填好的模板 —— 檔案一收下,結果就出現在這裡。","Import this period's UPS invoice under Batch Invoice Import, then bring in the filled WMS/TMS template under WMS/TMS Data. The comparison appears here the moment the file is accepted."],
   "hd.loginhistory":["登入紀錄","Login History"],
   "hint.loginhistory":["由 Supabase 記錄成功登入，只有管理員可以查看。失敗登入與 IP 請至 Supabase Auth Logs 查看。",
     "Successful sign-ins recorded by Supabase. Only administrators can view this page. See Supabase Auth Logs for failed attempts and IP addresses."],
@@ -15676,12 +15777,12 @@ const I18N={
   "hd.dim":["生效中的 DIM 除數","DIM Factors in Force"],
   "btn.saverates":["💾 儲存費率","💾 Save Rates"],
   "btn.saverules":["💾 儲存規則","💾 Save Rules"],
-  "tab.files":["📁 匯入檔案","📁 Import Files"],
+  "tab.files":["帳單匯入","Batch Invoice Import"],
   "tab.rules":["💲 附加費設定","💲 Surcharge Setup"],
   "tab.size":["📏 尺寸規則","📏 Size Rules"],
   "tab.chan":["🚚 渠道","🚚 Channels"],
-  "tab.cus":["⚖️ WMS／TMS 對帳","⚖️ WMS / TMS Reconciliation"],
-  "tab.analysis":["📈 分析","📈 Analysis"],
+  "tab.cus":["對帳分析","Reconciliation Analysis"],
+  "tab.analysis":["分析儀表板","Analytics Dashboard"],
   "ct.cusreg":["客戶","Customers"],
   "ct.chgcode":["費用代碼","Charge codes"],
   "ct.recon":["對帳","Reconciliation"],
@@ -15742,13 +15843,14 @@ const I18N={
   "cus.op.eq":["等於","equals"],
   "cus.op.has":["包含","contains"],
   "tab.demand":["⚡ Demand 附加費","⚡ Demand Surcharge"],
-  "tab.hist":["📚 帳單歷史","📚 Invoice History"],
+  "tab.hist":["帳單歷史","Invoice History"],
   "tab.code":["🔎 代碼查詢","🔎 Code Lookup"],
-  "hd.recon":["WMS / TMS 對帳","WMS / TMS reconciliation"],
-  "hint.recon":["帳單本身已經有 UPS 收了多少,這份檔案補的是帳單不可能知道的事:這張單是哪個客戶的,以及向那個客戶收了多少。Shipments 一張系統單一列;一票多件時,把該單的追蹤號全部寫在同一格,用逗號分隔。Charges 那一頁是選填的 —— 填了,每一項費用就比得出三個數字:你收多少、費率說應該收多少、UPS 收多少。",
-    "The invoice already holds what UPS charged. This file adds what it cannot know: which customer an order belongs to, and what that customer was billed. One order per row on Shipments; for a multi-package order put every tracking number in one cell, separated by commas. The Charges sheet is optional — fill it in and every charge is compared three ways: what you billed, what the rate level says, what UPS charged."],
+  "hd.recon":["WMS / TMS 資料","WMS / TMS data"],
+  "hint.recon":["一張訂單一列;檔案受理後逐項三方比對。欄位規範與 TMS 對應詳見填寫說明(PDF)。","One order per row; every itemized charge is compared three ways on acceptance. Column rules and the TMS mapping are in the guide."],
   "lb.tpl":["模板","Template"],
-  "btn.recontpl":["導出","Export"],
+  "btn.tplpdf":["填寫說明(PDF)","Guide (PDF)"],
+  "btn.recontplw":["WMS 模板","WMS template"],
+  "btn.recontplt":["TMS 模板","TMS template"],
   "btn.reconimp":["導入填好的","Import filled"],
   "btn.reconxls":["匯出對帳結果","Export reconciliation"],
   "btn.reconrerun":["重新比對","Re-run comparison"],
@@ -15765,19 +15867,18 @@ const I18N={
   "th.reconrep":["系統重算","Recomputed"],
   "th.recongap":["UPS 差異","UPS vs recomputed"],
   "th.reconpgap":["定價差異","Billed vs recomputed"],
-  "hint.reconcols":["三個金額各問一件事。毛利是客戶實付減去 UPS 實收 —— 這一單真正賺多少。系統重算是照該客戶自己的費率層級算出這幾件本來該是多少:拿它跟客戶實付比,是定價差異(該收的有沒有收足);拿它跟 UPS 實收比,是 UPS 差異(帳單與合約有沒有出入)。客戶沒指派費率層級、或層級已被刪除時不重算,重算與兩個差異一律留空,不會拿別層的費率頂替。「UPS 實收」不含帳戶層費用 —— 那些費用沒有追蹤號,對不到任何一張單;該不該計入由帳務決定,和儀表板的處理一致。",
-    "Each amount answers a different question. Profit is what the customer paid less what UPS charged — what the order actually made. Recomputed is what this customer's own rate level says the shipments should have cost: against what the customer was billed it gives the pricing variance (was enough charged), and against what UPS billed it gives the UPS variance (does the invoice match the agreement). A customer with no rate level, or one whose level has been deleted, is not repriced at all: recomputed and both variances stay blank rather than borrow another level's rates. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way."],
+  "hint.reconcols":["各客戶依其指派之費率層級重算;實收、重算與 UPS 三數推出定價差異與 UPS 差異。定義與特殊情況詳見說明(PDF)。","Each customer is repriced at its assigned rate level; billed, recomputed and UPS amounts yield the pricing and UPS variances. Definitions and edge cases are in the guide."],
   "tab.setting":["🧭 費率層級","🧭 Rate levels"],
-  "tab.rate":["⚙️ 帳號設定","⚙️ Account Setup"],
-  "tab.rateset":["💵 費率設定","💵 Rate Setup"],
+  "tab.rate":["帳戶與客戶","Account & Client Setup"],
+  "tab.rateset":["費率層級管理","Rate Level Management"],
   "rt.levels":["1. 費率層級","1. Rate Levels"],
-  "rt.customers":["2. 客戶設定","2. Client Setup"],
-  "rt.rules":["2. 附加費","2. Surcharges"],
-  "rt.size":["3. 尺寸規則","3. Size Rules"],
-  "rt.chan":["1. 渠道","1. Channels"],
-  "rt.demand":["4. Demand 附加費","4. Demand"],
-  "rt.chgcode":["3. 費用代碼","3. Charge Codes"],
-  "rt.sys":["5. 系統設定","5. System"],
+  "rt.customers":["1. 客戶設定","1. Client Setup"],
+  "rt.rules":["3. 附加費","3. Surcharges"],
+  "rt.size":["4. 尺寸規則","4. Size Rules"],
+  "rt.chan":["2. 渠道","2. Channels"],
+  "rt.demand":["5. Demand 附加費","5. Demand"],
+  "rt.chgcode":["2. 費用代碼","2. Charge Codes"],
+  "rt.sys":["6. 系統設定","6. System"],
   "hd.analysis":["毛利分析","Profit analysis"],
   "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",
     "Nothing to analyse yet. This page reads the reconciliation — once the filled template is imported, the numbers land here and the whole analysis can be exported."],
@@ -17413,7 +17514,8 @@ step("tab", ()=>{
     if(RATE_TABS.includes(k)) showSetTab(k);
     return;
   }
-  if(!document.getElementById("p-"+want)) return;   /* 舊的分頁名稱就忽略 */
+  /* wmsdata 是入口不是頁面 —— 它落在 p-cus,別被「舊分頁名稱」誤殺。 */
+  if(want!=="wmsdata" && !document.getElementById("p-"+want)) return;
   if(HIDDEN_TABS.includes(want)) return;            /* 收起來的就回匯入頁 */
   showTab(want);
 });
