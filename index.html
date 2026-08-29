@@ -480,7 +480,7 @@ td.cells{white-space:normal}
   color:var(--neg); border:1.5px solid var(--neg); border-radius:7px;
   padding:10px 12px; background:var(--panel);
 }
-.note.block b{color:var(--neg)}
+.note.block b{color:var(--neg);display:block;margin-bottom:3px}
 .note.block .who{display:block;margin-top:6px;color:var(--ink);line-height:1.8}
 .note.block .who code{
   display:inline-block;margin:0 6px 4px 0;padding:1px 7px;
@@ -1231,6 +1231,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       <button class="act" id="bReconImp" data-i18n="btn.reconimp">Import filled template</button>
       <input type="file" id="fRecon" accept=".xlsx,.xls,.csv,.txt" style="display:none">
       <span style="flex:1 1 auto"></span>
+      <button class="act ghost sm" id="bReconRerun" hidden data-i18n="btn.reconrerun">Re-run comparison</button>
       <button class="act ghost sm" id="bReconXls" data-i18n="btn.reconxls">Export reconciliation</button>
     </div>
     <div class="row" style="margin-top:8px"><span id="reconMsg" class="savenote"></span></div>
@@ -1262,7 +1263,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       <th class="num" data-i18n="th.reconpgap">Billed vs recomputed</th>
       <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
-    <p class="hint" style="margin:11px 0 0;max-width:76ch" data-i18n="hint.reconcols">Profit is what the customer paid less what UPS charged. Recomputed is what the customer’s own rate level says the shipments should have cost; set against what UPS charged, it shows where the invoice differs from the agreement. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way.</p>
+    <p class="hint" style="margin:11px 0 0;max-width:76ch" data-i18n="hint.reconcols">Each amount answers a different question. Profit is what the customer paid less what UPS charged — what the order actually made. Recomputed is what this customer’s own rate level says the shipments should have cost: against what the customer was billed it gives the pricing variance (was enough charged), and against what UPS billed it gives the UPS variance (does the invoice match the agreement). A customer with no rate level, or one whose level has been deleted, is not repriced at all: recomputed and both variances stay blank rather than borrow another level’s rates. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way.</p>
   </div>
 
   <div class="lf sketch" id="reconChgCard" hidden>
@@ -6623,6 +6624,8 @@ function setMe(m){
   /* 本機那份立刻還原,不要等雲端 —— 搬家只擋住「讀雲端」那兩個動作,
      擋在這裡的話,登入後馬上匯入的檔案會被晚一步的還原蓋掉。 */
   if(m) restoreHistoryDetail();
+  /* 對帳的那幾列也跟著人走 —— key 帶帳號,換人就是換一份。 */
+  if(m) reconRestore();
 }
 function applyRole(){
   const admin = ME && ME.role==="admin";
@@ -10209,6 +10212,70 @@ const RECON_COL={ order:"Order Number", trk:"Tracking Numbers",
 const RECON_REQ=["order","trk","cus","amt"];
 let RECON=null;
 
+/* 重新整理之後留什麼 —— 這件事要講清楚,不能靠運氣。
+   留的是匯進來的那幾列(訂單、追蹤號、客戶、向客戶收),不留算出來的數字:
+   數字是費率設定算出來的,而費率設定隨時會改。把上一輪的金額原封不動端回
+   來,看起來像剛算的,其實可能是舊費率的產物 —— 那正是這一版要消滅的那種
+   錯。所以回來之後重算一次;帳單還沒載入就先擺著,並且說出來。 */
+const RECON_KEY_BASE="ups_recon_rows_v1";
+function reconRowsKey(){ return RECON_KEY_BASE+"::"+((ME&&ME.id)||"anon"); }
+function reconRowsSave(rows){
+  try{
+    if(!rows||!rows.length) localStorage.removeItem(reconRowsKey());
+    else localStorage.setItem(reconRowsKey(), JSON.stringify(rows));
+    return true;
+  }catch(e){
+    /* 塞不下就不留 —— 留一半比沒留更糟。 */
+    try{ localStorage.removeItem(reconRowsKey()); }catch(e2){}
+    return false;
+  }
+}
+function reconRowsLoad(){
+  try{
+    const t=localStorage.getItem(reconRowsKey());
+    if(!t) return null;
+    const v=JSON.parse(t);
+    return Array.isArray(v)&&v.length?v:null;
+  }catch(e){ return null; }
+}
+/* 帳單在就重算,不在就把列留著等。兩種情況都要讓人看見狀態。 */
+function reconRestore(){
+  const rows=reconRowsLoad();
+  if(!rows) return;
+  if(!CFG||!SHIPS||!SHIPS.length){
+    RECON={issues:[], res:null, list:rows};
+    reconRerunBtn();
+    reconMsg(L("上次匯入的 "+rows.length+" 張單還留著。載入這一期的 UPS 帳單之後,按「重新比對」。",
+               "The "+rows.length+" order(s) from last time are still here. Load this period's UPS invoice, then press Re-run comparison."),false);
+    return;
+  }
+  reconRerunFrom(rows, true);
+}
+function reconRerunBtn(){
+  const b=$("#bReconRerun");
+  if(b) b.hidden=!(RECON&&RECON.list&&RECON.list.length);
+}
+function reconRerunFrom(rows, quiet){
+  if(!rows||!rows.length) return false;
+  if(!CFG){ reconMsg(L("請先載入費率設定。","Load a rate configuration first."),false); return false; }
+  if(!SHIPS||!SHIPS.length){
+    reconMsg(L("請先匯入這一期的 UPS 帳單,對帳要拿它來比。",
+               "Import this period's UPS invoice first — there is nothing to reconcile against."),false);
+    return false; }
+  const pf=reconPreflight(rows.map(r=>r.cus));
+  const res=reconRun(rows);
+  RECON={issues:[], res, list:rows};
+  renderRecon(); reconRerunBtn();
+  const head=quiet?L("已用留著的 "+rows.length+" 張單重新比對。",
+                     "Re-compared the "+rows.length+" order(s) kept from last time.")
+                 :L("已重新比對 "+rows.length+" 張單。","Re-compared "+rows.length+" order(s).");
+  if(pf.blocked)
+    reconMsg(head+L("其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
+                    " "+pf.blocked+" customer(s) were not repriced — see the notice below."),false);
+  else reconMsg(head,true);
+  return true;
+}
+
 /* 兩側的追蹤號要走同一個正規化,不然「1Z 123 456」和「1Z123456」永遠對不上。
    只去掉空白和連字號 —— 再多刪就開始改動內容了。 */
 const reconTrk=v=>String(v==null?"":v).toUpperCase().replace(/[\s-]+/g,"");
@@ -10656,7 +10723,7 @@ async function reconImport(file){
   const rows=wb.sheets[RECON_SHEET] || wb.sheets[(wb.order||[])[0]] || wb.sheets[""];
   if(!rows){ reconMsg(L("找不到 "+RECON_SHEET+" 分頁。","No "+RECON_SHEET+" sheet found."),false); return; }
   const p=reconParse(rows);
-  if(p.err){ RECON=null; renderRecon(); reconMsg(p.err,false); return; }
+  if(p.err){ RECON=null; renderRecon(); reconRerunBtn(); reconMsg(p.err,false); return; }
   if(p.issues.length){
     RECON={issues:p.issues, res:null, list:null};
     renderRecon();
@@ -10668,6 +10735,9 @@ async function reconImport(file){
   const res=reconRun(p.rows);
   RECON={issues:[], res, list:p.rows};
   renderRecon();
+  const kept=reconRowsSave(p.rows);
+  reconRerunBtn();
+  if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
   if(pf.blocked)
     reconMsg(L("已對帳 "+p.rows.length+" 張單,其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
                "Reconciled "+p.rows.length+" order(s); "+pf.blocked
@@ -10680,6 +10750,8 @@ function bindRecon(){
   $("#bReconTpl") && ($("#bReconTpl").onclick=()=>{ reconTemplate().catch(e=>
     reconMsg(String(e&&e.message||e),false)); });
   $("#bReconImp") && ($("#bReconImp").onclick=()=>$("#fRecon").click());
+  $("#bReconRerun") && ($("#bReconRerun").onclick=()=>{
+    reconRerunFrom(RECON&&RECON.list, false); });
   $("#fRecon") && ($("#fRecon").onchange=e=>{
     const f=e.target.files&&e.target.files[0];
     e.target.value="";
@@ -14988,6 +15060,7 @@ const I18N={
   "btn.recontpl":["下載模板","Download template"],
   "btn.reconimp":["匯入填好的模板","Import filled template"],
   "btn.reconxls":["匯出對帳結果","Export reconciliation"],
+  "btn.reconrerun":["重新比對","Re-run comparison"],
   "hd.reconiss":["不能收的資料列","Rows that could not be accepted"],
   "th.reconline":["列","Line"],
   "th.reconwhy":["原因","Reason"],
@@ -15001,8 +15074,8 @@ const I18N={
   "th.reconrep":["系統重算","Recomputed"],
   "th.recongap":["UPS 差異","UPS vs recomputed"],
   "th.reconpgap":["定價差異","Billed vs recomputed"],
-  "hint.reconcols":["毛利是客戶實付減去 UPS 實收。系統重算是照該客戶的費率層級算出這幾件本來該是多少;拿它跟 UPS 實收比,看得出帳單與合約有沒有出入。「UPS 實收」不含帳戶層費用 —— 那些費用沒有追蹤號,對不到任何一張單;該不該計入由帳務決定,和儀表板的處理一致。",
-    "Profit is what the customer paid less what UPS charged. Recomputed is what the customer's own rate level says the shipments should have cost; set against what UPS charged, it shows where the invoice differs from the agreement. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way."],
+  "hint.reconcols":["三個金額各問一件事。毛利是客戶實付減去 UPS 實收 —— 這一單真正賺多少。系統重算是照該客戶自己的費率層級算出這幾件本來該是多少:拿它跟客戶實付比,是定價差異(該收的有沒有收足);拿它跟 UPS 實收比,是 UPS 差異(帳單與合約有沒有出入)。客戶沒指派費率層級、或層級已被刪除時不重算,重算與兩個差異一律留空,不會拿別層的費率頂替。「UPS 實收」不含帳戶層費用 —— 那些費用沒有追蹤號,對不到任何一張單;該不該計入由帳務決定,和儀表板的處理一致。",
+    "Each amount answers a different question. Profit is what the customer paid less what UPS charged — what the order actually made. Recomputed is what this customer's own rate level says the shipments should have cost: against what the customer was billed it gives the pricing variance (was enough charged), and against what UPS billed it gives the UPS variance (does the invoice match the agreement). A customer with no rate level, or one whose level has been deleted, is not repriced at all: recomputed and both variances stay blank rather than borrow another level's rates. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way."],
   "tab.setting":["⚙️ 設定","⚙️ Settings"],
   "hd.setting":["設定","Settings"],
   "hint.setting":["重新計價的一般行為設定,改動會存到你的帳號。","General repricing behaviour. Changes are saved to your account."],
