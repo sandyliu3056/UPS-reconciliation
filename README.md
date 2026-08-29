@@ -64,6 +64,30 @@ Browser storage is separate (`ups_recon_*`), so the two never overwrite each
 other's saved configuration or invoice history on the same machine. The theme,
 zoom and brand keys are shared on purpose: the two should look like one product.
 
+## Publishing on GitHub Pages
+
+The site is the repository root — no build step. Turn it on once, in
+**Settings → Pages → Build and deployment → Source: Deploy from a branch**,
+branch `main`, folder `/ (root)`. It lands on
+`https://sandyliu3056.github.io/UPS-reconciliation/`.
+
+Two things follow from that choice, both worth knowing before a deploy
+confuses somebody:
+
+**The repository has to stay public.** GitHub Pages will not publish a private
+repository on the free plan. So the source, and the sign-in hash with it, are
+readable by anyone — see *Signing in* above for what that gate is actually
+worth.
+
+**`_headers` does nothing here.** It asks Netlify and Cloudflare Pages to
+revalidate `index.html` on every visit; GitHub Pages has no equivalent and
+serves HTML with roughly ten minutes of browser cache. After pushing, a
+browser that already has the page can keep running the old build for that
+long — which looks exactly like a change that did not deploy, or a button that
+stopped working. Hover the byline in the header to see the build time this tab
+is running, and force-reload with Ctrl+Shift+R if it is behind. The file is
+kept for the day this moves to a host that reads it.
+
 ## Files
 
 | Path | What it is |
@@ -72,6 +96,6 @@ zoom and brand keys are shared on purpose: the two should look like one product.
 | `auth-config.js` | Supabase URL and anon key; not secret, but per-deployment |
 | `supabase/functions/` | Edge functions: account admin, address classification |
 | `schema.sql`, `local_settings.sql`, `login_history.sql` | Database setup |
-| `_headers`, `vercel.json` | Static-host configuration |
+| `_headers`, `vercel.json` | Cache and host rules for Netlify / Cloudflare / Vercel; inert on GitHub Pages |
 
 UPS API credentials belong in `supabase secrets set` and never in a browser form.
