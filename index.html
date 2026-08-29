@@ -1332,7 +1332,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
   <div id="reconPane" hidden>
   <div class="lf sketch">
     <h3 class="display"><span class="em">⚖️</span><span data-i18n="hd.recon">WMS / TMS reconciliation</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.recon">The invoice already holds what UPS charged. This file adds what it cannot know: which customer an order belongs to, and what that customer was billed. One order per row on Shipments; for a multi-package order put every tracking number in one cell, separated by commas. The Charges sheet is optional — fill it in and every charge is compared three ways: what you billed, what the rate level says, what UPS charged.</p>
+    <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.recon">The invoice already holds what UPS charged. This file adds what it cannot know: which customer an order belongs to, and what that customer was billed for each charge. One order per row; for a multi-package order put every tracking number in one cell, separated by commas. Fill in as many charge columns as you bill — every one of them is then compared three ways: what you billed, what the rate level says, what UPS charged. Leave the total blank and it is the sum of those columns.</p>
     <div class="row">
       <label class="inlab" style="margin-left:0" data-i18n="lb.tpl">Template</label>
       <button class="act ghost sm" id="bReconTpl" data-i18n="btn.recontpl">Export</button>
@@ -10615,15 +10615,10 @@ const RECON_COL={ order:"Order Number", trk:"Tracking Numbers",
                   cus:"Customer Code",  amt:"Total Amount Billed to Customer",
                   date:"Ship Date" };
 const RECON_REQ=["order","trk","cus","amt"];
-/* 第二張分頁:逐項向客戶收了什麼。選填 —— 沒有它,整份照舊只比訂單總額;
-   有它,每一項費用才比得出「你收多少 / 應該收多少 / UPS 收多少」三個數字。
-   一張單一項一列,Order Number 要和第一張分頁對得上。 */
-const RECON_CHG_SHEET="Charges";
-const RECON_CHG_CODES="ChargeCodes";        /* 下拉來源,藏起來 */
-const RECON_CHG_COL={ order:"Order Number", code:"Charge Code",
-                      name:"Charge Description",
-                      amt:"Amount Billed to Customer" };
-const RECON_CHG_REQ=["order","code","amt"];
+/* 逐項費用是同一列上的欄位,不是另一張分頁:一單一列,一項費用一欄,
+   總額是那幾欄加起來。交給客戶或 TMS 填的東西,從左填到右填完就是一張單 ——
+   兩張分頁要對單號,那是給工程師的形狀,不是給填表的人的。
+   固定欄以外的標頭,只要對得到一項費用,就是那一項的金額欄。 */
 let RECON=null;
 
 /* 重新整理之後留什麼 —— 這件事要講清楚,不能靠運氣。
@@ -10748,45 +10743,48 @@ function reconPreflight(codes){
    模板
    -------------------------------------------------------------------- */
 async function reconTemplate(){
-  const hd=[RECON_COL.order,RECON_COL.trk,RECON_COL.cus,RECON_COL.amt,RECON_COL.date];
-  const req=new Set([RECON_COL.order,RECON_COL.trk,RECON_COL.cus,RECON_COL.amt]);
+  /* 欄位順序照填的人的動作:先講這是哪一張單、寄了什麼、算誰的,再一項一項
+     填錢,總額擺最後 —— 它是前面那些加起來的結果,位置就該在結果的地方。 */
+  /* 欄位順序:天天有的擺前面,其餘照系統的順序接在後面。內部目錄的順序是
+     報表欄位的順序,燃油排在最後一個 —— 照抄的話,每一單都要填的那一項會
+     落在第 41 欄。這裡只動模板的欄序,不動目錄本身。 */
+  const FIRST=["Base Rate","Fuel Surcharge","Residential Surcharge",
+               "DAS Commercial","DAS Residential",
+               "Additional Handling Surcharge - Dimension",
+               "Large Package Surcharge","Address Correction"];
+  const cat=(typeof chgCatalog==="function"?chgCatalog():[]).map(c=>c.name);
+  const chg=FIRST.filter(n=>cat.includes(n))
+    .concat(cat.filter(n=>!FIRST.includes(n)))
+    .map(n=>chgLabel(n));
+  const hd=[RECON_COL.order,RECON_COL.trk,RECON_COL.cus,RECON_COL.date]
+    .concat(chg, [RECON_COL.amt]);
+  const req=new Set([RECON_COL.order,RECON_COL.trk,RECON_COL.cus]);
+  const isChg=new Set(chg);
   /* 必填的欄名反白,選填的用淺底。模板裡不寫任何說明文字 —— 說明是另一份
      文件,混在一起的話同仁會在說明那一列上開始填資料。 */
+  /* 三種底色分三件事:非填不可、要你填錢、可留空。少了中間那一種,
+     費用欄看起來就和「選填」一樣,而它們才是這張表的主體。 */
   const H=n=>({v:n,t:"s",s:{bold:true,align:"left",
-      fill:req.has(n)?"351C15":"EFE3CB", color:req.has(n)?"FFFFFF":"351C15"}});
+      fill:req.has(n)?"351C15":(isChg.has(n)?"8A5A12":"EFE3CB"),
+      color:(req.has(n)||isChg.has(n))?"FFFFFF":"351C15"}});
   const CH=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
   const reg=cusReg();
   /* 費用代碼的下拉來源。用你自己給的代碼;沒給過代碼的就用系統內部名稱 ——
      下拉一定要選得到,不然這一欄只能靠手打,手打就會拼錯。
      同一個代碼對到兩項費用的話只留第一個,清單裡出現兩個一樣的選項沒有意義。 */
-  const cat=[], seenCode=new Set();
-  for(const c of (typeof chgCatalog==="function"?chgCatalog():[])){
-    const code=(chgCodeOf(c.name)||c.name).trim();
-    if(!code||seenCode.has(code)) continue;
-    seenCode.add(code);
-    cat.push({code, name:chgLabel(c.name)});
-  }
-  const chd=[RECON_CHG_COL.order,RECON_CHG_COL.code,
-             RECON_CHG_COL.name,RECON_CHG_COL.amt];
-  const chreq=new Set([RECON_CHG_COL.order,RECON_CHG_COL.code,RECON_CHG_COL.amt]);
-  const H2=n=>({v:n,t:"s",s:{bold:true,align:"left",
-      fill:chreq.has(n)?"351C15":"EFE3CB", color:chreq.has(n)?"FFFFFF":"351C15"}});
+  /* 凍到第三欄:往右捲去填第 30 項費用的時候,單號和客戶還在畫面上。
+     不凍的話填表的人得一直往回捲確認自己在哪一列。 */
   const sheets=[
-    {name:RECON_SHEET, rows:[hd.map(H)], freeze:{r:1,c:0}, filter:"A1:E1",
-     cols:[{w:22},{w:38},{w:18},{w:30},{w:14}]},
-    /* 逐項那一張是選填的,所以擺在第二頁而不是第一頁 —— 打開模板先看到的
-       仍然是非填不可的那一張。 */
-    {name:RECON_CHG_SHEET, rows:[chd.map(H2)], freeze:{r:1,c:0}, filter:"A1:D1",
-     cols:[{w:22},{w:22},{w:34},{w:26}]},
+    {name:RECON_SHEET, rows:[hd.map(H)], freeze:{r:1,c:3},
+     filter:"A1:"+xlCol(hd.length-1)+"1",
+     cols:[{w:22},{w:38},{w:18},{w:14}]
+       .concat(chg.map(n=>({w:Math.max(14,Math.min(30,n.length+3))})), [{w:28}])},
     /* 客戶名單只是下拉選單的來源。Excel 的清單驗證一定要指向活頁簿裡的一個
        範圍,所以這一頁必須存在;但它不是給人填的,所以藏起來 —— 模板打開
        就只有一頁,要填哪裡沒有第二種解釋。 */
     {name:"Customers", hidden:true, freeze:{r:1,c:0}, cols:[{w:18},{w:34}],
      rows:[[CH("Customer Code"),CH("Customer Name")]]
-       .concat(reg.map(c=>[c.code, c.name||c.code]))},
-    {name:RECON_CHG_CODES, hidden:true, freeze:{r:1,c:0}, cols:[{w:22},{w:38}],
-     rows:[[CH("Charge Code"),CH("Charge")]]
-       .concat(cat.map(c=>[c.code, c.name]))}
+       .concat(reg.map(c=>[c.code, c.name||c.code]))}
   ];
   /* 客戶名單是空的就不下驗證 —— 來源範圍指到一列空白,Excel 會判檔案有問題。 */
   if(reg.length) sheets[0].dv=[{
@@ -10794,17 +10792,11 @@ async function reconTemplate(){
     list:"Customers!$A$2:$A$"+(reg.length+1),
     title:L("代碼不在名單上","Unknown customer code"),
     msg:L("請從 Customers 分頁選一個代碼。","Pick a code from the Customers sheet.")}];
-  if(cat.length) sheets[1].dv=[{
-    sqref:"B2:B20000",
-    list:RECON_CHG_CODES+"!$A$2:$A$"+(cat.length+1),
-    title:L("代碼不在清單上","Unknown charge code"),
-    msg:L("請從清單選一個費用代碼。","Pick a charge code from the list.")}];
-  await xlWrite(sheets,"WMS_TMS_Reconciliation_Template.xlsx");
-  reconMsg(L("模板已下載:客戶 "+reg.length+" 筆、費用代碼 "+cat.length+" 項。"
-             +(cat.length?"":"(還沒設費用代碼,Charges 那一頁沒有下拉。)"),
-             "Template downloaded — "+reg.length+" customer(s), "+cat.length
-             +" charge code(s)."
-             +(cat.length?"":" No charge codes set yet, so the Charges sheet has no dropdown.")),
+  await xlWrite(sheets,"WMS_TMS_Order_Template.xlsx");
+  reconMsg(L("模板已下載:"+chg.length+" 個費用欄、客戶 "+reg.length+" 筆。"
+             +"總額那一欄留空就是費用欄加起來。",
+             "Template downloaded — "+chg.length+" charge column(s), "
+             +reg.length+" customer(s). Leave the total blank and it is the sum of the charge columns."),
            true);
 }
 
@@ -10823,7 +10815,26 @@ function reconParse(sheetRows){
   const gone=RECON_REQ.filter(k=>ix[k]<0).map(k=>RECON_COL[k]);
   if(gone.length) return {err:L("模板少了這幾欄:","The template is missing these columns: ")
                               +gone.join(", ")};
-  const out=[], issues=[];
+  /* 固定欄以外的標頭,對得到費用的就是那一項的金額欄。三種寫法都認:
+     你自己的名稱(模板上印的就是它)、系統內部名稱、你自己的代碼 ——
+     手上可能有舊版模板,或有人把標頭改成自家科目。 */
+  const chgIx=[];
+  {
+    const known2=new Map();
+    for(const c of (typeof chgCatalog==="function"?chgCatalog():[]))
+      for(const key of [chgLabel(c.name), c.name, chgCodeOf(c.name)]){
+        const k=String(key||"").trim().toLowerCase();
+        if(k && !known2.has(k)) known2.set(k, c.name);
+      }
+    const fixed=new Set(Object.keys(RECON_COL).map(k=>RECON_COL[k].toLowerCase()));
+    head.forEach((h,i)=>{
+      const k=String(h||"").trim().toLowerCase();
+      if(!k||fixed.has(k)) return;
+      const nm=known2.get(k);
+      if(nm) chgIx.push({i, name:nm});
+    });
+  }
+  const out=[], issues=[], charges=[];
   const seenOrder=new Map(), seenTrk=new Map();
   const known=new Set(cusReg().map(c=>c.code));
   for(let i=1;i<rows.length;i++){
@@ -10833,13 +10844,27 @@ function reconParse(sheetRows){
     const cus=cusNorm(cell("cus"));
     const amtRaw=cell("amt");
     const trks=cell("trk").split(/[,;\n\r]+/).map(reconTrk).filter(Boolean);
+    /* 這一列的逐項費用。一格一項,空的就是這一單沒有那一項。 */
+    const lines=[]; let sum=0, badChg="";
+    for(const cc of chgIx){
+      const raw=reconTxt(r[cc.i]);
+      if(!raw) continue;
+      if(!/^-?\d+(\.\d+)?$/.test(raw.replace(/[$,\s]/g,""))){
+        badChg=cc.name+"："+raw; break; }
+      const v=cents(toNum(raw.replace(/[$,\s]/g,"")));
+      lines.push({order, name:cc.name, amt:v});
+      sum=cents(sum+v);
+    }
     const blank=[];
     if(!order)        blank.push(RECON_COL.order);
     if(!trks.length)  blank.push(RECON_COL.trk);
     if(!cus)          blank.push(RECON_COL.cus);
-    if(!amtRaw)       blank.push(RECON_COL.amt);
+    /* 總額和費用欄至少要有一邊 —— 兩邊都空的話這一列沒有金額可言。 */
+    if(!amtRaw && !lines.length && !badChg)
+      blank.push(RECON_COL.amt+L("(或任一費用欄)"," (or any charge column)"));
     if(blank.length){ issues.push({ln, kind:"blank", what:blank.join(", ")}); continue; }
-    if(!/^-?\d+(\.\d+)?$/.test(amtRaw.replace(/[$,\s]/g,""))){
+    if(badChg){ issues.push({ln, kind:"chgAmt", what:badChg}); continue; }
+    if(amtRaw && !/^-?\d+(\.\d+)?$/.test(amtRaw.replace(/[$,\s]/g,""))){
       issues.push({ln, kind:"amt", what:amtRaw}); continue; }
     if(!known.has(cus)){ issues.push({ln, kind:"cus", what:cus}); continue; }
     if(seenOrder.has(order)){
@@ -10848,57 +10873,14 @@ function reconParse(sheetRows){
     if(clash){ issues.push({ln, kind:"dupTrk", what:clash, at:seenTrk.get(clash)}); continue; }
     seenOrder.set(order,ln);
     for(const t of trks) seenTrk.set(t,ln);
-    out.push({ln, order, trks, cus,
-              amt:cents(toNum(amtRaw.replace(/[$,\s]/g,""))), date:cell("date")});
+    /* 填了總額就用填的 —— 那是實際向客戶收的錢。費用欄加起來和它對不上是
+       常有的事(折讓、沒逐項列完),不擋也不改,兩個數字各自誠實。
+       沒填就用費用欄加起來的。 */
+    const amt=amtRaw?cents(toNum(amtRaw.replace(/[$,\s]/g,""))):sum;
+    for(const x of lines) charges.push(x);
+    out.push({ln, order, trks, cus, amt, date:cell("date")});
   }
-  return {rows:out, issues};
-}
-
-/* 逐項那一張認的是你自己給的代碼。沒給過代碼的費用,代碼就是系統內部名稱 ——
-   和模板下拉裡放的是同一組字,兩邊不會對不上。 */
-function reconChgIndex(){
-  const idx=new Map();
-  for(const c of (typeof chgCatalog==="function"?chgCatalog():[])){
-    const code=(chgCodeOf(c.name)||c.name).trim().toUpperCase();
-    if(code && !idx.has(code)) idx.set(code, c.name);
-  }
-  return idx;
-}
-/* 沒有這一頁就回空的 —— 它是選填的,不是漏填。有這一頁就整頁照規矩驗:
-   對不到的代碼不默默丟掉,丟掉的話兩側加起來的數字對不上,而看不出少了誰。 */
-function reconParseCharges(sheetRows, orderSet){
-  const rows=(sheetRows||[]).filter(r=>(r||[]).some(c=>reconTxt(c)!==""));
-  if(rows.length<2) return {rows:[], issues:[]};
-  const head=rows[0].map(reconTxt);
-  const ix={};
-  for(const k of Object.keys(RECON_CHG_COL)){
-    const want=RECON_CHG_COL[k].toLowerCase();
-    ix[k]=head.findIndex(h=>h.toLowerCase()===want);
-  }
-  const gone=RECON_CHG_REQ.filter(k=>ix[k]<0).map(k=>RECON_CHG_COL[k]);
-  if(gone.length) return {err:L(RECON_CHG_SHEET+" 這一頁少了這幾欄:",
-      "The "+RECON_CHG_SHEET+" sheet is missing these columns: ")+gone.join(", ")};
-  const idx=reconChgIndex();
-  const out=[], issues=[];
-  for(let i=1;i<rows.length;i++){
-    const r=rows[i], ln=i+1;
-    const cell=k=>ix[k]>=0?reconTxt(r[ix[k]]):"";
-    const order=cell("order"), codeRaw=cell("code"), amtRaw=cell("amt");
-    const blank=[];
-    if(!order)   blank.push(RECON_CHG_COL.order);
-    if(!codeRaw) blank.push(RECON_CHG_COL.code);
-    if(!amtRaw)  blank.push(RECON_CHG_COL.amt);
-    const bad=k=>issues.push({ln, sheet:RECON_CHG_SHEET, kind:k[0], what:k[1]});
-    if(blank.length){ bad(["blank", blank.join(", ")]); continue; }
-    if(!orderSet.has(order)){ bad(["chgOrder", order]); continue; }
-    if(!/^-?\d+(\.\d+)?$/.test(amtRaw.replace(/[$,\s]/g,""))){
-      bad(["amt", amtRaw]); continue; }
-    const name=idx.get(codeRaw.trim().toUpperCase());
-    if(!name){ bad(["chgCode", codeRaw]); continue; }
-    out.push({ln, order, code:codeRaw.trim(), name,
-              amt:cents(toNum(amtRaw.replace(/[$,\s]/g,"")))});
-  }
-  return {rows:out, issues};
+  return {rows:out, issues, charges};
 }
 
 /* --------------------------------------------------------------------
@@ -11035,10 +11017,7 @@ function reconIssueText(it){
     case "blank":    return L("必填欄位是空的:","Required field empty: ")+it.what;
     case "amt":      return L("金額不是數字:","Amount is not a number: ")+it.what;
     case "cus":      return L("這個客戶代號沒有建檔:","No such customer code: ")+it.what;
-    case "chgOrder": return L("這個單號不在 "+RECON_SHEET+" 那一頁上:",
-                              "This order number is not on the "+RECON_SHEET+" sheet: ")+it.what;
-    case "chgCode":  return L("這個費用代碼不在清單上(到「費用代碼」那一頁設,或從模板的下拉選):",
-                              "Charge code not on the list — set it on Charge Codes, or pick from the template dropdown: ")+it.what;
+    case "chgAmt":   return L("費用金額不是數字:","Charge amount is not a number: ")+it.what;
     case "dupOrder": return L("單號重複:","Duplicate order number: ")+it.what+at;
     case "dupTrk":   return L("同一個追蹤號出現在兩張單上:",
                               "Tracking number claimed twice: ")+it.what+at;
@@ -11176,10 +11155,9 @@ function renderReconChg(){
     const noBill=!(r.hasBilled);
     sum.textContent=L(
       "共 "+rows.length+" 項,其中 "+over+" 項 UPS 收得比重算多。"
-      +(noBill?"「向客戶收」是空的 —— 模板的 "+RECON_CHG_SHEET+" 那一頁沒有填。":""),
+      +(noBill?"「向客戶收」是空的 —— 模板上的費用欄一格都沒填。":""),
       rows.length+" charge(s), "+over+" of them billed above the recomputed figure."
-      +(noBill?" Billed to client is empty — the template's "+RECON_CHG_SHEET
-              +" sheet was left blank.":""));
+      +(noBill?" Billed to client is empty — no charge column on the template was filled in.":""));
   }
 }
 
@@ -11253,14 +11231,9 @@ async function reconImport(file){
   try{ wb=await readWorkbookRows(file); }
   catch(e){ reconMsg(L("這個檔案讀不開:","Could not read the file: ")+(e&&e.message||e),false); return; }
   const rows=wb.sheets[RECON_SHEET] || wb.sheets[(wb.order||[])[0]] || wb.sheets[""];
-  const chgSheet=wb.sheets[RECON_CHG_SHEET];
   if(!rows){ reconMsg(L("找不到 "+RECON_SHEET+" 分頁。","No "+RECON_SHEET+" sheet found."),false); return; }
   const p=reconParse(rows);
   if(p.err){ RECON=null; renderRecon(); reconRerunBtn(); reconMsg(p.err,false); return; }
-  /* 逐項那一張要拿第一張的單號來驗,所以在它之後才解析。 */
-  const pc=reconParseCharges(chgSheet, new Set(p.rows.map(o=>o.order)));
-  if(pc.err){ RECON=null; renderRecon(); reconRerunBtn(); reconMsg(pc.err,false); return; }
-  p.issues=p.issues.concat(pc.issues);
   if(p.issues.length){
     RECON={issues:p.issues, res:null, list:null};
     renderRecon();
@@ -11269,10 +11242,10 @@ async function reconImport(file){
     return; }
   /* 跑之前先點名。等到跑完才說「這幾個沒算」,人已經在讀數字了。 */
   const pf=reconPreflight(p.rows.map(r=>r.cus));
-  const res=reconRun(p.rows, pc.rows);
-  RECON={issues:[], res, list:p.rows, charges:pc.rows};
+  const res=reconRun(p.rows, p.charges);
+  RECON={issues:[], res, list:p.rows, charges:p.charges};
   renderRecon();
-  const kept=reconRowsSave(p.rows, pc.rows);
+  const kept=reconRowsSave(p.rows, p.charges);
   reconRerunBtn();
   if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
   if(pf.blocked)
@@ -11281,9 +11254,9 @@ async function reconImport(file){
                +" customer(s) were not repriced — see the notice below."),false);
   else
     reconMsg(L("已對帳 "+p.rows.length+" 張單"
-               +(pc.rows.length?"、逐項 "+pc.rows.length+" 列":"")+"。",
+               +(p.charges.length?"、逐項費用 "+p.charges.length+" 筆":"")+"。",
                "Reconciled "+p.rows.length+" order(s)"
-               +(pc.rows.length?" with "+pc.rows.length+" charge line(s)":"")+"."),true);
+               +(p.charges.length?" with "+p.charges.length+" itemised charge(s)":"")+"."),true);
 }
 
 /* --------------------------------------------------------------------
@@ -15770,8 +15743,8 @@ const I18N={
   "tab.hist":["📚 帳單歷史","📚 Invoice History"],
   "tab.code":["🔎 代碼查詢","🔎 Code Lookup"],
   "hd.recon":["WMS / TMS 對帳","WMS / TMS reconciliation"],
-  "hint.recon":["帳單本身已經有 UPS 收了多少,這份檔案補的是帳單不可能知道的事:這張單是哪個客戶的,以及向那個客戶收了多少。Shipments 一張系統單一列;一票多件時,把該單的追蹤號全部寫在同一格,用逗號分隔。Charges 那一頁是選填的 —— 填了,每一項費用就比得出三個數字:你收多少、費率說應該收多少、UPS 收多少。",
-    "The invoice already holds what UPS charged. This file adds what it cannot know: which customer an order belongs to, and what that customer was billed. One order per row on Shipments; for a multi-package order put every tracking number in one cell, separated by commas. The Charges sheet is optional — fill it in and every charge is compared three ways: what you billed, what the rate level says, what UPS charged."],
+  "hint.recon":["帳單本身已經有 UPS 收了多少,這份檔案補的是帳單不可能知道的事:這張單是哪個客戶的,以及每一項費用向那個客戶收了多少。一張系統單一列;一票多件時,把該單的追蹤號全部寫在同一格,用逗號分隔。有收的費用欄就填 —— 填了的每一項都會比出三個數字:你收多少、費率說應該收多少、UPS 收多少。總額那一欄留空,就是那幾欄加起來。",
+    "The invoice already holds what UPS charged. This file adds what it cannot know: which customer an order belongs to, and what that customer was billed for each charge. One order per row; for a multi-package order put every tracking number in one cell, separated by commas. Fill in as many charge columns as you bill — every one of them is then compared three ways: what you billed, what the rate level says, what UPS charged. Leave the total blank and it is the sum of those columns."],
   "lb.tpl":["模板","Template"],
   "btn.recontpl":["導出","Export"],
   "btn.reconimp":["導入填好的","Import filled"],
