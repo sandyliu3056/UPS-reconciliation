@@ -1332,7 +1332,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
   <div id="reconPane" hidden>
   <div class="lf sketch">
     <h3 class="display"><span class="em">⚖️</span><span data-i18n="hd.recon">WMS / TMS reconciliation</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.recon">The invoice already holds the charge detail. This file adds the two facts it cannot know: which customer an order belongs to, and what that customer was billed. One order per row; for a multi-package order put every tracking number in one cell, separated by commas.</p>
+    <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.recon">The invoice already holds what UPS charged. This file adds what it cannot know: which customer an order belongs to, and what that customer was billed. One order per row on Shipments; for a multi-package order put every tracking number in one cell, separated by commas. The Charges sheet is optional — fill it in and every charge is compared three ways: what you billed, what the rate level says, what UPS charged.</p>
     <div class="row">
       <label class="inlab" style="margin-left:0" data-i18n="lb.tpl">Template</label>
       <button class="act ghost sm" id="bReconTpl" data-i18n="btn.recontpl">Export</button>
@@ -1387,8 +1387,10 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       <th data-i18n="th.chgname">Charge</th>
       <th data-i18n="th.chgmine">Your code</th>
       <th data-i18n="th.chgups">System code</th>
+      <th class="num" data-i18n="th.chgbilled">Billed to client</th>
       <th class="num" data-i18n="th.reconrep">Recomputed</th>
       <th class="num" data-i18n="th.reconups">Charged by UPS</th>
+      <th class="num" data-i18n="th.chgpgap">Billed vs recomputed</th>
       <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
   </div>
@@ -1841,14 +1843,16 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
 <section class="page" id="p-analysis">
   <div class="lf sketch" id="anaEmpty">
     <h3 class="display"><span class="em">📈</span><span data-i18n="hd.analysis">Profit analysis</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:70ch" data-i18n="hint.anaempty">This page reads the reconciliation. Import the filled template on WMS / TMS Reconciliation and the numbers land here.</p>
-    <div class="row">
-      <button class="act" id="bAnaGo" data-i18n="btn.anago">Go to reconciliation</button>
-    </div>
+    <p class="hint" style="margin:0 0 11px;max-width:70ch" data-i18n="hint.anaempty">Nothing to analyse yet. This page reads the reconciliation — once the filled template is imported, the numbers land here and the whole analysis can be exported.</p>
   </div>
 
   <div class="lf sketch" id="anaSumCard" hidden>
     <h3 class="display"><span class="em">📈</span><span data-i18n="hd.analysis">Profit analysis</span></h3>
+    <div class="row" style="margin:0 0 11px">
+      <span id="anaScope" class="affsum"></span>
+      <span style="flex:1 1 auto"></span>
+      <button class="act" id="bAnaXls" data-i18n="btn.anaxls">Export analysis</button>
+    </div>
     <div class="tiles" id="anaTiles"></div>
   </div>
 
@@ -10611,6 +10615,15 @@ const RECON_COL={ order:"Order Number", trk:"Tracking Numbers",
                   cus:"Customer Code",  amt:"Total Amount Billed to Customer",
                   date:"Ship Date" };
 const RECON_REQ=["order","trk","cus","amt"];
+/* 第二張分頁:逐項向客戶收了什麼。選填 —— 沒有它,整份照舊只比訂單總額;
+   有它,每一項費用才比得出「你收多少 / 應該收多少 / UPS 收多少」三個數字。
+   一張單一項一列,Order Number 要和第一張分頁對得上。 */
+const RECON_CHG_SHEET="Charges";
+const RECON_CHG_CODES="ChargeCodes";        /* 下拉來源,藏起來 */
+const RECON_CHG_COL={ order:"Order Number", code:"Charge Code",
+                      name:"Charge Description",
+                      amt:"Amount Billed to Customer" };
+const RECON_CHG_REQ=["order","code","amt"];
 let RECON=null;
 
 /* 重新整理之後留什麼 —— 這件事要講清楚,不能靠運氣。
@@ -10620,10 +10633,13 @@ let RECON=null;
    錯。所以回來之後重算一次;帳單還沒載入就先擺著,並且說出來。 */
 const RECON_KEY_BASE="ups_recon_rows_v1";
 function reconRowsKey(){ return RECON_KEY_BASE+"::"+((ME&&ME.id)||"anon"); }
-function reconRowsSave(rows){
+function reconRowsSave(rows, charges){
   try{
     if(!rows||!rows.length) localStorage.removeItem(reconRowsKey());
-    else localStorage.setItem(reconRowsKey(), JSON.stringify(rows));
+    /* v2 是物件,舊版存的是純陣列 —— 讀的那一端兩種都認,所以升級不會把
+       上一次匯入的東西弄丟。 */
+    else localStorage.setItem(reconRowsKey(),
+      JSON.stringify({v:2, rows, charges:charges||[]}));
     return true;
   }catch(e){
     /* 塞不下就不留 —— 留一半比沒留更糟。 */
@@ -10636,27 +10652,31 @@ function reconRowsLoad(){
     const t=localStorage.getItem(reconRowsKey());
     if(!t) return null;
     const v=JSON.parse(t);
-    return Array.isArray(v)&&v.length?v:null;
+    if(Array.isArray(v)) return v.length?{rows:v, charges:[]}:null;   /* 舊版 */
+    if(v&&Array.isArray(v.rows)&&v.rows.length)
+      return {rows:v.rows, charges:Array.isArray(v.charges)?v.charges:[]};
+    return null;
   }catch(e){ return null; }
 }
 /* 帳單在就重算,不在就把列留著等。兩種情況都要讓人看見狀態。 */
 function reconRestore(){
-  const rows=reconRowsLoad();
-  if(!rows) return;
+  const keep=reconRowsLoad();
+  if(!keep) return;
+  const rows=keep.rows, charges=keep.charges;
   if(!CFG||!SHIPS||!SHIPS.length){
-    RECON={issues:[], res:null, list:rows};
+    RECON={issues:[], res:null, list:rows, charges};
     reconRerunBtn();
     reconMsg(L("上次匯入的 "+rows.length+" 張單還留著。載入這一期的 UPS 帳單之後,按「重新比對」。",
                "The "+rows.length+" order(s) from last time are still here. Load this period's UPS invoice, then press Re-run comparison."),false);
     return;
   }
-  reconRerunFrom(rows, true);
+  reconRerunFrom(rows, true, charges);
 }
 function reconRerunBtn(){
   const b=$("#bReconRerun");
   if(b) b.hidden=!(RECON&&RECON.list&&RECON.list.length);
 }
-function reconRerunFrom(rows, quiet){
+function reconRerunFrom(rows, quiet, charges){
   if(!rows||!rows.length) return false;
   if(!CFG){ reconMsg(L("請先載入費率設定。","Load a rate configuration first."),false); return false; }
   if(!SHIPS||!SHIPS.length){
@@ -10664,8 +10684,8 @@ function reconRerunFrom(rows, quiet){
                "Import this period's UPS invoice first — there is nothing to reconcile against."),false);
     return false; }
   const pf=reconPreflight(rows.map(r=>r.cus));
-  const res=reconRun(rows);
-  RECON={issues:[], res, list:rows};
+  const res=reconRun(rows, charges);
+  RECON={issues:[], res, list:rows, charges:charges||[]};
   renderRecon(); reconRerunBtn();
   const head=quiet?L("已用留著的 "+rows.length+" 張單重新比對。",
                      "Re-compared the "+rows.length+" order(s) kept from last time.")
@@ -10736,15 +10756,37 @@ async function reconTemplate(){
       fill:req.has(n)?"351C15":"EFE3CB", color:req.has(n)?"FFFFFF":"351C15"}});
   const CH=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
   const reg=cusReg();
+  /* 費用代碼的下拉來源。用你自己給的代碼;沒給過代碼的就用系統內部名稱 ——
+     下拉一定要選得到,不然這一欄只能靠手打,手打就會拼錯。
+     同一個代碼對到兩項費用的話只留第一個,清單裡出現兩個一樣的選項沒有意義。 */
+  const cat=[], seenCode=new Set();
+  for(const c of (typeof chgCatalog==="function"?chgCatalog():[])){
+    const code=(chgCodeOf(c.name)||c.name).trim();
+    if(!code||seenCode.has(code)) continue;
+    seenCode.add(code);
+    cat.push({code, name:chgLabel(c.name)});
+  }
+  const chd=[RECON_CHG_COL.order,RECON_CHG_COL.code,
+             RECON_CHG_COL.name,RECON_CHG_COL.amt];
+  const chreq=new Set([RECON_CHG_COL.order,RECON_CHG_COL.code,RECON_CHG_COL.amt]);
+  const H2=n=>({v:n,t:"s",s:{bold:true,align:"left",
+      fill:chreq.has(n)?"351C15":"EFE3CB", color:chreq.has(n)?"FFFFFF":"351C15"}});
   const sheets=[
     {name:RECON_SHEET, rows:[hd.map(H)], freeze:{r:1,c:0}, filter:"A1:E1",
      cols:[{w:22},{w:38},{w:18},{w:30},{w:14}]},
+    /* 逐項那一張是選填的,所以擺在第二頁而不是第一頁 —— 打開模板先看到的
+       仍然是非填不可的那一張。 */
+    {name:RECON_CHG_SHEET, rows:[chd.map(H2)], freeze:{r:1,c:0}, filter:"A1:D1",
+     cols:[{w:22},{w:22},{w:34},{w:26}]},
     /* 客戶名單只是下拉選單的來源。Excel 的清單驗證一定要指向活頁簿裡的一個
        範圍,所以這一頁必須存在;但它不是給人填的,所以藏起來 —— 模板打開
        就只有一頁,要填哪裡沒有第二種解釋。 */
     {name:"Customers", hidden:true, freeze:{r:1,c:0}, cols:[{w:18},{w:34}],
      rows:[[CH("Customer Code"),CH("Customer Name")]]
-       .concat(reg.map(c=>[c.code, c.name||c.code]))}
+       .concat(reg.map(c=>[c.code, c.name||c.code]))},
+    {name:RECON_CHG_CODES, hidden:true, freeze:{r:1,c:0}, cols:[{w:22},{w:38}],
+     rows:[[CH("Charge Code"),CH("Charge")]]
+       .concat(cat.map(c=>[c.code, c.name]))}
   ];
   /* 客戶名單是空的就不下驗證 —— 來源範圍指到一列空白,Excel 會判檔案有問題。 */
   if(reg.length) sheets[0].dv=[{
@@ -10752,9 +10794,18 @@ async function reconTemplate(){
     list:"Customers!$A$2:$A$"+(reg.length+1),
     title:L("代碼不在名單上","Unknown customer code"),
     msg:L("請從 Customers 分頁選一個代碼。","Pick a code from the Customers sheet.")}];
-  await xlWrite(sheets,"WMS_Reconciliation_Template.xlsx");
-  reconMsg(L("模板已下載,含客戶 "+reg.length+" 筆。",
-             "Template downloaded with "+reg.length+" customer(s)."), true);
+  if(cat.length) sheets[1].dv=[{
+    sqref:"B2:B20000",
+    list:RECON_CHG_CODES+"!$A$2:$A$"+(cat.length+1),
+    title:L("代碼不在清單上","Unknown charge code"),
+    msg:L("請從清單選一個費用代碼。","Pick a charge code from the list.")}];
+  await xlWrite(sheets,"WMS_TMS_Reconciliation_Template.xlsx");
+  reconMsg(L("模板已下載:客戶 "+reg.length+" 筆、費用代碼 "+cat.length+" 項。"
+             +(cat.length?"":"(還沒設費用代碼,Charges 那一頁沒有下拉。)"),
+             "Template downloaded — "+reg.length+" customer(s), "+cat.length
+             +" charge code(s)."
+             +(cat.length?"":" No charge codes set yet, so the Charges sheet has no dropdown.")),
+           true);
 }
 
 /* --------------------------------------------------------------------
@@ -10803,19 +10854,66 @@ function reconParse(sheetRows){
   return {rows:out, issues};
 }
 
+/* 逐項那一張認的是你自己給的代碼。沒給過代碼的費用,代碼就是系統內部名稱 ——
+   和模板下拉裡放的是同一組字,兩邊不會對不上。 */
+function reconChgIndex(){
+  const idx=new Map();
+  for(const c of (typeof chgCatalog==="function"?chgCatalog():[])){
+    const code=(chgCodeOf(c.name)||c.name).trim().toUpperCase();
+    if(code && !idx.has(code)) idx.set(code, c.name);
+  }
+  return idx;
+}
+/* 沒有這一頁就回空的 —— 它是選填的,不是漏填。有這一頁就整頁照規矩驗:
+   對不到的代碼不默默丟掉,丟掉的話兩側加起來的數字對不上,而看不出少了誰。 */
+function reconParseCharges(sheetRows, orderSet){
+  const rows=(sheetRows||[]).filter(r=>(r||[]).some(c=>reconTxt(c)!==""));
+  if(rows.length<2) return {rows:[], issues:[]};
+  const head=rows[0].map(reconTxt);
+  const ix={};
+  for(const k of Object.keys(RECON_CHG_COL)){
+    const want=RECON_CHG_COL[k].toLowerCase();
+    ix[k]=head.findIndex(h=>h.toLowerCase()===want);
+  }
+  const gone=RECON_CHG_REQ.filter(k=>ix[k]<0).map(k=>RECON_CHG_COL[k]);
+  if(gone.length) return {err:L(RECON_CHG_SHEET+" 這一頁少了這幾欄:",
+      "The "+RECON_CHG_SHEET+" sheet is missing these columns: ")+gone.join(", ")};
+  const idx=reconChgIndex();
+  const out=[], issues=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i], ln=i+1;
+    const cell=k=>ix[k]>=0?reconTxt(r[ix[k]]):"";
+    const order=cell("order"), codeRaw=cell("code"), amtRaw=cell("amt");
+    const blank=[];
+    if(!order)   blank.push(RECON_CHG_COL.order);
+    if(!codeRaw) blank.push(RECON_CHG_COL.code);
+    if(!amtRaw)  blank.push(RECON_CHG_COL.amt);
+    const bad=k=>issues.push({ln, sheet:RECON_CHG_SHEET, kind:k[0], what:k[1]});
+    if(blank.length){ bad(["blank", blank.join(", ")]); continue; }
+    if(!orderSet.has(order)){ bad(["chgOrder", order]); continue; }
+    if(!/^-?\d+(\.\d+)?$/.test(amtRaw.replace(/[$,\s]/g,""))){
+      bad(["amt", amtRaw]); continue; }
+    const name=idx.get(codeRaw.trim().toUpperCase());
+    if(!name){ bad(["chgCode", codeRaw]); continue; }
+    out.push({ln, order, code:codeRaw.trim(), name,
+              amt:cents(toNum(amtRaw.replace(/[$,\s]/g,"")))});
+  }
+  return {rows:out, issues};
+}
+
 /* --------------------------------------------------------------------
    對帳
    -------------------------------------------------------------------- */
 /* 帳單上認不出來的代碼也要有位置站。丟掉的話兩側加起來的數字對不上,而
    對不上的原因看不出來 —— 寧可列一行「未辨識」,讓人知道有這筆錢。 */
 const RECON_UNKNOWN="\u0000unknown";
-function reconRun(list){
+function reconRun(list, charges){
   /* 逐項:全部一份,每個客戶各一份。點客戶就是換一份來看。 */
   const chgAll=new Map(), chgBy=new Map();
   const chgBump=(cus,name,side,v)=>{
     for(const m of [chgAll, (chgBy.get(cus)||chgBy.set(cus,new Map()).get(cus))]){
       let o=m.get(name);
-      if(!o){ o={name, rep:0, ups:0}; m.set(name,o); }
+      if(!o){ o={name, rep:0, ups:0, billed:0}; m.set(name,o); }
       o[side]+=v;
     }
   };
@@ -10876,6 +10974,17 @@ function reconRun(list){
     a.orders++; a.pkgs+=o.pkgs; a.found+=o.found;
     a.amt+=o.amt; a.cost+=o.cost; if(!block) a.rep+=o.rep;
   }
+  /* 逐項向客戶收的那一側。逐項那一張只有單號,客戶是從第一張分頁對回來的 ——
+     兩張分頁靠 Order Number 接在一起,所以那一欄兩邊都是必填。 */
+  const hasBilled=!!(charges&&charges.length);
+  if(hasBilled){
+    const cusOf=new Map(list.map(e=>[e.order, e.cus]));
+    for(const c of charges){
+      const cus=cusOf.get(c.order);
+      if(cus==null) continue;                 /* 單號對不上的在匯入時就退件了 */
+      chgBump(cus, c.name, "billed", c.amt);
+    }
+  }
   const cus=[...perCus.values()].map(a=>{
     a.amt=cents(a.amt); a.cost=cents(a.cost);
     a.rep=a.block?null:cents(a.rep);
@@ -10899,13 +11008,17 @@ function reconRun(list){
   tot.pgap = tot.blocked===tot.orders?null:cents(tot.repAmt-tot.rep);
   tot.margin=tot.amt?tot.profit/Math.abs(tot.amt)*100:null;
   const chgRows=m=>[...m.values()].map(o=>({
-      name:o.name, rep:cents(o.rep), ups:cents(o.ups), gap:cents(o.rep-o.ups)}))
+      name:o.name, rep:cents(o.rep), ups:cents(o.ups), gap:cents(o.rep-o.ups),
+      /* billed 只有在逐項那一張匯進來的時候才有意義。沒有的時候寫 null 而不是
+         0 —— 0 會被讀成「這一項向客戶收了零元」。 */
+      billed:hasBilled?cents(o.billed):null,
+      pgap:hasBilled?cents(o.billed-o.rep):null}))
     /* 差得最多的排前面 —— 三十七項裡真正要看的通常是前五項。 */
     .sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap)||Math.abs(b.ups)-Math.abs(a.ups));
   const byCus={};
   for(const [k,m] of chgBy) byCus[k]=chgRows(m);
   return {orders, cus, tot, lostLevel:[...lostLevel], noLevel:[...noLevel],
-          unmatched:orders.filter(o=>o.found<o.pkgs),
+          unmatched:orders.filter(o=>o.found<o.pkgs), hasBilled,
           chg:chgRows(chgAll), chgBy:byCus};
 }
 
@@ -10922,6 +11035,10 @@ function reconIssueText(it){
     case "blank":    return L("必填欄位是空的:","Required field empty: ")+it.what;
     case "amt":      return L("金額不是數字:","Amount is not a number: ")+it.what;
     case "cus":      return L("這個客戶代號沒有建檔:","No such customer code: ")+it.what;
+    case "chgOrder": return L("這個單號不在 "+RECON_SHEET+" 那一頁上:",
+                              "This order number is not on the "+RECON_SHEET+" sheet: ")+it.what;
+    case "chgCode":  return L("這個費用代碼不在清單上(到「費用代碼」那一頁設,或從模板的下拉選):",
+                              "Charge code not on the list — set it on Charge Codes, or pick from the template dropdown: ")+it.what;
     case "dupOrder": return L("單號重複:","Duplicate order number: ")+it.what+at;
     case "dupTrk":   return L("同一個追蹤號出現在兩張單上:",
                               "Tracking number claimed twice: ")+it.what+at;
@@ -10935,7 +11052,8 @@ function renderRecon(){
     icard.hidden=!iss;
     const tb=$("#tReconIss")&&$("#tReconIss").tBodies[0];
     if(tb&&iss) tb.innerHTML=iss.map(it=>
-      `<tr><td class="num">${it.ln}</td><td>${esc(reconIssueText(it))}</td></tr>`).join("");
+      `<tr><td class="num">${it.sheet?esc(it.sheet)+"!":""}${it.ln}</td>
+        <td>${esc(reconIssueText(it))}</td></tr>`).join("");
     const n=$("#reconIssSum");
     if(n&&iss) n.textContent=L(
       "有 "+iss.length+" 列不能收,整份都沒有匯入。改好再匯一次。",
@@ -11035,22 +11153,33 @@ function renderReconChg(){
         :`<span class="empty">${L("未設定","not set")}</span>`}</td>
       <td class="mono">${ups&&ups.length?esc(ups.join(" · "))
         :`<span class="empty">—</span>`}</td>
+      <td class="num">${o.billed==null?`<span class="empty">—</span>`:money(o.billed)}</td>
       <td class="num">${money(o.rep)}</td>
       <td class="num">${money(o.ups)}</td>
+      <td class="num">${o.pgap==null?`<span class="empty">—</span>`:sign(o.pgap)}</td>
       <td class="num">${sign(o.gap)}</td></tr>`;
-  }).join("")||`<tr><td colspan="6" class="empty">—</td></tr>`;
-  const t=rows.reduce((a,o)=>({rep:cents(a.rep+o.rep), ups:cents(a.ups+o.ups)}),{rep:0,ups:0});
+  }).join("")||`<tr><td colspan="8" class="empty">—</td></tr>`;
+  const t=rows.reduce((a,o)=>({rep:cents(a.rep+o.rep), ups:cents(a.ups+o.ups),
+      billed:o.billed==null?a.billed:cents((a.billed||0)+o.billed)}),
+      {rep:0, ups:0, billed:null});
   const tf=$("#tReconChg")&&$("#tReconChg").tFoot;
   if(tf) tf.innerHTML=`<tr><td colspan="3"><b>${esc(L("合計","Total"))}</b></td>
+      <td class="num"><b>${t.billed==null?`<span class="empty">—</span>`:money(t.billed)}</b></td>
       <td class="num"><b>${money(t.rep)}</b></td>
       <td class="num"><b>${money(t.ups)}</b></td>
+      <td class="num"><b>${t.billed==null?`<span class="empty">—</span>`
+        :sign(cents(t.billed-t.rep))}</b></td>
       <td class="num"><b>${sign(cents(t.rep-t.ups))}</b></td></tr>`;
   const sum=$("#reconChgSum");
   if(sum){
     const over=rows.filter(o=>o.gap<-0.004).length;
+    const noBill=!(r.hasBilled);
     sum.textContent=L(
-      "共 "+rows.length+" 項,其中 "+over+" 項 UPS 收得比重算多。",
-      rows.length+" charge(s), "+over+" of them billed above the recomputed figure.");
+      "共 "+rows.length+" 項,其中 "+over+" 項 UPS 收得比重算多。"
+      +(noBill?"「向客戶收」是空的 —— 模板的 "+RECON_CHG_SHEET+" 那一頁沒有填。":""),
+      rows.length+" charge(s), "+over+" of them billed above the recomputed figure."
+      +(noBill?" Billed to client is empty — the template's "+RECON_CHG_SHEET
+              +" sheet was left blank.":""));
   }
 }
 
@@ -11086,14 +11215,16 @@ async function reconExport(){
   r.orders.forEach((o,i)=>{ det[i+1][5]=RECON.list[i]?RECON.list[i].trks.join(", "):""; });
   /* 逐項那一張:全部一段,接著每個客戶各一段。分成幾十張分頁不好翻,
      多一欄 Scope 就能在同一張表上篩。 */
-  const chgRows=[["Scope","Charge","Your Code","System Code","Recomputed",
-                  "Charged by UPS","Recomputed vs UPS"].map(HD)];
+  const chgRows=[["Scope","Charge","Your Code","System Code","Billed to Client",
+                  "Recomputed","Charged by UPS","Billed vs Recomputed",
+                  "Recomputed vs UPS"].map(HD)];
   const chgName=n=>n===RECON_UNKNOWN?"Unrecognised codes":n;
   const push=(scope,list)=>{ for(const o of list) chgRows.push([
       scope, chgName(o.name),
       o.name===RECON_UNKNOWN?"":chgCodeOf(o.name),
       o.name===RECON_UNKNOWN?"":chgUpsCodes(o.name).join(" "),
-      {v:o.rep,t:"n",s:M},{v:o.ups,t:"n",s:M},{v:o.gap,t:"n",s:M}]); };
+      m(o.billed), {v:o.rep,t:"n",s:M},{v:o.ups,t:"n",s:M},
+      m(o.pgap), {v:o.gap,t:"n",s:M}]); };
   push("ALL", r.chg||[]);
   for(const a of r.cus) push(a.code, (r.chgBy||{})[a.code]||[]);
 
@@ -11104,9 +11235,9 @@ async function reconExport(){
     {name:"Orders", rows:det, freeze:{r:1,c:0}, filter:"A1:O1",
      cols:[{w:20},{w:12},{w:16},{w:16},{w:30},{w:34},{w:10},{w:12},{w:22},{w:16},{w:15},
            {w:12},{w:14},{w:19},{w:19}]},
-    {name:"Charges", rows:chgRows, freeze:{r:1,c:0}, filter:"A1:G1",
-     cols:[{w:14},{w:40},{w:14},{w:20},{w:14},{w:16},{w:18}]}
-  ], "WMS_Reconciliation.xlsx");
+    {name:"Charges", rows:chgRows, freeze:{r:1,c:0}, filter:"A1:I1",
+     cols:[{w:14},{w:40},{w:14},{w:20},{w:17},{w:14},{w:16},{w:19},{w:18}]}
+  ], "WMS_TMS_Reconciliation.xlsx");
   reconMsg(L("已匯出。","Exported."), true);
 }
 
@@ -11122,9 +11253,14 @@ async function reconImport(file){
   try{ wb=await readWorkbookRows(file); }
   catch(e){ reconMsg(L("這個檔案讀不開:","Could not read the file: ")+(e&&e.message||e),false); return; }
   const rows=wb.sheets[RECON_SHEET] || wb.sheets[(wb.order||[])[0]] || wb.sheets[""];
+  const chgSheet=wb.sheets[RECON_CHG_SHEET];
   if(!rows){ reconMsg(L("找不到 "+RECON_SHEET+" 分頁。","No "+RECON_SHEET+" sheet found."),false); return; }
   const p=reconParse(rows);
   if(p.err){ RECON=null; renderRecon(); reconRerunBtn(); reconMsg(p.err,false); return; }
+  /* 逐項那一張要拿第一張的單號來驗,所以在它之後才解析。 */
+  const pc=reconParseCharges(chgSheet, new Set(p.rows.map(o=>o.order)));
+  if(pc.err){ RECON=null; renderRecon(); reconRerunBtn(); reconMsg(pc.err,false); return; }
+  p.issues=p.issues.concat(pc.issues);
   if(p.issues.length){
     RECON={issues:p.issues, res:null, list:null};
     renderRecon();
@@ -11133,10 +11269,10 @@ async function reconImport(file){
     return; }
   /* 跑之前先點名。等到跑完才說「這幾個沒算」,人已經在讀數字了。 */
   const pf=reconPreflight(p.rows.map(r=>r.cus));
-  const res=reconRun(p.rows);
-  RECON={issues:[], res, list:p.rows};
+  const res=reconRun(p.rows, pc.rows);
+  RECON={issues:[], res, list:p.rows, charges:pc.rows};
   renderRecon();
-  const kept=reconRowsSave(p.rows);
+  const kept=reconRowsSave(p.rows, pc.rows);
   reconRerunBtn();
   if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
   if(pf.blocked)
@@ -11144,7 +11280,10 @@ async function reconImport(file){
                "Reconciled "+p.rows.length+" order(s); "+pf.blocked
                +" customer(s) were not repriced — see the notice below."),false);
   else
-    reconMsg(L("已對帳 "+p.rows.length+" 張單。","Reconciled "+p.rows.length+" order(s)."),true);
+    reconMsg(L("已對帳 "+p.rows.length+" 張單"
+               +(pc.rows.length?"、逐項 "+pc.rows.length+" 列":"")+"。",
+               "Reconciled "+p.rows.length+" order(s)"
+               +(pc.rows.length?" with "+pc.rows.length+" charge line(s)":"")+"."),true);
 }
 
 /* --------------------------------------------------------------------
@@ -11154,6 +11293,30 @@ async function reconImport(file){
    客戶在賺錢」。每一個數字都取自 RECON.res,一律不另外算一次 —— 另外算就會
    有兩個版本的毛利,而它們遲早會不一樣。 */
 let ANA_SORT="profit";
+/* 分層加總只算一次,畫面和匯出共用 —— 各算各的就會有兩個版本的毛利。
+   沒有指定層級的客戶自成一列:併進別人裡面會讓那一層的毛利率看起來是別人的。 */
+function anaLevels(r){
+  const t=r.tot, byLvl=new Map();
+  for(const a of r.cus){
+    const key=a.level||"";
+    let o=byLvl.get(key);
+    if(!o){ o={level:key, n:0, orders:0, amt:0, cost:0}; byLvl.set(key,o); }
+    o.n++; o.orders+=a.orders; o.amt+=a.amt; o.cost+=a.cost;
+  }
+  return [...byLvl.values()].map(o=>{
+    o.amt=cents(o.amt); o.cost=cents(o.cost);
+    o.profit=cents(o.amt-o.cost);
+    o.margin=o.amt?o.profit/Math.abs(o.amt)*100:null;
+    /* 佔比拿總毛利當分母。總毛利是 0 就不畫 —— 除以 0 會得到 Infinity,
+       而畫面上出現 Infinity% 比空白更難解釋。 */
+    o.share=t.profit?o.profit/t.profit*100:null;
+    return o;
+  }).sort((x,y)=>y.profit-x.profit);
+}
+function anaLvlName(id){
+  return id ? (typeof cusLevelLabel==="function"?cusLevelLabel(id):id)
+            : L("未指定層級","No level assigned");
+}
 function anaPct(v){ return v==null?"—":(v<0?"-":"")+Math.abs(v).toFixed(1)+"%"; }
 function renderAnalysis(){
   const r=RECON&&RECON.res;
@@ -11166,6 +11329,13 @@ function renderAnalysis(){
   const sign=v=>`<span class="mny ${v<0?"neg":(v>0?"pos":"")}">${money(v)}</span>`;
   const pcCell=v=>v==null?`<span class="empty">—</span>`:anaPct(v);
 
+  const scope=$("#anaScope");
+  if(scope) scope.textContent=L(
+    r.cus.length+" 個客戶 · "+t.orders+" 張單"
+      +(r.hasBilled?" · 逐項費用已匯入":" · 沒有逐項費用"),
+    r.cus.length+" client"+(r.cus.length>1?"s":"")+" · "+t.orders
+      +" order"+(t.orders>1?"s":"")
+      +(r.hasBilled?" · itemised charges imported":" · no itemised charges"));
   const tiles=$("#anaTiles");
   if(tiles) tiles.innerHTML=[
     [L("向客戶收","Billed to client"), money(t.amt), ""],
@@ -11179,27 +11349,7 @@ function renderAnalysis(){
     <div class="v${neg?" neg":""}">${v}</div>
     <div class="sub">${esc(sub)||"&nbsp;"}</div></div>`).join("");
 
-  /* 依費率層級。沒有指定層級的客戶自成一列 —— 併進別人裡面會讓那一層的
-     毛利率看起來是別人的。 */
-  const byLvl=new Map();
-  for(const a of r.cus){
-    const key=a.level||"";
-    let o=byLvl.get(key);
-    if(!o){ o={level:key, n:0, orders:0, amt:0, cost:0}; byLvl.set(key,o); }
-    o.n++; o.orders+=a.orders; o.amt+=a.amt; o.cost+=a.cost;
-  }
-  const lvls=[...byLvl.values()].map(o=>{
-    o.amt=cents(o.amt); o.cost=cents(o.cost);
-    o.profit=cents(o.amt-o.cost);
-    o.margin=o.amt?o.profit/Math.abs(o.amt)*100:null;
-    /* 佔比拿總毛利當分母。總毛利是 0 就不畫 —— 除以 0 會得到 Infinity,
-       而畫面上出現 Infinity% 比空白更難解釋。 */
-    o.share=t.profit?o.profit/t.profit*100:null;
-    return o;
-  }).sort((x,y)=>y.profit-x.profit);
-  const lvlName=id=>id
-    ? (typeof cusLevelLabel==="function"?cusLevelLabel(id):id)
-    : L("未指定層級","No level assigned");
+  const lvls=anaLevels(r), lvlName=anaLvlName;
   const lb=$("#tAnaLvl")&&$("#tAnaLvl").tBodies[0];
   if(lb) lb.innerHTML=lvls.map(o=>
     `<tr><td>${esc(lvlName(o.level))}</td>
@@ -11256,12 +11406,54 @@ function renderAnalysis(){
       : "";
   }
 }
+/* 匯出的每一個數字都取自 renderAnalysis() 用的那一份,不重算 —— 螢幕上和
+   檔案裡對不起來的報表,沒有人會再相信第二次。 */
+async function anaExport(){
+  const r=RECON&&RECON.res;
+  if(!r||!r.cus||!r.cus.length) return;
+  const HD=n=>({v:n,t:"s",s:{bold:true,fill:"351C15",color:"FFFFFF",align:"left",wrap:true}});
+  const M={fmt:"#,##0.00"}, P={fmt:"0.00"};
+  const m=v=>v==null?"":{v,t:"n",s:M};
+  const pc=v=>v==null?"":{v:+v.toFixed(2),t:"n",s:P};
+  const t=r.tot, lvls=anaLevels(r);
+  const lvlRows=[["Rate Level","Clients","Orders","Billed to Client","Charged by UPS",
+    "Profit","Margin %","Share of Profit %"].map(HD)]
+   .concat(lvls.map(o=>[anaLvlName(o.level), o.n, o.orders,
+     m(o.amt), m(o.cost), m(o.profit), pc(o.margin), pc(o.share)]))
+   .concat([["TOTAL", r.cus.length, t.orders, m(t.amt), m(t.cost), m(t.profit),
+     pc(t.margin), t.profit?pc(100):""]]);
+  const why=b=>b===RL_NONE?"NOT PRICED — no rate level assigned"
+             :b===RL_GONE?"NOT PRICED — rate level deleted":"";
+  const cusRows=[["Customer Code","Customer Name","Rate Level","Repricing Status","Orders",
+    "Packages","Billed to Client","Charged by UPS","Profit","Margin %","Recomputed",
+    "Billed vs Recomputed","UPS vs Recomputed"].map(HD)]
+   .concat(r.cus.slice().sort((x,y)=>y.profit-x.profit).map(a=>[
+     a.code, a.name, a.block?"":anaLvlName(a.level), why(a.block), a.orders, a.pkgs,
+     m(a.amt), m(a.cost), m(a.profit), pc(a.margin), m(a.rep), m(a.pgap), m(a.gap)]))
+   .concat([["TOTAL","","","",t.orders,t.pkgs,m(t.amt),m(t.cost),m(t.profit),
+     pc(t.margin),m(t.rep),m(t.pgap),m(t.gap)]]);
+  const chgName=n=>n===RECON_UNKNOWN?"Unrecognised codes":n;
+  const chgRows=[["Charge","Your Code","System Code","Billed to Client","Recomputed",
+    "Charged by UPS","Billed vs Recomputed","Recomputed vs UPS"].map(HD)]
+   .concat((r.chg||[]).map(o=>[chgName(o.name),
+     o.name===RECON_UNKNOWN?"":chgCodeOf(o.name),
+     o.name===RECON_UNKNOWN?"":chgUpsCodes(o.name).join(" "),
+     m(o.billed), m(o.rep), m(o.ups), m(o.pgap), m(o.gap)]));
+  await xlWrite([
+    {name:"By Rate Level", rows:lvlRows, freeze:{r:1,c:0}, filter:"A1:H1",
+     cols:[{w:26},{w:9},{w:9},{w:17},{w:16},{w:13},{w:11},{w:17}]},
+    {name:"By Client", rows:cusRows, freeze:{r:1,c:0}, filter:"A1:M1",
+     cols:[{w:16},{w:26},{w:20},{w:30},{w:9},{w:11},{w:17},{w:16},{w:13},{w:11},
+           {w:14},{w:19},{w:19}]},
+    {name:"By Charge", rows:chgRows, freeze:{r:1,c:0}, filter:"A1:H1",
+     cols:[{w:40},{w:14},{w:20},{w:17},{w:14},{w:16},{w:19},{w:19}]}
+  ], "Profit_Analysis.xlsx");
+  toast(L("毛利分析已匯出。","Profit analysis exported."), true);
+}
 function bindAnalysis(){
-  const go=$("#bAnaGo");
-  if(go) go.onclick=()=>{
-    showTab("cus");
-    if(typeof showCusTab==="function") showCusTab("recon");
-  };
+  const x=$("#bAnaXls");
+  if(x) x.onclick=()=>{ anaExport().catch(e=>
+    toast(String(e&&e.message||e), false)); };
   const sel=$("#anaSort");
   if(sel) sel.onchange=e=>{ ANA_SORT=e.target.value; renderAnalysis(); };
 }
@@ -11271,7 +11463,7 @@ function bindRecon(){
     reconMsg(String(e&&e.message||e),false)); });
   $("#bReconImp") && ($("#bReconImp").onclick=()=>$("#fRecon").click());
   $("#bReconRerun") && ($("#bReconRerun").onclick=()=>{
-    reconRerunFrom(RECON&&RECON.list, false); });
+    reconRerunFrom(RECON&&RECON.list, false, RECON&&RECON.charges); });
   $("#fRecon") && ($("#fRecon").onchange=e=>{
     const f=e.target.files&&e.target.files[0];
     e.target.value="";
@@ -15522,8 +15714,8 @@ const I18N={
   "btn.chgview":["檢視代碼","View codes"],
   "th.cusrecon":["最近對帳","Last reconciliation"],
   "hd.reconchg":["逐項比對","By charge"],
-  "hint.reconchg":["對到的那幾件出貨,每一項費用兩邊各算一次:照這個客戶的費率層級該收多少,以及 UPS 實際收了多少。差額就是帳單與合約的出入,差最多的排在最上面。",
-    "Every charge on the matched shipments, priced two ways: what this customer's rate level says it should be, and what UPS actually billed. The difference is where the invoice departs from the agreement — sorted with the largest gap first."],
+  "hint.reconchg":["同一筆費用最多三個數字:你向客戶收多少(模板 Charges 那一頁填的)、這個客戶的費率層級說應該收多少、UPS 實際收多少。前兩者的差是你的定價落差,後兩者的差是帳單和合約的落差 —— 差最多的排前面。",
+    "Every charge on the matched shipments, up to three ways: what you billed the client (from the template's Charges sheet), what this customer's rate level says it should be, and what UPS actually billed. The first pair is your pricing variance, the second is where the invoice departs from the agreement — sorted with the largest gap first."],
   "lb.reconscope":["檢視範圍","Showing"],
   "hd.cusreg":["客戶","Customers"],
   "hint.cusreg":["你自己維護的清單。指定費率層級後,這個客戶的出貨就照那一層的費率重算。客戶名單為整個帳號共用,不隨層級切換而改變。",
@@ -15578,8 +15770,8 @@ const I18N={
   "tab.hist":["📚 帳單歷史","📚 Invoice History"],
   "tab.code":["🔎 代碼查詢","🔎 Code Lookup"],
   "hd.recon":["WMS / TMS 對帳","WMS / TMS reconciliation"],
-  "hint.recon":["帳單本身已經有費用明細,這份檔案只補帳單不可能知道的兩件事:這張單是哪個客戶的,以及向那個客戶收了多少。一張系統單一列;一票多件時,把該單的追蹤號全部寫在同一格,用逗號分隔。",
-    "The invoice already holds the charge detail. This file adds the two facts it cannot know: which customer an order belongs to, and what that customer was billed. One order per row; for a multi-package order put every tracking number in one cell, separated by commas."],
+  "hint.recon":["帳單本身已經有 UPS 收了多少,這份檔案補的是帳單不可能知道的事:這張單是哪個客戶的,以及向那個客戶收了多少。Shipments 一張系統單一列;一票多件時,把該單的追蹤號全部寫在同一格,用逗號分隔。Charges 那一頁是選填的 —— 填了,每一項費用就比得出三個數字:你收多少、費率說應該收多少、UPS 收多少。",
+    "The invoice already holds what UPS charged. This file adds what it cannot know: which customer an order belongs to, and what that customer was billed. One order per row on Shipments; for a multi-package order put every tracking number in one cell, separated by commas. The Charges sheet is optional — fill it in and every charge is compared three ways: what you billed, what the rate level says, what UPS charged."],
   "lb.tpl":["模板","Template"],
   "btn.recontpl":["導出","Export"],
   "btn.reconimp":["導入填好的","Import filled"],
@@ -15601,7 +15793,7 @@ const I18N={
   "hint.reconcols":["三個金額各問一件事。毛利是客戶實付減去 UPS 實收 —— 這一單真正賺多少。系統重算是照該客戶自己的費率層級算出這幾件本來該是多少:拿它跟客戶實付比,是定價差異(該收的有沒有收足);拿它跟 UPS 實收比,是 UPS 差異(帳單與合約有沒有出入)。客戶沒指派費率層級、或層級已被刪除時不重算,重算與兩個差異一律留空,不會拿別層的費率頂替。「UPS 實收」不含帳戶層費用 —— 那些費用沒有追蹤號,對不到任何一張單;該不該計入由帳務決定,和儀表板的處理一致。",
     "Each amount answers a different question. Profit is what the customer paid less what UPS charged — what the order actually made. Recomputed is what this customer's own rate level says the shipments should have cost: against what the customer was billed it gives the pricing variance (was enough charged), and against what UPS billed it gives the UPS variance (does the invoice match the agreement). A customer with no rate level, or one whose level has been deleted, is not repriced at all: recomputed and both variances stay blank rather than borrow another level's rates. Charged by UPS excludes account-level charges: they carry no tracking number and belong to no order, so whether they count is your accounting call — the dashboard treats them the same way."],
   "tab.setting":["🧭 費率層級","🧭 Rate levels"],
-  "tab.rate":["⚙️ 設定","⚙️ Setting"],
+  "tab.rate":["⚙️ 帳號設定","⚙️ Account Setup"],
   "tab.rateset":["💵 費率設定","💵 Rate Setup"],
   "rt.levels":["1. 費率層級","1. Rate Levels"],
   "rt.customers":["2. 客戶設定","2. Client Setup"],
@@ -15612,9 +15804,12 @@ const I18N={
   "rt.chgcode":["3. 費用代碼","3. Charge Codes"],
   "rt.sys":["5. 系統設定","5. System"],
   "hd.analysis":["毛利分析","Profit analysis"],
-  "hint.anaempty":["這一頁讀的是對帳結果。到「WMS／TMS 對帳」導入填好的模板,數字就會出現在這裡。",
-    "This page reads the reconciliation. Import the filled template on WMS / TMS Reconciliation and the numbers land here."],
-  "btn.anago":["前往對帳","Go to reconciliation"],
+  "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",
+    "Nothing to analyse yet. This page reads the reconciliation — once the filled template is imported, the numbers land here and the whole analysis can be exported."],
+  "btn.anaxls":["匯出毛利分析","Export analysis"],
+  "th.chgbilled":["向客戶收","Billed to client"],
+  "th.chgpgap":["實收 vs 應收","Billed vs recomputed"],
+  "lb.tplchg":["逐項費用(選填)","Itemised charges (optional)"],
   "hd.analvl":["依費率層級","By rate level"],
   "hint.analvl":["同一層費率的客戶加總起來。某一層的毛利率明顯低於其他層,不是費率訂錯,就是客戶放錯層。",
     "Every client repriced at the same level, added up. A level whose margin sits well below the others is either priced wrong or carrying the wrong clients."],
