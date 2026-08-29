@@ -25,26 +25,33 @@ It answers two questions a month:
 
 ## Signing in
 
-There is no password. `auth-config.js` sets `authMode: "open"`, so the site
-opens straight into the app, everything is stored under one identity on the
-machine it is used from, and the cloud is left alone — settings and invoice
-history live in that browser only.
+`auth-config.js` sets `authMode: "local"`. One account is defined in
+`index.html` under `LOCAL_ACCOUNTS`, as `sha256("username:password")` with the
+username lower-cased — the password itself is never in the repository.
 
-That is a deliberate choice for an internal tool, not an oversight. Anyone who
-can reach the URL can use it and can read whatever has been imported into it,
-so it belongs behind something that controls who reaches the URL. To turn
-accounts on, set `authMode` to `"supabase"`: the sign-in gate, the Admin tab
-and the account sync come back, and the data saved while it was open is picked
-up again by the identity-claim prompt on first sign-in.
+To change it, recompute the hash and replace that one line:
+
+```
+printf '%s' 'username:new-password' | sha256sum
+```
+
+**Know what this gate is and is not.** The check runs in the browser, and this
+repository is public, so the hash can be read and attacked offline, and anyone
+willing to open developer tools can step past the form. What it genuinely stops
+is someone sitting down at a machine where the tool is already open — which
+matters, because the imported invoices live in that browser and nowhere else.
+It is a lock on the office door, not a safe. Put the site behind something that
+controls who reaches the URL if the data warrants more, or set `authMode` to
+`"supabase"` for real accounts, checked on the server.
+
+The other two modes stay available: `"supabase"` for accounts shared with the
+repricing tool (see `SUPABASE_SETUP.md`), and `"open"` for no gate at all.
 
 ## Setup
 
 Rates, surcharges, size rules, channels and demand surcharges are configured
 here the same way as in the repricing tool, because reconciliation reprices:
 load a rate configuration file, or set them up on the tabs.
-
-With `authMode: "supabase"` the accounts are shared with the repricing tool —
-same project, same passwords. See `SUPABASE_SETUP.md`.
 
 ## Relationship to the repricing tool
 

@@ -5054,7 +5054,13 @@ const LOCAL_MODE = (AUTH_CONFIG.authMode === "local");
 const OPEN_MODE = (AUTH_CONFIG.authMode === "open");
 const OPEN_ID = "open";
 const OPEN_ME = {id:OPEN_ID, user:OPEN_ID, name:"UPS Reconciliation", role:"user"};
-const LOCAL_ACCOUNTS=[];
+/* 這個名單只放雜湊,不放密碼:sha256("帳號:密碼"),帳號一律小寫。
+   要改密碼就重算一次雜湊換掉這一行 —— 明碼永遠不進 repo。
+   雲端同步用的鑰匙是另一組算法推出來的,所以這裡的雜湊推不出那把鑰匙。 */
+const LOCAL_ACCOUNTS=[
+  {user:"sandyliu30", name:"Sandy", role:"admin",
+   hash:"d39805228c45865c7f6b669848686ef30d9b4580950bf814be88323c30625fec"}
+];
 const LOCAL_SESSION_KEY="ups_recon_local_session";
 /* 「保持登入」勾了才寫這把 —— localStorage 關瀏覽器也留著,下次開站免登入。
    沒勾就維持原本的規則:session 只活在這個分頁。 */
