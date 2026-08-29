@@ -1,57 +1,62 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- 兩個對話框斜著對角擺:貓在右上、狗在左下,尾巴朝中間的心。
-     16px 只剩三樣認得出來 —— 深色圓底、兩塊米白、一點黃,所以先讓那三樣站住。 -->
-<rect width="64" height="64" rx="15" fill="#3E2A20"/>
+<!-- 柯基在左、布偶貓在右,兩顆圓頭並排,下方一枚金色勾章 —— 對帳工具的印記。
+     全部用圓和橢圓,不再是對話框構圖。
+     16px 只剩四樣認得出來:深色圓底、一團橘、一團白、一點金。 -->
+<rect width="64" height="64" rx="16" fill="#3E2A20"/>
 
-<!-- ================= 左下:狗 ================= -->
-<g transform="rotate(-10 20 43)">
-  <!-- 兩隻垂耳,壓在框子後面先畫。都垂在左側 —— 右側是勾勾和框子尾巴,
-       放不下第二隻,兩隻疊在左邊反而一眼就是狗的垂耳。後面那隻深一點。 -->
-  <path d="M15 34c-8.5 0-11 6-9.6 12.4 1 4.8 4.8 6.6 8.8 5.8Z"
-        fill="#A56A34" stroke="#2E1C14" stroke-width="2.6" stroke-linejoin="round"/>
-  <path d="M18.5 35.5c-5.6 .4-7.4 5.2-6.4 9.8.8 3.8 3.8 5.2 6.8 4.6Z"
-        fill="#B5793F" stroke="#2E1C14" stroke-width="2.4" stroke-linejoin="round"/>
-  <!-- 框子,右下角一個小尾巴指向勾勾 -->
-  <path d="M11 34h20a4 4 0 0 1 4 4v13a4 4 0 0 1-4 4H20l-3 4-1-4h-5a4 4 0 0 1-4-4V38a4 4 0 0 1 4-4Z"
-        fill="#FAF5EC" stroke="#2E1C14" stroke-width="2.7" stroke-linejoin="round"/>
-  <g stroke="#2E1C14" stroke-width="2.6" stroke-linecap="round">
-    <path d="M12.5 44.5h15"/><path d="M12.5 50h11"/>
-  </g>
+<!-- ================= 左:柯基 =================
+     大立耳是柯基的臉,耳尖收圓不收尖 —— 尖耳會跟貓混在一起。
+     兩隻耳朵都要留在自己頭上,別伸到貓那邊被蓋掉。
+     白鼻樑從額頭直下接白嘴,是柯基最典型的花色。 -->
+<g stroke="#2E1C14" stroke-linejoin="round">
+  <path d="M8 24C6.5 14 9 7.5 14 6c4-1.2 7 4.2 8 12.6Z" fill="#E89A4E" stroke-width="2.4"/>
+  <path d="M32 23c1.5-9.5-1-16.2-6-17.5-4-1.1-7 4.6-8 13Z" fill="#E89A4E" stroke-width="2.4"/>
+  <path d="M10.6 17.5c-.5-5 .6-8.2 2.9-8.9 2-.6 3.7 2.4 4.3 7Z" fill="#F0B7A8"/>
+  <path d="M29.6 16.8c.7-5-.3-8.3-2.6-9-2-.7-3.8 2.3-4.5 6.8Z" fill="#F0B7A8"/>
+  <ellipse cx="20" cy="34" rx="14" ry="12.5" fill="#E89A4E" stroke-width="2.6"/>
+  <!-- 白鼻樑 + 白嘴:一筆連起來 -->
+  <path d="M17.2 23.4c0-1.9 5.6-1.9 5.6 0l.9 8.6c2.9.4 5.2 2.9 5.2 5.9 0 4.4-3.8 7.4-8.9 7.4s-8.9-3-8.9-7.4c0-3 2.3-5.5 5.2-5.9Z"
+        fill="#FAF5EC" stroke-width="2.2"/>
 </g>
+<!-- 五官不描邊,描了 16px 會糊成一團 -->
+<ellipse cx="13" cy="32" rx="2.2" ry="2.4" fill="#2E1C14"/>
+<ellipse cx="27" cy="32" rx="2.2" ry="2.4" fill="#2E1C14"/>
+<ellipse cx="20" cy="37.2" rx="2.7" ry="2.1" fill="#2E1C14"/>
+<path d="M20 39.2v2M20 41.2c-1.1 1.5-3.2 1.5-4.1.2M20 41.2c1.1 1.5 3.2 1.5 4.1.2"
+      fill="none" stroke="#2E1C14" stroke-width="1.4" stroke-linecap="round"/>
+<ellipse cx="10" cy="38" rx="2.4" ry="1.6" fill="#F2A69B"/>
 
-<!-- ================= 右上:貓 ================= -->
-<g transform="rotate(-10 44 21)">
-  <!-- 兩隻尖耳,做胖一點。框子頂邊在 y≈9,耳朵露在上面的部分要夠寬,
-       描邊才不會把白底吃光,16px 下還看得出是白耳配粉紅內耳。 -->
-  <path d="M37 11 40 1 45.5 10Z" fill="#FAF5EC" stroke="#2E1C14" stroke-width="2.4" stroke-linejoin="round"/>
-  <path d="M55 11 52 1 46.5 10Z" fill="#FAF5EC" stroke="#2E1C14" stroke-width="2.4" stroke-linejoin="round"/>
-  <path d="M40.2 9 41.2 4 43.6 8.4Z" fill="#F5A39C"/>
-  <path d="M51.8 9 50.8 4 48.4 8.4Z" fill="#F5A39C"/>
-  <!-- 框子,左下角尾巴指向心 -->
-  <path d="M35 9h20a4 4 0 0 1 4 4v13a4 4 0 0 1-4 4h-5l-1 4-3-4H35a4 4 0 0 1-4-4V13a4 4 0 0 1 4-4Z"
-        fill="#FAF5EC" stroke="#2E1C14" stroke-width="2.7" stroke-linejoin="round"/>
-  <g stroke="#2E1C14" stroke-width="2.6" stroke-linecap="round">
-    <path d="M38 18h15"/><path d="M38 23.5h11"/>
-  </g>
+<!-- ================= 右:布偶貓 =================
+     後畫,壓在柯基前面一點點,兩顆頭才像靠在一起。
+     雙色布偶的臉:耳朵和頭頂深色,眉心留一個白色倒 V,藍眼睛。
+     面罩只到眉毛 —— 蓋到眼睛就變哈士奇了。 -->
+<g stroke="#2E1C14" stroke-linejoin="round">
+  <path d="M33.5 21 35 7.5 44.5 15.5Z" fill="#8A7466" stroke-width="2.4"/>
+  <path d="M56.5 22.5 58.5 9 48 15.8Z" fill="#8A7466" stroke-width="2.4"/>
+  <path d="M36.3 16.8 37 10.8l4.6 4.3Z" fill="#F0B7A8"/>
+  <path d="M54 18.2 55 12.2l-5.2 3.6Z" fill="#F0B7A8"/>
+  <ellipse cx="45" cy="31" rx="13" ry="12" fill="#FAF5EC" stroke-width="2.6"/>
 </g>
+<!-- 頭頂雙色面罩:兩瓣往外斜的色塊,用頭形剪裁。
+     兩瓣上端幾乎相碰、下端張開 —— 中間留下的白就是上窄下寬的倒 V,
+     「這是我家那隻」的記號。色塊不描邊,被剪裁的描邊會斷在怪地方。 -->
+<clipPath id="rh"><ellipse cx="45" cy="31" rx="12" ry="11"/></clipPath>
+<g clip-path="url(#rh)" fill="#8A7466">
+  <ellipse cx="38.6" cy="22.5" rx="6.6" ry="9" transform="rotate(26 38.6 22.5)"/>
+  <ellipse cx="51.4" cy="22.5" rx="6.6" ry="9" transform="rotate(-26 51.4 22.5)"/>
+</g>
+<!-- 藍眼睛:布偶貓的正字標記,不描邊留亮點 -->
+<ellipse cx="39.8" cy="33.5" rx="2.5" ry="2.8" fill="#5B9BD5"/>
+<ellipse cx="50.2" cy="33.5" rx="2.5" ry="2.8" fill="#5B9BD5"/>
+<circle cx="40.5" cy="32.7" r=".8" fill="#FAF5EC"/>
+<circle cx="50.9" cy="32.7" r=".8" fill="#FAF5EC"/>
+<path d="M45 37.6 43.3 35.9h3.4Z" fill="#F2A69B"/>
+<path d="M45 38v1.7M45 39.7c-1 1.2-2.7 1.2-3.5.2M45 39.7c1 1.2 2.7 1.2 3.5.2"
+      fill="none" stroke="#2E1C14" stroke-width="1.4" stroke-linecap="round"/>
 
-<!-- ================= 中間的勾勾 =================
-     對帳工具用打勾比愛心貼切。深色一筆在下當描邊,黃色一筆疊上去,
-     圓角收尾 —— 16px 下還是清楚的一個勾。 -->
-<g fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M27.8 33 31.2 36.8 38.4 27" stroke="#2E1C14" stroke-width="6"/>
-  <path d="M27.8 33 31.2 36.8 38.4 27" stroke="#EFA81C" stroke-width="3.4"/>
-</g>
-
-<!-- ================= 動態線,以勾勾為圓心 ================= -->
-<g stroke="#EFA81C" stroke-width="2.6" stroke-linecap="round" fill="none">
-  <g transform="translate(32 32.5) rotate(-150)">
-    <path d="M8.5 -3.2a7.6 7.6 0 0 1 0 6.4"/>
-    <path d="M11.8 -4.4a10.8 10.8 0 0 1 0 8.8"/>
-  </g>
-  <g transform="translate(32 32.5) rotate(30)">
-    <path d="M8.5 -3.2a7.6 7.6 0 0 1 0 6.4"/>
-    <path d="M11.8 -4.4a10.8 10.8 0 0 1 0 8.8"/>
-  </g>
-</g>
+<!-- ================= 下方:金色勾章 =================
+     圓形章 + 勾,壓在兩顆頭的下緣正中 —— 對過帳、蓋過章。 -->
+<circle cx="32.5" cy="52.5" r="8.4" fill="#EFA81C" stroke="#2E1C14" stroke-width="2.4"/>
+<path d="M28.3 52.5 31.4 55.8 37 49.2" fill="none" stroke="#2E1C14"
+      stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
