@@ -10459,11 +10459,11 @@ function renderReady(okCfg, okInv){
      只在「費率還沒就緒」時講話,其餘時候保持安靜。 */
   if(okCfg){ box.innerHTML=""; return; }
   box.innerHTML=`<div class="note warn" style="margin-top:10px"><b>`
-    +L("這個帳號還沒有費率,所以 Generate 是灰的。",
-       "This account has no rates yet, so Generate is greyed out.")
+    +L("這個帳號還沒有費率,所以「處理帳單」是灰的。",
+       "This account has no rates yet, so Process Invoice is greyed out.")
     +`</b> `
-    +L("費率隨帳號儲存。請至「⚙️ 設定」分頁載入 ups_billing_tool_config.json(或於「🚚 渠道」分頁匯入費率表),再按「儲存設定」,按鈕就會亮。",
-       "Rates are stored per account. Load ups_billing_tool_config.json on the Settings tab (or import rate tables on the Channels tab), then press Save Settings and the button lights up.")
+    +L("費率隨帳號儲存。請至「01 General Setting → 1. 層級設定」載入該層的費率設定檔(或於「04 渠道與附加費費率」匯入基本運費表),再按「儲存設定」,按鈕就會亮。",
+       "Rates are stored per account. Load the level's rate configuration file under 01 General Setting → 1. Level Setup (or import base-rate tables under 04 Channel & Surcharge Rates), then press Save Settings and the button lights up.")
     +`</div>`;
 }
 
