@@ -34,7 +34,7 @@ body{
   /* body 上有 zoom(顯示大小那顆選單),100vh 會連同縮放一起打折 ——
      90% 的時候底下就空出一條。除以縮放倍率補回來。 */
   height:calc(100vh / var(--zoomf,1));
-  grid-template-columns:var(--navw,208px) minmax(0,1fr);
+  grid-template-columns:var(--navw,254px) minmax(0,1fr);
   grid-template-rows:auto auto minmax(0,1fr) auto;
   grid-template-areas:"title title" "nav setnav" "nav main" "nav status";
 }
@@ -16554,6 +16554,7 @@ const I18N={
   "hint.addchan":["新增即同步建立於所有費率層級,各層費率於 04 填寫。reprice 預設渠道(Ground、SurePost、Air 與 Worldwide 系列)已連同 Zone 自動帶入。名稱裡自己寫了 Commercial 或 Residential 的只留在那一側,其餘兩側都會出現。",
     "Created in every rate level at once — each level prices it under 04. The reprice defaults (Ground, SurePost, the Air and Worldwide services) ship with their zones preloaded. A name that says Commercial or Residential itself stays on that one side; anything else appears on both."],
   "btn.exprate":["匯出基本運費表模板","Export base rate template"],
+  "btn.process":["處理帳單","Process Invoice"],
   "btn.imprate":["匯入已完成的基本運費表","Import completed base rates"],
   "btn.scanzone":["從帳單掃描 Zone","Scan zones from invoice"],
   "btn.delchan":["刪除所選渠道","Delete selected"],
