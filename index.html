@@ -180,7 +180,10 @@ table,table *,input,select,.tablewrap{filter:none !important}
 .setnav-lvl select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .setnav-lvl[hidden]{display:none}
 /* ===== 首頁流程圖(鄉間小路版) ===== */
-.fm-wrap{overflow-x:auto}
+/* 佈景跟著主題走;站點的圖與文字用固定墨色(--fm-*),換主題也不變。 */
+.fm-wrap{overflow-x:auto;
+  --fm-ink:#3a2418;--fm-gold:#ffb500;--fm-line:#caa356;--fm-select:#ffdd8f;
+  --fm-panel:#fffdf7;--fm-stripe:#f7f1e4;--fm-run2:#8a6104;--fm-muted:#8a755a}
 .fm-wrap svg{width:100%;min-width:920px;height:auto;display:block}
 #navHome .nnum{font-size:12px;opacity:.9}
 .fm-grph text{font-size:10px;font-weight:700;letter-spacing:.16em;fill:var(--muted)}
@@ -195,14 +198,14 @@ table,table *,input,select,.tablewrap{filter:none !important}
 .fm-halo{fill:var(--select);opacity:0;transition:opacity .25s}
 .fm-st.on .fm-halo,.fm-st:hover .fm-halo{opacity:.55}
 .fm-gnd{fill:var(--line);opacity:.35}
-.fm-chip{fill:var(--stripe);stroke:var(--line);stroke-width:1}
-.fm-no{font-size:8.5px;font-weight:700;fill:var(--muted);font-family:Consolas,"Cascadia Mono",monospace}
-.fm-tick{font-size:10px;fill:var(--run2);opacity:0;transition:opacity .3s}
+.fm-chip{fill:var(--fm-stripe);stroke:var(--fm-line);stroke-width:1}
+.fm-no{font-size:8.5px;font-weight:700;fill:var(--fm-muted);font-family:Consolas,"Cascadia Mono",monospace}
+.fm-tick{font-size:10px;fill:var(--fm-run2);opacity:0;transition:opacity .3s}
 .fm-st.done .fm-tick{opacity:1}
-.fm-lb{font-size:11px;font-weight:700;fill:var(--accent);letter-spacing:.02em}
+.fm-lb{font-size:11px;font-weight:700;fill:var(--fm-ink);letter-spacing:.02em}
 .fm-st text{user-select:none}
-.fm-gate{stroke:var(--accent);stroke-width:2;fill:var(--stripe)}
-.fm-gatearch{stroke:var(--accent);stroke-width:5;fill:none;stroke-linecap:round}
+.fm-gate{stroke:var(--fm-ink);stroke-width:2;fill:var(--fm-stripe)}
+.fm-gatearch{stroke:var(--fm-ink);stroke-width:5;fill:none;stroke-linecap:round}
 .fm-pkg .bx,.fm-truck .tpk .bx{fill:var(--tab);stroke:var(--accent);stroke-width:2.2}
 .fm-pkg .tape,.fm-truck .tpk .tape{fill:var(--select);stroke:var(--accent);stroke-width:1}
 .fm-pkg .fold,.fm-truck .tpk .fold{fill:none;stroke:var(--accent);stroke-width:1.1;opacity:.65}
@@ -258,7 +261,7 @@ table,table *,input,select,.tablewrap{filter:none !important}
 .fm-dog .snout{fill:#fdf3e3;stroke:#4a3226;stroke-width:1.6}
 .fm-dog .collar{stroke:#c74a3a;fill:none}
 .fm-dog .ln{stroke:#4a3226;fill:none}
-.fm-dog circle[fill="var(--accent)"]{fill:#4a3226}
+.fm-dog circle[fill="var(--fm-ink)"]{fill:#4a3226}
 .fm-dog{animation:fmhop 3.2s ease-in-out infinite}
 @keyframes fmhop{0%,86%,100%{transform:translateY(0)}90%{transform:translateY(-6px)}94%{transform:translateY(0)}97%{transform:translateY(-3px)}}
 .fm-dog .wag{transform-origin:var(--wox) var(--woy);animation:fmwag .55s ease-in-out infinite alternate}
@@ -11459,61 +11462,61 @@ function fmAngle(path,len){
 }
 /* 每一站自己畫:同一套 2.2px 線條,主題色上彩。中心點在路面上方 (x, y)。 */
 function fmArt(k,x,y){
-  const A=`stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"`;
+  const A=`stroke="var(--fm-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"`;
   switch(k){
   case "general": return `
-    <circle cx="${x}" cy="${y-16}" r="12.5" fill="var(--stripe)" ${A}/>
+    <circle cx="${x}" cy="${y-16}" r="12.5" fill="var(--fm-stripe)" ${A}/>
     ${[0,45,90,135,180,225,270,315].map(a=>{const r=a*Math.PI/180;
       return `<line x1="${x+Math.cos(r)*12.5}" y1="${y-16+Math.sin(r)*12.5}"
                     x2="${x+Math.cos(r)*17}" y2="${y-16+Math.sin(r)*17}" ${A}/>`;}).join("")}
-    <circle cx="${x}" cy="${y-16}" r="5" fill="var(--tab)" ${A}/>`;
+    <circle cx="${x}" cy="${y-16}" r="5" fill="var(--fm-gold)" ${A}/>`;
   case "rate": return `
-    <circle cx="${x-8}" cy="${y-24}" r="6.5" fill="var(--stripe)" ${A}/>
-    <path d="M${x-18} ${y-2} q0 -13 10 -13 q10 0 10 13 z" fill="var(--stripe)" ${A}/>
-    <circle cx="${x+8}" cy="${y-21}" r="6.5" fill="var(--select)" ${A}/>
-    <path d="M${x-2} ${y-2} q0 -12 10 -12 q10 0 10 12 z" fill="var(--select)" ${A}/>`;
+    <circle cx="${x-8}" cy="${y-24}" r="6.5" fill="var(--fm-stripe)" ${A}/>
+    <path d="M${x-18} ${y-2} q0 -13 10 -13 q10 0 10 13 z" fill="var(--fm-stripe)" ${A}/>
+    <circle cx="${x+8}" cy="${y-21}" r="6.5" fill="var(--fm-select)" ${A}/>
+    <path d="M${x-2} ${y-2} q0 -12 10 -12 q10 0 10 12 z" fill="var(--fm-select)" ${A}/>`;
   case "cat": return `
     <line x1="${x}" y1="${y}" x2="${x}" y2="${y-34}" ${A} stroke-width="3"/>
-    <path d="M${x-3} ${y-32} h20 l6 5 l-6 5 h-20 z" fill="var(--tab)" ${A}/>
-    <path d="M${x+3} ${y-19} h-20 l-6 5 l6 5 h20 z" fill="var(--run2)" ${A}/>
-    <line x1="${x+1}" y1="${y-29.5}" x2="${x+14}" y2="${y-29.5}" stroke="var(--accent)" stroke-width="1.3"/>
-    <line x1="${x-1}" y1="${y-16.5}" x2="${x-14}" y2="${y-16.5}" stroke="var(--accent)" stroke-width="1.3"/>`;
+    <path d="M${x-3} ${y-32} h20 l6 5 l-6 5 h-20 z" fill="var(--fm-gold)" ${A}/>
+    <path d="M${x+3} ${y-19} h-20 l-6 5 l6 5 h20 z" fill="var(--fm-run2)" ${A}/>
+    <line x1="${x+1}" y1="${y-29.5}" x2="${x+14}" y2="${y-29.5}" stroke="var(--fm-ink)" stroke-width="1.3"/>
+    <line x1="${x-1}" y1="${y-16.5}" x2="${x-14}" y2="${y-16.5}" stroke="var(--fm-ink)" stroke-width="1.3"/>`;
   case "fill": return `
-    <path d="M${x-16} ${y-26} h18 l10 10 v14 h-28 z" fill="var(--select)" ${A}
+    <path d="M${x-16} ${y-26} h18 l10 10 v14 h-28 z" fill="var(--fm-select)" ${A}
           transform="rotate(-8 ${x} ${y-14})"/>
-    <circle cx="${x-10}" cy="${y-21}" r="2.4" fill="var(--panel)" ${A} transform="rotate(-8 ${x} ${y-14})"/>
+    <circle cx="${x-10}" cy="${y-21}" r="2.4" fill="var(--fm-panel)" ${A} transform="rotate(-8 ${x} ${y-14})"/>
     <text x="${x+1}" y="${y-7}" text-anchor="middle" font-size="13" font-weight="800"
-          fill="var(--accent)" transform="rotate(-8 ${x} ${y-14})">$</text>`;
+          fill="var(--fm-ink)" transform="rotate(-8 ${x} ${y-14})">$</text>`;
   case "wmsdata": return `
-    <path d="M${x-13} ${y-30} h17 l9 9 v21 h-26 z" fill="var(--panel)" ${A}/>
-    <path d="M${x+4} ${y-30} v9 h9" fill="var(--stripe)" ${A}/>
+    <path d="M${x-13} ${y-30} h17 l9 9 v21 h-26 z" fill="var(--fm-panel)" ${A}/>
+    <path d="M${x+4} ${y-30} v9 h9" fill="var(--fm-stripe)" ${A}/>
     <line x1="${x-8}" y1="${y-15}" x2="${x+8}" y2="${y-15}" ${A} stroke-width="1.5"/>
     <line x1="${x-8}" y1="${y-10}" x2="${x+8}" y2="${y-10}" ${A} stroke-width="1.5"/>
     <line x1="${x-8}" y1="${y-5}" x2="${x+2}" y2="${y-5}" ${A} stroke-width="1.5"/>`;
   case "files": return `
-    <path d="M${x-17} ${y-12} h8 l4 5 h10 l4 -5 h8 v10 q0 2 -2 2 h-30 q-2 0 -2 -2 z" fill="var(--tab)" ${A}/>
-    <path d="M${x-9} ${y-26} h18 v14 h-18 z" fill="var(--panel)" ${A}/>
+    <path d="M${x-17} ${y-12} h8 l4 5 h10 l4 -5 h8 v10 q0 2 -2 2 h-30 q-2 0 -2 -2 z" fill="var(--fm-gold)" ${A}/>
+    <path d="M${x-9} ${y-26} h18 v14 h-18 z" fill="var(--fm-panel)" ${A}/>
     <line x1="${x-4}" y1="${y-21}" x2="${x+4}" y2="${y-21}" ${A} stroke-width="1.4"/>
     <path d="M${x} ${y-33} v9 m-3.5 -4 l3.5 4 l3.5 -4" fill="none" ${A}/>`;
   case "cus": return `
     <line x1="${x}" y1="${y-34}" x2="${x}" y2="${y-4}" ${A}/>
     <line x1="${x-16}" y1="${y-28}" x2="${x+16}" y2="${y-28}" ${A}/>
-    <path d="M${x-16} ${y-28} l-5 9 a7 7 0 0 0 10 0 z" fill="var(--select)" ${A} stroke-width="1.8"/>
-    <path d="M${x+16} ${y-28} l-5 9 a7 7 0 0 0 10 0 z" fill="var(--select)" ${A} stroke-width="1.8"/>
-    <path d="M${x-7} ${y-4} h14 l3 4 h-20 z" fill="var(--stripe)" ${A}/>`;
+    <path d="M${x-16} ${y-28} l-5 9 a7 7 0 0 0 10 0 z" fill="var(--fm-select)" ${A} stroke-width="1.8"/>
+    <path d="M${x+16} ${y-28} l-5 9 a7 7 0 0 0 10 0 z" fill="var(--fm-select)" ${A} stroke-width="1.8"/>
+    <path d="M${x-7} ${y-4} h14 l3 4 h-20 z" fill="var(--fm-stripe)" ${A}/>`;
   case "analysis": return `
     <line x1="${x-16}" y1="${y}" x2="${x+18}" y2="${y}" ${A}/>
-    <rect x="${x-14}" y="${y-12}" width="7" height="12" rx="1.5" fill="var(--stripe)" ${A} stroke-width="1.8"/>
-    <rect x="${x-4}" y="${y-19}" width="7" height="19" rx="1.5" fill="var(--tab)" ${A} stroke-width="1.8"/>
-    <rect x="${x+6}" y="${y-26}" width="7" height="26" rx="1.5" fill="var(--run2)" ${A} stroke-width="1.8"/>
+    <rect x="${x-14}" y="${y-12}" width="7" height="12" rx="1.5" fill="var(--fm-stripe)" ${A} stroke-width="1.8"/>
+    <rect x="${x-4}" y="${y-19}" width="7" height="19" rx="1.5" fill="var(--fm-gold)" ${A} stroke-width="1.8"/>
+    <rect x="${x+6}" y="${y-26}" width="7" height="26" rx="1.5" fill="var(--fm-run2)" ${A} stroke-width="1.8"/>
     <path d="M${x-11} ${y-22} q10 -6 20 -12 m-6 0 h6 v6" fill="none" ${A} stroke-width="1.7"/>`;
   case "hist": return `
-    <rect x="${x-15}" y="${y-28}" width="30" height="28" rx="3" fill="var(--stripe)" ${A}/>
-    <rect x="${x-15}" y="${y-28}" width="30" height="12" rx="3" fill="var(--panel)" ${A}/>
-    <rect x="${x-5}" y="${y-24.5}" width="10" height="3.6" rx="1.8" fill="var(--tab)" ${A} stroke-width="1.4"/>
-    <rect x="${x-5}" y="${y-10.5}" width="10" height="3.6" rx="1.8" fill="var(--tab)" ${A} stroke-width="1.4"/>`;
+    <rect x="${x-15}" y="${y-28}" width="30" height="28" rx="3" fill="var(--fm-stripe)" ${A}/>
+    <rect x="${x-15}" y="${y-28}" width="30" height="12" rx="3" fill="var(--fm-panel)" ${A}/>
+    <rect x="${x-5}" y="${y-24.5}" width="10" height="3.6" rx="1.8" fill="var(--fm-gold)" ${A} stroke-width="1.4"/>
+    <rect x="${x-5}" y="${y-10.5}" width="10" height="3.6" rx="1.8" fill="var(--fm-gold)" ${A} stroke-width="1.4"/>`;
   case "admin": return `
-    <path d="M${x} ${y-32} l13 5 v9 q0 12 -13 17 q-13 -5 -13 -17 v-9 z" fill="var(--select)" ${A}/>
+    <path d="M${x} ${y-32} l13 5 v9 q0 12 -13 17 q-13 -5 -13 -17 v-9 z" fill="var(--fm-select)" ${A}/>
     <path d="M${x-5.5} ${y-16} l4 4.5 l7.5 -8.5" fill="none" ${A}/>`;
   }
   return "";
@@ -11551,7 +11554,7 @@ function fmBuild(){
       <path class="fm-gatearch" d="M672 122 V78 Q672 66 684 66 H768 Q780 66 780 78 V122"/>
       <rect class="fm-gate" x="694" y="55" width="64" height="15" rx="7.5"/>
       <text x="726" y="66" text-anchor="middle" font-size="8.6" font-weight="700"
-            fill="var(--accent)" letter-spacing=".1em">PROCESS</text>
+            fill="var(--fm-ink)" letter-spacing=".1em">PROCESS</text>
     </g>
 
     <!-- 貓:蜷成一團睡在起點的小墊子上 -->
