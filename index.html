@@ -11573,9 +11573,9 @@ function fmBuild(){
   const dBot=`M1148 244 C 1000 258, 880 246, 760 252 C 700 255, 660 258, 600 258
               C 480 258, 380 246, 280 250 C 220 252, 170 248, 128 244`;
   svg.innerHTML=`
-    ${fmGrpHeader(285,L("出貨端 ORDER & FULFILLMENT","ORDER & FULFILLMENT"))}
-    ${fmGrpHeader(726,L("UPS 運送 CARRIER","CARRIER DELIVERY"))}
-    ${fmGrpHeader(1041,L("帳務結算 SETTLEMENT","BILLING & SETTLEMENT"))}
+    ${fmGrpHeader(285,"ORDER & FULFILLMENT")}
+    ${fmGrpHeader(726,"CARRIER DELIVERY")}
+    ${fmGrpHeader(1041,"BILLING & SETTLEMENT")}
     <path class="fm-rail" d="${dTop}"/><path class="fm-dash" d="${dTop}" id="fmLaneT"/>
     <path class="fm-rail" d="${dDown}"/><path class="fm-dash" d="${dDown}" id="fmLaneD"/>
     <path class="fm-rail" d="${dBot}"/><path class="fm-dash" d="${dBot}" id="fmLaneB"/>
@@ -11667,14 +11667,11 @@ function fmBuild(){
         <ellipse class="fm-halo" cx="${x}" cy="${y-12}" rx="34" ry="28"/>
         <ellipse class="fm-gnd" cx="${x}" cy="${y+2}" rx="24" ry="4"/>
         ${fmArt(k,x,y)}
-        <rect class="fm-chip" x="${x-36}" y="${y-40}" width="23" height="12.5" rx="6.2"/>
-        <text class="fm-no" x="${x-24.5}" y="${y-31}" text-anchor="middle">${no}</text>
         <text class="fm-tick" x="${x+30}" y="${y-32}" text-anchor="middle">✓</text>
-        <text class="fm-lb" x="${x}" y="${y+17}" text-anchor="middle">${esc(L(FM_LB[k][0],FM_LB[k][1]))}</text>
-        <text class="fm-lb2" x="${x}" y="${y+28}" text-anchor="middle">${esc(L(FM_LB[k][1],FM_LB[k][0]))}</text>
+        <text class="fm-lb" x="${x}" y="${y+17}" text-anchor="middle">${esc(FM_LB[k][1])}</text>
         <rect class="fm-hit" x="${x-38}" y="${y-44}" width="76" height="76"/>
       </g>
-      <title>${esc(L(FM_TIP[k][0],FM_TIP[k][1]))}`+`</title>`;
+      <title>${esc(FM_TIP[k][1])}</title>`;
     svg.appendChild(g);
     if(go) g.addEventListener("click",()=>{
       const b=document.querySelector('#tabs button[data-p="'+go+'"]');
