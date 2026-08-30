@@ -16470,14 +16470,16 @@ const THEMES={
   "Wisteria":{zh:"紫藤",BG:"#ece1f6",PANEL:"#faf6ff",TAB:"#d5bfea",
     ACCENT:"#5b3d7d",TEXT:"#2f2340",LINE:"#b39ccc",SELECT:"#ead4fb",
     STRIPE:"#f3ebfb",NEG:"#b03060",RUN:"#6b46a3",RUNH:"#55367f",
-    RUN2:"#9c4f94",RUN2H:"#7d3f76"},
-  /* 珊瑚:活潑的糖果色 —— 泡泡糖粉橘底、糖果紅主鍵、薄荷綠次要鍵。
-     同樣整組驗過:正文 10.5–13.7,主色對面板 7.3、對 TAB 4.6,
-     白字 4.7–8.2,警示用覆盆子紅與主色分得開。 */
-  "Coral":{zh:"珊瑚",BG:"#ffe1dc",PANEL:"#fff6f3",TAB:"#ffb3ab",
-    ACCENT:"#992a14",TEXT:"#40201a",LINE:"#e39a8f",SELECT:"#ffd6d0",
-    STRIPE:"#ffece6",NEG:"#ad1457",RUN:"#992a14",RUNH:"#772110",
-    RUN2:"#12836e",RUN2H:"#0d6355"},
+    RUN2:"#9c4f94",RUN2H:"#7d3f76",
+    FONT:'"Comic Sans MS","Segoe Print","Bradley Hand","KaiTi","DFKai-SB","Kaiti TC","BiauKai","Microsoft JhengHei",sans-serif'},
+  /* 晴空:活潑的糖果藍 —— 嬰兒藍底、糖果藍主鍵、泡泡糖粉次要鍵。
+     同樣整組驗過:正文 10.9–13.9,主色對面板 7.4、對 TAB 4.9,
+     白字 5.4–10.5,警示紅 6.2,與粉色次要鍵分得開。 */
+  "Sky":{zh:"晴空",BG:"#dbecfd",PANEL:"#f4faff",TAB:"#a9d1f7",
+    ACCENT:"#1b5390",TEXT:"#152a40",LINE:"#8ab4dc",SELECT:"#c7e1fc",
+    STRIPE:"#e8f2fd",NEG:"#b3261e",RUN:"#1b5390",RUNH:"#134070",
+    RUN2:"#b83a76",RUN2H:"#96305f",
+    FONT:'"Comic Sans MS","Segoe Print","Bradley Hand","KaiTi","DFKai-SB","Kaiti TC","BiauKai","Microsoft JhengHei",sans-serif'},
   "Graphite":{zh:"石墨",BG:"#3a3d42",PANEL:"#4a4e55",TAB:"#2f3237",
     ACCENT:"#c08a3e",TEXT:"#f0ece4",LINE:"#5c626b",SELECT:"#5f6672",
     STRIPE:"#43474e",NEG:"#f0a48c",RUN:"#c08a3e",RUNH:"#9c6d2d",
@@ -16501,16 +16503,25 @@ function applyBrand(name){
   r.setProperty("--bw",    "2px");
   r.setProperty("--bstyle","solid");
   r.setProperty("--bcol",  boop?"var(--line)":"var(--accent)");
-  const ui='"Microsoft JhengHei UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif';
-  r.setProperty("--dispfam", "inherit");
-  /* 標題實心 —— 帳冊上的字要實實在在,不用空心描邊。
-     Boop 的標題走等寬字:稽核看的是對齊的數字。 */
-  r.setProperty("--titlefam", boop
-    ? 'Consolas,"Cascadia Mono","Menlo",'+ui : ui);
   r.setProperty("--titlefill", "var(--tab)");
   r.setProperty("--titlestroke", "0");
-  r.setProperty("--bodyfam", ui);
+  applyFonts();
   try{ localStorage.setItem(BRAND_KEY,BRAND); }catch(e){}
+}
+/* 字體:品牌給預設,糖果主題(紫藤/晴空)蓋一層手寫感 —— 英文 Comic
+   Sans/Segoe Print,中文落到楷體。數字欄位(.num/.mono)有自己的等寬
+   字體,不受影響,表格照樣對得整齊。 */
+function applyFonts(){
+  const r=document.documentElement.style;
+  const boop = BRAND==="Boop";
+  const ui='"Microsoft JhengHei UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif';
+  const f=(typeof THEMES!=="undefined"&&THEMES[THEME]&&THEMES[THEME].FONT)||null;
+  r.setProperty("--dispfam", f||"inherit");
+  /* 標題實心 —— 帳冊上的字要實實在在,不用空心描邊。
+     Boop 的標題走等寬字:稽核看的是對齊的數字。 */
+  r.setProperty("--titlefam", f||(boop
+    ? 'Consolas,"Cascadia Mono","Menlo",'+ui : ui));
+  r.setProperty("--bodyfam", f||ui);
 }
 
 /* ---- 畫面縮放 ----
@@ -16548,6 +16559,7 @@ function applyTheme(name){
   r.setProperty("--muted", name==="Graphite" ? "#9aa1ab" : "#8a755a");
   INK=t.ACCENT; BOX=t.RUN2; PAPER=t.PANEL;
   try{ localStorage.setItem(THEME_KEY,THEME); }catch(e){}
+  if(typeof applyFonts==="function") applyFonts();
 }
 
 /* =====================================================================
