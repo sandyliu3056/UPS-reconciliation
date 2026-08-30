@@ -12825,7 +12825,8 @@ const PIE_DARK =["#3987e5","#d95926","#199e70","#c98500","#d55181","#2fa32f","#9
 const OTHERCOL="#a89e91";
 const MISSCOL="#d03b3b";
 /* 主題可以隨時切換,所以取用的時候才決定,不在載入時定死。 */
-const pieDark=()=>THEME==="Graphite";
+/* 深色主題(石墨)已下架;留著開關,之後真要深色主題把這裡接回去即可。 */
+const pieDark=()=>false;
 const pieCols=()=>pieDark()?PIE_DARK:PIE_LIGHT;
 const reclCol=()=>pieDark()?"#8fa3b8":"#3f4a58";
 const DASH_RECLASS="__reclass__", DASH_UNKNOWN="__unknown__";
@@ -16580,10 +16581,6 @@ const THEMES={
     STRIPE:"#e8f2fd",NEG:"#b3261e",RUN:"#1b5390",RUNH:"#134070",
     RUN2:"#b83a76",RUN2H:"#96305f",
     FONT:'"Comic Sans MS","Segoe Print","Bradley Hand","KaiTi","DFKai-SB","Kaiti TC","BiauKai","Microsoft JhengHei",sans-serif'},
-  "Graphite":{zh:"石墨",BG:"#3a3d42",PANEL:"#4a4e55",TAB:"#2f3237",
-    ACCENT:"#c08a3e",TEXT:"#f0ece4",LINE:"#5c626b",SELECT:"#5f6672",
-    STRIPE:"#43474e",NEG:"#f0a48c",RUN:"#c08a3e",RUNH:"#9c6d2d",
-    RUN2:"#6e7480",RUN2H:"#585d67"},
 };
 /* 品牌:兩套場景,同一支工具的兩張臉。
    Recon 是戶外的卸貨月台,Boop 是室內的掃描稽核區 —— 貨進來、掃過、對完帳。
@@ -16655,8 +16652,7 @@ function applyTheme(name){
   r.setProperty("--neg",t.NEG);     r.setProperty("--run",t.RUN);
   r.setProperty("--run-hover",t.RUNH); r.setProperty("--run2",t.RUN2);
   r.setProperty("--run2-hover",t.RUN2H);
-  /* Graphite 的底是深的,手繪墨線要跟著翻,不然畫面上是一團黑 */
-  r.setProperty("--muted", name==="Graphite" ? "#9aa1ab" : "#8a755a");
+  r.setProperty("--muted", "#8a755a");
   INK=t.ACCENT; BOX=t.RUN2; PAPER=t.PANEL;
   try{ localStorage.setItem(THEME_KEY,THEME); }catch(e){}
   if(typeof applyFonts==="function") applyFonts();
