@@ -212,20 +212,21 @@ main{min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 14px 0}
 /* 按鈕配色照桌面版:一般按鈕 = TButton(金底 TAB、深棕字 TEXT,
    hover 轉 ACCENT 底白字);「產生報表」獨用 RUN 深棕(.run),
    利潤報表用 RUN2 暗金(.alt)—— 三種角色和 py 一一對應。 */
-button.act{font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;
+a.act{display:inline-flex;align-items:center;gap:5px;text-decoration:none;box-sizing:border-box}
+button.act,a.act{font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;
   border:2px solid var(--accent);border-radius:7px;padding:7px 17px;
   background:var(--tab);color:var(--text);letter-spacing:.2px}
-button.act:hover:not(:disabled){background:var(--accent);color:#fff}
+button.act:hover:not(:disabled),a.act:hover{background:var(--accent);color:#fff}
 button.act.run{background:var(--run);color:#fff}
 button.act.run:hover:not(:disabled){background:var(--run-hover);color:#fff}
 button.act.alt{background:var(--run2);border-color:var(--run2);color:#fff}
 button.act.alt:hover:not(:disabled){background:var(--run2-hover);color:#fff}
-button.act.ghost{background:transparent;color:var(--accent)}
-button.act.ghost:hover:not(:disabled){background:var(--select)}
+button.act.ghost,a.act.ghost{background:transparent;color:var(--accent)}
+button.act.ghost:hover:not(:disabled),a.act.ghost:hover{background:var(--select);color:var(--accent)}
 /* 表格列裡的操作鈕:同一套配色縮一號。一列四顆全尺寸會把欄寬撐開,
    而瀏覽器原生的灰按鈕擺在這個版面裡是最顯眼的一塊雜訊。
    刪除走 --neg —— 全站的負向色,不另外挑一個紅。 */
-button.act.sm{font-size:12px;padding:4px 11px;border-width:1.5px;border-radius:6px;
+button.act.sm,a.act.sm{font-size:12px;padding:4px 11px;border-width:1.5px;border-radius:6px;
   letter-spacing:0}
 button.act.danger{color:var(--neg);border-color:var(--neg);background:transparent}
 button.act.danger:hover:not(:disabled){background:var(--neg);color:#fff}
@@ -2450,6 +2451,26 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
       <span class="row" style="gap:8px">
         <button class="act ghost" id="uPwClose" data-i18n="btn.close">Close</button>
         <button class="act" id="uPwSave" data-i18n="btn.saveacct" disabled>Save</button>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- 共用的小對話框:一個問輸入(uiAsk),一個問是非(uiConfirm)。
+     以前這些散在各處,全是瀏覽器原生的 prompt()/confirm() —— 樣式管不到,
+     每台電腦長得不一樣,還把網址整串印在標題上。 -->
+<div id="askBg" class="modalbg">
+  <div class="modal sketch" id="askModal" style="width:min(460px,100%)">
+    <div class="modalhd">
+      <span id="askTitle"></span>
+      <button class="mx" id="askX">✕</button>
+    </div>
+    <div class="modalbody" id="askBody"></div>
+    <div class="modalft">
+      <span id="askNote" class="hint" style="margin:0"></span>
+      <span class="row" style="gap:8px">
+        <button class="act ghost" id="askCancel" data-i18n="btn.cancel">Cancel</button>
+        <button class="act" id="askOk">OK</button>
       </span>
     </div>
   </div>
@@ -6421,6 +6442,63 @@ function rlSeedStructInto(seed){
   seedAccRowsInto(seed, src.dynamic_surcharge_mapping);
   return seed;
 }
+/* ===== 共用小對話框 =====
+   uiAsk:一到多個輸入欄,回傳 {k:值} 或 null(取消)。
+   uiConfirm:是非題,回傳 true/false。兩者共用 #askBg,Esc、背景、✕ 都算取消。 */
+let ASK_DONE=null;
+function askClose(val){
+  $("#askBg").classList.remove("on");
+  const fn=ASK_DONE; ASK_DONE=null;
+  if(fn) fn(val);
+}
+function uiAsk(opt){
+  return new Promise(res=>{
+    ASK_DONE=res;
+    $("#askTitle").textContent=opt.title||"";
+    $("#askNote").textContent=opt.note||"";
+    const fields=opt.fields||[{k:"v",label:"",value:opt.value||""}];
+    $("#askBody").innerHTML=fields.map((f,i)=>`
+      <div class="frow"><label>${esc(f.label||"")}</label>
+        <input class="askf" data-k="${esc(f.k)}" type="text" value="${esc(f.value||"")}"
+               placeholder="${esc(f.ph||"")}" style="text-align:left"></div>`).join("");
+    const ok=$("#askOk");
+    ok.textContent=opt.okText||"OK";
+    ok.classList.toggle("danger",!!opt.danger);
+    ok.onclick=()=>{
+      const out={};
+      document.querySelectorAll("#askBody .askf").forEach(e=>out[e.dataset.k]=e.value);
+      askClose(out);
+    };
+    $("#askBg").classList.add("on");
+    const first=document.querySelector("#askBody .askf");
+    if(first){ first.focus(); first.select(); }
+  });
+}
+function uiConfirm(opt){
+  return new Promise(res=>{
+    ASK_DONE=v=>res(!!v);
+    $("#askTitle").textContent=opt.title||L("請確認","Please confirm");
+    $("#askNote").textContent="";
+    $("#askBody").innerHTML=`<p style="margin:0;line-height:1.7">${opt.html||esc(opt.body||"")}</p>`;
+    const ok=$("#askOk");
+    ok.textContent=opt.okText||L("確定","Confirm");
+    ok.classList.toggle("danger",!!opt.danger);
+    ok.onclick=()=>askClose(true);
+    $("#askBg").classList.add("on");
+    ok.focus();
+  });
+}
+function bindAsk(){
+  $("#askX")      && ($("#askX").onclick=()=>askClose(null));
+  $("#askCancel") && ($("#askCancel").onclick=()=>askClose(null));
+  $("#askBg")     && ($("#askBg").onclick=e=>{ if(e.target===$("#askBg")) askClose(null); });
+  $("#askBody")   && ($("#askBody").addEventListener("keydown",e=>{
+    if(e.key==="Enter"){ e.preventDefault(); $("#askOk").click(); }
+  }));
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape" && $("#askBg").classList.contains("on")) askClose(null);
+  });
+}
 function lvlMsg(m,ok){
   const e=$("#lvlMsg");
   if(e){ e.textContent=m||""; e.className="savenote"+(m&&!ok?" bad":""); }
@@ -6454,12 +6532,14 @@ function renderLevels(){
            o.list.length+" level(s), "+rlHuman(total)+" in total."), true);
 }
 function bindLevels(){
-  $("#bLvlNew") && ($("#bLvlNew").onclick=()=>{
+  $("#bLvlNew") && ($("#bLvlNew").onclick=async()=>{
     const o=rlEnsure(); if(!o) return;
-    const name=prompt(L("新層級的名稱:","Name for the new level:"),
-                      L("層級 ","Level ")+(o.list.length+1));
-    if(name==null) return;
-    const nm=String(name).trim();
+    const a=await uiAsk({title:L("新增費率層級","Add a rate level"),
+      fields:[{k:"v",label:L("層級名稱","Level name"),
+               value:L("層級 ","Level ")+(o.list.length+1)}],
+      okText:L("新增","Add")});
+    if(a==null) return;
+    const nm=String(a.v).trim();
     if(!nm){ lvlMsg(L("請給它一個名稱。","Give it a name."),false); return; }
     if(o.list.some(x=>(x.name||"").trim()===nm)){
       lvlMsg(L("已經有一層叫「"+nm+"」了。","There is already a level called \""+nm+"\"."),false);
@@ -6469,24 +6549,28 @@ function bindLevels(){
     lvlMsg(L("已新增「"+nm+"」:帳號現有的渠道、附加費與 Demand 期間已自動帶入,費率留白。切換過去後於 04 填寫,或載入那一層的費率設定檔。",
              "Added \""+nm+"\" — the account's channels, surcharges and demand periods are carried in with rates left blank. Switch to it and fill them under 04, or load its rate configuration file."),true);
   });
-  $("#bLvlCopy") && ($("#bLvlCopy").onclick=()=>{
+  $("#bLvlCopy") && ($("#bLvlCopy").onclick=async()=>{
     const o=rlEnsure(); if(!o) return;
-    const name=prompt(L("新層級的名稱:","Name for the new level:"),
-                      rlName(o.active)+L(" 複本"," copy"));
-    if(name==null) return;
-    const nm=String(name).trim();
+    const a=await uiAsk({title:L("複製這一層","Duplicate this level"),
+      fields:[{k:"v",label:L("新層級的名稱","Name for the copy"),
+               value:rlName(o.active)+L(" 複本"," copy")}],
+      okText:L("複製","Duplicate")});
+    if(a==null) return;
+    const nm=String(a.v).trim();
     if(!nm){ lvlMsg(L("請給它一個名稱。","Give it a name."),false); return; }
     const id=rlDuplicate(nm);
     CFG=readConfig(CFG.raw); DIRTY=true; renderLevels(); saveSettings();
     lvlMsg(L("已複製成「"+nm+"」。現在編的還是原本那一層 —— 要改新的那份,先切換過去。",
              "Copied to \""+nm+"\". You are still editing the original — switch to edit the new one."),true);
   });
-  $("#tLvl") && ($("#tLvl").onclick=e=>{
+  $("#tLvl") && ($("#tLvl").onclick=async e=>{
     const b=e.target.closest("button"); if(!b) return;
     if(b.dataset.lvluse){
       const nm=rlName(b.dataset.lvluse);
-      if(DIRTY && !confirm(L("有還沒儲存的變更。切換層級會把現在這一層先存起來,然後換成「"+nm+"」。要繼續嗎?",
-          "There are unsaved changes. Switching stores this level first, then loads \""+nm+"\". Continue?"))) return;
+      if(DIRTY && !await uiConfirm({title:L("切換層級","Switch level"),
+          body:L("有還沒儲存的變更。切換會把現在這一層先存起來,然後換成「"+nm+"」。",
+                 "There are unsaved changes. Switching stores this level first, then loads \""+nm+"\"."),
+          okText:L("切換","Switch")})) return;
       if(rlSwitch(b.dataset.lvluse)){
         renderLevels(); renderConfigTabs();
         if(typeof renderCustomers==="function") renderCustomers();
@@ -6496,9 +6580,11 @@ function bindLevels(){
     }
     if(b.dataset.lvlren){
       const cur=rlName(b.dataset.lvlren);
-      const name=prompt(L("改成:","Rename to:"), cur);
-      if(name==null) return;
-      const nm=String(name).trim();
+      const a=await uiAsk({title:L("改名","Rename level"),
+        fields:[{k:"v",label:L("新名稱","New name"),value:cur}],
+        okText:L("改名","Rename")});
+      if(a==null) return;
+      const nm=String(a.v).trim();
       if(!nm) return;
       rlRename(b.dataset.lvlren, nm);
       CFG=readConfig(CFG.raw); DIRTY=true; renderLevels(); saveSettings();
@@ -6516,8 +6602,10 @@ function bindLevels(){
                +users.join("、"), false);
         return;
       }
-      if(!confirm(L("刪除「"+nm+"」?那一層的整份費率會一起消失,沒有復原。",
-          "Delete \""+nm+"\"? That level's entire rate set goes with it, and there is no undo."))) return;
+      if(!await uiConfirm({title:L("刪除層級","Delete level"),danger:true,
+          body:L("刪除「"+nm+"」?那一層的整份費率會一起消失,沒有復原。",
+                 "Delete \""+nm+"\"? That level's entire rate set goes with it, and there is no undo."),
+          okText:L("刪除","Delete")})) return;
       if(rlDelete(b.dataset.lvldel)){
         CFG=readConfig(CFG.raw); DIRTY=true; renderLevels(); saveSettings();
         lvlMsg(L("已刪除「"+nm+"」。","Deleted \""+nm+"\"."),true);
@@ -6731,7 +6819,7 @@ function bindCustomers(){
   $("#cusEditSave")   && ($("#cusEditSave").onclick=saveCusEdit);
   $("#cusEditBg")     && ($("#cusEditBg").onclick=e=>{
     if(e.target.id==="cusEditBg") closeCusEdit(); });
-  $("#tCus") && ($("#tCus").onclick=e=>{
+  $("#tCus") && ($("#tCus").onclick=async e=>{
     const ed=e.target.closest("button[data-cusedit]");
     if(ed){ openCusEdit(ed.dataset.cusedit); return; }
     const b=e.target.closest("button[data-cusdel]"); if(!b) return;
@@ -6739,8 +6827,10 @@ function bindCustomers(){
     /* 手上這份對帳結果還在用這個代號的話,刪掉之後那幾張單就無主了 ——
        問一聲再刪。沒在用的就直接刪,不必為了一致性多按一次。 */
     const inUse=((RECON&&RECON.res&&RECON.res.cus)||[]).some(a=>a.code===code);
-    if(inUse && !confirm(L("目前這份對帳結果裡有「"+code+"」的單。刪掉客戶不會動到那份結果,但下一次匯入就認不得這個代號了。要繼續嗎?",
-        "The current reconciliation still has orders under \""+code+"\". Deleting the customer leaves that result alone, but the next import will not recognise the code. Continue?"))) return;
+    if(inUse && !await uiConfirm({title:L("刪除客戶","Delete client"),danger:true,
+      body:L("目前這份對帳結果裡有「"+code+"」的單。刪掉客戶不會動到那份結果,但下一次匯入就認不得這個代號了。",
+             "The current reconciliation includes \""+code+"\". Deleting the client leaves that result alone, but the next import will not recognise this code."),
+      okText:L("刪除","Delete")})) return;
     cusSaveAnd(()=>{ CFG.raw.customers=cusReg().filter(c=>c.code!==code); });
   });
   $("#chgSearch") && ($("#chgSearch").oninput=()=>renderChgCodes());
@@ -7545,13 +7635,15 @@ function bindRateSide(){
     showSetTab(b.dataset.r);
   };
   const sel=$("#editLvl");
-  if(sel) sel.onchange=e=>{
+  if(sel) sel.onchange=async e=>{
     const id=e.target.value;
     const o=rlStore();
     if(!o||id===o.active){ editLvlSync(); return; }
     const nm=rlName(id);
-    if(DIRTY && !confirm(L("有還沒儲存的變更。換一層會把現在這一層先存起來,然後換成「"+nm+"」。要繼續嗎?",
-        "There are unsaved changes. Switching stores this level first, then loads \""+nm+"\". Continue?"))){
+    if(DIRTY && !await uiConfirm({title:L("切換層級","Switch level"),
+        body:L("有還沒儲存的變更。換一層會把現在這一層先存起來,然後換成「"+nm+"」。",
+               "There are unsaved changes. Switching stores this level first, then loads \""+nm+"\"."),
+        okText:L("切換","Switch")})){
       editLvlSync(); return; }
     if(rlSwitch(id)){
       renderLevels(); renderConfigTabs();
@@ -8532,29 +8624,33 @@ $("#demandOn") && ($("#demandOn").onchange=e=>{
 });
 /* 期間的新增/刪除:定義即全帳號 —— 寫進現用層,再同步到每一層;
    金額欄留白,各層到 04 自己填。 */
-$("#bAddPeriod") && ($("#bAddPeriod").onclick=()=>{
+$("#bAddPeriod") && ($("#bAddPeriod").onclick=async()=>{
   if(!CFG) return;
   if(DEMAND_TAB!=="pkg"&&DEMAND_TAB!=="svc"){
     setStatus(L("類別與對應由費率設定檔帶入,這裡只新增期間。",
                 "Categories and mapping come from the rate file; only periods are added here."));
     return;
   }
-  const start=prompt(L("開始日期(YYYY-MM-DD):","Start date (YYYY-MM-DD):"),"");
-  if(start==null) return;
-  const end=prompt(L("結束日期(YYYY-MM-DD):","End date (YYYY-MM-DD):"),"");
-  if(end==null) return;
-  const ok=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v).trim());
-  if(!ok(start)||!ok(end)){ setStatus(L("日期格式要是 YYYY-MM-DD。","Dates must be YYYY-MM-DD.")); return; }
+  const pkg=DEMAND_TAB==="pkg";
+  const a=await uiAsk({title:L("新增 Demand 期間","Add a demand period"),
+    note:L("期間同步建立於所有層級,費率至 04 填寫。","Created in every level; rates go in under 04."),
+    fields:[
+      {k:"start",label:L("開始日期","Start date"),ph:"YYYY-MM-DD"},
+      {k:"end",  label:L("結束日期","End date"),  ph:"YYYY-MM-DD"},
+      pkg?{k:"cat",label:L("適用類別(留空=全部)","Category (blank = all)")}
+         :{k:"grp",label:L("服務類別","Service category")}],
+    okText:L("新增","Add")});
+  if(a==null) return;
+  const okd=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v).trim());
+  if(!okd(a.start)||!okd(a.end)){ setStatus(L("日期格式要是 YYYY-MM-DD。","Dates must be YYYY-MM-DD.")); return; }
   const d=CFG.raw.demand_config||(CFG.raw.demand_config={});
   let row;
-  if(DEMAND_TAB==="pkg"){
-    const cat=prompt(L("適用類別(留空=全部):","Category (blank = all):"),"")||"";
-    row={start:start.trim(), end:end.trim(), cat:String(cat).trim(), ah:"", lp:"", ovr:""};
+  if(pkg){
+    row={start:a.start.trim(), end:a.end.trim(), cat:String(a.cat||"").trim(), ah:"", lp:"", ovr:""};
     (d.special_rows||(d.special_rows=[])).push(row);
   }else{
-    const grp=prompt(L("服務類別名稱:","Service category:"),"")||"";
-    if(!String(grp).trim()){ setStatus(L("服務類別必填。","Service category is required.")); return; }
-    row={start:start.trim(), end:end.trim(), grp:String(grp).trim(), rate:""};
+    if(!String(a.grp||"").trim()){ setStatus(L("服務類別必填。","Service category is required.")); return; }
+    row={start:a.start.trim(), end:a.end.trim(), grp:String(a.grp).trim(), rate:""};
     (d.service_rows||(d.service_rows=[])).push(row);
   }
   rlSyncShared();
@@ -8564,14 +8660,16 @@ $("#bAddPeriod") && ($("#bAddPeriod").onclick=()=>{
   setStatus(L("已新增期間至全部 "+nlv+" 個層級,費率請至 04 填寫。",
               "Period added to all "+nlv+" level(s) — rates to fill under 04."));
 });
-$("#bDelPeriod") && ($("#bDelPeriod").onclick=()=>{
+$("#bDelPeriod") && ($("#bDelPeriod").onclick=async()=>{
   if(!CFG) return;
   if(DEMAND_TAB!=="pkg"&&DEMAND_TAB!=="svc"){
     setStatus(L("這個分頁的內容不在這裡刪。","Rows on this tab are not deleted here.")); return; }
   const ticked=[...document.querySelectorAll(".demc:checked")].map(c=>+c.value);
   if(!ticked.length){ setStatus(L("請先勾選要刪的列。","Tick the rows to delete first.")); return; }
-  if(!confirm(L("要從所有層級刪除 "+ticked.length+" 段期間嗎?各層已填的費率會一併移除。",
-                "Delete "+ticked.length+" period(s) from every level? Their rates in each level go too."))) return;
+  if(!await uiConfirm({title:L("刪除期間","Delete periods"),danger:true,
+      body:L("要從所有層級刪除 "+ticked.length+" 段期間嗎?各層已填的費率會一併移除。",
+             "Delete "+ticked.length+" period(s) from every level? Their rates in each level go too."),
+      okText:L("刪除","Delete")})) return;
   const d=CFG.raw.demand_config||{};
   const key=DEMAND_TAB==="pkg"?"special_rows":"service_rows";
   const rows=Array.isArray(d[key])?d[key]:[];
@@ -8720,14 +8818,16 @@ $("#bAddChan") && ($("#bAddChan").onclick=()=>{
   setStatus(LANG?("Added channel "+n+" to all "+nlv+" level(s) — rates to fill under 04")
                 :("已新增渠道 "+n+" 至全部 "+nlv+" 個層級,費率請至 04 填寫"));
 });
-$("#bDelChan") && ($("#bDelChan").onclick=()=>{
+$("#bDelChan") && ($("#bDelChan").onclick=async()=>{
   /* 勾的是服務名,底下可能是兩條真的 key(Ground Commercial / Residential)。
      只刪服務名那一條的話,住宅那半會留下來變成一條沒有主人的渠道。 */
   const fams=new Set([...document.querySelectorAll(".chanc:checked")].map(c=>c.value));
   if(!fams.size){ setStatus(LANG?"Tick a channel first":"請先勾選渠道"); return; }
   const t=Object.keys(CFG.raw.builtin_service_zones||{}).filter(k=>fams.has(svcOfChan(k)));
-  if(!confirm(LANG?("Delete "+fams.size+" channel(s) from every rate level? Their base-rate tables in other levels stay untouched but become orphaned.")
-                  :("要從所有層級刪除 "+fams.size+" 條渠道嗎?其他層已填的基本運費表不會被動,但會失去對應的渠道。"))) return;
+  if(!await uiConfirm({title:L("刪除渠道","Delete channels"),danger:true,
+      body:LANG?("Delete "+fams.size+" channel(s) from every rate level? Their base-rate tables in other levels stay untouched but become orphaned.")
+               :("要從所有層級刪除 "+fams.size+" 條渠道嗎?其他層已填的基本運費表不會被動,但會失去對應的渠道。"),
+      okText:L("刪除","Delete")})) return;
   for(const s of t){ delete CFG.raw.builtin_service_zones[s];
     if(CFG.raw.channel_rule_overrides) delete CFG.raw.channel_rule_overrides[s]; }
   rlSyncShared();
@@ -16580,6 +16680,7 @@ const I18N={
   "hint.addchan":["新增即同步建立於所有費率層級,各層費率於 04 填寫。reprice 預設渠道(Ground、SurePost、Air 與 Worldwide 系列)已連同 Zone 自動帶入。名稱裡自己寫了 Commercial 或 Residential 的只留在那一側,其餘兩側都會出現。",
     "Created in every rate level at once — each level prices it under 04. The reprice defaults (Ground, SurePost, the Air and Worldwide services) ship with their zones preloaded. A name that says Commercial or Residential itself stays on that one side; anything else appears on both."],
   "btn.exprate":["匯出基本運費表模板","Export base rate template"],
+  "btn.cancel":["取消","Cancel"],
   "btn.process":["處理帳單","Process Invoice"],
   "btn.imprate":["匯入已完成的基本運費表","Import completed base rates"],
   "btn.scanzone":["從帳單掃描 Zone","Scan zones from invoice"],
@@ -18547,7 +18648,7 @@ step("auth",()=>{
   $("#bLoginRefresh").onclick=()=>loadLoginHistory();
   bindUserAdmin();
   bindCustomers();
-  bindLevels();
+  bindLevels(); bindAsk();
   bindAccMgr(); bindOnOff(); bindDemRate(); bindPagePreviews();
   bindRecon();
   bindAnalysis();
