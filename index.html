@@ -5436,8 +5436,8 @@ async function prefetchAddressClass(ships){
   if((gr.resi_source||"system")!=="api") return 0;      /* 系統模式:完全不打 */
   const url=String(gr.resi_api_url||"").trim();
   if(!url){
-    API_NOTE=L("已選取「連動 API」,但未填寫代理端點,本期全數以系統設定判定。端點於「設定」分頁填寫。",
-               "\u201cLinked API\u201d is selected with no proxy endpoint; this period is classified entirely by System Configuration. The endpoint is set on the Settings tab.");
+    API_NOTE=L("已選取「連動 API」,但未填寫代理端點,本期全數以系統設定判定。端點於「01 General Setting → 3. 系統設定」填寫。",
+               "\u201cLinked API\u201d is selected with no proxy endpoint; this period is classified entirely by System Configuration. The endpoint is set under 01 General Setting → 3. System.");
     return 0; }
   /* 收齊不重複的地址,對回追蹤號 */
   const groups=new Map();
@@ -10584,8 +10584,8 @@ function renderConfigTabs(){
         </div>`;
       }).join("")
     : `<div class="empty">${LANG
-        ? "This channel has no zones set — add them on the Channels tab."
-        : "這個渠道還沒設定 Zone,請在渠道分頁補上。"}</div>`;
+        ? "This channel has no zones set — add them under 03 Channels & Surcharges → 1. Channels."
+        : "這個渠道還沒設定 Zone,請至「03 渠道與附加費設置管理 → 1. 渠道管理」補上。"}</div>`;
 
   /* 固定金額不分商業／住宅 —— 一項費用一格。UPS 對這些收的是同一個價,
      分成兩格只是要人把同一個數字打兩次。分區的那幾項(AHS、大包裹)才真的
@@ -15704,9 +15704,9 @@ function gapApply(){
   if(RATED&&SHIPS){ RATED=SHIPS.map(x=>priceShipment(CFG,x)); renderRate(); renderDashboard(); }
   renderGap();
   toast(L("已新增 "+nA+" 個代碼、"+nC+" 條渠道"+(ok?",已儲存":"")
-          +"。新渠道還沒有費率表,要到「渠道」分頁匯入。",
+          +"。新渠道已同步建立於所有層級,基本運費請至「04 渠道與附加費費率」匯入。",
           "Added "+nA+" code(s) and "+nC+" channel(s)"+(ok?", saved":"")
-          +". New channels have no rate table yet — import one on the Channels tab."), true);
+          +". New channels exist in every level — import their base rates under 04 Channel & Surcharge Rates."), true);
 }
 function bindGap(){
   $("#gapX") && ($("#gapX").onclick=closeGap);
@@ -17064,7 +17064,7 @@ const I18N={
     "Press Save Settings to write it to the account."],
   "lb.cfgnow":["目前使用的設定檔","Configuration in use"],
   "btn.cfgload":["載入設定檔…","Load Configuration File…"],
-  "hint.cfgwhere":["載入或更換請至「⚙️ 設定」分頁。","Load or replace it on the Settings tab."],
+  "hint.cfgwhere":["載入或更換請至「01 General Setting → 1. 層級設定」。","Load or replace it under 01 General Setting → 1. Level Setup."],
   "btn.login":["登入","Sign in"],
   "btn.logout":["登出","Sign out"], "cap.theme":["Theme","Theme"], "cap.clock":["Clock","Clock"],
   "hd.signin":["登入","Sign in"],
