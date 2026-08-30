@@ -203,35 +203,37 @@ table,table *,input,select,.tablewrap{filter:none !important}
 .fm-tick{font-size:10px;fill:var(--fm-run2);opacity:0;transition:opacity .3s}
 .fm-st.done .fm-tick{opacity:1}
 .fm-lb{font-size:11px;font-weight:700;fill:var(--fm-ink);letter-spacing:.02em}
+.fm-lb2{font-size:8.4px;font-weight:600;fill:var(--fm-muted);letter-spacing:.05em}
+.fm-st.nolink{cursor:default}
 .fm-st text{user-select:none}
 .fm-gate{stroke:var(--fm-ink);stroke-width:2;fill:var(--fm-stripe)}
 .fm-gatearch{stroke:var(--fm-ink);stroke-width:5;fill:none;stroke-linecap:round}
-.fm-pkg .bx,.fm-truck .tpk .bx{fill:var(--tab);stroke:var(--accent);stroke-width:2.2}
-.fm-pkg .tape,.fm-truck .tpk .tape{fill:var(--select);stroke:var(--accent);stroke-width:1}
-.fm-pkg .fold,.fm-truck .tpk .fold{fill:none;stroke:var(--accent);stroke-width:1.1;opacity:.65}
-.fm-pkg .lbl{fill:var(--panel);stroke:var(--accent);stroke-width:1}
-.fm-pkg .lbl-ln{stroke:var(--accent);stroke-width:.9;opacity:.7;fill:none}
+.fm-pkg .bx,.fm-truck .tpk .bx{fill:var(--fm-gold);stroke:var(--fm-ink);stroke-width:2.2}
+.fm-pkg .tape,.fm-truck .tpk .tape{fill:var(--fm-select);stroke:var(--fm-ink);stroke-width:1}
+.fm-pkg .fold,.fm-truck .tpk .fold{fill:none;stroke:var(--fm-ink);stroke-width:1.1;opacity:.65}
+.fm-pkg .lbl{fill:var(--fm-panel);stroke:var(--fm-ink);stroke-width:1}
+.fm-pkg .lbl-ln{stroke:var(--fm-ink);stroke-width:.9;opacity:.7;fill:none}
 .fm-pkg{filter:drop-shadow(1.5px 2px 0 rgba(0,0,0,.16))}
-.fm-pkg.zap .bx{fill:var(--select)}
-.fm-truck .bedback{fill:var(--run2);stroke:var(--accent);stroke-width:2.2;filter:brightness(.88)}
-.fm-truck .bedfront{fill:var(--run2);stroke:var(--accent);stroke-width:2.2}
+.fm-pkg.zap .bx{fill:var(--fm-select)}
+.fm-truck .bedback{fill:#6f4e03;stroke:var(--fm-ink);stroke-width:2.2;filter:brightness(.88)}
+.fm-truck .bedfront{fill:var(--fm-run2);stroke:var(--fm-ink);stroke-width:2.2}
 .fm-truck .tpk{opacity:0;transition:opacity .2s}
 .fm-truck.laden .tpk{opacity:1}
-.fm-truck .cb{fill:var(--panel);stroke:var(--accent);stroke-width:2.2}
-.fm-truck .win{fill:var(--select);stroke:var(--accent);stroke-width:1.3}
-.fm-truck .lamp{fill:var(--tab);stroke:var(--accent);stroke-width:1.2}
-.fm-truck .bump{fill:var(--stripe);stroke:var(--accent);stroke-width:1.6}
-.fm-truck .arc{fill:none;stroke:var(--accent);stroke-width:1.6}
-.fm-truck .wh circle{fill:var(--stripe);stroke:var(--accent);stroke-width:2}
-.fm-truck .hub{fill:var(--panel);stroke-width:1.4}
-.fm-truck .sp{stroke:var(--accent);stroke-width:1.3;transform-origin:center;transform-box:fill-box}
+.fm-truck .cb{fill:var(--fm-panel);stroke:var(--fm-ink);stroke-width:2.2}
+.fm-truck .win{fill:var(--fm-select);stroke:var(--fm-ink);stroke-width:1.3}
+.fm-truck .lamp{fill:var(--fm-gold);stroke:var(--fm-ink);stroke-width:1.2}
+.fm-truck .bump{fill:var(--fm-stripe);stroke:var(--fm-ink);stroke-width:1.6}
+.fm-truck .arc{fill:none;stroke:var(--fm-ink);stroke-width:1.6}
+.fm-truck .wh circle{fill:var(--fm-stripe);stroke:var(--fm-ink);stroke-width:2}
+.fm-truck .hub{fill:var(--fm-panel);stroke-width:1.4}
+.fm-truck .sp{stroke:var(--fm-ink);stroke-width:1.3;transform-origin:center;transform-box:fill-box}
 .fm-truck.go .sp{animation:fmspin .45s linear infinite}
-.fm-truck .logo{fill:var(--tab);stroke:var(--accent);stroke-width:1.3}
-.fm-truck .ln{stroke:var(--accent);fill:none}
+.fm-truck .logo{fill:var(--fm-gold);stroke:var(--fm-ink);stroke-width:1.3}
+.fm-truck .ln{stroke:var(--fm-ink);fill:none}
 .fm-truck .jig{transform-origin:center;transform-box:fill-box}
 .fm-truck.go .jig{animation:fmjig .32s ease-in-out infinite alternate}
 @keyframes fmjig{to{transform:translateY(-1.4px)}}
-.fm-truck .puff{fill:var(--muted);opacity:0}
+.fm-truck .puff{fill:var(--fm-muted);opacity:0}
 .fm-truck.go .puff{animation:fmpuff 1.1s ease-out infinite}
 .fm-truck.go .puff.p2{animation-delay:.55s}
 @keyframes fmpuff{0%{opacity:.5;transform:translate(0,0) scale(.6)}
@@ -1326,6 +1328,7 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
     <p class="hint" style="margin:4px 0 6px;max-width:82ch" data-i18n="hint.flow">The whole system on one map. Every station is a button — click it to go straight there. The parcel walks the pipeline; the truck brings it home.</p>
     <div class="fm-wrap"><svg id="fmMap" viewBox="0 0 1140 328"></svg></div>
   </div>
+
 </section>
 
 <section class="page on" id="p-files">
@@ -11436,22 +11439,36 @@ function fillLvlSync(){
    06 上方的 PROCESS 門架掃描;右側繞下來搭上小貨車,沿下方小路開回起點
    (經過 10),包裹在貓咪旁下車,空車再開回去待命。每張站牌都是按鈕。 */
 const FM_NS="http://www.w3.org/2000/svg";
-const FM_LB={general:["一般設定","Settings"], rate:["客戶","Clients"],
-  cat:["渠道附加費","Channels"], fill:["費率","Rates"], wmsdata:["WMS/TMS","WMS/TMS"],
-  files:["帳單匯入","Invoices"], cus:["對帳","Reconcile"], analysis:["分析","Analytics"],
-  hist:["歷史","History"], admin:["使用者","Users"]};
+const FM_LB={order:["客人下單","Order placed"], erp:["ERP 接單","ERP"],
+  wms:["WMS 出貨","Warehouse ships"], tms:["TMS 派送","TMS dispatch"],
+  tender:["交運 UPS","Tender to UPS"], transit:["運送中","In transit"],
+  dlv:["送達收件人","Delivered"], bill:["UPS 帳單","UPS invoice"],
+  recon:["系統對帳","Reconcile"], fin:["財務請款","Finance bills"]};
+/* 點了去哪裡:對得上系統分頁的才可點,外部階段只有說明。 */
+const FM_GO={order:"rate", wms:"wmsdata", tms:"wmsdata",
+  bill:"files", recon:"cus", fin:"analysis"};
+const FM_TIP={order:["客戶成立訂單 —— 名單與層級在 02","The client places an order — directory under 02"],
+  erp:["公司 ERP 接單、開出貨指示(外部系統)","Your ERP takes the order (external)"],
+  wms:["倉庫揀貨出庫,出貨明細之後匯入 05","Warehouse picks & ships; details go into 05"],
+  tms:["TMS 安排派送與費用(外部系統)","TMS plans the delivery (external)"],
+  tender:["包裹交給 UPS(外部)","Handed to UPS (external)"],
+  transit:["UPS 運送中(外部)","UPS linehaul (external)"],
+  dlv:["送達 Consignee(外部)","Delivered to the consignee (external)"],
+  bill:["UPS 出當期帳單 —— 到 06 匯入","UPS bills the period — import under 06"],
+  recon:["本系統逐筆重算、三方比對 —— 07","This system reprices & compares — 07"],
+  fin:["財務依報告向客戶請款 —— 08 看毛利","Finance bills the client — margins under 08"]};
 /* 站點:x、路面 y(高低錯落)、傾角 */
 const FM_ST=[
- ["general", 96,112,-2.4,"01","⚙️"],
- ["rate",   222,132, 1.8,"02","👥"],
- ["cat",    348,110,-1.6,"03","🚚"],
- ["fill",   474,130, 2.2,"04","💵"],
- ["wmsdata",600,112,-2.0,"05","📄"],
- ["files",  726,124, 1.4,"06","📥"],
- ["cus",    852,108,-2.2,"07","⚖️"],
- ["analysis",978,130, 2.0,"08","📈"],
- ["hist",  1104,112,-1.8,"09","🗂️"],
- ["admin",  600,258, 1.6,"10","🛡️"],
+ ["order",  96,112,-2.4,"01"],
+ ["erp",   222,132, 1.8,"02"],
+ ["wms",   348,110,-1.6,"03"],
+ ["tms",   474,130, 2.2,"04"],
+ ["tender",600,112,-2.0,"05"],
+ ["transit",726,124, 1.4,"06"],
+ ["dlv",   852,108,-2.2,"07"],
+ ["bill",  978,130, 2.0,"08"],
+ ["recon",1104,112,-1.8,"09"],
+ ["fin",   600,258, 1.6,"10"],
 ];
 let FM_BUILT=false, FM_T0=null, FM_RAF=0;
 let FM_PT=null, FM_PB=null, FM_PD=null, FM_STOP=[], FM_LT=0, FM_LB2=0, FM_LD=0;
@@ -11464,60 +11481,72 @@ function fmAngle(path,len){
 function fmArt(k,x,y){
   const A=`stroke="var(--fm-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"`;
   switch(k){
-  case "general": return `
-    <circle cx="${x}" cy="${y-16}" r="12.5" fill="var(--fm-stripe)" ${A}/>
-    ${[0,45,90,135,180,225,270,315].map(a=>{const r=a*Math.PI/180;
-      return `<line x1="${x+Math.cos(r)*12.5}" y1="${y-16+Math.sin(r)*12.5}"
-                    x2="${x+Math.cos(r)*17}" y2="${y-16+Math.sin(r)*17}" ${A}/>`;}).join("")}
-    <circle cx="${x}" cy="${y-16}" r="5" fill="var(--fm-gold)" ${A}/>`;
-  case "rate": return `
-    <circle cx="${x-8}" cy="${y-24}" r="6.5" fill="var(--fm-stripe)" ${A}/>
-    <path d="M${x-18} ${y-2} q0 -13 10 -13 q10 0 10 13 z" fill="var(--fm-stripe)" ${A}/>
-    <circle cx="${x+8}" cy="${y-21}" r="6.5" fill="var(--fm-select)" ${A}/>
-    <path d="M${x-2} ${y-2} q0 -12 10 -12 q10 0 10 12 z" fill="var(--fm-select)" ${A}/>`;
-  case "cat": return `
-    <line x1="${x}" y1="${y}" x2="${x}" y2="${y-34}" ${A} stroke-width="3"/>
-    <path d="M${x-3} ${y-32} h20 l6 5 l-6 5 h-20 z" fill="var(--fm-gold)" ${A}/>
-    <path d="M${x+3} ${y-19} h-20 l-6 5 l6 5 h20 z" fill="var(--fm-run2)" ${A}/>
-    <line x1="${x+1}" y1="${y-29.5}" x2="${x+14}" y2="${y-29.5}" stroke="var(--fm-ink)" stroke-width="1.3"/>
-    <line x1="${x-1}" y1="${y-16.5}" x2="${x-14}" y2="${y-16.5}" stroke="var(--fm-ink)" stroke-width="1.3"/>`;
-  case "fill": return `
-    <path d="M${x-16} ${y-26} h18 l10 10 v14 h-28 z" fill="var(--fm-select)" ${A}
-          transform="rotate(-8 ${x} ${y-14})"/>
-    <circle cx="${x-10}" cy="${y-21}" r="2.4" fill="var(--fm-panel)" ${A} transform="rotate(-8 ${x} ${y-14})"/>
-    <text x="${x+1}" y="${y-7}" text-anchor="middle" font-size="13" font-weight="800"
-          fill="var(--fm-ink)" transform="rotate(-8 ${x} ${y-14})">$</text>`;
-  case "wmsdata": return `
-    <path d="M${x-13} ${y-30} h17 l9 9 v21 h-26 z" fill="var(--fm-panel)" ${A}/>
-    <path d="M${x+4} ${y-30} v9 h9" fill="var(--fm-stripe)" ${A}/>
-    <line x1="${x-8}" y1="${y-15}" x2="${x+8}" y2="${y-15}" ${A} stroke-width="1.5"/>
-    <line x1="${x-8}" y1="${y-10}" x2="${x+8}" y2="${y-10}" ${A} stroke-width="1.5"/>
-    <line x1="${x-8}" y1="${y-5}" x2="${x+2}" y2="${y-5}" ${A} stroke-width="1.5"/>`;
-  case "files": return `
-    <path d="M${x-17} ${y-12} h8 l4 5 h10 l4 -5 h8 v10 q0 2 -2 2 h-30 q-2 0 -2 -2 z" fill="var(--fm-gold)" ${A}/>
-    <path d="M${x-9} ${y-26} h18 v14 h-18 z" fill="var(--fm-panel)" ${A}/>
-    <line x1="${x-4}" y1="${y-21}" x2="${x+4}" y2="${y-21}" ${A} stroke-width="1.4"/>
-    <path d="M${x} ${y-33} v9 m-3.5 -4 l3.5 4 l3.5 -4" fill="none" ${A}/>`;
-  case "cus": return `
+  case "order": return `
+    <rect x="${x-13}" y="${y-28}" width="22" height="28" rx="2.5" fill="var(--fm-panel)" ${A}/>
+    <rect x="${x-8}" y="${y-31}" width="12" height="6" rx="2" fill="var(--fm-select)" ${A} stroke-width="1.6"/>
+    <path d="M${x-8} ${y-19} h12 M${x-8} ${y-14} h12 M${x-8} ${y-9} h7" ${A} stroke-width="1.4"/>
+    <path d="M${x+8} ${y-6} l3 3 l6 -7" fill="none" stroke="var(--fm-run2)" stroke-width="2.4"
+          stroke-linecap="round" stroke-linejoin="round"/>`;
+  case "erp": return `
+    <rect x="${x-14}" y="${y-30}" width="28" height="30" rx="2" fill="var(--fm-stripe)" ${A}/>
+    <path d="M${x-14} ${y-30} l14 -6 l14 6 z" fill="var(--fm-gold)" ${A} stroke-width="1.8"/>
+    ${[-8,0,8].map(dx=>`<rect x="${x+dx-2.6}" y="${y-25}" width="5.2" height="5.2" rx="1"
+        fill="var(--fm-select)" ${A} stroke-width="1.3"/>`).join("")}
+    ${[-8,0,8].map(dx=>`<rect x="${x+dx-2.6}" y="${y-16}" width="5.2" height="5.2" rx="1"
+        fill="var(--fm-select)" ${A} stroke-width="1.3"/>`).join("")}
+    <rect x="${x-3.4}" y="${y-7}" width="6.8" height="7" fill="var(--fm-run2)" ${A} stroke-width="1.5"/>`;
+  case "wms": return `
+    <path d="M${x-17} ${y} v-17 l17 -9 l17 9 v17 z" fill="var(--fm-stripe)" ${A}/>
+    <path d="M${x-17} ${y-17} l17 -9 l17 9" fill="none" ${A}/>
+    <rect x="${x-6}" y="${y-11}" width="12" height="11" fill="var(--fm-select)" ${A} stroke-width="1.6"/>
+    <path d="M${x-6} ${y-5.5} h12 M${x} ${y-11} v11" stroke="var(--fm-ink)" stroke-width="1.1" opacity=".65"/>
+    <rect x="${x-14.5}" y="${y-7}" width="6.5" height="7" fill="var(--fm-gold)" ${A} stroke-width="1.4"/>
+    <rect x="${x+8.5}" y="${y-7}" width="6.5" height="7" fill="var(--fm-gold)" ${A} stroke-width="1.4"/>`;
+  case "tms": return `
+    <path d="M${x-15} ${y-3} q-4 -12 8 -14 q13 -2 10 -12" fill="none"
+          stroke="var(--fm-run2)" stroke-width="2" stroke-dasharray="3 4" stroke-linecap="round"/>
+    <path d="M${x+3} ${y-36} q7 0 7 7 q0 5 -7 13 q-7 -8 -7 -13 q0 -7 7 -7 z" fill="var(--fm-gold)" ${A}/>
+    <circle cx="${x+3}" cy="${y-28.6}" r="2.6" fill="var(--fm-panel)" ${A} stroke-width="1.4"/>
+    <circle cx="${x-15}" cy="${y-2}" r="3" fill="var(--fm-run2)" ${A} stroke-width="1.6"/>`;
+  case "tender": return `
+    <path d="M${x-18} ${y} h36 l-4 -7 h-28 z" fill="var(--fm-stripe)" ${A}/>
+    <rect x="${x-9}" y="${y-21}" width="18" height="14" rx="2" fill="var(--fm-gold)" ${A}/>
+    <line x1="${x}" y1="${y-21}" x2="${x}" y2="${y-7}" stroke="var(--fm-ink)" stroke-width="1.1" opacity=".7"/>
+    <path d="M${x-4} ${y-25} q4 -6 8 0" fill="none" ${A} stroke-width="1.6"/>
+    <rect x="${x+11}" y="${y-30}" width="9" height="6" rx="1.4" fill="var(--fm-select)" ${A} stroke-width="1.4"/>`;
+  case "transit": return `
+    <path d="M${x-16} ${y-10} h18 l7 -7 h6 q3 0 1.6 2.8 l-4.6 8 l4.6 8 q1.4 2.8 -1.6 2.8 h-6 l-7 -7 h-18 l-4 4 h-4 l2.6 -7.6 l-2.6 -7.6 h4 z"
+          fill="var(--fm-panel)" ${A} stroke-width="2"/>
+    <circle cx="${x+7}" cy="${y-13.8}" r="1.5" fill="var(--fm-ink)"/>
+    <path d="M${x-24} ${y-2} h7 M${x-27} ${y+2} h8" stroke="var(--fm-line)" stroke-width="1.6" stroke-linecap="round"/>`;
+  case "dlv": return `
+    <path d="M${x-15} ${y} v-14 l15 -11 l15 11 v14 z" fill="var(--fm-panel)" ${A}/>
+    <path d="M${x-18} ${y-13} l18 -13 l18 13" fill="none" ${A}/>
+    <rect x="${x-5}" y="${y-9}" width="10" height="9" fill="var(--fm-run2)" ${A} stroke-width="1.6"/>
+    <rect x="${x+5.5}" y="${y-20}" width="7" height="6" fill="var(--fm-select)" ${A} stroke-width="1.3"/>
+    <circle cx="${x+16}" cy="${y-24}" r="6" fill="var(--fm-select)" ${A} stroke-width="1.6"/>
+    <path d="M${x+13.4} ${y-24} l2 2.2 l3.4 -4" fill="none" stroke="var(--fm-run2)" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round"/>`;
+  case "bill": return `
+    <path d="M${x-12} ${y-30} h16 l8 8 v22 h-24 z" fill="var(--fm-panel)" ${A}/>
+    <path d="M${x+4} ${y-30} v8 h8" fill="var(--fm-stripe)" ${A}/>
+    <text x="${x-1}" y="${y-8}" text-anchor="middle" font-size="13" font-weight="800"
+          fill="var(--fm-run2)">$</text>
+    <path d="M${x-7} ${y-18} h6 M${x+3} ${y-18} h5" stroke="var(--fm-ink)" stroke-width="1.3" opacity=".7"/>`;
+  case "recon": return `
     <line x1="${x}" y1="${y-34}" x2="${x}" y2="${y-4}" ${A}/>
     <line x1="${x-16}" y1="${y-28}" x2="${x+16}" y2="${y-28}" ${A}/>
     <path d="M${x-16} ${y-28} l-5 9 a7 7 0 0 0 10 0 z" fill="var(--fm-select)" ${A} stroke-width="1.8"/>
     <path d="M${x+16} ${y-28} l-5 9 a7 7 0 0 0 10 0 z" fill="var(--fm-select)" ${A} stroke-width="1.8"/>
     <path d="M${x-7} ${y-4} h14 l3 4 h-20 z" fill="var(--fm-stripe)" ${A}/>`;
-  case "analysis": return `
-    <line x1="${x-16}" y1="${y}" x2="${x+18}" y2="${y}" ${A}/>
-    <rect x="${x-14}" y="${y-12}" width="7" height="12" rx="1.5" fill="var(--fm-stripe)" ${A} stroke-width="1.8"/>
-    <rect x="${x-4}" y="${y-19}" width="7" height="19" rx="1.5" fill="var(--fm-gold)" ${A} stroke-width="1.8"/>
-    <rect x="${x+6}" y="${y-26}" width="7" height="26" rx="1.5" fill="var(--fm-run2)" ${A} stroke-width="1.8"/>
-    <path d="M${x-11} ${y-22} q10 -6 20 -12 m-6 0 h6 v6" fill="none" ${A} stroke-width="1.7"/>`;
-  case "hist": return `
-    <rect x="${x-15}" y="${y-28}" width="30" height="28" rx="3" fill="var(--fm-stripe)" ${A}/>
-    <rect x="${x-15}" y="${y-28}" width="30" height="12" rx="3" fill="var(--fm-panel)" ${A}/>
-    <rect x="${x-5}" y="${y-24.5}" width="10" height="3.6" rx="1.8" fill="var(--fm-gold)" ${A} stroke-width="1.4"/>
-    <rect x="${x-5}" y="${y-10.5}" width="10" height="3.6" rx="1.8" fill="var(--fm-gold)" ${A} stroke-width="1.4"/>`;
-  case "admin": return `
-    <path d="M${x} ${y-32} l13 5 v9 q0 12 -13 17 q-13 -5 -13 -17 v-9 z" fill="var(--fm-select)" ${A}/>
-    <path d="M${x-5.5} ${y-16} l4 4.5 l7.5 -8.5" fill="none" ${A}/>`;
+  case "fin": return `
+    ${[0,1,2].map(i=>`<ellipse cx="${x-9}" cy="${y-4-4.6*i}" rx="8" ry="3.4"
+        fill="var(--fm-gold)" ${A} stroke-width="1.5"/>`).join("")}
+    <rect x="${x+2}" y="${y-26}" width="16" height="22" rx="2" fill="var(--fm-panel)" ${A} stroke-width="1.9"/>
+    <path d="M${x+5.5} ${y-20} h9 M${x+5.5} ${y-15.5} h9 M${x+5.5} ${y-11} h5" stroke="var(--fm-ink)"
+          stroke-width="1.2" opacity=".7"/>
+    <path d="M${x+5.5} ${y-6.8} h4 l1.6 -2.4 l2 3.6 l1.6 -1.2" fill="none" stroke="var(--fm-run2)" stroke-width="1.6"
+          stroke-linecap="round" stroke-linejoin="round"/>`;
   }
   return "";
 }
@@ -11544,16 +11573,16 @@ function fmBuild(){
   const dBot=`M1148 244 C 1000 258, 880 246, 760 252 C 700 255, 660 258, 600 258
               C 480 258, 380 246, 280 250 C 220 252, 170 248, 128 244`;
   svg.innerHTML=`
-    ${fmGrpHeader(285,T("nav.cfg").toUpperCase())}
-    ${fmGrpHeader(663,T("nav.data").toUpperCase())}
-    ${fmGrpHeader(978,T("nav.recon").toUpperCase())}
+    ${fmGrpHeader(285,L("出貨端 ORDER & FULFILLMENT","ORDER & FULFILLMENT"))}
+    ${fmGrpHeader(726,L("UPS 運送 CARRIER","CARRIER DELIVERY"))}
+    ${fmGrpHeader(1041,L("帳務結算 SETTLEMENT","BILLING & SETTLEMENT"))}
     <path class="fm-rail" d="${dTop}"/><path class="fm-dash" d="${dTop}" id="fmLaneT"/>
     <path class="fm-rail" d="${dDown}"/><path class="fm-dash" d="${dDown}" id="fmLaneD"/>
     <path class="fm-rail" d="${dBot}"/><path class="fm-dash" d="${dBot}" id="fmLaneB"/>
     <g class="fm-gategrp">
-      <path class="fm-gatearch" d="M672 122 V78 Q672 66 684 66 H768 Q780 66 780 78 V122"/>
-      <rect class="fm-gate" x="694" y="55" width="64" height="15" rx="7.5"/>
-      <text x="726" y="66" text-anchor="middle" font-size="8.6" font-weight="700"
+      <path class="fm-gatearch" d="M1050 118 V74 Q1050 62 1062 62 H1146 Q1158 62 1158 74 V118"/>
+      <rect class="fm-gate" x="1072" y="51" width="64" height="15" rx="7.5"/>
+      <text x="1104" y="62" text-anchor="middle" font-size="8.6" font-weight="700"
             fill="var(--fm-ink)" letter-spacing=".1em">PROCESS</text>
     </g>
 
@@ -11580,7 +11609,7 @@ function fmBuild(){
     </g>
 
     <!-- 狗:坐在門架旁,一耳立一耳垂,尾巴搖 -->
-    <g class="fm-dog" id="fmDog" style="--wox:806px;--woy:172px">
+    <g class="fm-dog" id="fmDog" transform="translate(200,0)" style="--wox:806px;--woy:172px">
       <path class="fm-mat2" d="M770 190 h64" />
       <g class="wag"><path class="fur" d="M806 172 q13 -3 15 -14 q-8 0 -12 6" stroke-width="1.8"/></g>
       <path class="fur" d="M782 190 q-4 -16 8 -22 q11 -5 18 3 q6 8 3 19 z"/>
@@ -11631,9 +11660,10 @@ function fmBuild(){
     </g></g>`;
   for(const [k,x,y,tilt,no] of FM_ST){
     const g=document.createElementNS(FM_NS,"g");
-    g.setAttribute("class","fm-st"); g.dataset.nav=k;
+    const go=FM_GO[k];
+    g.setAttribute("class","fm-st"+(go?"":" nolink")); g.dataset.nav=k;
     g.innerHTML=`
-      <g class="fm-card" transform="rotate(${tilt} ${x} ${y})" style="--sx:${x}px;--sy:${y}px">
+      <g class="fm-card" transform="rotate(${tilt} ${x} ${y})">
         <ellipse class="fm-halo" cx="${x}" cy="${y-12}" rx="34" ry="28"/>
         <ellipse class="fm-gnd" cx="${x}" cy="${y+2}" rx="24" ry="4"/>
         ${fmArt(k,x,y)}
@@ -11641,12 +11671,13 @@ function fmBuild(){
         <text class="fm-no" x="${x-24.5}" y="${y-31}" text-anchor="middle">${no}</text>
         <text class="fm-tick" x="${x+30}" y="${y-32}" text-anchor="middle">✓</text>
         <text class="fm-lb" x="${x}" y="${y+17}" text-anchor="middle">${esc(L(FM_LB[k][0],FM_LB[k][1]))}</text>
-        <rect class="fm-hit" x="${x-38}" y="${y-44}" width="76" height="66"/>
+        <text class="fm-lb2" x="${x}" y="${y+28}" text-anchor="middle">${esc(L(FM_LB[k][1],FM_LB[k][0]))}</text>
+        <rect class="fm-hit" x="${x-38}" y="${y-44}" width="76" height="76"/>
       </g>
-      <title>${esc(T("tab."+k))}</title>`;
+      <title>${esc(L(FM_TIP[k][0],FM_TIP[k][1]))}`+`</title>`;
     svg.appendChild(g);
-    g.addEventListener("click",()=>{
-      const b=document.querySelector('#tabs button[data-p="'+k+'"]');
+    if(go) g.addEventListener("click",()=>{
+      const b=document.querySelector('#tabs button[data-p="'+go+'"]');
       if(b) b.click();
     });
   }
@@ -11749,7 +11780,7 @@ function fmFrame(now){
   trk.classList.toggle("laden",riding);
   const nearHome=px<220 && py>200;
   $("#fmCat").classList.toggle("wake",nearHome);
-  const inGate=py<160 && px>672 && px<780;
+  const inGate=py<160 && px>1050 && px<1158;
   pkg.classList.toggle("zap",inGate);
   dog.classList.toggle("woof",inGate);
   document.querySelectorAll("#fmMap .fm-st").forEach(g=>{
