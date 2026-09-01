@@ -17,7 +17,13 @@
   --rad:9px; --bw:2px; --bstyle:solid; --bcol:var(--accent);
   --ink:var(--text);
   --resi:#8e3b5e; --resi-bg:#f7e7ee; --com:#1f5d86; --com-bg:#e4eef6;
-  --ups:#6b5847; --ups-bg:#efe7d8; --rp:#8a6104; --rp-bg:#fff2cc;
+  /* 兩塊帳本面板從主題調出來:UPS 側是拉向灰褐的主題深色,Reprice 側
+     直接用主題的深條色;底色各是面板色染一點字色/主色。對比由構造保證:
+     底色只染 7–15%,字照主題字色走,深淺主題都成立。 */
+  --ups:color-mix(in srgb, var(--barbg,var(--accent)) 35%, #6b5847);
+  --ups-bg:color-mix(in srgb, var(--text) 7%, var(--panel));
+  --rp:color-mix(in srgb, var(--run2) 85%, #201200);
+  --rp-bg:color-mix(in srgb, var(--run2) 15%, var(--panel));
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;max-width:100%;overflow-x:hidden}
@@ -1106,16 +1112,25 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
   text-transform:uppercase;color:#fff}
 .bkdside.ups .bkdside-lbl{background:var(--ups)}
 .bkdside.rp .bkdside-lbl{background:var(--rp)}
-.bkdside-body{padding:6px 9px;flex:1;color:#3a2a1c}
+.bkdside-body{padding:6px 9px 7px;flex:1;color:var(--text);
+  display:flex;flex-direction:column}
+/* 小計釘在面板底:兩側列數不同時,小計仍然對齊同一條線,空間留在中間。 */
+.bkdside-ft{margin-top:auto;display:flex;justify-content:space-between;gap:10px;
+  padding-top:5px;font-weight:700;
+  border-top:1.5px solid color-mix(in srgb, var(--text) 35%, transparent)}
+.bkdside-ft .num{font-family:Consolas,monospace;white-space:nowrap}
 .bkdside.ups .bkdside-body{background:var(--ups-bg)}
 .bkdside.rp .bkdside-body{background:var(--rp-bg)}
 .bkdside table{width:100%;font-size:12.5px;table-layout:fixed;background:transparent}
 .bkdside tbody tr,.bkdside tbody tr:nth-child(even),.bkdside tbody tr:hover{background:transparent}
-.bkdside td{padding:2px 0;word-break:break-word;border-bottom:none;white-space:normal}
+.bkdside td{padding:3.5px 0;word-break:break-word;border-bottom:none;white-space:normal;
+  vertical-align:top}
 .bkdside td.num{text-align:right;font-family:Consolas,monospace;
   width:82px;white-space:nowrap}
-.bkdside tr.bkdsub td{border-top:1.5px solid rgba(0,0,0,.25);padding-top:4px;font-weight:700}
-.bkdglbl{font-size:11px;color:#8a755a;font-weight:600;padding-top:4px}
+.bkdside tr.bkdsub td{border-top:1.5px solid color-mix(in srgb, var(--text) 35%, transparent);
+  padding-top:4px;font-weight:700}
+.bkdglbl{font-size:10.5px;color:var(--muted);font-weight:700;padding-top:7px;
+  letter-spacing:.7px;text-transform:uppercase}
 .bkdmiss{color:var(--neg);border-bottom:1.5px dotted var(--neg);cursor:help}
 .bkdmissrow td:first-child{color:var(--neg)}
 .bkdneg{color:var(--neg)}
@@ -10115,7 +10130,7 @@ function bkdSection(r){
     const gd=(groups.find(g=>g.shipDate)||{}).shipDate||res.s.shipDate;
     /* 這是 UPS 帳單上的 Transaction Date —— 這一段實際發生(出貨/調整)的
        日期,燃油期間照它取。光一個日期認不出是什麼,標出來。 */
-    if(gd) meta.push(L("交易日 ","Txn date ")+esc2(normYmd(gd)||gd));
+    if(gd) meta.push(L("交易日 ","Transaction date ")+esc2(normYmd(gd)||gd));
     const gA=groups.find(g=>g.dimsA&&g.dimsC);
     if(gA&&(gA.dimsA.l!==gA.dimsC.l||gA.dimsA.w!==gA.dimsC.w||gA.dimsA.h!==gA.dimsC.h))
       meta.push(`${gA.dimsA.l}×${gA.dimsA.w}×${gA.dimsA.h} → ${gA.dimsC.l}×${gA.dimsC.w}×${gA.dimsC.h}`);
@@ -10129,7 +10144,7 @@ function bkdSection(r){
         U.push(`<tr><td>${esc2(l.desc||l.code)}</td><td class="num">${money(l.net)}</td></tr>`);
       }
     }
-    U.push(`<tr class="bkdsub"><td>${L("小計","Subtotal")}</td><td class="num">${money(usub)}</td></tr>`);
+
     const P=[]; let psub=0;
     const missSet=new Set(res.missFees||[]);
     const cellMiss=(v,why)=>`<span class="bkdmiss" title="${esc2(why)}">${money2(v)}</span>`;
@@ -10149,16 +10164,18 @@ function bkdSection(r){
     }
     P.push(`<tr><td>${L("燃油 ","Fuel ")+esc2(res.fuelPct)+"%"}</td><td class="num">${money(res.fuel||0)}</td></tr>`);
     psub+=res.fuel||0;
-    P.push(`<tr class="bkdsub"><td>${L("小計","Subtotal")}</td><td class="num">${money(psub)}</td></tr>`);
+
     return `<div class="bkdseg ${resi?"resi":"com"}">`
       +`<div class="bkdseg-hd"><span class="bkdseg-name">${esc2(name)}</span>`
       +`<span class="bkdchip ${resi?"resi":"com"}">${chip}</span>`
       +`<span class="bkdmeta">${meta.map(m=>`<span class="mp">${m}</span>`).join("")}</span></div>`
       +`<div class="bkdcols">`
       +`<div class="bkdside ups"><div class="bkdside-lbl">${L("UPS 實收","UPS billed")}</div>`
-      +`<div class="bkdside-body"><table>${U.join("")}</table></div></div>`
+      +`<div class="bkdside-body"><table>${U.join("")}</table>`
+      +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(usub)}</span></div></div></div>`
       +`<div class="bkdside rp"><div class="bkdside-lbl">${L("重新計價","Reprice")}</div>`
-      +`<div class="bkdside-body"><table>${P.join("")}</table></div></div>`
+      +`<div class="bkdside-body"><table>${P.join("")}</table>`
+      +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(psub)}</span></div></div></div>`
       +`</div></div>`;
   };
   H.push(segCard(r, s.groups||[], segName(s.layer)));
