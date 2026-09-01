@@ -24,3 +24,6 @@ download (*)
 # 而且綁著直譯器版本 —— 進了 git 只會製造衝突。
 __pycache__/
 *.pyc
+
+# apply.py 動 index.html 之前的備份
+*.bak-*
