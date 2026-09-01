@@ -49,6 +49,10 @@ setTimeout(()=>{
   ok(D.querySelectorAll('#rateSide .setnav-tabs[data-g=fill] button').length===4, '04 \u56db\u500b\u5b50\u9801');
   ok(typeof W.fmArt==='function'&&W.fmArt('transit',600,120).indexOf('fm-sh')>=0,
      '\u6d41\u7a0b\u5716\u63d2\u756b\u662f\u65b0\u7684');
+  const nav01=D.querySelector('#tabs button[data-p="general"] [data-i18n="tab.general"]');
+  ok(!!nav01&&nav01.textContent.trim()==='Pricing Configuration',
+     '01 \u6539\u540d\uff1a'+(nav01?nav01.textContent.trim():'?'));
+  ok(!/General Setting/.test(D.getElementById('tabs').textContent), '\u5074\u6b04\u4e0a\u6c92\u6709 General Setting \u4e86');
 
   console.log(`\n\u2500\u2500 ${pass} pass / ${fail} fail \u2500\u2500`);
   process.exit(fail?1:0);

@@ -49,7 +49,7 @@ python3 /path/to/pack/apply.py --embed-fonts   # 字型內嵌成單檔
 
 ```
 npm install          # jsdom
-npm test             # 八套一起跑,172 項
+npm test             # 八套一起跑,174 項
 ```
 
 也可以指定要驗哪一份:
@@ -89,6 +89,7 @@ node test/test-ink.js   /path/to/UPS-reconciliation/index.html
 | 流程圖線寬 | 十個站用九種線寬 | 收成三階 |
 | 04 費率頁 | 七張面板疊成一條長捲軸 | 拆成四個子頁 |
 | 01 › 3. System | 「Enable / Disable」兩張表 | 收掉;設定檔有殘留停用項目時只提示,不自動清 |
+| 01 的名字 | General Setting | Pricing Configuration |
 
 ESC 按下去是去按該視窗自己的 `.mx`,所以原本的收尾照跑,不是把它藏起來。
 搜尋延後走事件捕捉階段,不碰任何一行既有的 `oninput` —— `#sysSearch` 這種在
@@ -132,6 +133,14 @@ Demand 費率。要改燃油得先捲過運費表,要看門檻得捲到最底。
 順帶修一件事:「Demand 費率」和「尺寸門檻」原本是包在「DIM 除數」那張卡**裡面**
 的(markup 少了一個結束標籤)。Demand 跟 DIM 除數沒有關係,搬出來成為
 `p-ratefill` 的直接子層 —— 不搬的話,藏 DIM 除數會連著把它們一起藏掉。
+
+### 01 改名
+
+裝的是費率層級、費用代碼、系統設定,「General Setting」說的是別的東西。這三樣
+合起來就是定價的架構,用業界的字:**Pricing Configuration**(定價設定)。
+
+改字典不改 markup —— 按鈕靠 `data-i18n` 取字,字典改了、`applyLang` 跑一次,
+每一處都跟著換。`names.js` 就一張表,之後要再改名,改那裡。
 
 ### 收掉「Enable / Disable」
 
@@ -221,8 +230,9 @@ src/                       四段原始碼,apply.py 用這裡的
   fm.css / fm.js           首頁流程圖的精修
   tabs.js                  04 渠道與附加費費率分成四個子頁
   trim.css / trim.js       收掉 Enable / Disable 那張卡
+  names.js                 改名(一張表,之後要改名就改那裡)
 
-test/                      八支,共 172 項
+test/                      八支,共 174 項
   test-patch.js            ESC / 搜尋 / 排序 / 凍結首欄
   test-ink.js              字體、筆觸、包住原本那兩支
   test-contrast.js         六組配色的側欄字對比
