@@ -1972,7 +1972,6 @@ label:has(#newChanOn){display:none !important}
       <th style="width:30px"></th>
       <th data-i18n="lb.channame">Channel name</th>
       <th data-i18n="th.zones">Zones</th>
-      <th data-i18n="th.ratestate">Base rates</th>
       <th class="num" data-i18n="th.lvlfilled">Levels priced</th>
     </tr></thead><tbody></tbody></table></div>
   </div>
@@ -11238,24 +11237,15 @@ function renderConfigTabs(){
   const ckind=(($("#chanFilter")||{}).value)||"all";
   const shown=chanFams.filter(f=>(!cq||f.fam.toLowerCase().includes(cq))
     && (ckind==="all" || (ckind==="builtin")===BUILTIN_FAMS.has(f.fam)));
-  const notLoaded=`<span style="color:var(--neg)">${LANG?"not loaded":"未載入"}</span>`;
-  const rateCell=f=>{
-    if(!f.nC&&!f.nR) return notLoaded;
-    const half=(n,zh,en)=>n?`${LANG?en:zh} ${n}`
-      :`<span style="color:var(--neg)">${LANG?en+" —":zh+" —"}</span>`;
-    return `<span style="white-space:nowrap">${half(f.nC,"商業","Com")} · ${
-             half(f.nR,"住宅","Res")}</span>`;
-  };
   $("#tChan").tBodies[0].innerHTML=shown.map(f=>
     `<tr><td><input type="checkbox" class="chanc" value="${esc(f.fam)}"${ro}></td>
      <td>${esc(f.fam)}</td>
      <td class="wrap" style="font-size:11.5px">${f.zones.length
         ? esc(f.zones.join(" / "))
         : `<span style="color:var(--neg)">${LANG?"not set":"未設定"}</span>`}</td>
-     <td>${rateCell(f)}</td>
      <td class="num">${(()=>{const c=countLevels(raw=>famPricedIn(raw,f.fam));
         return lvlBadge(c.n,c.total);})()}${f.on?"":` <span class="empty">${LANG?"disabled":"已停用"}</span>`}</td></tr>`).join("")
-    ||`<tr><td colspan="5" class="empty">—</td></tr>`;
+    ||`<tr><td colspan="4" class="empty">—</td></tr>`;
   if($("#chanCount")) $("#chanCount").textContent = LANG
     ? `${shown.length} / ${chanFams.length} channels` : `顯示 ${shown.length} / ${chanFams.length} 條渠道`;
   const rc=$("#rateChan");
@@ -17498,7 +17488,6 @@ const I18N={
   "btn.imprate":["匯入已完成的基本運費表","Import completed base rates"],
   "btn.scanzone":["從帳單掃描 Zone","Scan zones from invoice"],
   "btn.delchan":["刪除所選渠道","Delete selected"],
-  "th.ratestate":["基本運費狀態","Base rates"],
   "th.enabled":["啟用","Enabled"],
   "lb.applydemand":["套用到重算","Apply to repricing"],
   "dt.pkg":["① 包裹類附加費","① Package surcharges"],
