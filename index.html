@@ -9444,7 +9444,12 @@ $("#bExpRate") && ($("#bExpRate").onclick=()=>{
     return {key, zones, aoa:[head,...body]};
   };
   const com=sheetFor(false), resi=sheetFor(true);
-  const fname="UPS_BaseRate_"+fam.replace(/[^A-Za-z0-9]+/g,"_")+".xlsx";
+  /* 檔名帶上正在編輯的層級(如 -TW、-JL):同一條渠道會為每一層各倒
+     一份模板,檔名不標層級的話,桌面上那三個檔分不出誰是誰。 */
+  const _lvS=(typeof lvlListAll==="function"&&typeof rlStore==="function")
+    ? ((lvlListAll().find(e=>e.id===(rlStore()||{}).active)||{}).name||"") : "";
+  const fname="UPS_BaseRate_"+fam.replace(/[^A-Za-z0-9]+/g,"_")
+    +(_lvS?"-"+_lvS.replace(/[^A-Za-z0-9]+/g,"_"):"")+".xlsx";
   loadXLSX().then(X=>{
     const wb=X.utils.book_new();
     X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(com.aoa),"Commercial");
@@ -19786,11 +19791,19 @@ document.addEventListener("keydown",function(e){
 /* ── 3. 表頭排序 ───────────────────────────────────────────────────────
    只給看數字的那幾張:誰的毛利最低、哪一筆差最多,現在得自己一列一列找。
    排序只動畫面上的列,不碰任何金額;重畫之後回到原本的順序。 */
-var SORT_IDS=["tRecon","tReconChg","tAnaCus","tAnaLvl"];
+var SORT_IDS=["tRecon","tReconChg","tAnaCus","tAnaLvl",
+              "tChan","tAccMgr","tHist","tRate"];
+/* 缺值(—、not set、空白)不參與比大小:不管往哪個方向排,永遠沉底。 */
+var MISS_RE=/^(—|–|-|not set|not loaded|未設定|未載入|n\/a)?$/i;
 function cellVal(td){
   var t=(td.textContent||"").trim();
-  if(!t||t==="—"||t==="–"||t==="-") return {n:null,s:""};
-  var neg=/^\(.*\)$/.test(t)||/^-/.test(t);
+  if(MISS_RE.test(t)) return {n:null,s:"",miss:1};
+  /* 日期欄照時間排,不照字串:2026-08-22 與 08/29/2026 都認得。 */
+  var d=/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/.exec(t);
+  if(d) return {n:Date.UTC(+d[1],+d[2]-1,+d[3]),s:t};
+  if((d=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t)))
+    return {n:Date.UTC(+d[3],+d[1]-1,+d[2]),s:t};
+  var neg=/^\(.*\)$/.test(t)||/^-|^\$-/.test(t);
   var m=t.replace(/[()]/g,"").replace(/[$,%\s]/g,"").replace(/^-/,"");
   if(m!==""&&/^\d+(\.\d+)?$/.test(m)) return {n:neg?-parseFloat(m):parseFloat(m),s:t};
   return {n:null,s:t.toLowerCase()};
@@ -19803,6 +19816,7 @@ function sortTable(tb,idx,dir){
   if(dir===0){ rows.sort(function(a,b){ return a.__ord-b.__ord; }); }
   else rows.sort(function(a,b){
     var x=cellVal(a.cells[idx]), y=cellVal(b.cells[idx]), c;
+    if(x.miss||y.miss) return (x.miss?1:0)-(y.miss?1:0);
     if(x.n!==null&&y.n!==null) c=x.n-y.n;
     else if(x.n!==null) c=-1;
     else if(y.n!==null) c=1;
@@ -19811,8 +19825,29 @@ function sortTable(tb,idx,dir){
   });
   rows.forEach(function(r){ tb.appendChild(r); });
 }
+/* 重畫之後排序不歸零:tbody 被重畫、表頭上還掛著方向時,照原方向再排
+   一次;表頭整列被換掉(tRate 每次 render 都重寫)就重新掛一次排序。 */
+function keepSorted(t){
+  if(!t||t.__sortWatch||typeof MutationObserver==="undefined") return;
+  t.__sortWatch=1;
+  var mo=new MutationObserver(function(){
+    if(t.__sorting) return;
+    var hr=t.tHead&&t.tHead.rows[t.tHead.rows.length-1];
+    if(hr&&!hr.isConnected){ t.__sortArmed=0; }
+    if(!t.__sortArmed) armSort(t);
+    hr=t.tHead&&t.tHead.rows[t.tHead.rows.length-1];
+    if(!hr) return;
+    var cells=Array.prototype.slice.call(hr.cells), th=null, idx=-1;
+    for(var i=0;i<cells.length;i++) if(cells[i].dataset.dir){ th=cells[i]; idx=i; break; }
+    if(!th) return;
+    t.__sorting=1;
+    try{ if(t.tBodies[0]) sortTable(t.tBodies[0], idx, +th.dataset.dir); }
+    finally{ setTimeout(function(){ t.__sorting=0; },0); }
+  });
+  mo.observe(t,{childList:true,subtree:true});
+}
 function armSort(t){
-  if(!t||!t.tHead||t.__sortArmed) return;
+  if(!t||!t.tHead||!t.tHead.rows.length||t.__sortArmed) return;
   t.__sortArmed=1; t.classList.add("sortable");
   var hr=t.tHead.rows[t.tHead.rows.length-1];
   Array.prototype.slice.call(hr.cells).forEach(function(th,i){
@@ -19848,7 +19883,8 @@ function armSort(t){
 var PIN_IDS=["tRecon","tReconChg","tHist","tSize","tAnaCus","tAnaLvl"];
 
 function arm(){
-  SORT_IDS.forEach(function(id){ armSort(document.getElementById(id)); });
+  SORT_IDS.forEach(function(id){ var t=document.getElementById(id);
+    armSort(t); keepSorted(t); });
   PIN_IDS.forEach(function(id){
     var t=document.getElementById(id); if(t) t.classList.add("pinfirst"); });
 }
