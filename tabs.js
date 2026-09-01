@@ -29,10 +29,10 @@
 
 /* 四個子頁各自涵蓋哪幾張卡。key 是 h3 底下的 data-i18n。 */
 var SECT=[
-  {r:"ratefill", n:["1. Base Rates","1. 運費與燃油"],   cards:["hd.baserate","hd.fuel"]},
-  {r:"rfacc",    n:["2. Surcharges","2. 附加費"],       cards:["hd.acc"]},
-  {r:"rfsize",   n:["3. Size Rules","3. 尺寸規則"],     cards:["hd.dimf","hd.rulesforce"]},
-  {r:"rfdem",    n:["4. Demand","4. Demand"],           cards:["hd.demrate"]}
+  {r:"ratefill", n:["1. Base Rates","1. 運費與燃油"],          cards:["hd.baserate","hd.fuel"]},
+  {r:"rfacc",    n:["2. Surcharge Rates","2. 附加費費率"],      cards:["hd.acc"]},
+  {r:"rfsize",   n:["3. Dimensional Rules","3. 材積規則"],      cards:["hd.dimf","hd.rulesforce"]},
+  {r:"rfdem",    n:["4. Demand Rates","4. Demand 費率"],        cards:["hd.demrate"]}
 ];
 /* 這一張是頁首 —— 說明這一頁屬於右上角選的那一層,還帶著預覽鈕。
    四個子頁都要看得到,不歸任何一組。 */

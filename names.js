@@ -12,8 +12,26 @@
    ══════════════════════════════════════════════════════════════════════ */
 (function(){
 "use strict";
+/* 左欄十頁與每一頁底下的編號子頁。原則:名詞片語、講清楚裝的是什麼、
+   03 是「有哪些」(目錄)、04 是「收多少」(費率),兩者用字分開。 */
 var RENAME={
-  "tab.general":["定價設定","Pricing Configuration"]
+  /* 左欄 */
+  "tab.general":["定價設定",           "Pricing Configuration"],
+  "tab.rate":   ["客戶管理",           "Customer Management"],
+  "tab.cat":    ["渠道與附加費目錄",   "Channel & Surcharge Catalog"],
+  "tab.fill":   ["渠道與附加費費率",   "Channel & Surcharge Rates"],
+  "tab.wmsdata":["WMS / TMS 匯入",     "WMS / TMS Import"],
+  "tab.files":  ["UPS 帳單匯入",       "UPS Invoice Import"],
+  /* 01 */
+  "rt.levels":  ["1. 費率層級",        "1. Rate Levels"],
+  "rt.chgcode": ["2. 費用代碼對照",    "2. Charge Code Mapping"],
+  "rt.sys":     ["3. 系統設定",        "3. System Settings"],
+  /* 02 */
+  "rt.customers":["1. 客戶名錄",       "1. Customer Directory"],
+  /* 03 */
+  "rt.chan":    ["1. 渠道",            "1. Channels"],
+  "rt.rules":   ["2. 附加費目錄",      "2. Surcharge Catalog"],
+  "rt.demand":  ["3. Demand 期間",     "3. Demand Periods"]
 };
 function boot(){
   if(typeof I18N==="undefined") return;

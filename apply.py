@@ -20,9 +20,9 @@
 
 import argparse, datetime, pathlib, re, shutil, sys
 
-CSS_BLOCKS_LINKED = ["ui-patch.css", "ink-linked.css", "fm.css", "trim.css"]
-CSS_BLOCKS_EMBED  = ["ui-patch.css", "ink.css", "fm.css", "trim.css"]
-JS_BLOCKS         = ["ui-patch.js", "ink.js", "fm.js", "tabs.js", "trim.js", "names.js"]
+CSS_BLOCKS_LINKED = ["ui-patch.css", "ink-linked.css", "fm.css", "trim.css", "mascot.css"]
+CSS_BLOCKS_EMBED  = ["ui-patch.css", "ink.css", "fm.css", "trim.css", "mascot.css"]
+JS_BLOCKS         = ["ui-patch.js", "ink.js", "fm.js", "tabs.js", "trim.js", "names.js", "mascot.js"]
 FONT_FILES        = ["caveat.woff2", "patrick-hand.woff2"]
 
 MARK = re.compile(r"/\*!ui-pack:([A-Za-z0-9._-]+):start\*/.*?/\*!ui-pack:\1:end\*/\s*",

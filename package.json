@@ -4,7 +4,7 @@
   "private": true,
   "description": "UPS Reconciliation — UI 補強包（ESC 關窗 / 搜尋延後 / 表頭排序 / 首欄凍結 / 手寫字 / 繪畫感 / 流程圖精修 / 04 分層 / 收掉 Enable-Disable）",
   "scripts": {
-    "test": "node test/test-patch.js && node test/test-ink.js && node test/test-contrast.js && node test/test-fm.js && node test/test-tabs.js && node test/test-trim.js && node test/test-vars.js && node test/test-boot.js"
+    "test": "node test/test-patch.js && node test/test-ink.js && node test/test-contrast.js && node test/test-fm.js && node test/test-tabs.js && node test/test-trim.js && node test/test-mascot.js && node test/test-vars.js && node test/test-boot.js"
   },
   "devDependencies": { "jsdom": "^26.0.0" }
 }

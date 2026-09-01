@@ -49,7 +49,7 @@ python3 /path/to/pack/apply.py --embed-fonts   # 字型內嵌成單檔
 
 ```
 npm install          # jsdom
-npm test             # 八套一起跑,174 項
+npm test             # 九套一起跑,213 項
 ```
 
 也可以指定要驗哪一份:
@@ -89,7 +89,8 @@ node test/test-ink.js   /path/to/UPS-reconciliation/index.html
 | 流程圖線寬 | 十個站用九種線寬 | 收成三階 |
 | 04 費率頁 | 七張面板疊成一條長捲軸 | 拆成四個子頁 |
 | 01 › 3. System | 「Enable / Disable」兩張表 | 收掉;設定檔有殘留停用項目時只提示,不自動清 |
-| 01 的名字 | General Setting | Pricing Configuration |
+| 左欄與子頁的名字 | General Setting、Client Setup… | 全部改成名詞片語,03 目錄／04 費率分開 |
+| 每一頁 | 沒有 | 一隻布偶貓或柯基從標題底線探出頭,拿著這一頁的東西 |
 
 ESC 按下去是去按該視窗自己的 `.mx`,所以原本的收尾照跑,不是把它藏起來。
 搜尋延後走事件捕捉階段,不碰任何一行既有的 `oninput` —— `#sysSearch` 這種在
@@ -134,13 +135,53 @@ Demand 費率。要改燃油得先捲過運費表,要看門檻得捲到最底。
 的(markup 少了一個結束標籤)。Demand 跟 DIM 除數沒有關係,搬出來成為
 `p-ratefill` 的直接子層 —— 不搬的話,藏 DIM 除數會連著把它們一起藏掉。
 
-### 01 改名
+### 改名
 
-裝的是費率層級、費用代碼、系統設定,「General Setting」說的是別的東西。這三樣
-合起來就是定價的架構,用業界的字:**Pricing Configuration**(定價設定)。
+原則:名詞片語、講清楚裝的是什麼、03 是「有哪些」(目錄)、04 是「收多少」(費率),
+兩者用字分開。
+
+| | 原本 | 現在 |
+|---|---|---|
+| 01 | General Setting | Pricing Configuration |
+| 　 | 1. Level Setup / 2. Charge Codes / 3. System | 1. Rate Levels / 2. Charge Code Mapping / 3. System Settings |
+| 02 | Account & Client Setup | Customer Management |
+| 　 | 1. Client Setup | 1. Customer Directory |
+| 03 | Channels & Surcharges | Channel & Surcharge Catalog |
+| 　 | 1. Channels / 2. Surcharges / 3. Demand Surcharge | 1. Channels / 2. Surcharge Catalog / 3. Demand Periods |
+| 04 | Channel & Surcharge Rates | (不變) |
+| 　 | 1. Rate Entry | 1. Base Rates / 2. Surcharge Rates / 3. Dimensional Rules / 4. Demand Rates |
+| 05 | WMS / TMS Data | WMS / TMS Import |
+| 06 | Batch Invoice Import | UPS Invoice Import |
 
 改字典不改 markup —— 按鈕靠 `data-i18n` 取字,字典改了、`applyLang` 跑一次,
 每一處都跟著換。`names.js` 就一張表,之後要再改名,改那裡。
+
+### 每一頁那一隻
+
+十三個位置各一隻:布偶貓或柯基,從那一段第一張卡的標題底線後面探出頭,爪子搭在
+線上,手上拿著這一頁的東西。畫法跟首頁流程圖那兩隻一樣:2px 墨線、同一組毛色;
+布偶貓有海豹色的耳朵與面罩、面罩中間留一個倒 V、藍眼睛;柯基一耳立一耳垂、
+白口鼻、紅項圈。
+
+| 頁 | 誰 | 拿什麼 |
+|---|---|---|
+| Pricing Configuration | 貓 | 兩本費率簿 |
+| Charge Code Mapping | 貓 | 吊牌 |
+| Customer Directory | 狗 | 名牌 |
+| Channels | 貓 | 包裹 |
+| Surcharge Catalog | 狗 | ＋ |
+| Demand Periods | 貓 | 閃電 |
+| Channel & Surcharge Rates | 狗 | 價格標 |
+| UPS Invoice Import | 貓 | 帳單 |
+| Reconciliation | 狗 | 放大鏡 |
+| Analytics Dashboard | 貓 | 長條圖 |
+| Invoice History | 狗 | 月曆 |
+| User Administration | 貓 | 鑰匙 |
+| Home | 狗 | 表格 |
+
+動的只有:眨眼、頭輕輕晃、柯基的垂耳擺、道具浮一下,滑鼠移到那張卡上頭會抬一下。
+全部走 transform,不重排。`prefers-reduced-motion` 全關。絕對定位在標題右端,
+`pointer-events:none`,不擋任何東西。
 
 ### 收掉「Enable / Disable」
 
@@ -231,14 +272,16 @@ src/                       四段原始碼,apply.py 用這裡的
   tabs.js                  04 渠道與附加費費率分成四個子頁
   trim.css / trim.js       收掉 Enable / Disable 那張卡
   names.js                 改名(一張表,之後要改名就改那裡)
+  mascot.css / mascot.js   每一頁那一隻
 
-test/                      八支,共 174 項
+test/                      九支,共 213 項
   test-patch.js            ESC / 搜尋 / 排序 / 凍結首欄
   test-ink.js              字體、筆觸、包住原本那兩支
   test-contrast.js         六組配色的側欄字對比
   test-fm.js               流程圖插畫(輸出當 XML 解析)
   test-tabs.js             04 分層
   test-trim.js             收掉 Enable/Disable 之後資料沒被動
+  test-mascot.js           十三隻都在、都掛對位置、SVG 合法
   test-vars.js             孤兒 CSS 變數
   test-boot.js             把整份 index.html 真的跑起來
 preview/theme-preview.html 六組配色切一輪,看側欄與表頭的字,可直接開

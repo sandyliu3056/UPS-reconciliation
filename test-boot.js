@@ -53,6 +53,14 @@ setTimeout(()=>{
   ok(!!nav01&&nav01.textContent.trim()==='Pricing Configuration',
      '01 \u6539\u540d\uff1a'+(nav01?nav01.textContent.trim():'?'));
   ok(!/General Setting/.test(D.getElementById('tabs').textContent), '\u5074\u6b04\u4e0a\u6c92\u6709 General Setting \u4e86');
+  const navTxt=D.getElementById('tabs').textContent;
+  ['Customer Management','Channel & Surcharge Catalog','Channel & Surcharge Rates','WMS / TMS Import','UPS Invoice Import']
+    .forEach(n=>ok(navTxt.indexOf(n)>=0, '\u5074\u6b04\uff1a'+n));
+  const sub=D.getElementById('rateSide').textContent;
+  ['1. Rate Levels','2. Charge Code Mapping','3. System Settings','1. Customer Directory','2. Surcharge Catalog','3. Demand Periods',
+   '1. Base Rates','2. Surcharge Rates','3. Dimensional Rules','4. Demand Rates']
+    .forEach(n=>ok(sub.indexOf(n)>=0, '\u5b50\u9801\uff1a'+n));
+  ok(D.querySelectorAll('.mzwrap').length===13, '13 \u96bb\u90fd\u5728\u9801\u4e0a');
 
   console.log(`\n\u2500\u2500 ${pass} pass / ${fail} fail \u2500\u2500`);
   process.exit(fail?1:0);
