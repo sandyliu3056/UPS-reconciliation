@@ -2,9 +2,9 @@
   "name": "ups-recon-ui-pack",
   "version": "1.0.0",
   "private": true,
-  "description": "UPS Reconciliation — UI 補強包（ESC 關窗 / 搜尋延後 / 表頭排序 / 首欄凍結 / 手寫字 / 手繪 / 水彩）",
+  "description": "UPS Reconciliation — UI 補強包（ESC 關窗 / 搜尋延後 / 表頭排序 / 首欄凍結 / 手寫字 / 繪畫感）",
   "scripts": {
-    "test": "node test/test-patch.js && node test/test-ink.js"
+    "test": "node test/test-patch.js && node test/test-ink.js && node test/test-contrast.js"
   },
   "devDependencies": { "jsdom": "^26.0.0" }
 }

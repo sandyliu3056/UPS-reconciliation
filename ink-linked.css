@@ -1,11 +1,10 @@
 /*!ui-pack:ink.css:start*/
 /* ══════════════════════════════════════════════════════════════════════
    手寫感 / 繪畫感 —— 字體與筆觸
-   整段貼在第一個 style 結束標籤之前。全部收在 html.ink / html.ink-full
-   底下,開關沒開就一條也不生效。
+   整段貼在第一個 style 結束標籤之前。全部收在 html.ink 底下,
+   ink.js 沒有掛上那個 class 就一條也不生效。
    字體:Caveat 與 Patrick Hand,兩者皆 SIL Open Font License 1.1,
-   可自由內嵌與散布。字型檔與 index.html 放在同一層。想改成內嵌單檔,
-   改用 ink-embedded.css。
+   可自由內嵌與散布。字型檔與 index.html 放在同一層。想改成內嵌單檔,改用 ink-embedded.css。
    ══════════════════════════════════════════════════════════════════════ */
 
 /* 標題手寫體。單一檔案宣告成 400–900,瀏覽器就不會再自己加粗 ——
@@ -36,7 +35,6 @@
              "Microsoft JhengHei","PingFang TC","Noto Sans TC";
   --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='160' height='160' filter='url(%23g)' opacity='0.05'/></svg>");
   --paper-tex:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.62 0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.55'/></feComponentTransfer></filter><rect width='180' height='180' filter='url(%23p)' opacity='0.17'/></svg>");
-  --paper-tooth:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='t'><feTurbulence type='fractalNoise' baseFrequency='0.7 0.95' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='180' height='180' fill='%23fff'/><rect width='180' height='180' filter='url(%23t)' opacity='0.5' style='mix-blend-mode:multiply'/></svg>");
   --brush:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 10' preserveAspectRatio='none'><path d='M2 5.6C40 2.8 68 7.6 100 4.8 132 2.0 168 6.8 198 4.4L198 7.2C168 9.6 132 4.8 100 7.6 68 10.4 40 5.6 2 8.4Z' fill='%23000'/></svg>");
 }
 
@@ -49,20 +47,27 @@
    用印刷體的手寫,小字才站得住。 */
 
 /* 段落標題改用標題手寫體,並補回字級 —— Caveat 的字面比黑體小一圈。 */
-html.ink .lf>h3{font-family:var(--titlefam);font-size:17px;letter-spacing:.3px}
-html.ink .subhd{font-family:var(--titlefam);font-size:15px}
-html.ink .nav button{font-size:13.5px}
-html.ink .nav .navgrp{font-size:11px;letter-spacing:.1em}
-html.ink .titlebar #appTitle{letter-spacing:1.5px;font-size:24px}
-html.ink .titlebar .devby{letter-spacing:1px}
-html.ink button.act,html.ink a.act{font-size:14px}
+html.ink .lf>h3{font-family:var(--titlefam);font-size:19px;letter-spacing:.3px}
+html.ink .subhd{font-family:var(--titlefam);font-size:16.5px}
+html.ink .nav button{font-size:14.5px}
+html.ink .nav .navgrp{font-size:11.5px;letter-spacing:.1em}
+html.ink .titlebar #appTitle{letter-spacing:1.5px;font-size:26px}
+html.ink .titlebar .devby{font-size:11.5px;letter-spacing:1px}
+html.ink .titlebar select,html.ink .titlebar button{font-size:12.5px}
+html.ink #who{font-size:13px}
+html.ink button.act,html.ink a.act{font-size:15px}
+html.ink button.act.sm,html.ink a.act.sm{font-size:13.5px}
+html.ink .setnav-tabs button{font-size:13.5px}
+html.ink .setnav-lvl,html.ink .setnav-lvl select{font-size:12.5px}
 
 /* 內文也手寫時才補字級。「手寫標題」那一段內文還是原本的黑體,
    補了反而整頁跳一下。 */
-html.ink-body body{font-size:14.5px;line-height:1.6}
-html.ink-body .hint,html.ink-body .note{font-size:13.5px}
-html.ink-body table{font-size:13.5px}
-html.ink-body .tile .k,html.ink-body .tile .sub{font-size:12.5px}
+html.ink body{font-size:15.5px;line-height:1.62}
+html.ink .hint,html.ink .note{font-size:14.5px}
+html.ink table{font-size:14.5px}
+html.ink .tile .k,html.ink .tile .sub{font-size:13.5px}
+html.ink .inlab,html.ink label{font-size:13.5px}
+html.ink .empty{font-size:14.5px}
 
 /* 表格裡的數字有自己的等寬字,不受影響。這一段管的是儀表板上那幾個
    大數字 —— 金額用手寫體容易看錯,預設留給等寬字。要它們也手寫,
@@ -73,108 +78,162 @@ html.ink #p-dash .dmk,html.ink .pvs b{
   font-family:"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace}
 
 /* ── 二、筆觸 ────────────────────────────────────────────────────────
-   只在 html.ink-full 生效。抖線塗層本來就寫好在 .sketch / .sketch-soft 裡,
+   只在 html.ink 生效。抖線塗層本來就寫好在 .sketch / .sketch-soft 裡,
    是 applyBrand 把 --wob 關成 none —— ink.js 把它打開,57 個面板和
    16 條細框一次都回來。這一段補的是抖線之外的東西。 */
 
 /* 紙紋。面板自己有底色,所以紋路只在有底色的地方鋪一層,不動顏色。 */
-html.ink-full body,
-html.ink-full .lf,
-html.ink-full .modal,
-html.ink-full .modalbody{background-image:var(--grain)}
+html.ink body,
+html.ink .lf,
+html.ink .modal,
+html.ink .modalbody{background-image:var(--grain)}
 
 /* 手繪的方框:四個角半徑各不相同,看起來像一筆畫歪的,不是電腦畫的。
    用 border-radius 而不是 rotate —— 版面是格線排的,轉一下就會擠到旁邊。 */
-html.ink-full button.act,html.ink-full a.act{
+html.ink button.act,html.ink a.act{
   border-radius:14px 5px 12px 6px / 6px 12px 5px 14px}
-html.ink-full button.act.sm,html.ink-full a.act.sm{
+html.ink button.act.sm,html.ink a.act.sm{
   border-radius:10px 4px 9px 5px / 5px 9px 4px 10px}
-html.ink-full .modal{border-radius:16px 7px 14px 8px / 8px 14px 7px 16px}
-html.ink-full input[type=text],html.ink-full input[type=number],
-html.ink-full input[type=password],html.ink-full select.nice{
+html.ink .modal{border-radius:16px 7px 14px 8px / 8px 14px 7px 16px}
+html.ink input[type=text],html.ink input[type=number],
+html.ink input[type=password],html.ink select.nice{
   border-radius:11px 4px 9px 5px / 5px 9px 4px 11px}
 
 /* 段落標題底下畫一條手繪線。抖線塗在虛擬元素上,只有線會歪,字不會 ——
    整個標題套 filter 會把字一起扭掉。 */
-html.ink-full .lf>h3{position:relative;padding-bottom:8px}
-html.ink-full .lf>h3::after{
+html.ink .lf>h3{position:relative;padding-bottom:8px}
+html.ink .lf>h3::after{
   content:"";position:absolute;left:0;right:0;bottom:0;height:0;
   border-bottom:2px solid var(--line);
   filter:url(#wobble-soft)}
-html.ink-full .subhd{
+html.ink .subhd{
   border-bottom:0;position:relative;padding-bottom:6px}
-html.ink-full .subhd::after{
+html.ink .subhd::after{
   content:"";position:absolute;left:0;right:0;bottom:0;height:0;
   border-bottom:1.5px solid var(--line);
   filter:url(#wobble-soft)}
 
 /* 側欄選中的那一條也給它一點手感。 */
-html.ink-full .nav button[aria-selected=true]{
+html.ink .nav button[aria-selected=true]{
   border-left-width:4px}
 
 /* 表格線收細一階。手繪的框配上原本的實線格子會打架,格線退到背景去,
    讓抖線的外框說話。 */
-html.ink-full td{border-bottom-color:color-mix(in srgb,var(--line) 45%,transparent)}
+html.ink td{border-bottom-color:color-mix(in srgb,var(--line) 45%,transparent)}
 
 @media (prefers-reduced-motion:reduce){
-  html.ink-full .lf>h3::after,html.ink-full .subhd::after{filter:none}
+  html.ink .lf>h3::after,html.ink .subhd::after{filter:none}
 }
 
 /* ── 三、水彩 ────────────────────────────────────────────────────────
-   只在 html.ink-paint 生效,是手繪再上一層。手繪畫的是線,這一段補的是
+   只在 html.ink 生效,是手繪再上一層。手繪畫的是線,這一段補的是
    紙、顏料和筆。所有顏色都走 color-mix(var(--...)),六組配色都跟得上;
    材質是灰階的,套什麼底色就吃什麼色。 */
 
 /* 紙。有方向性的噪紋 —— 橫向頻率比縱向低,看起來是紙纖維,不是電視雜訊。
    淺底用暗紋疊,深底(側欄、標題列、表頭)用亮紋,不然什麼都看不到。 */
-html.ink-paint body,
-html.ink-paint .lf,
-html.ink-paint .modal,
-html.ink-paint .modalbody{background-image:var(--paper-tex)}
-html.ink-paint .nav,
-html.ink-paint .titlebar,
-html.ink-paint th{background-image:var(--paper-tooth);background-blend-mode:overlay}
+html.ink body,
+html.ink .lf,
+html.ink .modal,
+html.ink .modalbody{background-image:var(--paper-tex)}
+/* 側欄、標題列、表頭一律換成「淺底深字」。
+   原本這裡是拿 --paper-tooth 疊 overlay —— 那是個錯:overlay 遇到深色底
+   會把它整個提亮,晴空的深藍 #1b5390 被拉成 #339df4、紫藤的 #6a4a92 被拉成
+   #c98cf4,底色亮到跟本來就淺的 --tab 字幾乎同一階,對比只剩 1.7:1。
+   六組配色都是驗過對比才定的,不該被一層材質改掉。
+   現在的做法是用配色自己的主色調出一階淺底,字直接用主色 —— 淺歸淺,
+   而且對比是算出來的:六組配色最低 4.81:1(側欄)與 4.85:1(表頭),全部過 AA。 */
+html.ink{
+  --chrome:color-mix(in srgb,var(--accent) 30%,var(--panel));
+  --chrome-2:color-mix(in srgb,var(--accent) 42%,var(--panel));
+  --chrome-line:color-mix(in srgb,var(--accent) 55%,var(--panel));
+  /* 字不能直接用主色 —— 草綠、奶茶、灰藍的主色本身就偏亮,放在自己調出來的
+     淺底上只有 3.7–4.5:1。摻一半正文色壓深,色相還在,對比就上得去。
+     表頭底色更深一階,字也跟著再壓深一階。 */
+  --chrome-ink:color-mix(in srgb,var(--accent) 50%,var(--text));
+  --chrome-ink-2:color-mix(in srgb,var(--accent) 28%,var(--text))}
+
+html.ink .titlebar{
+  background-color:var(--chrome);color:var(--chrome-ink);
+  background-image:var(--paper-tex);
+  border-bottom:2px solid var(--chrome-line)}
+html.ink .titlebar select,
+html.ink .titlebar button{
+  color:var(--chrome-ink);border-color:var(--chrome-line);opacity:1}
+html.ink .titlebar select:hover,
+html.ink .titlebar button:hover{
+  background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--chrome-ink)}
+html.ink .titlebar select:focus,
+html.ink .titlebar select:focus-visible{outline-color:var(--accent)}
+html.ink .titlebar .devby{opacity:.72}
+html.ink .bigclock #clkSub{opacity:.75}
+
+html.ink .nav{
+  background-color:var(--chrome);border-right-color:var(--chrome-line);
+  background-image:var(--paper-tex)}
+html.ink .nav button{color:var(--chrome-ink);opacity:.92}
+html.ink .nav button:hover{
+  background:color-mix(in srgb,var(--accent) 11%,transparent);opacity:1}
+html.ink .nav .navgrp{color:var(--chrome-ink);opacity:.6}
+html.ink .nav .nnum{opacity:.68}
+html.ink .nav button:focus-visible{outline-color:var(--accent)}
+/* 選中的那一顆反過來:淺側欄上放一塊深色,遠遠就看得出在哪一頁。 */
+html.ink .nav button[aria-selected=true]{
+  background:var(--accent);color:var(--panel);opacity:1;
+  border-left-color:var(--tab)}
+html.ink .nav button[aria-selected=true] .nnum{opacity:.9}
+html.ink .navuser{border-top-color:var(--chrome-line)}
+html.ink .navuser .avatar{background:var(--accent);color:var(--panel)}
+html.ink .navuser b{color:var(--chrome-ink)}
+html.ink .navuser i{color:var(--chrome-ink);opacity:.72}
+
+/* 表頭比側欄再深一階 —— 表格要有一條明確的頂,不然一片淺色分不出哪裡開始。 */
+html.ink th{
+  background-color:var(--chrome-2);color:var(--chrome-ink-2);
+  background-image:var(--paper-tex)}
+html.ink table.pinfirst thead th:first-child{background:var(--chrome-2)}
+html.ink table.sortable thead th:hover{background:var(--chrome-line)}
 
 /* 罩在整個畫面上的那一層紙。用 multiply,所以連文字和表格都在紙上,
    而不是紙在底下、字浮在上面 —— 這是「畫出來的」和「印出來的」差別。
    掛在 html 底下不是 body,因為 body 有 zoom,fixed 會跟著縮。
    覺得整體太髒,把這一條刪掉,面板上的紙紋還在。 */
-html.ink-paint #inkPaper{
+html.ink #inkPaper{
   position:fixed;inset:0;z-index:9999;pointer-events:none;
   background:var(--paper-tex);
   mix-blend-mode:multiply;opacity:.6}
 
 /* 顏料溢出邊線。手上色本來就會超出線稿一點點 —— 兩塊偏移的平色,
    一塊暖、一塊亮,只在兩邊露出兩三個像素。 */
-html.ink-paint .lf{
+html.ink .lf{
   box-shadow:4px 5px 0 -2px color-mix(in srgb,var(--select) 62%,transparent),
              -3px 3px 0 -2px color-mix(in srgb,var(--tab) 26%,transparent)}
-html.ink-paint button.act,html.ink-paint a.act{
+html.ink button.act,html.ink a.act{
   box-shadow:2px 3px 0 -1px color-mix(in srgb,var(--accent) 22%,transparent)}
-html.ink-paint button.act:active{
+html.ink button.act:active{
   box-shadow:1px 1px 0 -1px color-mix(in srgb,var(--accent) 22%,transparent);
   transform:translate(1px,1px)}
 
 /* 段落標題底下換成筆刷:一條中間厚、兩端收細、還帶點歪的墨。
    用遮罩,顏色仍然是 var(--line),換配色會跟著換。 */
-html.ink-paint .lf>h3::after,
-html.ink-paint .subhd::after{
+html.ink .lf>h3::after,
+html.ink .subhd::after{
   border-bottom:0;height:7px;background:var(--line);filter:none;
   -webkit-mask:var(--brush) left bottom/100% 100% no-repeat;
   mask:var(--brush) left bottom/100% 100% no-repeat}
-html.ink-paint .subhd::after{height:5px;opacity:.85}
+html.ink .subhd::after{height:5px;opacity:.85}
 
 /* 邊線改成濕的:位移大一級,再糊 0.35px。乾筆變成沾了水的筆。 */
-html.ink-paint .modal{
+html.ink .modal{
   box-shadow:6px 8px 0 -3px color-mix(in srgb,var(--accent) 16%,transparent)}
 
 /* 畫面四周壓一層極淡的暈。畫紙不會四角一樣亮。
    main 自己是捲動容器,背景不跟著內容捲。 */
-html.ink-paint main{
+html.ink main{
   background-image:radial-gradient(130% 92% at 50% 0%,
     transparent 56%,color-mix(in srgb,var(--accent) 8%,transparent) 100%)}
 
 @media (prefers-reduced-motion:reduce){
-  html.ink-paint button.act:active{transform:none}
+  html.ink button.act:active{transform:none}
 }
 /*!ui-pack:ink.css:end*/

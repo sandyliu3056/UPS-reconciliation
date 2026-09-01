@@ -1,12 +1,11 @@
 /*!ui-pack:ink.js:start*/
 /* ══════════════════════════════════════════════════════════════════════
-   手寫感 / 繪畫感 —— 開關
+   手寫感 / 繪畫感
    整段貼在 index.html 最後那個 script 結束標籤之前。
-   四段:關 / 手寫標題 / 手寫全部 / 手繪。選擇存在這台瀏覽器,
-   和 Colour、Scene、Display size 同一個做法。
+   一個外觀,沒有開關 —— 掛上 html.ink,樣式那一段就全部生效。
    applyFonts 與 applyBrand 是用行內樣式寫 --bodyfam、--wob 這些變數的,
-   CSS 蓋不過去,所以這裡把那兩支包起來,原本的先跑,再蓋上去。
-   整段刪掉,連同樣式那一段,程式就回到原樣。
+   CSS 蓋不過去,所以這裡把那兩支包起來:原本的先跑,再蓋上去。
+   要拿掉就把這一段和樣式那一段一起刪掉,程式回到原樣。
    ══════════════════════════════════════════════════════════════════════ */
 (function(){
 "use strict";
@@ -15,52 +14,30 @@ var CJK='var(--hand-cjk)';
 var HAND_BODY='"Patrick Hand",'+CJK+',sans-serif';
 var HAND_DISP='"Caveat Hand",'+CJK+',sans-serif';
 
-var INK_KEY="ups_recon_ink";
-var LEVELS=["off","title","all","full","paint"];
-var INK="paint";                      /* 預設最滿 —— 要收就在選單上往回調 */
-
-function label(v){
-  var zh={off:"不用手寫",title:"手寫標題",all:"手寫全部",full:"手繪",paint:"水彩"};
-  var en={off:"No ink",title:"Hand title",all:"Hand all",full:"Sketch",paint:"Painted"};
-  return (typeof LANG!=="undefined"&&LANG)?en[v]:zh[v];
-}
-
-/* 把字體與筆觸寫上去。applyFonts 每次跑完都會再呼叫一次這裡,
-   所以換配色、換場景都不會把手寫體洗掉。 */
-function paint(){
-  var r=document.documentElement;
-  r.classList.toggle("ink",     INK!=="off");
-  r.classList.toggle("ink-full", INK==="full"||INK==="paint");
-  r.classList.toggle("ink-paint",INK==="paint");
-  var s=r.style;
-  if(INK==="off") return;             /* 交還給 applyFonts 原本設的值 */
-  /* 標題給 Caveat,側欄與內文給 Patrick Hand —— 側欄是一直要讀的,
-     手寫的印刷體小字才站得住。 */
+/* 標題給 Caveat,側欄與內文給 Patrick Hand —— 側欄是一直要讀的,
+   手寫的印刷體小字才站得住。 */
+function paintFonts(){
+  var s=document.documentElement.style;
   s.setProperty("--titlefam",HAND_DISP);
   s.setProperty("--dispfam", HAND_BODY);
-  if(INK!=="title") s.setProperty("--bodyfam",HAND_BODY);
-}
-/* 只有「手寫全部」和「手繪」才動內文;「手寫標題」時 body 要留原樣,
-   但 html.ink 那組字級補償是為手寫內文寫的,這裡把它關掉。 */
-function paintSize(){
-  document.documentElement.classList.toggle("ink-body",
-    INK==="all"||INK==="full"||INK==="paint");
+  s.setProperty("--bodyfam", HAND_BODY);
+  /* 標題列改成淺底,標題字要跟著換成深的,不然空心描邊在淺底上等於沒有。
+     這個變數是 applyBrand 設的,所以它每次跑完都要再蓋一次。 */
+  s.setProperty("--titlefill","var(--chrome-ink)");
+  s.setProperty("--titlestroke","0");
 }
 
-/* 抖線塗層。.sketch / .sketch-soft 早就寫好了,是 applyBrand 把
-   --wob 設成 none 關掉的。手繪這一段把它開回來,57 個面板、
-   16 條細框一次都回來,不必改任何一行 markup。 */
+/* 抖線塗層。.sketch / .sketch-soft 早就寫好了,是 applyBrand 把 --wob
+   設成 none 關掉的。這裡開回來,57 個面板、16 條細框一次都回來,
+   不必改任何一行 markup。用的是沾了水的筆:位移大一級再糊一點。 */
 function paintBrush(){
   var s=document.documentElement.style;
-  if(INK!=="full"&&INK!=="paint") return;   /* 其餘等級交還給 applyBrand */
-  /* 水彩用沾了水的筆:位移大一級再糊一點,乾筆的線就化開了。 */
-  s.setProperty("--wob",  INK==="paint"?"url(#wobble-wet)" :"url(#wobble)");
-  s.setProperty("--wob2", INK==="paint"?"url(#wobble-damp)":"url(#wobble-soft)");
+  s.setProperty("--wob",  "url(#wobble-wet)");
+  s.setProperty("--wob2", "url(#wobble-damp)");
 }
 
-/* 兩支比原本更濕的濾鏡。掛進頁面本來就有的那個 defs —— 不改 markup,
-   關掉水彩它們就只是沒人用的定義。濾鏡範圍要放大,不然位移出去的
-   邊會被裁掉,線看起來像被切平的。 */
+/* 比原本更濕的兩支濾鏡。掛進頁面本來就有的那個 defs —— 不改 markup。
+   濾鏡範圍要放大,不然位移出去的邊會被裁掉,線看起來像被切平的。 */
 function mountFilters(){
   var defs=document.querySelector("svg.defs");
   if(!defs||document.getElementById("wobble-wet")) return;
@@ -96,57 +73,27 @@ function mountPaper(){
   document.documentElement.appendChild(d);
 }
 
-function apply(v){
-  INK = LEVELS.indexOf(v)>=0 ? v : "full";
-  paint(); paintSize(); paintBrush();
-  try{ localStorage.setItem(INK_KEY,INK); }catch(e){}
-}
-
 /* ── 包住原本那兩支 ────────────────────────────────────────────────
-   兩支都是最外層的 function 宣告,所以就是 window 上的同一個名字;
-   換掉之後,程式裡原本的呼叫也會走到這裡來。 */
+   兩支都是最外層的 function 宣告,就是 window 上的同一個名字;
+   換掉之後,程式裡原本的呼叫也會走到這裡來。換配色、換場景都不會
+   把手寫體和筆觸洗掉。 */
 var _fonts=window.applyFonts, _brand=window.applyBrand;
 if(typeof _fonts==="function"){
   window.applyFonts=function(){
-    var out=_fonts.apply(this,arguments);
-    paint(); paintSize();
-    return out;
+    var out=_fonts.apply(this,arguments); paintFonts(); return out;
   };
 }
 if(typeof _brand==="function"){
   window.applyBrand=function(){
-    var out=_brand.apply(this,arguments);
-    paintBrush();
-    return out;
+    var out=_brand.apply(this,arguments); paintBrush(); paintFonts(); return out;
   };
 }
 
-/* ── 標題列上的選單 ────────────────────────────────────────────────
-   放在 Colour 後面。原本那五顆的樣式吃 .titlebar select,不用另外寫。 */
-function mount(){
-  var ctrls=document.querySelector(".titlebar .ctrls");
-  if(!ctrls||document.getElementById("inkSel")) return;
-  var sel=document.createElement("select");
-  sel.id="inkSel"; sel.title="Ink";
-  ctrls.appendChild(sel);
-  fill();
-  sel.onchange=function(e){ apply(e.target.value); fill(); };
+function boot(){
+  mountFilters(); mountPaper();
+  document.documentElement.classList.add("ink");
+  paintFonts(); paintBrush();
 }
-function fill(){
-  var sel=document.getElementById("inkSel");
-  if(!sel) return;
-  sel.innerHTML=LEVELS.map(function(v){
-    return '<option value="'+v+'"'+(v===INK?' selected':'')+'>'+label(v)+'</option>';
-  }).join("");
-}
-/* 換語言時 fillSelects 會重畫其他選單,順手把這一顆也換掉。 */
-var _fill=window.fillSelects;
-if(typeof _fill==="function"){
-  window.fillSelects=function(){ var o=_fill.apply(this,arguments); fill(); return o; };
-}
-
-try{ var v=localStorage.getItem(INK_KEY); if(v) INK=v; }catch(e){}
-function boot(){ mountFilters(); mountPaper(); mount(); apply(INK); }
 if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot);
 else boot();
 })();

@@ -135,8 +135,8 @@ def main():
             print("· 兩個字型檔都在同一層,沒問題。")
 
     print("\n下一步")
-    print("  1. node test/test-patch.js  且  node test/test-ink.js（需要 npm i jsdom）")
-    print("  2. 瀏覽器開一次,右上角選單試四段：不用手寫 / 手寫全部 / 手繪 / 水彩")
+    print("  1. npm install && npm test（jsdom 回歸 + 六組配色對比驗算）")
+    print("  2. 瀏覽器開一次,六組配色都切一輪,看側欄與表頭的字")
     print("  3. git add -A && git commit && git push")
 
 
