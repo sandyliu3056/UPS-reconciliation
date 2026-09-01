@@ -9405,6 +9405,13 @@ $("#bDelChan") && ($("#bDelChan").onclick=async()=>{
   CFG=readConfig(CFG.raw); DIRTY=true; renderConfigTabs(); saveSettings();
   setStatus((LANG?"Deleted from every level: ":"已自所有層級刪除:")+t.length);
 });
+/* 正在編輯的層級名接在檔名尾巴(-TW、-JL):04 每個分頁倒出來的檔案
+   都帶著它,桌面上各層各一份的檔才分得出誰是誰。 */
+function lvlFileSuffix(){
+  const n=(typeof lvlListAll==="function"&&typeof rlStore==="function")
+    ? ((lvlListAll().find(e=>e.id===(rlStore()||{}).active)||{}).name||"") : "";
+  return n?"-"+String(n).replace(/[^A-Za-z0-9]+/g,"_"):"";
+}
 $("#bExpRate") && ($("#bExpRate").onclick=()=>{
   const pick=($("#rateChan")||{}).value||"";
   const svc0=pick.split("|")[0]||"";
@@ -9444,12 +9451,7 @@ $("#bExpRate") && ($("#bExpRate").onclick=()=>{
     return {key, zones, aoa:[head,...body]};
   };
   const com=sheetFor(false), resi=sheetFor(true);
-  /* 檔名帶上正在編輯的層級(如 -TW、-JL):同一條渠道會為每一層各倒
-     一份模板,檔名不標層級的話,桌面上那三個檔分不出誰是誰。 */
-  const _lvS=(typeof lvlListAll==="function"&&typeof rlStore==="function")
-    ? ((lvlListAll().find(e=>e.id===(rlStore()||{}).active)||{}).name||"") : "";
-  const fname="UPS_BaseRate_"+fam.replace(/[^A-Za-z0-9]+/g,"_")
-    +(_lvS?"-"+_lvS.replace(/[^A-Za-z0-9]+/g,"_"):"")+".xlsx";
+  const fname="UPS_BaseRate_"+fam.replace(/[^A-Za-z0-9]+/g,"_")+lvlFileSuffix()+".xlsx";
   loadXLSX().then(X=>{
     const wb=X.utils.book_new();
     X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(com.aoa),"Commercial");
@@ -9722,7 +9724,7 @@ $("#bExportAcc") && ($("#bExportAcc").onclick=()=>{
     const v=t[fee+"|||"+ch];
     return [feeDisplay(fee),(v!=null&&typeof v!=="object")?toNum(v):0];
   });
-  const fname="UPS_Accessorials_"+svcOf(ch).replace(/[^A-Za-z0-9]+/g,"_")+".xlsx";
+  const fname="UPS_Accessorials_"+svcOf(ch).replace(/[^A-Za-z0-9]+/g,"_")+lvlFileSuffix()+".xlsx";
   /* 申報價值那四個數也要跟著模板走 —— 不然拿到模板的人附加費都有了,
      偏偏保價費用預設值算。名字照畫面上那四格。它是全域設定,每個渠道
      的模板都帶同一份。 */
@@ -15385,7 +15387,7 @@ function dynExport(){
     const wb=X.utils.book_new();
     X.utils.book_append_sheet(wb,ws,"Custom Surcharges");
     const buf=X.write(wb,{bookType:"xlsx",type:"array"});
-    dlBlob(new Blob([buf],{type:"application/octet-stream"}),"custom_surcharges.xlsx");
+    dlBlob(new Blob([buf],{type:"application/octet-stream"}),"custom_surcharges"+lvlFileSuffix()+".xlsx");
     setStatus(L("自訂附加費清單已匯出","Custom surcharge list exported"));
   }).catch(()=>{
     /* 匯出一律 xlsx。寫檔元件就在站內,載不到代表它沒被部署上去 ——
