@@ -12812,14 +12812,25 @@ async function reconTemplate(src){
   const HC=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"8A6104",color:"FFFFFF"}});
   const HT=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"1F5638",color:"FFFFFF"}});
   const CH=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
-  const hd=idc.map(H).concat(REPORT_MONEY.map(HC),[HT(RECON_COL.amt)]);
+  /* 只列出貨當下就存在的費用。這一批要等 UPS 開了帳單才會出現(地址更正、
+     退件、攔截、超大件、漏傳 PLD…),WMS / TMS 出貨時根本沒有這些數字,
+     擺在模板上只是三十幾欄裡再多十五欄永遠空白的。匯入端照費用名認欄,
+     舊模板帶著這些欄照樣讀得進來。 */
+  const UPS_ONLY=new Set(["Package Protection","Direct Delivery Only","Reroute",
+    "Reschedule Delivery","Returns Electronic Label","Returns Print Label",
+    "Future Day Pickup - Alternate Address - Web Request",
+    "Returns 3 UPS Pickup Attempts","Residential Pickup surcharge",
+    "Missing PLD Fee","Return To Sender","2nd Mile Road Base Rate",
+    "Undeliverable Return","Address Correction","Over Maximum Size Surcharge"]);
+  const tplFees=REPORT_MONEY.filter(n=>!UPS_ONLY.has(n));
+  const hd=idc.map(H).concat(tplFees.map(HC),[HT(RECON_COL.amt)]);
   const nCol=hd.length;
   const reg=cusReg();
   const sheets=[
     {name:RECON_SHEET, rows:[hd], freeze:{r:1,c:4},
      filter:"A1:"+xlColName(nCol)+"1",
      cols:[{w:22},{w:38},{w:18},{w:14}]
-       .concat(REPORT_MONEY.map(()=>({w:16})),[{w:16}])},
+       .concat(tplFees.map(()=>({w:16})),[{w:16}])},
     /* 客戶名單只是下拉選單的來源。Excel 的清單驗證一定要指向活頁簿裡的一個
        範圍,所以這一頁必須存在;但它不是給人填的,所以藏起來。 */
     {name:"Customers", hidden:true, freeze:{r:1,c:0}, cols:[{w:18},{w:34}],
@@ -12833,8 +12844,8 @@ async function reconTemplate(src){
     title:L("代碼不在名單上","Unknown customer code"),
     msg:L("請從 Customers 分頁選一個代碼。","Pick a code from the Customers sheet.")}];
   await xlWrite(sheets, src+"_Reconciliation_Template.xlsx");
-  reconMsg(L(src+" 模板已下載:識別四欄 + "+REPORT_MONEY.length+" 項費用 + 總收取金額,含客戶 "+reg.length+" 筆。",
-             src+" template downloaded: 4 identity columns + "+REPORT_MONEY.length
+  reconMsg(L(src+" 模板已下載:識別四欄 + "+tplFees.length+" 項費用 + 總收取金額,含客戶 "+reg.length+" 筆。",
+             src+" template downloaded: 4 identity columns + "+tplFees.length
              +" itemized charges + Total Amount, with "+reg.length+" customer(s)."), true);
 }
 
