@@ -1174,6 +1174,235 @@ input,textarea,[contenteditable="true"]{caret-color:auto}
 .dpGrid button.today{outline:2px solid var(--run2);outline-offset:1px}
 .dpGrid button.on{background:var(--accent);color:var(--tab)}
 .dpGrid .pad{visibility:hidden}
+/*!ui-pack:ui-patch.css:start*/
+/* ── 介面補強:配合後掛那一段的樣式 ────────────────────────────────── */
+
+/* 可排序的表頭 —— 指標和箭頭,沒有別的裝飾。箭頭固定佔位,
+   點下去不會整排文字跳一格。 */
+table.sortable thead th{cursor:pointer;user-select:none;padding-right:20px;position:relative}
+table.sortable thead th:hover{background:var(--run-hover,#1f100b)}
+table.sortable thead th:focus-visible{outline:2px solid var(--tab);outline-offset:-2px}
+table.sortable thead th::after{
+  content:"";position:absolute;right:7px;top:50%;transform:translateY(-50%);
+  font-size:9px;opacity:.35;line-height:1}
+table.sortable thead th[data-dir="-1"]::after{content:"▼";opacity:.95}
+table.sortable thead th[data-dir="1"]::after{content:"▲";opacity:.95}
+
+/* 首欄凍結。底色要是實心的,不然捲過去會透出後面那一欄。 */
+table.pinfirst tbody td:first-child,
+table.pinfirst thead th:first-child{position:sticky;left:0}
+table.pinfirst tbody td:first-child{
+  background:var(--stripe);z-index:1;
+  box-shadow:1px 0 0 0 var(--line)}
+table.pinfirst thead th:first-child{
+  background:var(--accent);z-index:3;
+  box-shadow:1px 0 0 0 var(--line)}
+table.pinfirst tbody tr:hover td:first-child{
+  background:color-mix(in srgb, var(--select) 45%, var(--stripe))}
+table.pinfirst tfoot td:first-child{position:sticky;left:0;background:var(--stripe);z-index:1}
+
+/* 往右還有東西。表格捲到底之前,右緣壓一層淡影;捲到底就沒了。 */
+.tablewrap{
+  background:
+    linear-gradient(to right, var(--stripe) 30%, rgba(247,241,228,0)) left / 22px 100% no-repeat local,
+    linear-gradient(to left,  var(--stripe) 30%, rgba(247,241,228,0)) right / 22px 100% no-repeat local,
+    linear-gradient(to right, rgba(53,28,21,.16), rgba(53,28,21,0)) left / 12px 100% no-repeat scroll,
+    linear-gradient(to left,  rgba(53,28,21,.16), rgba(53,28,21,0)) right / 12px 100% no-repeat scroll;
+}
+
+/* ── 斑馬紋(可留可刪)────────────────────────────────────────────────
+   table 的底色是 var(--stripe),tbody tr:nth-child(even) 也是 var(--stripe)
+   —— 同一個色,所以那條斑馬紋規則等於沒有畫。奇數列改成淺一階的
+   --panel 才看得出來。不要就把這一段整個刪掉,其餘不受影響。 */
+table tbody tr:nth-child(odd):not(.stprev)>td{background:var(--panel)}
+table tbody tr:hover>td{background:color-mix(in srgb, var(--select) 45%, var(--panel))}
+table.pinfirst tbody tr:nth-child(even)>td:first-child{background:var(--stripe)}
+table.pinfirst tbody tr:nth-child(odd):not(.stprev)>td:first-child{background:var(--panel)}
+
+@media (prefers-reduced-motion:reduce){
+  table.sortable thead th{transition:none}
+}
+/*!ui-pack:ui-patch.css:end*/
+/*!ui-pack:ink.css:start*/
+/* ══════════════════════════════════════════════════════════════════════
+   手寫感 / 繪畫感 —— 字體與筆觸
+   整段貼在第一個 style 結束標籤之前。全部收在 html.ink / html.ink-full
+   底下,開關沒開就一條也不生效。
+   字體:Caveat 與 Patrick Hand,兩者皆 SIL Open Font License 1.1,
+   可自由內嵌與散布。字型檔與 index.html 放在同一層。想改成內嵌單檔,
+   改用 ink-embedded.css。
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* 標題手寫體。單一檔案宣告成 400–900,瀏覽器就不會再自己加粗 ——
+   手寫體被合成粗體會糊成一團。 */
+@font-face{
+  font-family:"Caveat Hand";
+  src:url("caveat.woff2") format("woff2");
+  font-weight:400 900; font-style:normal; font-display:swap;
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,
+    U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+/* 內文手寫體。這一支是印刷體的手寫,小字還讀得動;粗體交給瀏覽器合成,
+   單線條的字型合出來還算乾淨。 */
+@font-face{
+  font-family:"Patrick Hand";
+  src:url("patrick-hand.woff2") format("woff2");
+  font-weight:400; font-style:normal; font-display:swap;
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,
+    U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* 中文沒有可以內嵌的手寫字 —— 一套繁體字型動輒好幾 MB。改用系統本來就有的:
+   Mac 是手札體／手寫體／娃娃體,Windows 是標楷體。兩邊都沒有就落回原本的黑體,
+   只有英數字是手寫,版面不會壞。 */
+:root{
+  --hand-cjk:"Hanzipen TC","HanziPen TC","Hannotate TC","Yuppy TC","LingWai TC",
+             "DFKai-SB","標楷體","BiauKai","Kaiti TC","KaiTi",
+             "Microsoft JhengHei","PingFang TC","Noto Sans TC";
+  --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='160' height='160' filter='url(%23g)' opacity='0.05'/></svg>");
+  --paper-tex:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.62 0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.55'/></feComponentTransfer></filter><rect width='180' height='180' filter='url(%23p)' opacity='0.17'/></svg>");
+  --paper-tooth:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='t'><feTurbulence type='fractalNoise' baseFrequency='0.7 0.95' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='180' height='180' fill='%23fff'/><rect width='180' height='180' filter='url(%23t)' opacity='0.5' style='mix-blend-mode:multiply'/></svg>");
+  --brush:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 10' preserveAspectRatio='none'><path d='M2 5.6C40 2.8 68 7.6 100 4.8 132 2.0 168 6.8 198 4.4L198 7.2C168 9.6 132 4.8 100 7.6 68 10.4 40 5.6 2 8.4Z' fill='%23000'/></svg>");
+}
+
+/* ── 一、手寫字 ──────────────────────────────────────────────────────
+   字體本身由 ink.js 寫進 --titlefam / --dispfam / --bodyfam,因為那三個
+   變數是 applyFonts 用行內樣式設的,CSS 蓋不過去。這裡只調手寫體會動到
+   的字級與行距。
+   分工:--titlefam 給 Caveat(標題、段落標題、儀表板大字),
+   --dispfam 與 --bodyfam 給 Patrick Hand —— 側欄和內文是要一直讀的,
+   用印刷體的手寫,小字才站得住。 */
+
+/* 段落標題改用標題手寫體,並補回字級 —— Caveat 的字面比黑體小一圈。 */
+html.ink .lf>h3{font-family:var(--titlefam);font-size:17px;letter-spacing:.3px}
+html.ink .subhd{font-family:var(--titlefam);font-size:15px}
+html.ink .nav button{font-size:13.5px}
+html.ink .nav .navgrp{font-size:11px;letter-spacing:.1em}
+html.ink .titlebar #appTitle{letter-spacing:1.5px;font-size:24px}
+html.ink .titlebar .devby{letter-spacing:1px}
+html.ink button.act,html.ink a.act{font-size:14px}
+
+/* 內文也手寫時才補字級。「手寫標題」那一段內文還是原本的黑體,
+   補了反而整頁跳一下。 */
+html.ink-body body{font-size:14.5px;line-height:1.6}
+html.ink-body .hint,html.ink-body .note{font-size:13.5px}
+html.ink-body table{font-size:13.5px}
+html.ink-body .tile .k,html.ink-body .tile .sub{font-size:12.5px}
+
+/* 表格裡的數字有自己的等寬字,不受影響。這一段管的是儀表板上那幾個
+   大數字 —— 金額用手寫體容易看錯,預設留給等寬字。要它們也手寫,
+   把這一段刪掉。 */
+html.ink #p-dash .kbig,html.ink #p-dash .bval,
+html.ink #p-dash .zrow .zv,html.ink #p-dash .cmprow .cv,
+html.ink #p-dash .dmk,html.ink .pvs b{
+  font-family:"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace}
+
+/* ── 二、筆觸 ────────────────────────────────────────────────────────
+   只在 html.ink-full 生效。抖線塗層本來就寫好在 .sketch / .sketch-soft 裡,
+   是 applyBrand 把 --wob 關成 none —— ink.js 把它打開,57 個面板和
+   16 條細框一次都回來。這一段補的是抖線之外的東西。 */
+
+/* 紙紋。面板自己有底色,所以紋路只在有底色的地方鋪一層,不動顏色。 */
+html.ink-full body,
+html.ink-full .lf,
+html.ink-full .modal,
+html.ink-full .modalbody{background-image:var(--grain)}
+
+/* 手繪的方框:四個角半徑各不相同,看起來像一筆畫歪的,不是電腦畫的。
+   用 border-radius 而不是 rotate —— 版面是格線排的,轉一下就會擠到旁邊。 */
+html.ink-full button.act,html.ink-full a.act{
+  border-radius:14px 5px 12px 6px / 6px 12px 5px 14px}
+html.ink-full button.act.sm,html.ink-full a.act.sm{
+  border-radius:10px 4px 9px 5px / 5px 9px 4px 10px}
+html.ink-full .modal{border-radius:16px 7px 14px 8px / 8px 14px 7px 16px}
+html.ink-full input[type=text],html.ink-full input[type=number],
+html.ink-full input[type=password],html.ink-full select.nice{
+  border-radius:11px 4px 9px 5px / 5px 9px 4px 11px}
+
+/* 段落標題底下畫一條手繪線。抖線塗在虛擬元素上,只有線會歪,字不會 ——
+   整個標題套 filter 會把字一起扭掉。 */
+html.ink-full .lf>h3{position:relative;padding-bottom:8px}
+html.ink-full .lf>h3::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:0;
+  border-bottom:2px solid var(--line);
+  filter:url(#wobble-soft)}
+html.ink-full .subhd{
+  border-bottom:0;position:relative;padding-bottom:6px}
+html.ink-full .subhd::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:0;
+  border-bottom:1.5px solid var(--line);
+  filter:url(#wobble-soft)}
+
+/* 側欄選中的那一條也給它一點手感。 */
+html.ink-full .nav button[aria-selected=true]{
+  border-left-width:4px}
+
+/* 表格線收細一階。手繪的框配上原本的實線格子會打架,格線退到背景去,
+   讓抖線的外框說話。 */
+html.ink-full td{border-bottom-color:color-mix(in srgb,var(--line) 45%,transparent)}
+
+@media (prefers-reduced-motion:reduce){
+  html.ink-full .lf>h3::after,html.ink-full .subhd::after{filter:none}
+}
+
+/* ── 三、水彩 ────────────────────────────────────────────────────────
+   只在 html.ink-paint 生效,是手繪再上一層。手繪畫的是線,這一段補的是
+   紙、顏料和筆。所有顏色都走 color-mix(var(--...)),六組配色都跟得上;
+   材質是灰階的,套什麼底色就吃什麼色。 */
+
+/* 紙。有方向性的噪紋 —— 橫向頻率比縱向低,看起來是紙纖維,不是電視雜訊。
+   淺底用暗紋疊,深底(側欄、標題列、表頭)用亮紋,不然什麼都看不到。 */
+html.ink-paint body,
+html.ink-paint .lf,
+html.ink-paint .modal,
+html.ink-paint .modalbody{background-image:var(--paper-tex)}
+html.ink-paint .nav,
+html.ink-paint .titlebar,
+html.ink-paint th{background-image:var(--paper-tooth);background-blend-mode:overlay}
+
+/* 罩在整個畫面上的那一層紙。用 multiply,所以連文字和表格都在紙上,
+   而不是紙在底下、字浮在上面 —— 這是「畫出來的」和「印出來的」差別。
+   掛在 html 底下不是 body,因為 body 有 zoom,fixed 會跟著縮。
+   覺得整體太髒,把這一條刪掉,面板上的紙紋還在。 */
+html.ink-paint #inkPaper{
+  position:fixed;inset:0;z-index:9999;pointer-events:none;
+  background:var(--paper-tex);
+  mix-blend-mode:multiply;opacity:.6}
+
+/* 顏料溢出邊線。手上色本來就會超出線稿一點點 —— 兩塊偏移的平色,
+   一塊暖、一塊亮,只在兩邊露出兩三個像素。 */
+html.ink-paint .lf{
+  box-shadow:4px 5px 0 -2px color-mix(in srgb,var(--select) 62%,transparent),
+             -3px 3px 0 -2px color-mix(in srgb,var(--tab) 26%,transparent)}
+html.ink-paint button.act,html.ink-paint a.act{
+  box-shadow:2px 3px 0 -1px color-mix(in srgb,var(--accent) 22%,transparent)}
+html.ink-paint button.act:active{
+  box-shadow:1px 1px 0 -1px color-mix(in srgb,var(--accent) 22%,transparent);
+  transform:translate(1px,1px)}
+
+/* 段落標題底下換成筆刷:一條中間厚、兩端收細、還帶點歪的墨。
+   用遮罩,顏色仍然是 var(--line),換配色會跟著換。 */
+html.ink-paint .lf>h3::after,
+html.ink-paint .subhd::after{
+  border-bottom:0;height:7px;background:var(--line);filter:none;
+  -webkit-mask:var(--brush) left bottom/100% 100% no-repeat;
+  mask:var(--brush) left bottom/100% 100% no-repeat}
+html.ink-paint .subhd::after{height:5px;opacity:.85}
+
+/* 邊線改成濕的:位移大一級,再糊 0.35px。乾筆變成沾了水的筆。 */
+html.ink-paint .modal{
+  box-shadow:6px 8px 0 -3px color-mix(in srgb,var(--accent) 16%,transparent)}
+
+/* 畫面四周壓一層極淡的暈。畫紙不會四角一樣亮。
+   main 自己是捲動容器,背景不跟著內容捲。 */
+html.ink-paint main{
+  background-image:radial-gradient(130% 92% at 50% 0%,
+    transparent 56%,color-mix(in srgb,var(--accent) 8%,transparent) 100%)}
+
+@media (prefers-reduced-motion:reduce){
+  html.ink-paint button.act:active{transform:none}
+}
+/*!ui-pack:ink.css:end*/
 </style>
 </head>
 <body>
@@ -19171,6 +19400,307 @@ step("tab", ()=>{
   showTab(want);
 });
 
+/*!ui-pack:ui-patch.js:start*/
+/* ══════════════════════════════════════════════════════════════════════
+   介面補強 —— ESC 關窗、搜尋延後、表頭排序、首欄凍結
+   整段貼在 index.html 最後那個 script 結束標籤之前。
+   既有的繫結一行都不改;整段刪掉就回到原樣。
+   ══════════════════════════════════════════════════════════════════════ */
+(function(){
+"use strict";
+var qs =function(s,r){ return (r||document).querySelector(s); };
+var qsa=function(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
+
+/* ── 1. ESC 關掉最上層的視窗 ───────────────────────────────────────────
+   二十五個視窗裡只有兩個吃 ESC。按下去等於按那個視窗自己的 ✕,
+   所以每個視窗原本的收尾照舊會跑,不是把它藏起來而已。
+   疊在一起時只關最上面那一層 —— 用打開的先後判斷,不是 DOM 順序,
+   因為子視窗未必寫在父視窗後面。 */
+var seq=0;
+qsa(".modalbg").forEach(function(bg){
+  new MutationObserver(function(){
+    if(bg.classList.contains("on")) bg.dataset.openSeq=(++seq);
+  }).observe(bg,{attributes:true,attributeFilter:["class"]});
+});
+function topModal(){
+  var on=qsa(".modalbg.on");
+  if(!on.length) return null;
+  return on.sort(function(a,b){
+    return (+a.dataset.openSeq||0)-(+b.dataset.openSeq||0); }).pop();
+}
+/* 記住是誰打開的,關掉之後焦點還給它 —— 不然 Tab 會從整頁最上面重來。 */
+var opener=null;
+document.addEventListener("mousedown",function(e){
+  var b=e.target&&e.target.closest?e.target.closest("button"):null;
+  if(b&&!b.closest(".modalbg")) opener=b;
+},true);
+document.addEventListener("keydown",function(e){
+  if(e.key!=="Escape") return;
+  var bg=topModal(); if(!bg) return;
+  var x=qs(".modalhd .mx",bg); if(!x) return;
+  e.preventDefault(); e.stopPropagation();
+  x.click();
+  if(opener&&document.contains(opener)&&!opener.closest(".modalbg")){
+    try{ opener.focus(); }catch(_){}
+  }
+},false);
+
+/* ── 2. 搜尋延後 ───────────────────────────────────────────────────────
+   十個搜尋框都是每敲一個字整張表重畫一次。歷史那張六千列,
+   打一組追蹤號要重畫十八次。改成停手之後才畫。
+   做法是在捕捉階段擋住原本的 input,延後再補送一次同樣的事件 ——
+   原本的 oninput 一行都不用碰,重新繫結也不會把這層蓋掉。 */
+var DEB_MS=180;
+var DEB_IDS=["accMgrSearch","cusSearch","chanSearch","accSearch","demSearch",
+             "trkSearch","lvlSearch","sysSearch","codeSearch","chgSearch"];
+var pend={};
+document.addEventListener("input",function(e){
+  var el=e.target;
+  if(!el||!el.id||DEB_IDS.indexOf(el.id)<0) return;
+  if(e.__thru) return;                       /* 這一發是延後之後自己補的 */
+  e.stopImmediatePropagation();
+  clearTimeout(pend[el.id]);
+  pend[el.id]=setTimeout(function(){
+    var ev=new Event("input",{bubbles:true});
+    ev.__thru=1;
+    el.dispatchEvent(ev);
+  },DEB_MS);
+},true);
+/* Enter 不等 —— 打完直接按就馬上查。 */
+document.addEventListener("keydown",function(e){
+  var el=e.target;
+  if(e.key!=="Enter"||!el||!el.id||DEB_IDS.indexOf(el.id)<0) return;
+  clearTimeout(pend[el.id]);
+  var ev=new Event("input",{bubbles:true}); ev.__thru=1;
+  el.dispatchEvent(ev);
+},true);
+
+/* ── 3. 表頭排序 ───────────────────────────────────────────────────────
+   只給看數字的那幾張:誰的毛利最低、哪一筆差最多,現在得自己一列一列找。
+   排序只動畫面上的列,不碰任何金額;重畫之後回到原本的順序。 */
+var SORT_IDS=["tRecon","tReconChg","tAnaCus","tAnaLvl"];
+function cellVal(td){
+  var t=(td.textContent||"").trim();
+  if(!t||t==="—"||t==="–"||t==="-") return {n:null,s:""};
+  var neg=/^\(.*\)$/.test(t)||/^-/.test(t);
+  var m=t.replace(/[()]/g,"").replace(/[$,%\s]/g,"").replace(/^-/,"");
+  if(m!==""&&/^\d+(\.\d+)?$/.test(m)) return {n:neg?-parseFloat(m):parseFloat(m),s:t};
+  return {n:null,s:t.toLowerCase()};
+}
+function sortTable(tb,idx,dir){
+  var rows=Array.prototype.slice.call(tb.rows)
+           .filter(function(r){ return !r.querySelector("td.empty")&&r.cells.length>idx; });
+  if(rows.length<2) return;
+  rows.forEach(function(r,i){ if(r.__ord===undefined) r.__ord=i; });
+  if(dir===0){ rows.sort(function(a,b){ return a.__ord-b.__ord; }); }
+  else rows.sort(function(a,b){
+    var x=cellVal(a.cells[idx]), y=cellVal(b.cells[idx]), c;
+    if(x.n!==null&&y.n!==null) c=x.n-y.n;
+    else if(x.n!==null) c=-1;
+    else if(y.n!==null) c=1;
+    else c=x.s<y.s?-1:x.s>y.s?1:0;
+    return dir<0?-c:c;
+  });
+  rows.forEach(function(r){ tb.appendChild(r); });
+}
+function armSort(t){
+  if(!t||!t.tHead||t.__sortArmed) return;
+  t.__sortArmed=1; t.classList.add("sortable");
+  var hr=t.tHead.rows[t.tHead.rows.length-1];
+  Array.prototype.slice.call(hr.cells).forEach(function(th,i){
+    if(!(th.textContent||"").trim()) return;     /* 勾選欄、操作欄不排 */
+    th.tabIndex=0;
+    /* 這一欄是數字還是文字,看第一列有值的儲存格。數字先給大的
+       ——「誰的毛利最低」問的是排頭那幾筆;文字先 A 到 Z。 */
+    var firstDir=function(){
+      var body=t.tBodies[0]; if(!body) return -1;
+      for(var r=0;r<body.rows.length;r++){
+        var c=body.rows[r].cells[i]; if(!c) continue;
+        var v=cellVal(c); if(v.n!==null) return -1; if(v.s) return 1;
+      }
+      return -1;
+    };
+    var hit=function(){
+      var f=firstDir(), d=(+th.dataset.dir||0);
+      d = d===0 ? f : d===f ? -f : 0;            /* 首選 → 反向 → 原順序 */
+      Array.prototype.slice.call(hr.cells).forEach(function(o){
+        if(o!==th) delete o.dataset.dir; });
+      if(d===0) delete th.dataset.dir; else th.dataset.dir=d;
+      if(t.tBodies[0]) sortTable(t.tBodies[0],i,d);
+    };
+    th.addEventListener("click",hit);
+    th.addEventListener("keydown",function(e){
+      if(e.key==="Enter"||e.key===" "){ e.preventDefault(); hit(); } });
+  });
+}
+
+/* ── 4. 首欄凍結 ───────────────────────────────────────────────────────
+   十一到十三欄的表往右捲之後,看到一排數字卻不知道是誰的。
+   第一欄釘住,身分就一直在。 */
+var PIN_IDS=["tRecon","tReconChg","tHist","tSize","tAnaCus","tAnaLvl"];
+
+function arm(){
+  SORT_IDS.forEach(function(id){ armSort(document.getElementById(id)); });
+  PIN_IDS.forEach(function(id){
+    var t=document.getElementById(id); if(t) t.classList.add("pinfirst"); });
+}
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",arm);
+else arm();
+})();
+/*!ui-pack:ui-patch.js:end*/
+/*!ui-pack:ink.js:start*/
+/* ══════════════════════════════════════════════════════════════════════
+   手寫感 / 繪畫感 —— 開關
+   整段貼在 index.html 最後那個 script 結束標籤之前。
+   四段:關 / 手寫標題 / 手寫全部 / 手繪。選擇存在這台瀏覽器,
+   和 Colour、Scene、Display size 同一個做法。
+   applyFonts 與 applyBrand 是用行內樣式寫 --bodyfam、--wob 這些變數的,
+   CSS 蓋不過去,所以這裡把那兩支包起來,原本的先跑,再蓋上去。
+   整段刪掉,連同樣式那一段,程式就回到原樣。
+   ══════════════════════════════════════════════════════════════════════ */
+(function(){
+"use strict";
+
+var CJK='var(--hand-cjk)';
+var HAND_BODY='"Patrick Hand",'+CJK+',sans-serif';
+var HAND_DISP='"Caveat Hand",'+CJK+',sans-serif';
+
+var INK_KEY="ups_recon_ink";
+var LEVELS=["off","title","all","full","paint"];
+var INK="paint";                      /* 預設最滿 —— 要收就在選單上往回調 */
+
+function label(v){
+  var zh={off:"不用手寫",title:"手寫標題",all:"手寫全部",full:"手繪",paint:"水彩"};
+  var en={off:"No ink",title:"Hand title",all:"Hand all",full:"Sketch",paint:"Painted"};
+  return (typeof LANG!=="undefined"&&LANG)?en[v]:zh[v];
+}
+
+/* 把字體與筆觸寫上去。applyFonts 每次跑完都會再呼叫一次這裡,
+   所以換配色、換場景都不會把手寫體洗掉。 */
+function paint(){
+  var r=document.documentElement;
+  r.classList.toggle("ink",     INK!=="off");
+  r.classList.toggle("ink-full", INK==="full"||INK==="paint");
+  r.classList.toggle("ink-paint",INK==="paint");
+  var s=r.style;
+  if(INK==="off") return;             /* 交還給 applyFonts 原本設的值 */
+  /* 標題給 Caveat,側欄與內文給 Patrick Hand —— 側欄是一直要讀的,
+     手寫的印刷體小字才站得住。 */
+  s.setProperty("--titlefam",HAND_DISP);
+  s.setProperty("--dispfam", HAND_BODY);
+  if(INK!=="title") s.setProperty("--bodyfam",HAND_BODY);
+}
+/* 只有「手寫全部」和「手繪」才動內文;「手寫標題」時 body 要留原樣,
+   但 html.ink 那組字級補償是為手寫內文寫的,這裡把它關掉。 */
+function paintSize(){
+  document.documentElement.classList.toggle("ink-body",
+    INK==="all"||INK==="full"||INK==="paint");
+}
+
+/* 抖線塗層。.sketch / .sketch-soft 早就寫好了,是 applyBrand 把
+   --wob 設成 none 關掉的。手繪這一段把它開回來,57 個面板、
+   16 條細框一次都回來,不必改任何一行 markup。 */
+function paintBrush(){
+  var s=document.documentElement.style;
+  if(INK!=="full"&&INK!=="paint") return;   /* 其餘等級交還給 applyBrand */
+  /* 水彩用沾了水的筆:位移大一級再糊一點,乾筆的線就化開了。 */
+  s.setProperty("--wob",  INK==="paint"?"url(#wobble-wet)" :"url(#wobble)");
+  s.setProperty("--wob2", INK==="paint"?"url(#wobble-damp)":"url(#wobble-soft)");
+}
+
+/* 兩支比原本更濕的濾鏡。掛進頁面本來就有的那個 defs —— 不改 markup,
+   關掉水彩它們就只是沒人用的定義。濾鏡範圍要放大,不然位移出去的
+   邊會被裁掉,線看起來像被切平的。 */
+function mountFilters(){
+  var defs=document.querySelector("svg.defs");
+  if(!defs||document.getElementById("wobble-wet")) return;
+  var NS="http://www.w3.org/2000/svg";
+  function mk(id,freq,oct,seed,scale,blur){
+    var f=document.createElementNS(NS,"filter");
+    f.setAttribute("id",id);
+    f.setAttribute("x","-14%"); f.setAttribute("y","-14%");
+    f.setAttribute("width","128%"); f.setAttribute("height","128%");
+    var t=document.createElementNS(NS,"feTurbulence");
+    t.setAttribute("type","fractalNoise"); t.setAttribute("baseFrequency",freq);
+    t.setAttribute("numOctaves",oct); t.setAttribute("seed",seed); t.setAttribute("result","n");
+    var d=document.createElementNS(NS,"feDisplacementMap");
+    d.setAttribute("in","SourceGraphic"); d.setAttribute("in2","n");
+    d.setAttribute("scale",scale);
+    d.setAttribute("xChannelSelector","R"); d.setAttribute("yChannelSelector","G");
+    d.setAttribute("result","d");
+    var g=document.createElementNS(NS,"feGaussianBlur");
+    g.setAttribute("in","d"); g.setAttribute("stdDeviation",blur);
+    f.appendChild(t); f.appendChild(d); f.appendChild(g);
+    defs.appendChild(f);
+  }
+  mk("wobble-wet", "0.022", "4", "21", "3.2", "0.4");
+  mk("wobble-damp","0.028", "3", "31", "1.6", "0.25");
+}
+
+/* 罩在整個畫面上的那一層紙。掛在 html 底下不是 body —— body 有 zoom,
+   position:fixed 會跟著縮,90% 的時候右下角就會空一條。 */
+function mountPaper(){
+  if(document.getElementById("inkPaper")) return;
+  var d=document.createElement("div");
+  d.id="inkPaper"; d.setAttribute("aria-hidden","true");
+  document.documentElement.appendChild(d);
+}
+
+function apply(v){
+  INK = LEVELS.indexOf(v)>=0 ? v : "full";
+  paint(); paintSize(); paintBrush();
+  try{ localStorage.setItem(INK_KEY,INK); }catch(e){}
+}
+
+/* ── 包住原本那兩支 ────────────────────────────────────────────────
+   兩支都是最外層的 function 宣告,所以就是 window 上的同一個名字;
+   換掉之後,程式裡原本的呼叫也會走到這裡來。 */
+var _fonts=window.applyFonts, _brand=window.applyBrand;
+if(typeof _fonts==="function"){
+  window.applyFonts=function(){
+    var out=_fonts.apply(this,arguments);
+    paint(); paintSize();
+    return out;
+  };
+}
+if(typeof _brand==="function"){
+  window.applyBrand=function(){
+    var out=_brand.apply(this,arguments);
+    paintBrush();
+    return out;
+  };
+}
+
+/* ── 標題列上的選單 ────────────────────────────────────────────────
+   放在 Colour 後面。原本那五顆的樣式吃 .titlebar select,不用另外寫。 */
+function mount(){
+  var ctrls=document.querySelector(".titlebar .ctrls");
+  if(!ctrls||document.getElementById("inkSel")) return;
+  var sel=document.createElement("select");
+  sel.id="inkSel"; sel.title="Ink";
+  ctrls.appendChild(sel);
+  fill();
+  sel.onchange=function(e){ apply(e.target.value); fill(); };
+}
+function fill(){
+  var sel=document.getElementById("inkSel");
+  if(!sel) return;
+  sel.innerHTML=LEVELS.map(function(v){
+    return '<option value="'+v+'"'+(v===INK?' selected':'')+'>'+label(v)+'</option>';
+  }).join("");
+}
+/* 換語言時 fillSelects 會重畫其他選單,順手把這一顆也換掉。 */
+var _fill=window.fillSelects;
+if(typeof _fill==="function"){
+  window.fillSelects=function(){ var o=_fill.apply(this,arguments); fill(); return o; };
+}
+
+try{ var v=localStorage.getItem(INK_KEY); if(v) INK=v; }catch(e){}
+function boot(){ mountFilters(); mountPaper(); mount(); apply(INK); }
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot);
+else boot();
+})();
+/*!ui-pack:ink.js:end*/
 </script>
 </body>
 </html>

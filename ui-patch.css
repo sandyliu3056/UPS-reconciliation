@@ -1,0 +1,49 @@
+/*!ui-pack:ui-patch.css:start*/
+/* ── 介面補強:配合後掛那一段的樣式 ────────────────────────────────── */
+
+/* 可排序的表頭 —— 指標和箭頭,沒有別的裝飾。箭頭固定佔位,
+   點下去不會整排文字跳一格。 */
+table.sortable thead th{cursor:pointer;user-select:none;padding-right:20px;position:relative}
+table.sortable thead th:hover{background:var(--run-hover,#1f100b)}
+table.sortable thead th:focus-visible{outline:2px solid var(--tab);outline-offset:-2px}
+table.sortable thead th::after{
+  content:"";position:absolute;right:7px;top:50%;transform:translateY(-50%);
+  font-size:9px;opacity:.35;line-height:1}
+table.sortable thead th[data-dir="-1"]::after{content:"▼";opacity:.95}
+table.sortable thead th[data-dir="1"]::after{content:"▲";opacity:.95}
+
+/* 首欄凍結。底色要是實心的,不然捲過去會透出後面那一欄。 */
+table.pinfirst tbody td:first-child,
+table.pinfirst thead th:first-child{position:sticky;left:0}
+table.pinfirst tbody td:first-child{
+  background:var(--stripe);z-index:1;
+  box-shadow:1px 0 0 0 var(--line)}
+table.pinfirst thead th:first-child{
+  background:var(--accent);z-index:3;
+  box-shadow:1px 0 0 0 var(--line)}
+table.pinfirst tbody tr:hover td:first-child{
+  background:color-mix(in srgb, var(--select) 45%, var(--stripe))}
+table.pinfirst tfoot td:first-child{position:sticky;left:0;background:var(--stripe);z-index:1}
+
+/* 往右還有東西。表格捲到底之前,右緣壓一層淡影;捲到底就沒了。 */
+.tablewrap{
+  background:
+    linear-gradient(to right, var(--stripe) 30%, rgba(247,241,228,0)) left / 22px 100% no-repeat local,
+    linear-gradient(to left,  var(--stripe) 30%, rgba(247,241,228,0)) right / 22px 100% no-repeat local,
+    linear-gradient(to right, rgba(53,28,21,.16), rgba(53,28,21,0)) left / 12px 100% no-repeat scroll,
+    linear-gradient(to left,  rgba(53,28,21,.16), rgba(53,28,21,0)) right / 12px 100% no-repeat scroll;
+}
+
+/* ── 斑馬紋(可留可刪)────────────────────────────────────────────────
+   table 的底色是 var(--stripe),tbody tr:nth-child(even) 也是 var(--stripe)
+   —— 同一個色,所以那條斑馬紋規則等於沒有畫。奇數列改成淺一階的
+   --panel 才看得出來。不要就把這一段整個刪掉,其餘不受影響。 */
+table tbody tr:nth-child(odd):not(.stprev)>td{background:var(--panel)}
+table tbody tr:hover>td{background:color-mix(in srgb, var(--select) 45%, var(--panel))}
+table.pinfirst tbody tr:nth-child(even)>td:first-child{background:var(--stripe)}
+table.pinfirst tbody tr:nth-child(odd):not(.stprev)>td:first-child{background:var(--panel)}
+
+@media (prefers-reduced-motion:reduce){
+  table.sortable thead th{transition:none}
+}
+/*!ui-pack:ui-patch.css:end*/
