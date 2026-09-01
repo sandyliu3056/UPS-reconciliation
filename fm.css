@@ -1,0 +1,25 @@
+/*!ui-pack:fm.css:start*/
+/* ── 首頁流程圖 —— 精修用的樣式 ────────────────────────────────────
+   接在 ink.css 後面。fm.js 沒有載入的話,這幾條沒有東西套得上。 */
+
+/* 每個站自己畫的影子,寬度跟著圖示走。內建那顆一律 rx=24 的關掉。 */
+.fm-gnd{display:none}
+.fm-sh{fill:var(--line);opacity:.3}
+
+/* 路肩。墊在路面底下,細線就變成路。 */
+.fm-shoulder{stroke:var(--line);stroke-width:6.5;fill:none;stroke-linecap:round;opacity:.2}
+.fm-rail{stroke-width:2.4}
+.fm-dash{opacity:.75}
+
+/* 打勾徽章。原本是一個浮在半空的 ✓,落在別站的插畫旁邊分不清是誰的;
+   有底之後就有邊界。開關仍然是 .fm-st.done。 */
+.fm-tick circle{fill:var(--panel);stroke:var(--run2);stroke-width:1.7}
+.fm-tick path{fill:none;stroke:var(--run2);stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+
+/* 分組標題的細線 */
+.fm-grph text{fill:var(--muted)}
+
+/* 游標移過去的光暈原本是一塊硬邊的橢圓,收斂成一層淡的。 */
+.fm-st.on .fm-halo,.fm-st:hover .fm-halo{opacity:.38}
+/*!ui-pack:fm.css:end*/
