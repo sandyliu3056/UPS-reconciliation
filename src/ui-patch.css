@@ -42,9 +42,6 @@ table tbody tr:nth-child(odd):not(.stprev)>td{background:var(--panel)}
 table tbody tr:hover>td{background:color-mix(in srgb, var(--select) 45%, var(--panel))}
 table.pinfirst tbody tr:nth-child(even)>td:first-child{background:var(--stripe)}
 table.pinfirst tbody tr:nth-child(odd):not(.stprev)>td:first-child{background:var(--panel)}
-/* Rating Breakdown 的深色小結條:自己就是深底白字,斑馬紋與 hover 都不套。 */
-.bkdtot table tbody tr:nth-child(odd)>td,
-.bkdtot table tbody tr:hover>td{background:transparent}
 
 @media (prefers-reduced-motion:reduce){
   table.sortable thead th{transition:none}
