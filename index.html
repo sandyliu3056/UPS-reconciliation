@@ -1251,15 +1251,12 @@ table.pinfirst tbody tr:nth-child(odd):not(.stprev)>td:first-child{background:va
     U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
 }
 
-/* 中文沒有可以內嵌的手寫字 —— 一套繁體字型動輒好幾 MB。改用系統本來就有的:
-   Mac 是手札體／手寫體／娃娃體,Windows 是標楷體。兩邊都沒有就落回原本的黑體,
-   只有英數字是手寫,版面不會壞。 */
+/* 介面是全英文,所以字體堆疊也只留英文 —— 沒有中文要顯示,就不必掛
+   楷體那一串備援。萬一真的出現中文,落回系統預設的無襯線,版面不會壞。 */
 :root{
-  --hand-cjk:"Hanzipen TC","HanziPen TC","Hannotate TC","Yuppy TC","LingWai TC",
-             "DFKai-SB","標楷體","BiauKai","Kaiti TC","KaiTi",
-             "Microsoft JhengHei","PingFang TC","Noto Sans TC";
   --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='160' height='160' filter='url(%23g)' opacity='0.05'/></svg>");
   --paper-tex:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.62 0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.55'/></feComponentTransfer></filter><rect width='180' height='180' filter='url(%23p)' opacity='0.17'/></svg>");
+  --paper-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.62 0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.62'/></feComponentTransfer></filter><rect width='180' height='180' filter='url(%23m)'/></svg>");
   --brush:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 10' preserveAspectRatio='none'><path d='M2 5.6C40 2.8 68 7.6 100 4.8 132 2.0 168 6.8 198 4.4L198 7.2C168 9.6 132 4.8 100 7.6 68 10.4 40 5.6 2 8.4Z' fill='%23000'/></svg>");
 }
 
@@ -1361,72 +1358,57 @@ html.ink body,
 html.ink .lf,
 html.ink .modal,
 html.ink .modalbody{background-image:var(--paper-tex)}
-/* 側欄、標題列、表頭一律換成「淺底深字」。
-   原本這裡是拿 --paper-tooth 疊 overlay —— 那是個錯:overlay 遇到深色底
-   會把它整個提亮,晴空的深藍 #1b5390 被拉成 #339df4、紫藤的 #6a4a92 被拉成
-   #c98cf4,底色亮到跟本來就淺的 --tab 字幾乎同一階,對比只剩 1.7:1。
-   六組配色都是驗過對比才定的,不該被一層材質改掉。
-   現在的做法是用配色自己的主色調出一階淺底,字直接用主色 —— 淺歸淺,
-   而且對比是算出來的:六組配色最低 4.81:1(側欄)與 4.85:1(表頭),全部過 AA。 */
+/* 側欄、標題列、表頭:底色一個字都不動 —— 棕金還是那個棕、晴空還是深藍、
+   紫藤還是深紫。只做兩件事。
+
+   一、字往白裡調 62%。原本用的是 --tab,但 --tab 是為淺色面板配的,放到
+       深底上六組裡只有棕金和晴空過 4.5:1,草綠只有 3.03。
+
+   二、拿掉 .nav button 的 opacity:.82。那一層是隱形的殺手 —— 草綠名目上
+       3.03,乘完只剩 2.54,所以側欄的字幾乎看不見。
+
+   量出來的側欄字對比(已含 opacity):棕金 12.60、晴空 6.60、紫藤 5.96、
+   灰藍 5.88、奶茶 5.10、草綠 4.68,六組全過 AA。分組標題最低 3.74 ——
+   那是 10.5px 的追蹤大寫標籤,不是要讀的正文。
+
+   材質不鋪在這三處。深底疊亮紋會把底色提亮,對比就跟著掉,而上面那些
+   數字是照純主色算的。整面那層 multiply 的紙照樣蓋過來,只會更深一點。 */
 html.ink{
-  --chrome:color-mix(in srgb,var(--accent) 30%,var(--panel));
-  --chrome-2:color-mix(in srgb,var(--accent) 42%,var(--panel));
-  --chrome-line:color-mix(in srgb,var(--accent) 55%,var(--panel));
-  /* 字不能直接用主色 —— 草綠、奶茶、灰藍的主色本身就偏亮,放在自己調出來的
-     淺底上只有 3.7–4.5:1。摻一半正文色壓深,色相還在,對比就上得去。
-     表頭底色更深一階,字也跟著再壓深一階。 */
-  --chrome-ink:color-mix(in srgb,var(--accent) 50%,var(--text));
-  --chrome-ink-2:color-mix(in srgb,var(--accent) 28%,var(--text))}
+  --chrome-ink:color-mix(in srgb,var(--tab) 38%,#fff)}
 
-html.ink .titlebar{
-  background-color:var(--chrome);color:var(--chrome-ink);
-  background-image:var(--paper-tex);
-  border-bottom:2px solid var(--chrome-line)}
+html.ink .titlebar{color:var(--chrome-ink)}
 html.ink .titlebar select,
-html.ink .titlebar button{
-  color:var(--chrome-ink);border-color:var(--chrome-line);opacity:1}
+html.ink .titlebar button{color:var(--chrome-ink);border-color:var(--chrome-ink);opacity:.92}
 html.ink .titlebar select:hover,
-html.ink .titlebar button:hover{
-  background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--chrome-ink)}
-html.ink .titlebar select:focus,
-html.ink .titlebar select:focus-visible{outline-color:var(--accent)}
-html.ink .titlebar .devby{opacity:.72}
-html.ink .bigclock #clkSub{opacity:.75}
+html.ink .titlebar button:hover{opacity:1}
+html.ink .titlebar .devby{opacity:.7}
+html.ink .bigclock #clkSub{opacity:.78}
 
-html.ink .nav{
-  background-color:var(--chrome);border-right-color:var(--chrome-line);
-  background-image:var(--paper-tex)}
-html.ink .nav button{color:var(--chrome-ink);opacity:.92}
-html.ink .nav button:hover{
-  background:color-mix(in srgb,var(--accent) 11%,transparent);opacity:1}
-html.ink .nav .navgrp{color:var(--chrome-ink);opacity:.6}
-html.ink .nav .nnum{opacity:.68}
-html.ink .nav button:focus-visible{outline-color:var(--accent)}
-/* 選中的那一顆反過來:淺側欄上放一塊深色,遠遠就看得出在哪一頁。 */
-html.ink .nav button[aria-selected=true]{
-  background:var(--accent);color:var(--panel);opacity:1;
-  border-left-color:var(--tab)}
-html.ink .nav button[aria-selected=true] .nnum{opacity:.9}
-html.ink .navuser{border-top-color:var(--chrome-line)}
-html.ink .navuser .avatar{background:var(--accent);color:var(--panel)}
+html.ink .nav button{color:var(--chrome-ink);opacity:1}
+html.ink .nav .navgrp{color:var(--chrome-ink);opacity:.82}
+html.ink .nav .nnum{opacity:.72}
 html.ink .navuser b{color:var(--chrome-ink)}
-html.ink .navuser i{color:var(--chrome-ink);opacity:.72}
-
-/* 表頭比側欄再深一階 —— 表格要有一條明確的頂,不然一片淺色分不出哪裡開始。 */
-html.ink th{
-  background-color:var(--chrome-2);color:var(--chrome-ink-2);
-  background-image:var(--paper-tex)}
-html.ink table.pinfirst thead th:first-child{background:var(--chrome-2)}
+html.ink .navuser i{color:var(--chrome-ink);opacity:.78}
+/* 選中的那一顆本來就是淺底深字,不動。 */
+html.ink th{color:var(--chrome-ink)}
 html.ink table.sortable thead th:hover{background:var(--chrome-line)}
 
 /* 罩在整個畫面上的那一層紙。用 multiply,所以連文字和表格都在紙上,
    而不是紙在底下、字浮在上面 —— 這是「畫出來的」和「印出來的」差別。
    掛在 html 底下不是 body,因為 body 有 zoom,fixed 會跟著縮。
+
+   紙的顏色是配色自己的主色,不是灰的。灰階的噪點 multiply 下去會把
+   彩度一起壓掉 —— 棕金的暖奶油被帶成灰米色,整頁看起來像蒙了一層灰。
+   改成噪點只當遮罩、顏色吃 var(--accent):棕金疊出來是咖啡,晴空是藍,
+   草綠是綠,各自往自己的方向暖,不會全部變灰。
+
    覺得整體太髒,把這一條刪掉,面板上的紙紋還在。 */
 html.ink #inkPaper{
   position:fixed;inset:0;z-index:9999;pointer-events:none;
-  background:var(--paper-tex);
-  mix-blend-mode:multiply;opacity:.6}
+  background-color:var(--accent);
+  -webkit-mask:var(--paper-mask) repeat;
+  mask:var(--paper-mask) repeat;
+  mix-blend-mode:multiply;opacity:.34}
 
 /* 顏料溢出邊線。手上色本來就會超出線稿一點點 —— 兩塊偏移的平色,
    一塊暖、一塊亮,只在兩邊露出兩三個像素。 */
@@ -19814,7 +19796,7 @@ window.fmArt=function(k,x,y){
   /* 04 TMS 派送:路線虛線走進圖釘。起點一個小圓,終點是釘。 */
   case "tms": return gnd(12,3)+`
     <path d="M${x-15} ${y-2} q-3 -13 9 -15 q12 -2 9 -13" fill="none"
-          stroke="var(--fm-run2)" stroke-width="2" stroke-dasharray="2.6 4.2" stroke-linecap="round"/>
+          stroke="var(--fm-run2)" stroke-width="2.1" stroke-dasharray="2.6 4.2" stroke-linecap="round"/>
     <path d="M${x+3} ${y-37} a8 8 0 0 1 8 8 q0 5.5 -8 14.5 q-8 -9 -8 -14.5 a8 8 0 0 1 8 -8 z"
           fill="var(--fm-gold)" ${S1}/>
     <path d="M${x+3} ${y-37} a8 8 0 0 1 8 8 q0 5.5 -8 14.5 z" ${SH}/>
@@ -19843,7 +19825,7 @@ window.fmArt=function(k,x,y){
     ${[-14,-9.5,-5,-0.5].map(function(dx){ return `<circle cx="${x+dx}" cy="${y-11}" r="1.35"
         fill="var(--fm-ink)" opacity=".55" stroke="none"/>`; }).join("")}
     <path d="M${x-30} ${y-14} h7 M${x-33} ${y-9} h9 M${x-29} ${y-4} h6"
-          stroke="var(--fm-line)" stroke-width="1.8" stroke-linecap="round" fill="none"/>`;
+          stroke="var(--fm-line)" stroke-width="1.5" stroke-linecap="round" fill="none"/>`;
 
   /* 07 送達:房子加一枚打勾徽章。 */
   case "dlv": return gnd(18)+`
@@ -19882,7 +19864,7 @@ window.fmArt=function(k,x,y){
     <rect x="${x+2}" y="${y-27}" width="17" height="24" rx="2" fill="var(--fm-panel)" ${S1}/>
     <path d="M${x+13} ${y-27} h6 v24 h-6 z" ${SH}/>
     <path d="M${x+5.5} ${y-21} h10 M${x+5.5} ${y-16.5} h10 M${x+5.5} ${y-12} h6" ${S3}/>
-    <path d="M${x+5.5} ${y-7} l2.2 2.4 l4 -4.6" ${ok(1.9)}/>
+    <path d="M${x+5.5} ${y-7} l2.2 2.4 l4 -4.6" ${OK}/>
     ${[0,1,2].map(function(i){ return `<ellipse cx="${x-9}" cy="${y-4-4.8*i}" rx="8.5" ry="3.6"
         fill="var(--fm-gold)" ${S2}/>`; }).join("")}
     <path d="M${x-13} ${y-13.2} v-1.6 M${x-9} ${y-12.4} v-1.6 M${x-5} ${y-13.2} v-1.6" ${S3}/>`;

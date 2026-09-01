@@ -56,10 +56,13 @@ ok(!/ink-full|ink-body|ink-paint/.test(face), '\u6a23\u5f0f\u88e1\u6c92\u6709\u6
 console.log('\n[3] \u6de1\u8272 chrome');
 ok(!/background-blend-mode:overlay/.test(face),
    'overlay \u6df7\u5408\u5df2\u62ff\u6389\uff08\u5b83\u628a\u6df1\u8272\u5e95\u63d0\u4eae\uff0c\u5b57\u5c31\u4e0d\u898b\u4e86\uff09');
-ok(/--chrome-ink:color-mix/.test(face)&&/--chrome-ink-2:color-mix/.test(face),
-   '\u5074\u6b04\u8207\u8868\u982d\u5404\u81ea\u4e00\u7d44\u58a8\u8272');
-ok(/html\.ink \.nav\{/.test(face.replace(/\s+/g,''))||/html\.ink\.nav\{/.test(face.replace(/\s+/g,'')),
-   '\u5074\u6b04\u6709\u88ab\u91cd\u65b0\u4e0a\u8272');
+ok(/--chrome-ink:color-mix\(in srgb,var\(--tab\) 38%,#fff\)/.test(face),
+   '\u5074\u6b04\u8207\u8868\u982d\u7684\u5b57\u662f --tab \u63ba\u767d 62%');
+ok(!/--chrome:color-mix/.test(face),
+   '\u5e95\u8272\u4e00\u500b\u5b57\u90fd\u4e0d\u52d5\uff0c\u9084\u662f --accent');
+const lean=face.replace(/\s+/g,'');
+ok(/html\.ink\.navbutton\{color:var\(--chrome-ink\);opacity:1\}/.test(lean),
+   '\u5074\u6b04\u5b57\u63db\u8272\uff0c\u4e26\u62ff\u6389 opacity:.82');
 ok(/--titlefill/.test(ink)&&V('--titlefill')==='var(--chrome-ink)',
    '\u6a19\u984c\u5b57\u8ddf\u8457\u63db\u6210\u6df1\u8272');
 
@@ -94,6 +97,14 @@ ok(D.querySelectorAll('.sketch').length===57&&D.querySelectorAll('.sketch-soft')
 ok(D.querySelectorAll('table').length===28&&D.querySelectorAll('.modalbg').length===25,
    '\u8868\u683c 28\u3001\u8996\u7a97 25\uff0c\u6c92\u8b8a');
 ok(D.querySelectorAll('[data-i18n]').length===547, 'i18n \u6a19\u8a18 547 \u500b\uff0c\u6c92\u8b8a');
+
+console.log('\n[8] \u7d19\u7684\u984f\u8272');
+ok(/--paper-mask:url\(/.test(face), '\u6709\u4e00\u5f35\u5c08\u9580\u7576\u906e\u7f69\u7684\u5642\u9ede');
+const ip=face.match(/#inkPaper\{[^}]*\}/);
+ok(!!ip&&/background-color:var\(--accent\)/.test(ip[0]),
+   '\u7d19\u7684\u984f\u8272\u5403\u914d\u8272\u81ea\u5df1\u7684\u4e3b\u8272\uff0c\u4e0d\u662f\u7070\u7684');
+ok(!!ip&&/mask:var\(--paper-mask\)/.test(ip[0]), '\u5642\u9ede\u53ea\u7576\u906e\u7f69');
+ok(!!ip&&/mix-blend-mode:multiply/.test(ip[0]), '\u9084\u662f multiply\uff0c\u5b57\u4e5f\u5728\u7d19\u4e0a');
 
 console.log(`\n\u2500\u2500 ${pass} pass / ${fail} fail \u2500\u2500`);
 process.exit(fail?1:0);
