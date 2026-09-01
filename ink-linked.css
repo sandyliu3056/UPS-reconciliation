@@ -166,7 +166,7 @@ html.ink .navuser b{color:var(--chrome-ink)}
 html.ink .navuser i{color:var(--chrome-ink);opacity:.78}
 /* 選中的那一顆本來就是淺底深字,不動。 */
 html.ink th{color:var(--chrome-ink)}
-html.ink table.sortable thead th:hover{background:var(--chrome-line)}
+html.ink table.sortable thead th:hover{background:color-mix(in srgb,var(--accent) 84%,#fff)}
 
 /* 罩在整個畫面上的那一層紙。用 multiply,所以連文字和表格都在紙上,
    而不是紙在底下、字浮在上面 —— 這是「畫出來的」和「印出來的」差別。

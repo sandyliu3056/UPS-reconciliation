@@ -10,9 +10,9 @@
 (function(){
 "use strict";
 
-var CJK='var(--hand-cjk)';
-var HAND_BODY='"Patrick Hand",'+CJK+',sans-serif';
-var HAND_DISP='"Caveat Hand",'+CJK+',sans-serif';
+/* 介面是全英文,堆疊只留英文。萬一出現中文,落回系統無襯線,版面不會壞。 */
+var HAND_BODY='"Patrick Hand","Segoe UI",sans-serif';
+var HAND_DISP='"Caveat Hand","Segoe UI",sans-serif';
 
 /* 標題給 Caveat,側欄與內文給 Patrick Hand —— 側欄是一直要讀的,
    手寫的印刷體小字才站得住。 */
@@ -21,8 +21,8 @@ function paintFonts(){
   s.setProperty("--titlefam",HAND_DISP);
   s.setProperty("--dispfam", HAND_BODY);
   s.setProperty("--bodyfam", HAND_BODY);
-  /* 標題列改成淺底,標題字要跟著換成深的,不然空心描邊在淺底上等於沒有。
-     這個變數是 applyBrand 設的,所以它每次跑完都要再蓋一次。 */
+  /* 標題字跟側欄同一階提亮的墨色。這個變數是 applyBrand 設的,
+     所以它每次跑完都要再蓋一次。 */
   s.setProperty("--titlefill","var(--chrome-ink)");
   s.setProperty("--titlestroke","0");
 }

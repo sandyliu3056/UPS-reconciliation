@@ -49,7 +49,7 @@ python3 /path/to/pack/apply.py --embed-fonts   # 字型內嵌成單檔
 
 ```
 npm install          # jsdom
-npm test             # 五套一起跑,129 項
+npm test             # 七套一起跑,152 項
 ```
 
 也可以指定要驗哪一份:
@@ -59,8 +59,18 @@ node test/test-patch.js /path/to/UPS-reconciliation/index.html
 node test/test-ink.js   /path/to/UPS-reconciliation/index.html
 ```
 
-用 jsdom 載入真的頁面,不是假的 DOM 物件。除了功能,兩套都會比對元素清單有沒有
-被改壞（表格 28、視窗 25、`.sketch` 57、i18n 標記 547)。
+用 jsdom 載入真的頁面,不是假的 DOM 物件。除了功能,也會比對元素清單有沒有被改壞
+（表格 28、視窗 25、`.sketch` 57、i18n 標記 547)。
+
+`test-vars.js` 與 `test-boot.js` 是踩過坑才加的。一個 `var(--x)` 只要沒有人定義
+`--x`,那一整條宣告在計算時就是**無效的** —— 瀏覽器不會報錯,也不會用 `var()` 的
+備援值,它直接把那個屬性丟掉。`--bodyfam` 的值裡含了一個沒定義的 `var()`,
+整個手寫體就這樣安靜地消失,而當時前面五支測試全過:它們測的是「函式回傳什麼」,
+沒有人把整份檔案真的跑起來看。
+
+- `test-vars.js` 掃全檔,列出所有引用了卻沒人定義、也沒寫備援的 `var(--x)`
+- `test-boot.js` 用 `runScripts:'dangerously'` 把整份 index.html 開起來,
+  讀 `--titlefam` / `--bodyfam` 的實際值,只要裡面還殘留 `var(--` 就算失敗
 
 ---
 
@@ -190,7 +200,14 @@ src/                       四段原始碼,apply.py 用這裡的
   fm.css / fm.js           首頁流程圖的精修
   tabs.js                  04 渠道與附加費費率分成四個子頁
 
-test/                      jsdom 回歸 + 配色對比 + 流程圖 + 分層,共 129 項
+test/                      七支,共 152 項
+  test-patch.js            ESC / 搜尋 / 排序 / 凍結首欄
+  test-ink.js              字體、筆觸、包住原本那兩支
+  test-contrast.js         六組配色的側欄字對比
+  test-fm.js               流程圖插畫(輸出當 XML 解析)
+  test-tabs.js             04 分層
+  test-vars.js             孤兒 CSS 變數
+  test-boot.js             把整份 index.html 真的跑起來
 preview/theme-preview.html 六組配色切一輪,看側欄與表頭的字,可直接開
 apply.py                   套用 / 移除 / 檢查
 ```
