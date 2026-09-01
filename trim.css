@@ -1,0 +1,8 @@
+/*!ui-pack:trim.css:start*/
+/* 收起「🔌 Enable / Disable」那張卡與 03 表單上的「Enable this channel」。
+   showSetCards 會把 hidden 拿掉,所以用 display 蓋,不用 hidden。 */
+#cardOnOff{display:none !important}
+label:has(#newChanOn){display:none !important}
+#trimLeft{margin:0 0 12px}
+#trimLeft .act{margin-left:6px;vertical-align:baseline}
+/*!ui-pack:trim.css:end*/
