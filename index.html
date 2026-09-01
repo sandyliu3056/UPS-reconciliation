@@ -12803,7 +12803,9 @@ async function reconTemplate(src){
      費用欄名用系統自己的費用名稱 —— 來源系統(例如 TMS 把 AHS 和 LPS 都寫成
      Delivery Surcharge)怎麼命名不影響:同仁把金額填進對的欄,含糊的名字
      根本進不了系統。 */
-  const idc=[RECON_COL.order,RECON_COL.trk,RECON_COL.cus,RECON_COL.date];
+  /* 前兩格放日期與客戶代碼 —— 出貨同仁先按日期核對、再認客戶,
+     單號與追蹤號排在後面。匯入端照欄名認欄,順序怎麼排都讀得回來。 */
+  const idc=[RECON_COL.date,RECON_COL.cus,RECON_COL.order,RECON_COL.trk];
   const req=new Set([RECON_COL.order,RECON_COL.trk,RECON_COL.cus]);
   const H=n=>({v:n,t:"s",s:{bold:true,align:"left",
       fill:req.has(n)?"351C15":"EFE3CB", color:req.has(n)?"FFFFFF":"351C15"}});
@@ -12829,7 +12831,7 @@ async function reconTemplate(src){
   const sheets=[
     {name:RECON_SHEET, rows:[hd], freeze:{r:1,c:4},
      filter:"A1:"+xlColName(nCol)+"1",
-     cols:[{w:22},{w:38},{w:18},{w:14}]
+     cols:[{w:14},{w:18},{w:22},{w:38}]
        .concat(tplFees.map(()=>({w:16})),[{w:16}])},
     /* 客戶名單只是下拉選單的來源。Excel 的清單驗證一定要指向活頁簿裡的一個
        範圍,所以這一頁必須存在;但它不是給人填的,所以藏起來。 */
@@ -12839,7 +12841,7 @@ async function reconTemplate(src){
   ];
   /* 客戶名單是空的就不下驗證 —— 來源範圍指到一列空白,Excel 會判檔案有問題。 */
   if(reg.length) sheets[0].dv=[{
-    sqref:"C2:C20000",
+    sqref:"B2:B20000",
     list:"Customers!$A$2:$A$"+(reg.length+1),
     title:L("代碼不在名單上","Unknown customer code"),
     msg:L("請從 Customers 分頁選一個代碼。","Pick a code from the Customers sheet.")}];
