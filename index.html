@@ -4656,11 +4656,21 @@ function priceShipment(cfg, s, force){
     }
   }
   else if(s.layer==="ADJ"){
-    /* 跨期單:先查歷史,查不到才退回服務名稱。
-       這是桌面版 history_service_for() 存在的唯一理由 —— SCC 那一行
-       沒有任何 RES/COM 字樣,不查歷史就一定被當成商業。 */
+    /* 跨期單:先用更正單自己的交易日配對它更正的那一段(SHP / RTN)——
+       同一個追蹤號可能兩段各被更正一次;退件回程一律商業。配不到原件
+       才退回歷史,再退回服務名稱(桌面版 history_service_for 的理由:
+       SCC 行上沒有任何 RES/COM 字樣)。 */
+    const o=(typeof origFrtFor==="function")?origFrtFor(s.tracking, s.shipDate):null;
     const h=typeof historyServiceFor==="function"?historyServiceFor(s.tracking):null;
-    if(h){ residential = h==="Ground Residential"; histSvc=h;
+    if(o){
+      residential = o.layer==="RTN" ? false
+        : (/residential/i.test(o.desc||"") || h==="Ground Residential");
+      histSvc = residential?"Ground Residential":"Ground Commercial";
+      resBasis = o.layer==="RTN"
+        ? L("原件(退件回程,商業)","Original leg (return, commercial)")
+        : L("原件(原始出貨)","Original leg (original shipment)");
+    }
+    else if(h){ residential = h==="Ground Residential"; histSvc=h;
       resBasis=L("歷史(原始出貨)","History (original shipment)"); }
     else if(!byCode()){
       residential=svcSaysRes; resiSure=false;
@@ -5073,13 +5083,18 @@ function priceShipment(cfg, s, force){
          收的費率,補收也照那一段查。更正單多半出現在退件之後 —— 原件對照
          到回程(RTN)時一律商業(退回寄件人),不吃這一段自己的住宅判定;
          沒有回程原件才用原始出貨的住/商。 */
-      const oRow=(typeof origFrtFor==="function")?origFrtFor(s.tracking):null;
+      const adjDate=(((s.groups||[]).find(g=>g.layer==="ADJ"&&g.shipDate)||{}).shipDate)||s.shipDate;
+      const oRow=(typeof origFrtFor==="function")?origFrtFor(s.tracking, adjDate):null;
       const legRTN=!!(oRow&&oRow.layer==="RTN");
+      const resA2=legRTN?false
+                 :oRow?/residential/i.test(oRow.desc||"")
+                 :(bwA&&bwA.resA);
       const chA=legRTN?"Ground Commercial"
+                :oRow?(resA2?"Ground Residential":"Ground Commercial")
                 :((typeof historyServiceFor==="function"
                    && historyServiceFor(s.tracking))||channel);
       const zA=(bwA&&bwA.zoneA)||zone;
-      const amtA=fee=>accLookup(cfg,fee,chA,zA,issues,legRTN?false:(bwA&&bwA.resA));
+      const amtA=fee=>accLookup(cfg,fee,chA,zA,issues,resA2);
       const amtC=fee=>accLookup(cfg,fee,legRTN?"Ground Commercial":channel,zone,issues,
                                legRTN?false:undefined);
       const r2=v=>Math.round(v*100)/100;
@@ -5905,20 +5920,30 @@ function historyServiceFor(tracking){
   return v==="R" ? "Ground Residential" : v==="C" ? "Ground Commercial" : null;
 }
 
-/* 跨期更正的原件對照:追蹤號 -> 原始出貨(SHP / RTN)的 FRT 行。
+/* 跨期更正的原件對照:追蹤號 -> 原始出貨/退件回程(SHP / RTN)的 FRT 行。
    計價是同步的,所以先把本期純 ADJ 需要的原件從 IndexedDB 撈成
-   同步對照表,再開始算。同一追蹤號有多期時取最近的一期。 */
+   同步對照表,再開始算。同一個追蹤號可能兩段各被更正一次(原始出貨
+   一張 SCC、退件回程另一張),更正單身上帶著它更正那一段的交易日 ——
+   用日期配對;配不到才取最近的一段。 */
 let ORIG={};
-function origFrtFor(tracking){ return ORIG[tracking]||null; }
+function origFrtFor(tracking, when){
+  const list=ORIG[tracking]; if(!list||!list.length) return null;
+  if(when){
+    const w=normYmd(when);
+    if(w){ const hit=list.find(r=>normYmd(r.shipDate)===w); if(hit) return hit; }
+  }
+  return list[list.length-1];
+}
 function buildOriginals(allRows, need){
   const out={};
   for(const r of allRows||[]){
     if(!r||!r.tracking) continue;
     if(need && !need.has(r.tracking)) continue;
     if(!(r.layer==="SHP"||r.layer==="RTN")||!isFreightLine(r)) continue;
-    const cur=out[r.tracking];
-    if(!cur || String(r.invoice)>String(cur.invoice)) out[r.tracking]=r;
+    (out[r.tracking]=out[r.tracking]||[]).push(r);
   }
+  for(const t of Object.keys(out))
+    out[t].sort((a,b)=>String(a.invoice)<String(b.invoice)?-1:String(a.invoice)>String(b.invoice)?1:0);
   return out;
 }
 /* 住/商對照表是登入後在背景非同步學的,而產生報表不會等它。開頁之後
