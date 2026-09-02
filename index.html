@@ -1885,13 +1885,14 @@ label:has(#newChanOn){display:none !important}
       <th class="num" data-i18n="th.cusrecon">Last reconciliation</th>
       <th></th>
     </tr></thead><tbody></tbody></table></div>
+    <!-- 新增走視窗,不在表格底下擠一列:代碼、名稱、層級一次填完再儲存,
+         和「編輯」是同一個視窗。名單多的時候用匯入,一份 xlsx 整批進來,
+         先預覽再寫入。 -->
     <div class="row" style="margin-top:9px">
-      <input id="cusCode" class="cell" data-i18n-ph="ph.cuscode" style="width:150px;text-align:left">
-      <input id="cusName" class="cell" data-i18n-ph="ph.cusname" style="width:190px;text-align:left">
-      <!-- 建檔的時候就選層級。留到之後再補的話,那個客戶的出貨會整批不重算 ——
-           在這裡選掉一次,比事後看紅框再回來補快。 -->
-      <select id="cusLvl" class="cell" style="width:190px"></select>
       <button class="act" id="bCusAdd" data-i18n="btn.cusadd">Add customer</button>
+      <button class="act ghost" id="bCusTpl" data-i18n="btn.custpl">Import template</button>
+      <button class="act ghost" id="bCusImp" data-i18n="btn.cusimp">Import list</button>
+      <input type="file" id="fCusImp" accept=".xlsx,.xls,.csv,.txt" style="display:none">
       <span id="cusMsg" class="savenote"></span>
     </div>
   </div>
@@ -2911,13 +2912,13 @@ label:has(#newChanOn){display:none !important}
 <div id="cusEditBg" class="modalbg">
   <div class="modal sketch" id="cusEditModal" style="width:min(520px,100%)">
     <div class="modalhd">
-      <span data-i18n="hd.cusedit">Edit customer</span>
+      <span data-i18n="hd.cusedit" id="cusEditTitle">Edit customer</span>
       <button class="mx" id="cusEditX">✕</button>
     </div>
     <div class="modalbody">
       <label class="inlab" style="margin-left:0" data-i18n="th.cuscode">Code</label>
       <input id="ceCode" class="cell" style="width:100%;text-align:left;margin:4px 0 2px">
-      <p class="hint" style="margin:0 0 12px" data-i18n="hint.cecode">Letters, digits, . _ - only. Change it and every rule and assignment pointing at this customer follows.</p>
+      <p class="hint" style="margin:0 0 12px" data-i18n="hint.cecode" id="ceCodeHint">Letters, digits, . _ - only. Change it and every rule and assignment pointing at this customer follows.</p>
 
       <label class="inlab" style="margin-left:0" data-i18n="th.cusname">Name</label>
       <input id="ceName" class="cell" style="width:100%;text-align:left;margin:4px 0 12px">
@@ -7267,23 +7268,40 @@ function cusLevelLabel(id){
   const e=o&&o.list.find(x=>x.id===id);
   return e?e.name:id+L(" (層級已刪除)"," (level deleted)");
 }
-let CUS_EDIT="";
+let CUS_EDIT="", CUS_NEW=false;
 function cusEditNote(m){
   const e=$("#cusEditNote"); if(!e) return;
   e.textContent=m||""; e.style.display=m?"":"none";
 }
-/* 新增那一列的層級選單。預設落在現在編輯的那一層 —— 多半就是要指的那一層,
-   而且它是看得見的,不是背後偷偷指定。 */
-function cusFillNewLvl(){
-  const sel=$("#cusLvl"); if(!sel) return;
-  const o=rlStore(), list=(o&&o.list)||[];
-  sel.innerHTML=list.map(e=>`<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("")
-    +`<option value="">${esc(L("未指派費率層級","No rate level"))}</option>`;
-  sel.value=(o&&o.active)||"";
+function cusEditTitle(k){
+  const t=$("#cusEditTitle"); if(t){ t.dataset.i18n=k; t.textContent=T(k); }
+  /* 新增時代碼的說明講的是「這個代碼給 WMS / TMS 模板用」,不是改代碼的後果。 */
+  const h=$("#ceCodeHint"), hk=k==="hd.cusnew"?"hint.cecodenew":"hint.cecode";
+  if(h){ h.dataset.i18n=hk; h.textContent=T(hk); }
+}
+/* 新增:同一個視窗,空白開。層級預設落在現在編輯的那一層 —— 多半就是要指
+   的那一層,而且它是看得見的,不是背後偷偷指定。 */
+function openCusNew(){
+  if(!cusEnsure()) return;
+  CUS_EDIT=""; CUS_NEW=true;
+  cusEditTitle("hd.cusnew");
+  $("#ceCode") && ($("#ceCode").value="");
+  $("#ceName") && ($("#ceName").value="");
+  const sel=$("#ceLevel");
+  if(sel){
+    const o=rlStore(), list=(o&&o.list)||[];
+    sel.innerHTML=`<option value="">${esc(L("未指定","Not set"))}</option>`
+      +list.map(e=>`<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("");
+    sel.value=(o&&o.active)||"";
+  }
+  cusEditNote("");
+  $("#cusEditBg") && $("#cusEditBg").classList.add("on");
+  $("#ceCode") && $("#ceCode").focus();
 }
 function openCusEdit(code){
   const c=cusReg().find(x=>x.code===code); if(!c) return;
-  CUS_EDIT=code;
+  CUS_EDIT=code; CUS_NEW=false;
+  cusEditTitle("hd.cusedit");
   $("#ceCode") && ($("#ceCode").value=c.code);
   $("#ceName") && ($("#ceName").value=c.name||"");
   const sel=$("#ceLevel");
@@ -7301,11 +7319,11 @@ function openCusEdit(code){
   $("#ceCode") && $("#ceCode").focus();
 }
 function closeCusEdit(){
-  CUS_EDIT="";
+  CUS_EDIT=""; CUS_NEW=false;
   $("#cusEditBg") && $("#cusEditBg").classList.remove("on");
 }
 function saveCusEdit(){
-  const was=CUS_EDIT; if(!was) return;
+  const was=CUS_EDIT; if(!was && !CUS_NEW) return;
   const code=cusNorm($("#ceCode").value);
   const name=($("#ceName").value||"").trim();
   const level=(($("#ceLevel")||{}).value)||"";
@@ -7314,6 +7332,17 @@ function saveCusEdit(){
                   "A code needs at least 2 characters: letters, digits, . _ - only.")); return; }
   if(code!==was && cusReg().some(c=>c.code===code)){
     cusEditNote(L("這個代碼已經有了。","That code already exists.")); return; }
+  if(CUS_NEW){
+    cusSaveAnd(()=>CFG.raw.customers.push({code, name:name||code, level}));
+    closeCusEdit();
+    cusNote(level
+      ? L("已新增 "+code+",費率層級:"+rlName(level), "Added "+code+" on "+rlName(level))
+      /* 沒選層級不是錯,但它的出貨不會被重算,現在就說,不要等到對帳。 */
+      : L("已新增 "+code+" —— 還沒指定費率層級,這個客戶的出貨不會被重算。",
+          "Added "+code+" — no rate level yet, so its shipments will not be repriced."),
+      !!level);
+    return;
+  }
   cusSaveAnd(()=>{
     const c=cusReg().find(x=>x.code===was); if(!c) return;
     c.code=code; c.name=name||code; c.level=level;
@@ -7321,10 +7350,117 @@ function saveCusEdit(){
   closeCusEdit();
   cusNote(L("已更新 "+code,"Updated "+code),true);
 }
+/* ---- 客戶名單整批匯入 ----
+   三欄:Customer Code(必填)、Customer Name、Rate Level(層級名稱或 id)。
+   照代碼合併:已有的更新名稱與層級,沒有的新增;代碼不合規、檔內重複、
+   層級不存在的列跳過並逐列說明。先預覽再寫入,和 WMS 匯入同一條路。 */
+const CUS_TPL_COLS=["Customer Code","Customer Name","Rate Level"];
+function cusLevelIdOf(v){
+  const t=String(v==null?"":v).trim(); if(!t) return "";
+  const list=lvlListAll();
+  const hit=list.find(e=>e.id===t)
+    ||list.find(e=>String(e.name||"").trim().toLowerCase()===t.toLowerCase());
+  return hit?hit.id:null;          /* null:找不到這一層 */
+}
+function cusParseImport(rows){
+  const clean=(rows||[]).filter(r=>(r||[]).some(c=>reconTxt(c)!==""));
+  if(clean.length<2) return {err:L("這份檔案裡沒有資料列。","The file has no data rows.")};
+  const head=clean[0].map(c=>reconTxt(c).toLowerCase());
+  const ix=CUS_TPL_COLS.map(n=>head.indexOf(n.toLowerCase()));
+  /* 手寫的短欄名也認:Code / Name / Level。 */
+  if(ix[0]<0) ix[0]=head.indexOf("code");
+  if(ix[1]<0) ix[1]=head.indexOf("name");
+  if(ix[2]<0) ix[2]=head.indexOf("level");
+  if(ix[0]<0) return {err:L("找不到「Customer Code」欄。","No \"Customer Code\" column found.")};
+  const have=new Set(cusReg().map(c=>c.code));
+  const seen=new Set(), out=[];
+  for(let i=1;i<clean.length;i++){
+    const r=clean[i];
+    const o={ln:i+1, code:cusNorm(reconTxt(r[ix[0]])),
+             name:ix[1]>=0?reconTxt(r[ix[1]]):"",
+             lvlRaw:ix[2]>=0?reconTxt(r[ix[2]]):"", level:"", status:"", why:""};
+    if(!/^[A-Z0-9._-]{2,}$/.test(o.code)){ o.status="bad"; o.why=L("代碼不合規","Invalid code"); out.push(o); continue; }
+    if(seen.has(o.code)){ o.status="bad"; o.why=L("檔內重複","Duplicate in file"); out.push(o); continue; }
+    const lv=cusLevelIdOf(o.lvlRaw);
+    if(lv===null){ o.status="bad"; o.why=L("層級不存在:"+o.lvlRaw,"Unknown level: "+o.lvlRaw); out.push(o); continue; }
+    seen.add(o.code); o.level=lv;
+    o.status=have.has(o.code)?"update":"new";
+    out.push(o);
+  }
+  return {rows:out, hasNameCol:ix[1]>=0, hasLevelCol:ix[2]>=0};
+}
+async function cusImportFile(file){
+  if(!cusEnsure()){ cusNote(L("請先載入費率設定。","Load a rate configuration first."),false); return; }
+  let wb=null;
+  try{ wb=await readWorkbookRows(file); }
+  catch(e){ cusNote(L("這個檔案讀不開:","Could not read the file: ")+(e&&e.message||e),false); return; }
+  const rows=wb.sheets["Customers"]||wb.sheets[(wb.order||[])[0]]||wb.sheets[""];
+  const p=cusParseImport(rows||[]);
+  if(p.err){ cusNote(p.err,false); return; }
+  cusImportPreview(p, (file&&file.name)||"");
+}
+function cusImportPreview(p, fname){
+  const ok=p.rows.filter(r=>r.status!=="bad"), bad=p.rows.filter(r=>r.status==="bad");
+  const nNew=ok.filter(r=>r.status==="new").length, nUpd=ok.length-nNew;
+  const tag=r=>r.status==="new"?`<b style="color:var(--pos)">${esc(L("新增","New"))}</b>`
+             :r.status==="update"?`<b>${esc(L("更新","Update"))}</b>`
+             :`<b style="color:var(--neg)">${esc(L("跳過","Skipped"))}</b>`;
+  const head=`<div class="pvsum">
+     <span><b>${esc(fname||"—")}</b></span>
+     <span>${nNew} ${esc(L("位新增","new"))}</span>
+     <span>${nUpd} ${esc(L("位更新","updated"))}</span>
+     <span class="${bad.length?"neg":""}">${bad.length} ${esc(L("列跳過","skipped"))}</span></div>`;
+  const table=`<div class="tablewrap" style="max-height:46vh;margin-top:10px"><table>
+     <thead><tr><th class="num">#</th><th>${esc(L("代碼","Code"))}</th><th>${esc(L("名稱","Name"))}</th>
+     <th>${esc(L("費率層級","Rate level"))}</th><th>${esc(L("結果","Result"))}</th></tr></thead>
+     <tbody>${p.rows.map(r=>`<tr${r.status==="bad"?' style="opacity:.72"':""}>
+       <td class="num">${r.ln}</td><td class="mono">${esc(r.code||"—")}</td><td>${esc(r.name||"")}</td>
+       <td>${esc(r.level?cusLevelLabel(r.level):(r.lvlRaw||"—"))}</td>
+       <td>${tag(r)}${r.why?` <span class="empty">${esc(r.why)}</span>`:""}</td></tr>`).join("")}</tbody></table></div>`;
+  const foot=`<div class="row" style="margin-top:12px"><span class="grow"></span>
+     <button class="act ghost" id="pvCancel">${esc(L("取消","Cancel"))}</button>
+     ${ok.length?`<button class="act" id="pvConfirm">${esc(L("匯入 "+ok.length+" 列","Import "+ok.length+" row(s)"))}</button>`
+               :`<span class="note warn" style="margin:0">${esc(L("沒有可匯入的列。","Nothing to import."))}</span>`}</div>`;
+  uiPreview(L("客戶名單匯入預覽","Customer import preview"), head+table+foot);
+  const c=$("#pvConfirm"); if(c) c.onclick=()=>{ uiPreviewClose(); cusImportApply(ok,p); };
+  const x=$("#pvCancel"); if(x) x.onclick=()=>{ uiPreviewClose(); cusNote(L("已取消,名單沒有變。","Cancelled — the list is unchanged."),true); };
+}
+function cusImportApply(ok,p){
+  let nNew=0, nUpd=0;
+  cusSaveAnd(()=>{
+    const reg=CFG.raw.customers;
+    for(const r of ok){
+      const c=reg.find(x=>x.code===r.code);
+      if(c){ if(p.hasNameCol&&r.name) c.name=r.name; if(p.hasLevelCol&&r.lvlRaw) c.level=r.level; nUpd++; }
+      else { reg.push({code:r.code, name:r.name||r.code, level:r.level}); nNew++; }
+    }
+  });
+  const noLvl=ok.filter(r=>r.status==="new"&&!r.level).length;
+  cusNote(L("已匯入:新增 "+nNew+" 位、更新 "+nUpd+" 位"+(noLvl?";其中 "+noLvl+" 位新客戶還沒指定費率層級":"")+"。",
+            "Imported: "+nNew+" new, "+nUpd+" updated"+(noLvl?"; "+noLvl+" new customer(s) have no rate level yet":"")+"."), true);
+  if(typeof logAdd==="function") logAdd("customers import", nNew+" new / "+nUpd+" updated");
+}
+/* 匯入模板:三欄,層級用下拉(來源是隱藏的 Levels 分頁),說明自己一頁。 */
+async function cusTemplate(){
+  const HD=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
+  const lv=lvlListAll();
+  const main={name:"Customers", rows:[CUS_TPL_COLS.map(HD)], freeze:{r:1,c:1}, filter:"A1:C1",
+              cols:[{w:18},{w:34},{w:22}]};
+  if(lv.length) main.dv=[{sqref:"C2:C5000", list:"Levels!$A$2:$A$"+(lv.length+1),
+    title:L("層級不在名單上","Unknown rate level"),
+    msg:L("請從 Levels 分頁選一個層級名稱。","Pick a level name from the Levels sheet.")}];
+  await xlWrite([main,
+    {name:"Guide", cols:[{w:22},{w:70}], rows:[[HD("Column"),HD("Fill with / 填什麼")],
+      ["Customer Code","必填;英數字與 . _ -,至少兩個字;已有的代碼會更新名稱與層級 Required; letters, digits, . _ -; an existing code is updated"],
+      ["Customer Name","選填;空白時沿用代碼 Optional; blank keeps the code as the name"],
+      ["Rate Level","選填;填層級名稱(下拉);空白 = 不指派 Optional; a level name from the dropdown; blank = unassigned"]]},
+    {name:"Levels", hidden:true, cols:[{w:22}], rows:[[HD("Rate Level")]].concat(lv.map(e=>[e.name]))},
+  ], "Customer_Import_Template.xlsx");
+  cusNote(L("匯入模板已下載:三欄,層級用下拉選。","Import template downloaded: three columns, levels in a dropdown."),true);
+}
 function renderCustomers(){
   if(!CFG) return;
   cusEnsure(); chgEnsure();
-  cusFillNewLvl();
   /* 「最近對帳」那一欄的來源是最後一次跑的對帳。以前它是靠規則從帳單的參考
      號猜出這一筆是誰的 —— 現在 WMS 的檔案自己就寫著客戶代號,不必猜了。 */
   const per={};
@@ -7364,7 +7500,7 @@ function renderCustomers(){
   }).join("")
     :`<tr><td colspan="5" class="empty">${reg.length
        ? L("沒有符合的客戶。","No matching client.")
-       : L("還沒有客戶。先在下面新增一個。","No customers yet. Add one below.")}</td></tr>`;
+       : L("還沒有客戶。按「新增客戶」,或用「匯入名單」整批匯入。","No customers yet. Use Add customer, or Import list for a whole file.")}</td></tr>`;
   renderChgCodes();
 }
 function renderChgCodes(){
@@ -7428,26 +7564,12 @@ function bindCustomers(){
     showCusTab(b.dataset.c); renderCustomers();
   });
 
-  $("#bCusAdd") && ($("#bCusAdd").onclick=()=>{
-    const code=cusNorm($("#cusCode").value);
-    const name=($("#cusName").value||"").trim();
-    if(!/^[A-Z0-9._-]{2,}$/.test(code)){
-      cusNote(L("代碼至少兩個字,只能用英數字和 . _ - —— 以後要送給別的系統,中文會出事。",
-                "A code needs at least 2 characters: letters, digits, . _ - only."),false); return; }
-    if(cusReg().some(c=>c.code===code)){
-      cusNote(L("這個代碼已經有了。","That code already exists."),false); return; }
-    const lvl=($("#cusLvl")&&$("#cusLvl").value)||"";
-    cusSaveAnd(()=>CFG.raw.customers.push({code, name:name||code, level:lvl}));
-    $("#cusCode").value=""; $("#cusName").value="";
-    cusFillNewLvl();
-    cusNote(lvl
-      ? L("已新增 "+code+",費率層級:"+rlName(lvl),
-          "Added "+code+" on "+rlName(lvl))
-      /* 沒選層級不是錯,但它的出貨不會被重算,現在就說,不要等到對帳。 */
-      : L("已新增 "+code+" —— 還沒指定費率層級,這個客戶的出貨不會被重算。",
-          "Added "+code+" — no rate level yet, so its shipments will not be repriced."),
-      !!lvl);
-  });
+  $("#bCusAdd") && ($("#bCusAdd").onclick=openCusNew);
+  $("#bCusTpl") && ($("#bCusTpl").onclick=()=>{ cusTemplate().catch(e=>cusNote(String((e&&e.message)||e),false)); });
+  $("#bCusImp") && ($("#bCusImp").onclick=()=>$("#fCusImp").click());
+  $("#fCusImp") && ($("#fCusImp").onchange=e=>{
+    const f=e.target.files&&e.target.files[0]; e.target.value="";
+    if(f) cusImportFile(f); });
   $("#cusEditX")      && ($("#cusEditX").onclick=closeCusEdit);
   $("#cusEditCancel") && ($("#cusEditCancel").onclick=closeCusEdit);
   $("#cusEditSave")   && ($("#cusEditSave").onclick=saveCusEdit);
@@ -18297,6 +18419,11 @@ const I18N={
   "hint.cusreg":["你自己維護的清單。指定費率層級後,這個客戶的出貨就照那一層的費率重算。客戶名單為整個帳號共用,不隨層級切換而改變。",
     "Your own list. Assign a rate level and this customer's shipments are repriced at that level. The list is shared across the whole account and does not change when you switch levels."],
   "hd.cusedit":["編輯客戶","Edit customer"],
+  "hd.cusnew":["新增客戶","New customer"],
+  "hint.cecodenew":["只能用英數字和 . _ -,至少兩個字。WMS / TMS 模板的 Customer Code 填的就是這個代碼。",
+    "Letters, digits, . _ - only, at least two characters. This is the code the WMS / TMS template's Customer Code column takes."],
+  "btn.cusimp":["匯入名單","Import list"],
+  "btn.custpl":["匯入模板","Import template"],
   "btn.cussave":["儲存客戶","Save customer"],
   "hint.cecode":["只能用英數字和 . _ -,至少兩個字。改了代碼,指向這個客戶的規則與人工指定會一併更新。",
     "Letters, digits, . _ - only, at least two characters. Change it and every rule and assignment pointing at this customer follows."],
