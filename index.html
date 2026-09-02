@@ -1771,9 +1771,10 @@ label:has(#newChanOn){display:none !important}
       <label data-i18n="lb.inv">UPS Billing File</label>
       <input id="pathInv" readonly>
       <button class="act ghost" id="bInv" data-i18n="btn.browse">Browse</button>
-      <input type="file" id="fInv" accept=".csv,.txt,.xlsx,.xls">
+      <input type="file" id="fInv" accept=".csv,.txt,.xlsx,.xls" multiple>
     </div>
     <div class="readyrow" id="filesReady"></div>
+    <p class="hint" style="margin:6px 0 0" data-i18n="hint.invmulti">Select several invoice files at once to import them in one go; each period is filed to history and the batch is reconciled together.</p>
     <div id="invNote"></div>
     <div class="row" style="margin-top:14px">
       <button class="act run" id="bRun" data-i18n="btn.process" disabled>Process Invoice</button>
@@ -8494,6 +8495,39 @@ let CFG=null, INV=null, RATED=null, SHIPS=null, ROWS=null;
 /* 就緒狀態列要顯示的檔名與大小。CFG_LABEL 同時也是存回 CFG_NAME 的值。
    INV_KIND 是 CSV / TXT / XLSX / XLS,INV_SHEET 只有 Excel 才有值。 */
 let INV_NAME="", INV_SIZE=0, INV_KIND="", INV_SHEET="", CFG_LABEL="";
+/* 一次選好幾張帳單:每個檔各自讀、各自驗,壞的跳過、好的合併成一批一起算。
+   同一期出現在兩個檔裡,以後面的檔為準 —— 兩份都收會重複計價。 */
+let INV_BATCH=[];
+function invBatchLabel(){
+  if(!INV_BATCH.length) return "";
+  const size=INV_BATCH.reduce((a,x)=>a+(x.size||0),0);
+  return INV_BATCH.length+(LANG?" files":" 個檔案")+"  ("+fmtSize(size)+")  "
+    +INV_BATCH.map(x=>x.name).join(", ");
+}
+function invBatchIngest(){
+  const byInv=new Map(), dup=[], loose=[];
+  let hasHdr=false;
+  for(const x of INV_BATCH){
+    const ing=ingest(x.text);
+    if(!looksLikeInvoice(ing.rows))
+      throw new Error(x.name+": "+L("不是 UPS 帳單檔","not a UPS invoice file"));
+    hasHdr=hasHdr||!!ing.hasHdr;
+    /* 每一列記下它從哪個檔案來 —— 歷史與匯出的 Source File 靠它。 */
+    for(const r of ing.rows) r.src=x.name;
+    const groups=new Map();
+    for(const r of ing.rows){
+      const k=(r.invoice||"").trim();
+      if(!k){ loose.push(r); continue; }
+      (groups.get(k)||groups.set(k,[]).get(k)).push(r);
+    }
+    for(const [k,rs] of groups){
+      if(byInv.has(k)) dup.push(k+" ("+byInv.get(k).file+" → "+x.name+")");
+      byInv.set(k,{file:x.name, rows:rs});
+    }
+  }
+  const rows=[].concat(...[...byInv.values()].map(v=>v.rows), loose);
+  return {ing:{rows, hasHdr}, dup, invoices:[...byInv.keys()]};
+}
 
 /* 載入的是哪一份設定檔。輸入框在「設定」分頁,附加費設定分頁留一份唯讀的 ——
    在那一頁改費率的人仍然需要知道自己改的是哪一份,但不需要在那裡更換。 */
@@ -8840,6 +8874,7 @@ function invNote(msg){
 }
 /* 檔名 · 大小 · 格式,Excel 再加工作表名稱。 */
 function invLabel(){
+  if(INV_BATCH.length) return invBatchLabel();
   if(!INV_NAME) return "";
   let t=INV_NAME+"  ("+fmtSize(INV_SIZE)+" · "+INV_KIND+")";
   if(INV_SHEET) t+="  "+(LANG?"Sheet: ":"工作表:")+INV_SHEET;
@@ -8858,22 +8893,50 @@ pick("#fCfg",(t,n)=>{ applyConfig(t,n);
 /* 不走 pick():Excel 那條是非同步的,而且要回報工作表名稱與錯誤。
    value 一樣在讀完之後清掉,重選同一個檔才會再觸發 change。 */
 $("#fInv") && ($("#fInv").onchange=e=>{
-  const inp=e.target, f=inp.files&&inp.files[0];
-  if(!f){ inp.value=""; return; }
+  const inp=e.target, fs=[...(inp.files||[])];
+  if(!fs.length){ inp.value=""; return; }
   invNote("");
-  setStatus((LANG?"Reading ":"讀取 ")+f.name+"…");
-  readInvoiceFile(f).then(r=>{
-    INV=r.text; INV_NAME=f.name; INV_SIZE=f.size; INV_KIND=r.kind; INV_SHEET=r.sheet;
-    $("#pathInv") && ($("#pathInv").value=invLabel());
-    setStatus((LANG?"Invoice loaded: ":"帳單已載入:")+f.name
-      +(r.sheet?(LANG?" · sheet ":" · 工作表 ")+r.sheet:""));
-  }).catch(err=>{
-    /* 讀壞了就把舊的一起清掉。留著上一張帳單的話,Generate 還是亮的,
-       算出來的會是上一次那份 —— 那比停在原地更糟。 */
-    INV=null; INV_NAME=""; INV_SIZE=0; INV_KIND=""; INV_SHEET="";
-    $("#pathInv") && ($("#pathInv").value="");
-    invNote((err&&err.message)||String(err));
-    setStatus(LANG?"Could not read that invoice":"讀不到這張帳單");
+  /* 換一批就整個換掉:單檔和多檔兩種狀態不能同時存在。 */
+  INV=null; INV_NAME=""; INV_SIZE=0; INV_KIND=""; INV_SHEET=""; INV_BATCH=[];
+  $("#pathInv") && ($("#pathInv").value="");
+  if(fs.length===1){
+    const f=fs[0];
+    setStatus((LANG?"Reading ":"讀取 ")+f.name+"…");
+    readInvoiceFile(f).then(r=>{
+      INV=r.text; INV_NAME=f.name; INV_SIZE=f.size; INV_KIND=r.kind; INV_SHEET=r.sheet;
+      $("#pathInv") && ($("#pathInv").value=invLabel());
+      setStatus((LANG?"Invoice loaded: ":"帳單已載入:")+f.name
+        +(r.sheet?(LANG?" · sheet ":" · 工作表 ")+r.sheet:""));
+    }).catch(err=>{
+      /* 讀壞了就把舊的一起清掉。留著上一張帳單的話,Generate 還是亮的,
+         算出來的會是上一次那份 —— 那比停在原地更糟。 */
+      INV=null; INV_NAME=""; INV_SIZE=0; INV_KIND=""; INV_SHEET="";
+      $("#pathInv") && ($("#pathInv").value="");
+      invNote((err&&err.message)||String(err));
+      setStatus(LANG?"Could not read that invoice":"讀不到這張帳單");
+    }).then(()=>{ inp.value=""; ready(); });
+    return;
+  }
+  /* 多檔:各自讀、各自驗。壞的記下來,不讓一個檔把整批拖掉。 */
+  setStatus((LANG?"Reading ":"讀取 ")+fs.length+(LANG?" files…":" 個檔案…"));
+  const bad=[];
+  Promise.all(fs.map(f=>readInvoiceFile(f)
+      .then(r=>({name:f.name,size:f.size,text:r.text,kind:r.kind,sheet:r.sheet}))
+      .catch(err=>{ bad.push(f.name+" — "+((err&&err.message)||err)); return null; })
+  )).then(list=>{
+    const good=[];
+    for(const x of list.filter(Boolean)){
+      let ok=false; try{ ok=looksLikeInvoice(ingest(x.text).rows); }catch(e){}
+      if(ok) good.push(x);
+      else bad.push(x.name+" — "+L("不是 UPS 帳單格式,未匯入","not a UPS invoice — not imported"));
+    }
+    INV_BATCH=good;
+    if(bad.length && $("#invNote")) $("#invNote").innerHTML=`<div class="note warn"><b>`
+      +esc(L("跳過 "+bad.length+" 個檔案。","Skipped "+bad.length+" file(s)."))+`</b> `+esc(bad.join(" / "))+`</div>`;
+    $("#pathInv") && ($("#pathInv").value=invBatchLabel());
+    setStatus(good.length
+      ? (LANG?good.length+" invoice files loaded — press Process Invoice":"已載入 "+good.length+" 個帳單檔,按「處理帳單」")
+      : (LANG?"No valid UPS invoice file":"沒有可用的帳單檔"));
   }).then(()=>{ inp.value=""; ready(); });
 });
 /* 過去各期帳單 -> 跨期對照 */
@@ -11380,7 +11443,7 @@ $("#bInv").onclick=()=>$("#fInv").click();
 
 function ready(){
   const rows = CFG ? (CFG.tableRowCount||0) : 0;
-  const okCfg = !!(CFG && rows>0), okInv = !!INV;
+  const okCfg = !!(CFG && rows>0), okInv = !!INV || INV_BATCH.length>0;
   $("#bRun") && ($("#bRun").disabled = !(okCfg && okInv));
   $("#bCsv") && ($("#bCsv").disabled = !RATED);
   renderReady(okCfg, okInv);
@@ -16897,12 +16960,21 @@ function codeKnown(code, cls, dyn){
 $("#bRun").onclick=async ()=>{
   setStatus(L("讀取中…","Reading…"));
   try{
-    const ing=ingest(INV);
-    if(!looksLikeInvoice(ing.rows))
-      throw new Error(L("格式不正確:這不是 UPS 帳單檔,沒有匯入。",
-                        "Not a UPS invoice file — nothing was imported."));
+    let ing, dup=[];
+    if(INV_BATCH.length){
+      const b=invBatchIngest(); ing=b.ing; dup=b.dup;
+      INV_NAME="";   /* 每一列已經記了自己的來源檔,不要再整批蓋成同一個名字 */
+    } else {
+      ing=ingest(INV);
+      if(!looksLikeInvoice(ing.rows))
+        throw new Error(L("格式不正確:這不是 UPS 帳單檔,沒有匯入。",
+                          "Not a UPS invoice file — nothing was imported."));
+    }
     const ships=shipmentsOf(ing.rows);
     await runReport(ing, ships);
+    if(dup.length && $("#invNote")) $("#invNote").innerHTML=`<div class="note"><b>`
+      +esc(L("同一期出現在兩個檔裡,以後面的檔為準。","The same invoice was in two files; the later file was used."))
+      +`</b> `+esc(dup.join(", "))+`</div>`;
   }catch(e){
     $("#cfgNote").innerHTML=`<div class="note warn"><b>`
       +L("讀不動這張帳單。","Could not read that invoice.")+`</b> ${esc(e.message)}</div>`;
@@ -18590,6 +18662,8 @@ const I18N={
   "tab.hist":["帳單歷史","Invoice History"],
   "tab.code":["🔎 代碼查詢","🔎 Code Lookup"],
   "hd.recon":["WMS / TMS 資料","WMS / TMS data"],
+  "hint.invmulti":["可一次選多個帳單檔:每一期各自存入歷史,整批一起計價與對帳。同一期出現在兩個檔裡以後面的檔為準。",
+    "Select several invoice files at once to import them in one go; each period is filed to history and the batch is reconciled together. If the same invoice is in two files, the later file is used."],
   "hint.recon":["一張訂單一列;檔案受理後逐項三方比對。欄位規範與 TMS 對應詳見填寫說明(PDF)。","One order per row; every itemized charge is compared three ways on acceptance. Column rules and the TMS mapping are in the guide."],
   "lb.tpl":["模板","Template"],
   "btn.tplpdf":["填寫說明(PDF)","Guide (PDF)"],
