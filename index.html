@@ -763,6 +763,16 @@ tr.blocked{opacity:.72}
 #tReconChg tr.sub td{color:var(--muted);font-size:12px;padding-top:3px;padding-bottom:3px}
 #tReconChg tr.sub td:first-child{padding-left:28px}
 #tReconChg .subarm{display:inline-block;width:14px;margin-left:-17px;opacity:.7}
+/* 三個金額欄各自一個底色,和表頭的色點同一組:綠 = 向客戶收、棕 = UPS 收、
+   琥珀 = 重算。表頭是深色橫條,用底線把顏色接到欄上。 */
+#tReconChg td.c-cli{background:color-mix(in srgb, #7fc7a3 18%, var(--panel))}
+#tReconChg td.c-ups{background:color-mix(in srgb, #d9a97e 26%, var(--panel))}
+#tReconChg td.c-rep{background:color-mix(in srgb, #ffb500 16%, var(--panel))}
+#tReconChg th.c-cli{box-shadow:inset 0 -3px 0 #7fc7a3}
+#tReconChg th.c-ups{box-shadow:inset 0 -3px 0 #d9a97e}
+#tReconChg th.c-rep{box-shadow:inset 0 -3px 0 #ffb500}
+#tReconChg .chgcodes{font-family:Consolas,monospace;font-size:11px;color:var(--muted);margin-top:2px;white-space:normal}
+#tReconChg tr.sub .chgcodes{font-size:10.5px}
 .chggrp{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;letter-spacing:.4px;
   text-transform:uppercase;line-height:1.5;padding:0 7px;border-radius:999px;color:var(--text);
   background:var(--stripe);border:1px solid color-mix(in srgb, var(--text) 40%, transparent);vertical-align:middle}
@@ -2012,11 +2022,9 @@ label:has(#newChanOn){display:none !important}
     </div>
     <div class="tablewrap" style="max-height:54vh"><table id="tReconChg"><thead><tr>
       <th data-i18n="th.chgname">Charge</th>
-      <th data-i18n="th.chgmine">Your code</th>
-      <th data-i18n="th.chgups">System code</th>
-      <th class="num"><span class="srcdot wms"></span><span data-i18n="th.chgbilled">Billed to client</span></th>
-      <th class="num"><span class="srcdot rep"></span><span data-i18n="th.reconrep">Recomputed</span></th>
-      <th class="num"><span class="srcdot ups"></span><span data-i18n="th.reconups">Charged by UPS</span></th>
+      <th class="num c-cli"><span class="srcdot wms"></span><span data-i18n="th.chgbilled">Billed to client</span></th>
+      <th class="num c-ups"><span class="srcdot ups"></span><span data-i18n="th.reconups">Charged by UPS</span></th>
+      <th class="num c-rep"><span class="srcdot rep"></span><span data-i18n="th.reconrep">Recomputed</span></th>
       <th class="num" data-i18n="th.chgpgap">Billed vs recomputed</th>
       <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
@@ -13419,11 +13427,14 @@ function reconRun(list){
     else if(block) lostLevel.add(e.cus);
     let cost=0, rep=0;
     const missTrk=[], upsZones=new Set(), sysChans=new Set();
+    const feesRep={}, feesUps={};    /* 這一張單每一項費用兩側的數,匯出明細用 */
+    const invDates=new Set();        /* 對到的帳單期別日期,匯出明細第一欄 */
     let upsWt=0, wtN=0;
     for(const t of e.trks){
       const s=byTrk.get(t);
       if(!s){ missTrk.push(t); continue; }
       if(s.zone) upsZones.add(normZoneKey(s.zone));
+      for(const l of (s.allLines||[])){ const d=l.invDate?(normYmd(l.invDate)||String(l.invDate)):""; if(d){ invDates.add(d); break; } }
       cost+=toNum(s.upsTotal);
       /* UPS 收多少不需要費率表,照收;重算需要,沒有層級就不算。 */
       if(!cfg) continue;
@@ -13438,13 +13449,14 @@ function reconRun(list){
         const row=reportRowOf(priced);
         for(const c of REPORT_MONEY){
           const v=toNum(row[c]);
-          if(Math.abs(v)>0.004) chgBump(e.cus, c, "rep", v);
+          if(Math.abs(v)>0.004){ chgBump(e.cus, c, "rep", v); feesRep[c]=cents((feesRep[c]||0)+v); }
         }
         for(const l of (s.allLines||[])){
           const k=upsBucketOf(l,false);
           if(!k) continue;
           const v=toNum(l.net);
-          if(Math.abs(v)>0.004) chgBump(e.cus, k===DASH_UNKNOWN?RECON_UNKNOWN:k, "ups", v);
+          const nm=k===DASH_UNKNOWN?RECON_UNKNOWN:k;
+          if(Math.abs(v)>0.004){ chgBump(e.cus, nm, "ups", v); feesUps[nm]=cents((feesUps[nm]||0)+v); }
         }
       }catch(err){}
     }
@@ -13468,6 +13480,7 @@ function reconRun(list){
              zone:String(e.zone||""), upsZone, zoneMis,
              chan, sysChan, chanMis, chanUnknown,
              wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"",
+             fees:{rep:feesRep, ups:feesUps}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
              name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
              amt:e.amt, cost:cents(cost), rep:block?null:cents(rep)};
@@ -13533,7 +13546,7 @@ function reconRun(list){
   for(const [k,m] of chgBy) byCus[k]=chgRows(m);
   return {orders, cus, tot, lostLevel:[...lostLevel], noLevel:[...noLevel],
           unmatched:orders.filter(o=>o.found<o.pkgs), hasBilled,
-          chg:chgRows(chgAll), chgBy:byCus};
+          chg:chgRows(chgAll), chgBy:byCus, groups:[...active]};
 }
 
 /* --------------------------------------------------------------------
@@ -13751,30 +13764,31 @@ function renderReconChg(){
     const nocode=unknown||o.name===RECON_OTHER;
     const nm=unknown?L("未辨識代碼","Unrecognised codes"):o.name;
     const mine=nocode?"":chgCodeMine(o);
-    const ups=nocode?"":chgUpsOf(o);
+    const ups=nocode?[]:chgUpsOf(o);
+    /* 代碼收成名稱底下的一行小字:有設自己的代碼才粗體列出,沒設就不寫
+       「未設定」—— 一整欄的「未設定」只是噪音。三個金額欄各有底色:
+       綠是向客戶收、棕是 UPS 收、琥珀是重算,和表頭的色點同一組。 */
+    const codes=(mine?`<b>${esc(mine)}</b>`:"")+(ups.length?(mine?" · ":"")+esc(ups.join(" · ")):"");
     return `<tr class="${sub?"sub":(o.kids?"grp":"")}"${unknown?' style="opacity:.72"':""}><td>${
         sub?`<span class="subarm" aria-hidden="true">└</span>`:""}${esc(nm)}${
-        o.kids?` <span class="chggrp">${L("合併","Combined")}</span>`:""}</td>
-      <td class="mono">${mine?"<b>"+esc(mine)+"</b>"
-        :`<span class="empty">${nocode?"—":L("未設定","not set")}</span>`}</td>
-      <td class="mono">${ups&&ups.length?esc(ups.join(" · "))
-        :`<span class="empty">—</span>`}</td>
-      <td class="num">${o.billed==null?`<span class="empty">—</span>`:money(o.billed)}</td>
-      <td class="num">${money(o.rep)}</td>
-      <td class="num">${money(o.ups)}</td>
+        o.kids?` <span class="chggrp">${L("合併","Combined")}</span>`:""}${
+        codes?`<div class="chgcodes">${codes}</div>`:""}</td>
+      <td class="num c-cli">${o.billed==null?`<span class="empty">—</span>`:money(o.billed)}</td>
+      <td class="num c-ups">${money(o.ups)}</td>
+      <td class="num c-rep">${money(o.rep)}</td>
       <td class="num">${o.pgap==null?`<span class="empty">—</span>`:sign(o.pgap)}</td>
       <td class="num">${sign(o.gap)}</td></tr>`;
   };
   if(tb) tb.innerHTML=rows.map(o=>tr(o,false)+(o.kids||[]).map(k=>tr(k,true)).join("")).join("")
-    ||`<tr><td colspan="8" class="empty">—</td></tr>`;
+    ||`<tr><td colspan="6" class="empty">—</td></tr>`;
   const t=rows.reduce((a,o)=>({rep:cents(a.rep+o.rep), ups:cents(a.ups+o.ups),
       billed:o.billed==null?a.billed:cents((a.billed||0)+o.billed)}),
       {rep:0, ups:0, billed:null});
   const tf=$("#tReconChg")&&$("#tReconChg").tFoot;
-  if(tf) tf.innerHTML=`<tr><td colspan="3"><b>${esc(L("合計","Total"))}</b></td>
-      <td class="num"><b>${t.billed==null?`<span class="empty">—</span>`:money(t.billed)}</b></td>
-      <td class="num"><b>${money(t.rep)}</b></td>
-      <td class="num"><b>${money(t.ups)}</b></td>
+  if(tf) tf.innerHTML=`<tr><td><b>${esc(L("合計","Total"))}</b></td>
+      <td class="num c-cli"><b>${t.billed==null?`<span class="empty">—</span>`:money(t.billed)}</b></td>
+      <td class="num c-ups"><b>${money(t.ups)}</b></td>
+      <td class="num c-rep"><b>${money(t.rep)}</b></td>
       <td class="num"><b>${t.billed==null?`<span class="empty">—</span>`
         :sign(cents(t.billed-t.rep))}</b></td>
       <td class="num"><b>${sign(cents(t.rep-t.ups))}</b></td></tr>`;
@@ -13795,66 +13809,138 @@ function renderReconChg(){
    -------------------------------------------------------------------- */
 async function reconExport(){
   const r=RECON&&RECON.res; if(!r) return;
-  const HD=n=>({v:n,t:"s",s:{bold:true,fill:"351C15",color:"FFFFFF",align:"left",wrap:true}});
-  const M={fmt:"#,##0.00"};
+  /* 每一張表同一個版式:第一列是「群組帶」(識別 / 向客戶收 / UPS 收 / 重算 /
+     核對與差異),第二列才是欄名,顏色跟畫面上的三個色點同一組 —— 綠是向
+     客戶收、棕是 UPS 收、琥珀是重算。欄的順序也照這個走,不再混著擺。 */
+  const FILL={id:"351C15", cli:"1F5638", ups:"7A4B22", rep:"8A6104", chk:"5C5348"};
+  const TINT={id:"EFE3CB", cli:"DCEFE3", ups:"F1E3D3", rep:"FBEBC8", chk:"E8E2D6"};
+  const CELL={cli:"EEF7F1", ups:"F8F1EA", rep:"FDF6E7"};
+  const BAND={id:"識別 Identity", cli:"向客戶收 Billed to client", ups:"UPS 收 Charged by UPS",
+              rep:"重算 Recomputed", chk:"核對與差異 Checks & variance"};
+  const MONEY="#,##0.00";
+  const H=(n,g)=>({v:n,t:"s",s:{bold:true,fill:TINT[g]||TINT.id,color:"351C15",align:"left",wrap:true,border:true}});
   /* 沒重算的欄位寫空白,不寫 0 —— 匯出去之後沒人分得出 0 是「算出來是零」
      還是「沒算」,而這兩件事差很多。 */
-  const m=v=>v==null?"":{v,t:"n",s:M};
-  /* 沒重算的原因寫在自己一欄,篩得出來。 */
+  const m=(v,g)=>v==null?(g&&CELL[g]?{v:"",t:"s",s:{fill:CELL[g]}}:"")
+                        :{v,t:"n",s:{fmt:MONEY,fill:g?CELL[g]:undefined}};
+  const n0=(v,g,fmt)=>v==null||v===""?(g&&CELL[g]?{v:"",t:"s",s:{fill:CELL[g]}}:"")
+                        :{v:+v,t:"n",s:{fmt:fmt||"0.##",fill:g?CELL[g]:undefined}};
+  const tx=(v,g)=>({v:String(v==null?"":v),t:"s",s:g&&CELL[g]?{fill:CELL[g]}:undefined});
+  /* 群組帶 + 欄名列;群組帶用合併儲存格。 */
+  const sheetOf=(name,cols,dataRows,widths,idCols)=>{
+    const band=[], merges=[]; let i=0;
+    while(i<cols.length){
+      let j=i; while(j+1<cols.length && cols[j+1].g===cols[i].g) j++;
+      const g=cols[i].g;
+      band.push({v:BAND[g]||"",t:"s",s:{bold:true,fill:FILL[g]||FILL.id,color:"FFFFFF",align:"center",border:true}});
+      for(let k=i+1;k<=j;k++) band.push({v:"",t:"s",s:{fill:FILL[g]||FILL.id}});
+      if(j>i) merges.push({s:{r:0,c:i},e:{r:0,c:j}});
+      i=j+1;
+    }
+    const head=cols.map(c=>H(c.name,c.g));
+    return {name, rows:[band,head,...dataRows], merges, freeze:{r:2,c:idCols||0},
+            filter:"A2:"+xlColName(cols.length)+"2", cols:widths.map(w=>({w}))};
+  };
   const why=b=>b===RL_NONE?"NOT PRICED — no rate level assigned"
              :b===RL_GONE?"NOT PRICED — rate level deleted":"";
   const lvl=x=>x.block?"":(x.level?cusLevelLabel(x.level):"");
-  const sum=[["Customer Code","Customer Name","Rate Level","Repricing Status","Orders",
-    "Packages Matched","Packages","Billed to Customer","Charged by UPS","Profit","Margin %",
-    "Recomputed","Billed vs Recomputed","UPS vs Recomputed"].map(HD)]
-   .concat(r.cus.map(a=>[a.code, a.name, lvl(a), why(a.block),
-     a.orders, a.found, a.pkgs,
-     m(a.amt), m(a.cost), m(a.profit),
-     {v:a.margin==null?0:+a.margin.toFixed(2),t:"n",s:{fmt:"0.00"}},
-     m(a.rep), m(a.pgap), m(a.gap)]));
-  const det=[["Order Number","Ship Date","Channel (Template)","Channel (System)","Channel Match",
-    "Zone (Template)","Zone (UPS)","Zone Match",
-    "Weight (Template)","Weight (UPS)",
-    "Customer Code","Rate Level","Repricing Status",
-    "Tracking Numbers","Packages","Packages Matched","Not On Invoice","Billed to Customer",
-    "Charged by UPS","Profit","Recomputed","Billed vs Recomputed","UPS vs Recomputed"].map(HD)]
-   .concat(r.orders.map(o=>[o.order, o.date, o.chan||"", o.sysChan||"",
+
+  /* ---- Summary:一個客戶一列 ---- */
+  const sumCols=[["Customer Code","id"],["Customer Name","id"],["Rate Level","id"],["Repricing Status","id"],
+    ["Orders","id"],["Packages Matched","id"],["Packages","id"],
+    ["Billed to Client","cli"],["Charged by UPS","ups"],["Recomputed","rep"],
+    ["Profit (Billed − UPS)","chk"],["Billed vs Recomputed","chk"],["UPS vs Recomputed","chk"]].map(([name,g])=>({name,g}));
+  const sumRows=r.cus.map(a=>[a.code, a.name, lvl(a), why(a.block), a.orders, a.found, a.pkgs,
+     m(a.amt,"cli"), m(a.cost,"ups"), m(a.rep,"rep"), m(a.profit), m(a.pgap), m(a.gap)]);
+
+  /* ---- Orders:一張單一列。模板那一側(綠)和帳單那一側(棕)各自成一塊,
+          同一個順序:渠道、Zone、計費重量、金額;核對結果與差異放最後。 ---- */
+  const ordCols=[["Order Number","id"],["Ship Date","id"],["Customer Code","id"],["Rate Level","id"],
+    ["Repricing Status","id"],["Tracking Numbers","id"],["Packages","id"],["Packages Matched","id"],["Not On Invoice","id"],
+    ["Channel","cli"],["Zone","cli"],["Billed Weight (lb)","cli"],["Billed to Client","cli"],
+    ["Channel (UPS)","ups"],["Zone (UPS)","ups"],["Billed Weight (UPS)","ups"],["Charged by UPS","ups"],
+    ["Recomputed","rep"],
+    ["Channel Match","chk"],["Zone Match","chk"],["Profit (Billed − UPS)","chk"],["Billed vs Recomputed","chk"],["UPS vs Recomputed","chk"]]
+    .map(([name,g])=>({name,g}));
+  const ordRows=r.orders.map((o,i)=>[o.order, o.date, o.cus, lvl(o), why(o.block),
+     RECON.list[i]?RECON.list[i].trks.join(", "):"", o.pkgs, o.found, o.missTrk.join(", "),
+     tx(o.chan||"","cli"), tx(o.zone||"","cli"), n0(o.wt,"cli"), m(o.amt,"cli"),
+     tx(o.sysChan||"","ups"), tx(o.upsZone||"","ups"), n0(o.upsWt,"ups","0"), m(o.cost,"ups"),
+     m(o.rep,"rep"),
      o.chanUnknown?"UNKNOWN CHANNEL":(o.chan&&o.sysChan)?(o.chanMis?"MISMATCH":"OK"):"",
-     o.zone||"", o.upsZone||"",
      (o.zone&&o.upsZone)?(o.zoneMis?"MISMATCH":"OK"):"",
-     o.wt===""?"":{v:toNum(o.wt),t:"n",s:{fmt:"0.##"}}, o.upsWt===""?"":{v:o.upsWt,t:"n",s:{fmt:"0"}},
-     o.cus, lvl(o), why(o.block),
-     "", o.pkgs, o.found, o.missTrk.join(", "),
-     m(o.amt), m(o.cost), m(o.profit), m(o.rep), m(o.pgap), m(o.gap)]));
-  /* 追蹤號整串塞回去 —— 匯出的這份要能拿去對原檔,少了它就得回頭翻模板。 */
-  r.orders.forEach((o,i)=>{ det[i+1][13]=RECON.list[i]?RECON.list[i].trks.join(", "):""; });
-  /* 逐項那一張:全部一段,接著每個客戶各一段。分成幾十張分頁不好翻,
-     多一欄 Scope 就能在同一張表上篩。 */
-  const chgRows=[["Scope","Charge","Your Code","System Code","Billed to Client",
-                  "Recomputed","Charged by UPS","Billed vs Recomputed",
-                  "Recomputed vs UPS"].map(HD)];
+     m(o.profit), m(o.pgap), m(o.gap)]);
+
+  /* ---- Charges:每一項費用的合計,先全部、再每個客戶(Scope 欄篩) ---- */
   const chgName=n=>n===RECON_UNKNOWN?"Unrecognised codes":n;
-  const row=(scope,o,pre)=>chgRows.push([
-      scope, pre+chgName(o.name),
-      (o.name===RECON_UNKNOWN||o.name===RECON_OTHER)?"":chgCodeMine(o),
-      (o.name===RECON_UNKNOWN||o.name===RECON_OTHER)?"":chgUpsOf(o).join(" "),
-      m(o.billed), {v:o.rep,t:"n",s:M},{v:o.ups,t:"n",s:M},
-      m(o.pgap), {v:o.gap,t:"n",s:M}]);
+  const noCode=o=>o.name===RECON_UNKNOWN||o.name===RECON_OTHER;
+  const chgCols=[["Scope","id"],["Charge","id"],["Your Code","id"],["System Code","id"],
+    ["Billed to Client","cli"],["Charged by UPS","ups"],["Recomputed","rep"],
+    ["Billed vs Recomputed","chk"],["Recomputed vs UPS","chk"]].map(([name,g])=>({name,g}));
+  const chgRows=[];
+  const crow=(scope,o,pre)=>chgRows.push([scope, pre+chgName(o.name),
+      noCode(o)?"":chgCodeMine(o), noCode(o)?"":chgUpsOf(o).join(" "),
+      m(o.billed,"cli"), m(o.ups,"ups"), m(o.rep,"rep"), m(o.pgap), m(o.gap)]);
   /* 合併組之後接它的細項,名稱前加「└」—— 篩 Scope 時一起留下。 */
-  const push=(scope,list)=>{ for(const o of list){ row(scope,o,""); for(const k of (o.kids||[])) row(scope,k,"  └ "); } };
-  push("ALL", r.chg||[]);
-  for(const a of r.cus) push(a.code, (r.chgBy||{})[a.code]||[]);
+  const cpush=(scope,list)=>{ for(const o of list){ crow(scope,o,""); for(const k of (o.kids||[])) crow(scope,k,"  └ "); } };
+  cpush("ALL", r.chg||[]);
+  for(const a of r.cus) cpush(a.code, (r.chgBy||{})[a.code]||[]);
+
+  /* ---- Detail:一張單一列,每一項費用兩欄並排 —— 「費用 - UPS」(黃)是
+          帳單收的,「費用 - WMS」(綠)是向客戶收的;最後一組是整單合計。
+          費用照模板的欄位順序,帳單上有而模板沒有的費用接在後面。 ---- */
+  /* 來源看導入檔實際用的合併欄(TMS 才有 AHS+LPS 一欄),沒有線索才看切換鈕。 */
+  const gs=r.groups||[];
+  const src=gs.includes("ahslps")?"TMS":gs.includes("ahs")?"WMS":((RECON_SRC==="TMS")?"TMS":"WMS");
+  const tplGroups=RECON_GROUPS_BY_SRC[src].map(g=>RECON_GROUPS[g]);
+  const headOf=new Map();                       /* 細項 → 它在模板上屬於哪一個合併欄 */
+  for(const g of tplGroups) for(const f of g.fees) headOf.set(f,g.head);
+  const base=reconTplCols(src);
+  const extra=[];
+  for(const c of (r.chg||[])){
+    const nm=c.name;
+    if(base.includes(nm)||headOf.has(nm)||c.kids) continue;
+    extra.push(nm);
+  }
+  const charges=base.concat(extra);
+  const membersOf=nm=>{ const g=tplGroups.find(x=>x.head===nm); return g?g.fees:[nm]; };
+  const UPSH="FFC000", WMSH="92D050", UPSC="FFF2CC", WMSC="E2EFDA";
+  const dh=(n,fill)=>({v:n,t:"s",s:{bold:true,fill,color:"1F1F1F",align:"left",wrap:true,border:true}});
+  const dm=(v,fill)=>v==null?{v:"",t:"s",s:{fill}}:{v:cents(v),t:"n",s:{fmt:MONEY,fill}};
+  const dHead=[dh("Invoice Date","EFE3CB"),dh("Ship Date","EFE3CB"),dh("Customer Code","EFE3CB"),
+    dh("Customer Level","EFE3CB"),dh("Order Number","EFE3CB"),dh("Tracking","EFE3CB")];
+  for(const nm of charges){ dHead.push(dh(chgName(nm)+" - UPS",UPSH)); dHead.push(dh(chgName(nm)+" - "+src,WMSH)); }
+  dHead.push(dh("Total - UPS",UPSH)); dHead.push(dh("Total - "+src,WMSH));
+  const dRows=r.orders.map((o,i)=>{
+    const fees=o.fees||{rep:{},ups:{}}, billed=o.billedFees||null;
+    const row=[o.invDate||"", o.date||"", o.cus, lvl(o), o.order,
+               RECON.list[i]?RECON.list[i].trks.join(", "):""];
+    for(const nm of charges){
+      const mem=membersOf(nm);
+      const u=mem.reduce((a,f)=>a+(fees.ups[f]||0),0);
+      const ups=nm===RECON_OTHER?null:u;
+      /* 向客戶收:模板有這一欄就取;模板填的是細項欄時把成員加起來。 */
+      let w=null;
+      if(billed){
+        if(billed[nm]!=null) w=billed[nm];
+        else { const ks=mem.filter(f=>billed[f]!=null); if(ks.length) w=ks.reduce((a,f)=>a+billed[f],0); }
+      }
+      row.push(dm(ups,UPSC)); row.push(dm(w,WMSC));
+    }
+    row.push(dm(o.cost,UPSC)); row.push(dm(o.amt,WMSC));
+    return row;
+  });
+  const dWidths=[12,12,16,16,20,34].concat(charges.flatMap(nm=>[Math.min(30,Math.max(14,nm.length+8)),Math.min(30,Math.max(14,nm.length+8))]),[14,14]);
+  const detailSheet={name:"Detail", rows:[dHead,...dRows], freeze:{r:1,c:6},
+    filter:"A1:"+xlColName(dHead.length)+"1", cols:dWidths.map(w=>({w}))};
 
   await xlWrite([
-    {name:"Summary", rows:sum, freeze:{r:1,c:0}, filter:"A1:N1",
-     cols:[{w:16},{w:26},{w:16},{w:30},{w:9},{w:12},{w:11},{w:16},{w:15},{w:12},{w:11},
-           {w:14},{w:19},{w:19}]},
-    {name:"Orders", rows:det, freeze:{r:1,c:0}, filter:"A1:W1",
-     cols:[{w:20},{w:12},{w:16},{w:16},{w:14},{w:9},{w:9},{w:11},{w:10},{w:10},{w:16},{w:16},{w:30},{w:34},{w:10},{w:12},{w:22},{w:16},{w:15},{w:12},{w:14},{w:19},{w:19}]},
-    {name:"Charges", rows:chgRows, freeze:{r:1,c:0}, filter:"A1:I1",
-     cols:[{w:14},{w:40},{w:14},{w:20},{w:17},{w:14},{w:16},{w:19},{w:18}]}
+    sheetOf("Summary", sumCols, sumRows, [16,26,16,30,9,12,11,17,17,14,19,19,19], 2),
+    detailSheet,
+    sheetOf("Orders", ordCols, ordRows, [20,12,16,16,30,34,10,12,22, 18,8,12,16, 20,10,12,16, 14, 15,12,17,19,19], 1),
+    sheetOf("Charges", chgCols, chgRows, [14,42,14,22,17,17,14,19,18], 2),
   ], "WMS_TMS_Reconciliation.xlsx");
-  reconMsg(L("已匯出。","Exported."), true);
+  reconMsg(L("已匯出:Summary、Detail、Orders、Charges 四張表。","Exported: Summary, Detail, Orders and Charges."), true);
 }
 
 /* 讀檔+解析,不寫入。回 {err} 或 {p, fname} —— 匯入與預覽共用同一條讀取路。 */
@@ -18601,8 +18687,8 @@ const I18N={
   "btn.chgpdf":["說明文件(PDF)","Guide (PDF)"],
   "th.cusrecon":["最近對帳","Last reconciliation"],
   "hd.reconchg":["逐項比對","By charge"],
-  "hint.reconchg":["同一筆費用最多三個數字:你向客戶收多少(模板 Charges 那一頁填的)、這個客戶的費率層級說應該收多少、UPS 實際收多少。前兩者的差是你的定價落差,後兩者的差是帳單和合約的落差 —— 差最多的排前面。",
-    "Every charge on the matched shipments, up to three ways: what you billed the client (from the template's Charges sheet), what this customer's rate level says it should be, and what UPS actually billed. The first pair is your pricing variance, the second is where the invoice departs from the agreement — sorted with the largest gap first."],
+  "hint.reconchg":["同一筆費用由左到右三個數字:向客戶收多少(WMS/TMS 檔填的)、UPS 實際收多少、這個客戶的費率層級算出來應該收多少。最後兩欄是差異:向客戶收對重算是你的定價落差,UPS 收對重算是帳單和合約的落差 —— 差最多的排前面。",
+    "Every charge on the matched shipments, left to right: what you billed the client (from the WMS/TMS file), what UPS actually charged, and what this customer's rate level says it should be. The last two columns are the variances: billed vs recomputed is your pricing variance, UPS vs recomputed is where the invoice departs from the agreement — sorted with the largest gap first."],
   "lb.reconscope":["檢視範圍","Showing"],
   "hd.cusreg":["客戶","Customers"],
   "hint.cusreg":["你自己維護的清單。指定費率層級後,這個客戶的出貨就照那一層的費率重算。客戶名單為整個帳號共用,不隨層級切換而改變。",
