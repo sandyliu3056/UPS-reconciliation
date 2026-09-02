@@ -347,6 +347,7 @@ input[type=file]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
 .pill{border:1.5px solid var(--line);border-radius:999px;padding:1px 9px;
   font-size:11.5px;font-weight:600;white-space:nowrap}
 .pill.ok{color:var(--run2);border-color:var(--run2)}
+.pill.warn{color:var(--accent);border-color:var(--accent)}
 .pill.no{color:var(--neg);border-color:var(--neg)}
 .savenote{font-size:12.5px;color:var(--run2)}
 /* 日曆標題右邊寫現在在挑哪一格 —— 連挑兩個日期時,不講的話
@@ -1935,7 +1936,8 @@ label:has(#newChanOn){display:none !important}
         <div class="subhd" style="margin-top:0" data-i18n="hd.mapping">🔗 Column mapping</div>
         <div class="maprow"><span data-i18n="mp.trk">Tracking Numbers</span><i>→</i><b data-i18n="mp.trk2">Invoice tracking match</b><em class="okdot"></em></div>
         <div class="maprow"><span data-i18n="mp.cus">Customer Code</span><i>→</i><b data-i18n="mp.cus2">Client directory</b><em class="okdot"></em></div>
-        <div class="maprow"><span data-i18n="mp.chg">37 charge columns</span><i>→</i><b data-i18n="mp.chg2">System charge names</b><em class="okdot"></em></div>
+        <div class="maprow"><span data-i18n="mp.chk">Channel · Zone</span><i>→</i><b data-i18n="mp.chk2">Checked against the invoice</b><em class="okdot"></em></div>
+        <div class="maprow"><span data-i18n="mp.chg">Charge columns</span><i>→</i><b data-i18n="mp.chg2">System charges, combined by group</b><em class="okdot"></em></div>
         <div class="maprow"><span data-i18n="mp.amt">Total Amount</span><i>→</i><b data-i18n="mp.amt2">Whole-order total</b><em class="okdot"></em></div>
         <p class="hint" style="margin:8px 0 0" data-i18n="mp.note">Fixed by the template — nothing to configure.</p>
       </div>
@@ -4448,6 +4450,7 @@ async function repriceStored(key){
   await prefetchAddressClass(SHIPS).catch(()=>0);
   RATED=SHIPS.map(x=>priceShipment(CFG,x));
   renderSummary(); renderRate(); renderCode(); renderHist(); renderDashboard();
+  reconAutoRun();
   ready();
   setStatus(L(key+" 已重算 · "+rows.length.toLocaleString()+" 列 / "
               +SHIPS.length.toLocaleString()+" 個追蹤號",
@@ -13023,10 +13026,10 @@ function reconRestore(){
   if(!keep) return;
   const rows=keep.rows;
   if(!CFG||!SHIPS||!SHIPS.length){
-    RECON={issues:[], res:null, list:rows};
-    reconRerunBtn();
-    reconMsg(L("上次匯入的 "+rows.length+" 張單還留著。載入這一期的 UPS 帳單之後,按「重新比對」。",
-               "The "+rows.length+" order(s) from last time are still here. Load this period's UPS invoice, then press Re-run comparison."),false);
+    RECON={issues:[], res:null, list:rows, pending:true};
+    reconRerunBtn(); renderRecon();
+    reconMsg(L("上次匯入的 "+rows.length+" 張單還留著。載入這一期的 UPS 帳單之後會自動比對。",
+               "The "+rows.length+" order(s) from last time are still here. Load this period's UPS invoice and the comparison runs by itself."),true);
     return;
   }
   reconRerunFrom(rows, true);
@@ -13034,6 +13037,20 @@ function reconRestore(){
 function reconRerunBtn(){
   const b=$("#bReconRerun");
   if(b) b.hidden=!(RECON&&RECON.list&&RECON.list.length);
+}
+/* 帳單匯入或切期之後:手上有 WMS / TMS 的單就自動重新比對,結果永遠對著
+   現在載入的這一期。以前要人自己回 05 按「重新比對」。 */
+function reconAutoRun(){
+  const rows=RECON&&RECON.list;
+  if(!rows||!rows.length||!CFG||!SHIPS||!SHIPS.length) return false;
+  const wasPending=!!RECON.pending;
+  const fname=RECON.fname||"";
+  reconRerunFrom(rows, true);
+  if(RECON) RECON.fname=fname;
+  if(wasPending) toast(L("帳單進來了,"+rows.length+" 張單已自動比對,結果在「07 對帳分析」。",
+                         "Invoice loaded — "+rows.length+" order(s) compared automatically. See 07 Reconciliation Analysis."),true);
+  renderRecon();
+  return true;
 }
 function reconRerunFrom(rows, quiet){
   if(!rows||!rows.length) return false;
@@ -13536,7 +13553,9 @@ function renderRecon(){
   $("#rdItems")  && ($("#rdItems").textContent=rows.length?String(rows.filter(o=>o.chg).length):"—");
   $("#rdState")  && ($("#rdState").innerHTML = RECON&&RECON.res
       ? `<span class="pill ok">${esc(L("已比對","Compared"))}</span>`
-      : rows.length ? esc(L("待比對","Awaiting comparison")) : `<span class="empty">—</span>`);
+      : rows.length ? `<span class="pill warn">${esc(RECON&&RECON.pending
+            ? L("等 UPS 帳單匯入","Awaiting the UPS invoice") : L("待比對","Awaiting comparison"))}</span>`
+      : `<span class="empty">—</span>`);
   if(icard){
     icard.hidden=!iss;
     const tb=$("#tReconIss")&&$("#tReconIss").tBodies[0];
@@ -13778,10 +13797,8 @@ async function reconExport(){
 /* 讀檔+解析,不寫入。回 {err} 或 {p, fname} —— 匯入與預覽共用同一條讀取路。 */
 async function reconRead(file){
   if(!file) return {err:""};
-  if(!CFG) return {err:L("請先載入費率設定。","Load a rate configuration first.")};
-  if(!SHIPS||!SHIPS.length)
-    return {err:L("請先匯入這一期的 UPS 帳單,對帳要拿它來比。",
-                  "Import this period's UPS invoice first — there is nothing to reconcile against.")};
+  /* 帳單還沒進來也收:檔案先留著,帳單一匯入就自動比對。以前這裡直接擋下,
+     人按了「匯入」只看到底下一行紅字,像是沒反應。 */
   reconMsg(L("讀取中…","Reading…"),true);
   let wb=null;
   try{ wb=await readWorkbookRows(file); }
@@ -13799,6 +13816,17 @@ function reconAccept(p, fname){
     reconMsg(L("有 "+p.issues.length+" 列不能收,整份沒有匯入。",
                p.issues.length+" row(s) rejected, nothing imported."),false);
     return false; }
+  /* 帳單還沒進來:先收下、留著,帳單一匯入(06)就自動比對。 */
+  if(!CFG||!SHIPS||!SHIPS.length){
+    RECON={issues:[], res:null, list:p.rows, sumWarn:p.sumWarn||[], fname:fname||"", pending:true};
+    const kept=reconRowsSave(p.rows);
+    reconRerunBtn(); renderRecon();
+    const m=L("已收下 "+p.rows.length+" 張單。這一期的 UPS 帳單還沒匯入,到「06 UPS 帳單匯入」匯入後會自動比對。",
+              "Accepted "+p.rows.length+" order(s). This period's UPS invoice is not loaded yet — import it under 06 UPS Invoice Import and the comparison runs by itself.");
+    reconMsg(m,true); toast(m,true);
+    if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
+    return true;
+  }
   /* 跑之前先點名。等到跑完才說「這幾個沒算」,人已經在讀數字了。 */
   const pf=reconPreflight(p.rows.map(r=>r.cus));
   const res=reconRun(p.rows);
@@ -16909,6 +16937,7 @@ async function runReport(ing, ships){
        擋路,也不會在下一個 toast 出現時被蓋掉。 */
     paintApiNote();
     renderCode(); renderHist(); renderDashboard();
+    reconAutoRun();
       ready();
     logAdd("reprice report", ROWS.length+" rows / "+SHIPS.length+" tracking");
     setStatus(L("完成:","Done: ")+ROWS.length.toLocaleString()
@@ -18577,9 +18606,11 @@ const I18N={
   "mp.trk":["Tracking Numbers","Tracking Numbers"],
   "mp.trk2":["與帳單追蹤號比對","Invoice tracking match"],
   "mp.cus":["Customer Code","Customer Code"],
-  "mp.cus2":["客戶名單(下拉)","Client directory"],
-  "mp.chg":["37 費用欄","37 charge columns"],
-  "mp.chg2":["系統費用名稱","System charge names"],
+  "mp.cus2":["客戶名單","Client directory"],
+  "mp.chk":["Channel · Zone","Channel · Zone"],
+  "mp.chk2":["與帳單核對","Checked against the invoice"],
+  "mp.chg":["費用欄(WMS 9 / TMS 8)","Charge columns (WMS 9 / TMS 8)"],
+  "mp.chg2":["系統費用,合併欄依組比對","System charges, combined by group"],
   "mp.amt":["Total Amount","Total Amount"],
   "mp.amt2":["整單總額","Whole-order total"],
   "mp.note":["由模板固定,毋須設定。","Fixed by the template — nothing to configure."],
