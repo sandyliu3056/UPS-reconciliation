@@ -6831,14 +6831,47 @@ function chgCodeOf(name){
   const o=chgCodes()[name];
   return o?String(o.code||"").trim():"";
 }
-/* 合併組那一列的代碼:成員的代碼合起來;單項就是自己的。 */
+/* 系統重算的欄名 → Consolidated 的欄名。對帳三邊(向客戶收、UPS 收、重算)
+   都講 Consolidated 的名字:稽核中心匯出的那一頁是準,重算的名字遷就它。
+   兩邊同名的不列,只列叫法不同的。 */
+const AUD_OF_SYS={
+  "DAS Commercial":"Delivery Area Surcharge - Commercial",
+  "DAS Residential":"Delivery Area Surcharge - Residential",
+  "DAS Extended Commercial":"Delivery Area Surcharge - Extended Commercial",
+  "DAS Extended Residential":"Delivery Area Surcharge - Extended Residential",
+  "Remote Area Commercial":"Remote Area Surcharge - Commercial",
+  "Remote Area Residential":"Remote Area Surcharge - Residential",
+  "Remote Area - AK":"Remote Area Surcharge",
+  "Over Maximum Size Surcharge":"Over Maximum Size",
+  "Return To Sender":"Return To Sender - Web Request",
+  "Reroute":"Reroute - Web Request",
+};
+/* HI 的偏遠地區費在 Consolidated 上分商住兩欄,重算只有一欄:看這一筆判的是
+   住宅還是商業。其餘查不到對照的,拿這個費用的 UPS 代碼在帳單上實際落到
+   哪一欄(codeCol);帳單上沒出現過的照原名 —— 那一側本來就沒有數字要對。 */
+function audNameOf(sys, residential, codeCol){
+  if(sys==="Remote Area - HI") return residential?"Remote Area Surcharge - Residential":"Remote Area Surcharge - Commercial";
+  if(AUD_OF_SYS[sys]) return AUD_OF_SYS[sys];
+  if(codeCol) for(const c of chgUpsCodes(sys)) if(codeCol[c]) return codeCol[c];
+  return sys;
+}
+/* 反向:Consolidated 的名字對回系統名稱,查自己的代碼與 UPS 代碼用。可能不只一個。 */
+function sysNamesOfAud(name){
+  const out=[];
+  for(const [sy,au] of Object.entries(AUD_OF_SYS)) if(au===name) out.push(sy);
+  if(name==="Remote Area Surcharge - Residential"||name==="Remote Area Surcharge - Commercial") out.push("Remote Area - HI");
+  if(!out.length && REPORT_KNOWN.has(name)) out.push(name);
+  return out;
+}
+/* 合併組那一列的代碼:成員的代碼合起來;單項就是自己的。名字是 Consolidated
+   的,先對回系統名稱再查。 */
 function chgCodeMine(o){
-  if(!o.kids) return chgCodeOf(o.name);
-  return [...new Set(o.kids.map(k=>chgCodeOf(k.name)).filter(Boolean))].join(" · ");
+  const names=o.kids?o.kids.map(k=>k.name):[o.name];
+  return [...new Set(names.flatMap(sysNamesOfAud).map(chgCodeOf).filter(Boolean))].join(" · ");
 }
 function chgUpsOf(o){
-  if(!o.kids) return chgUpsCodes(o.name);
-  return [...new Set(o.kids.flatMap(k=>chgUpsCodes(k.name)))].sort();
+  const names=o.kids?o.kids.map(k=>k.name):[o.name];
+  return [...new Set(names.flatMap(sysNamesOfAud).flatMap(chgUpsCodes))].sort();
 }
 /* =====================================================================
    費率層級
@@ -10972,6 +11005,81 @@ const AUD_SIDES=[
   ["Delivery Area Surcharge - Commercial","Delivery Area Surcharge - Residential"],
   ["Delivery Area Surcharge - Extended Commercial","Delivery Area Surcharge - Extended Residential"],
   ["Remote Area Surcharge - Commercial","Remote Area Surcharge - Residential"]];
+/* 一個追蹤號在 Consolidated Invoice 上的那一列:識別欄一組、每一項費用一欄。
+   稽核中心匯出、WMS/TMS 模板、對帳的 UPS 那一側三處共用 —— 「以 Consolidated
+   那一頁為準」的意思就是這三處只能有同一套算法,改一處三處一起變。 */
+function consIdentityOf(ls){
+  ls=ls||[];
+  const frts=ls.filter(l=>isFreightLine(l));
+  /* UPS 重新量過的更正列寫的才是最後照著收錢的重量。和異常報表同一條規則。 */
+  const frt=frts.find(l=>String(l.layer||"")==="ADJ"&&toNum(l.billed)>0)||frts[0]||ls[0]||{};
+  const pick=f=>{ for(const x of ls) if(x&&x[f]) return x[f]; return ""; };
+  return { date:String(pick("shipDate")||""), ref1:String(pick("ref1")||""), ref2:String(pick("ref2")||""),
+           dimsC:String(pick("dimsC")||0), dimsA:String(pick("dimsA")||0),
+           entered:toNum(frt.entered), billed:toNum(frt.billed), zone:String(frt.zone||0),
+           chan:String((frts[0]||{}).desc||"").trim() };
+}
+/* 這一行歸到哪一欄。對帳時登記過的自訂附加費用自己的名字 —— 重算那一側也叫
+   這個名字,兩邊才對得起來;稽核中心匯出照 py 的 classify_fee,不帶自訂名。
+   認不得的列拿自己的描述當欄名;撞到識別欄的名字時讓開。 */
+function consColOf(l, opts){
+  const c=String(l.code||"").trim().toUpperCase();
+  const cls=String(l.cls||"").trim().toUpperCase();
+  if(!(opts&&opts.custom===false) && c && !MAIN_LINE.has(c)){
+    const dcfg=((CFG&&CFG.raw&&CFG.raw.dynamic_surcharge_mapping)||{})[c];
+    if(dcfg && dcfg.enabled!==false && AR_CODES.includes(normArCode(cls))
+       && normArCode(cls)===normArCode(dcfg.ar||"ACC") && String(dcfg.name||"").trim()!=="")
+      return String(dcfg.name).trim();
+  }
+  let col=feeColumnOf(l);
+  if(AUD_BASE.indexOf(col)>=0) col=col+" (Charge)";
+  return col;
+}
+/* 這一個追蹤號每一欄各多少錢。商住各掛一半的併回實際成立的那一面;更正的
+   運費併回 Base Rate;整欄是 0 的不留。codeCol 記下每一個代碼落在哪一欄,
+   重算那一側對名字時要用。 */
+function consFeesOf(ls, opts){
+  ls=ls||[];
+  let side="";
+  const fees={}, codeCol={};
+  for(const l of ls){
+    const a=String(l.ai||"").trim().toUpperCase();
+    const k=String(l.cls||"").trim().toUpperCase();
+    const d=String(l.desc||"").toUpperCase();
+    if(a==="ADJ"&&k==="FRT"){
+      if(d.indexOf("RESIDENTIAL ADJUSTMENT")>=0) side="R";
+      else if(d.indexOf("COMMERCIAL ADJUSTMENT")>=0) side="C";
+    }
+    const col=consColOf(l, opts);
+    fees[col]=(fees[col]||0)+toNum(l.net);
+    const c=String(l.code||"").trim().toUpperCase();
+    if(c && !MAIN_LINE.has(c) && !codeCol[c]) codeCol[c]=col;
+  }
+  if(side) for(const [c,r] of AUD_SIDES){
+    const cv=toNum(fees[c]), rv=toNum(fees[r]);
+    if(!cv||!rv) continue;
+    if((cv>0)!==(rv>0)) continue;
+    const keep=side==="R"?r:c, drop=side==="R"?c:r;
+    fees[keep]=cv+rv; delete fees[drop];
+  }
+  fees["Base Rate"]=toNum(fees["Base Rate"])+toNum(fees["Base Rate Adjustment"]);
+  delete fees["Base Rate Adjustment"];
+  delete fees["RTN - Base Rate"]; delete fees["Final Base Rate"];
+  for(const c of Object.keys(fees)){ const v=cents(fees[c]); if(v===0) delete fees[c]; else fees[c]=v; }
+  return {fees, codeCol};
+}
+/* 這一批追蹤號在 Consolidated 上會長出哪些費用欄:固定欄照 py 的順序,帳單自己
+   長出來的接在後面(照字母)。整欄都是 0 的不留 —— 沒有 Adult Signature 的
+   一週不必捲過那一欄;有收的一欄都不缺。 */
+function consColsOf(shipList, opts){
+  const seen=new Set();
+  for(const s of (shipList||[])){
+    const {fees}=consFeesOf(s.allLines||s.lines||[], opts);
+    for(const c of Object.keys(fees)) seen.add(c);
+  }
+  const dyn=[...seen].filter(c=>AUD_FEES.indexOf(c)<0).sort();
+  return AUD_FEES.filter(c=>seen.has(c)).concat(dyn);
+}
 /* 這一列真的是帳單列嗎。UPS 的期號一律以四位數字開頭(000000586Y51226),
    looksLikeInvoice() 判一個檔是不是帳單用的也是這一條。
    歷史庫裡混進過非帳單的檔(附加費模板那種,期號欄寫著 "Shipment Type"
@@ -11014,61 +11122,28 @@ async function histExportAll(onProgress){
   const cons=[], raw=[];
   const dynSeen=new Set();
   for(const [trk,ls] of byTrk){
-    const frts=ls.filter(l=>isFreightLine(l));
-    /* UPS 重新量過的更正列寫的才是最後照著收錢的重量。和異常報表同一條規則。 */
-    const frt=frts.find(l=>String(l.layer||"")==="ADJ"&&toNum(l.billed)>0)||frts[0]||ls[0]||{};
-    const pick=f=>{ for(const x of ls) if(x&&x[f]) return x[f]; return ""; };
-    const chan=String((frts[0]||{}).desc||"").trim();
+    const id=consIdentityOf(ls);
     const row={
-      "Transaction Date":serial(pick("shipDate")),
-      "Shipment Reference Number 1":String(pick("ref1")||""),
-      "Shipment Reference Number 2":String(pick("ref2")||""),
+      "Transaction Date":serial(id.date),
+      "Shipment Reference Number 1":id.ref1,
+      "Shipment Reference Number 2":id.ref2,
       "Tracking Number":trk,
-      "Package Dimensions":String(pick("dimsC")||0),
-      "Detail Keyed Dim":String(pick("dimsA")||0),
-      "Entered Weight":toNum(frt.entered),
-      "Billed Weight":toNum(frt.billed),
-      "Zone":String(frt.zone||0),
-      "Shipping Channel":chan,
+      "Package Dimensions":id.dimsC,
+      "Detail Keyed Dim":id.dimsA,
+      "Entered Weight":id.entered,
+      "Billed Weight":id.billed,
+      "Zone":id.zone,
+      "Shipping Channel":id.chan,
     };
-    /* UPS 這一筆有沒有整筆改判商業或住宅。scanCharges 用的是同一個判準。 */
-    let side="";
-    const fees={};
-    for(const l of ls){
-      const a=String(l.ai||"").trim().toUpperCase();
-      const k=String(l.cls||"").trim().toUpperCase();
-      const d=String(l.desc||"").toUpperCase();
-      if(a==="ADJ"&&k==="FRT"){
-        if(d.indexOf("RESIDENTIAL ADJUSTMENT")>=0) side="R";
-        else if(d.indexOf("COMMERCIAL ADJUSTMENT")>=0) side="C";
-      }
-      let col=feeColumnOf(l);
-      /* 認不得的列拿自己的描述當欄名。剛好撞到識別欄的名字時要讓開,
-         不然一筆描述寫 "Zone" 的 3.00 會把 zone 5 改成 3。 */
-      if(AUD_BASE.indexOf(col)>=0) col=col+" (Charge)";
-      fees[col]=(fees[col]||0)+toNum(l.net);
+    for(const l of ls)
       raw.push([String(l.invoice||"").trim(), serial(l.invDate), serial(l.shipDate),
-                trk, pyShipmentType(l.ai,l.desc), chan,
-                String(pick("dimsC")||0), String(pick("dimsA")||0),
-                toNum(frt.entered), toNum(frt.billed), String(l.zone||frt.zone||0),
-                String(l.desc||""), String(l.code||""), String(l.cls||""),
-                r2(l.net)]);
-    }
-    if(side) for(const [c,r] of AUD_SIDES){
-      const cv=toNum(fees[c]), rv=toNum(fees[r]);
-      if(!cv||!rv) continue;
-      if((cv>0)!==(rv>0)) continue;
-      const keep=side==="R"?r:c, drop=side==="R"?c:r;
-      fees[keep]=cv+rv; delete fees[drop];
-    }
-    /* 更正的運費併回 Base Rate —— 同一段運送,兩欄分開看不出總價。 */
-    fees["Base Rate"]=r2(toNum(fees["Base Rate"])+toNum(fees["Base Rate Adjustment"]));
-    delete fees["Base Rate Adjustment"];
-    delete fees["RTN - Base Rate"]; delete fees["Final Base Rate"];
+                trk, pyShipmentType(l.ai,l.desc), id.chan,
+                id.dimsC, id.dimsA, id.entered, id.billed, String(l.zone||id.zone||0),
+                String(l.desc||""), String(l.code||""), String(l.cls||""), r2(l.net)]);
+    /* 稽核匯出照 py,不帶自訂附加費的名字。 */
+    const {fees}=consFeesOf(ls,{custom:false});
     for(const c of Object.keys(fees)){
-      const v=r2(fees[c]);
-      if(v===0) continue;
-      row[c]=v;
+      row[c]=fees[c];
       if(AUD_BASE.indexOf(c)<0 && AUD_FEES.indexOf(c)<0) dynSeen.add(c);
     }
     cons.push(row);
@@ -12963,7 +13038,7 @@ const DYN_COLS=["AS Code","AR","Surcharge Name","Type","Fuel Eligible","Enabled"
      3. 照該客戶指定的費率層級重算
      4. 三個數字擺在一起:客戶實收、UPS 實收、系統重算
 
-   模板只收四件必填:單號、追蹤號、客戶代號、整張單向客戶收的總額。
+   模板只收三件必填:追蹤號、客戶代號、這一件向客戶收的總額。
    附加費明細不跟 WMS 要 —— 那些在 UPS 帳單上,帳單上的每一筆都帶著正式
    代碼;WMS 標籤系統那邊的欄位是各家自己取的,猜不得。
 
@@ -12971,10 +13046,13 @@ const DYN_COLS=["AS Code","AR","Surcharge Name","Type","Fuel Eligible","Enabled"
    「一個客戶一個層級」只是換一份 cfg 傳進去,計價那一側一行都不用改。
    ===================================================================== */
 const RECON_SHEET="Shipments";
-const RECON_COL={ order:"Order Number", trk:"Tracking Numbers",
+/* 欄名照 Consolidated Invoice 那一頁:一個追蹤號一列。舊模板的 Tracking Numbers、
+   Ship Date、Billed Weight (lb) 匯入端還認。 */
+const RECON_COL={ order:"Order Number", trk:"Tracking Number",
                   cus:"Customer Code",  amt:"Total Amount",
-                  date:"Ship Date",     zone:"Zone",  chan:"Channel",
-                  wt:"Billed Weight (lb)" };
+                  date:"Transaction Date", zone:"Zone", chan:"Channel",
+                  wt:"Billed Weight",
+                  ref1:"Shipment Reference Number 1", ref2:"Shipment Reference Number 2" };
 /* 系統裡的渠道名稱:04 渠道那一頁登記的那幾條。模板的 Channel 欄用這份當
    下拉,名字才會和系統一致;匯入時對不到的就是「系統沒有的渠道」。 */
 /* 模板上的渠道是「族」:WMS / TMS 的 Ground 就是一條渠道,不分商業／住宅,
@@ -13015,15 +13093,28 @@ const normZoneKey=z=>String(z==null?"":z).trim().replace(/^0+(?=\d)/,"").toUpper
 /* 舊版模板的總額欄叫全名。已經發出去、填好一半的檔案不能因為改版就作廢,
    兩個名字都收。 */
 const RECON_AMT_ALIAS=["total amount","total amount billed to customer"];
-const RECON_REQ=["order","trk","cus","amt"];
-/* 合併欄。WMS / TMS 沒有把 DAS、偏遠、AHS、簽名分到系統這麼細,一組一欄:
-   DAS 與偏遠地區在來源系統是同一格,所以是一組;WMS 的 AHS 與 LPS 分開,
-   TMS 是併在一起的,所以兩版模板的組不同。匯入端照欄名認組,比對時重算與
-   UPS 兩側把細項加總成同一組 —— 三邊同一個口徑。 */
+/* 同仁填的欄帶來源字尾:「Base Rate - WMS」。舊檔沒有字尾,也認。 */
+const RECON_SFX=["WMS","TMS","Billed","Client"];
+/* 舊版模板的欄名對回 Consolidated 的名字;沒列的兩邊同名。 */
+function reconLegacyName(h){
+  const n=String(h||"").trim();
+  if(AUD_OF_SYS[n]) return AUD_OF_SYS[n];
+  if(n==="Remote Area - HI") return "Remote Area Surcharge";
+  if(n.toLowerCase()==="billed weight (lb)") return "Billed Weight";
+  return n;
+}
+/* 合併欄。舊版模板讓 WMS / TMS 把 DAS、偏遠、AHS、簽名各填一格,一組一欄;
+   現在模板照 Consolidated 逐欄列,但填過合併欄的檔照樣收:匯入端照欄名認組,
+   比對時重算與 UPS 兩側把細項加總成同一組 —— 三邊同一個口徑。細項名稱一律
+   用 Consolidated 的。
+   scc 這一組不是模板欄,是比對用的:UPS 重新量過之後補收的運費差額在
+   Consolidated 上自成一欄(Shipping Charge Correction),而重算算的是最後的
+   運費;要比就比「原運費 + 更正」,三邊同一個口徑。帳單上有更正才出現。 */
 const RECON_GROUPS={
   dasras:{head:"Delivery Area / Remote Area Surcharge",
-       fees:["DAS Commercial","DAS Residential","DAS Extended Commercial","DAS Extended Residential",
-             "Remote Area Commercial","Remote Area Residential","Remote Area - AK","Remote Area - HI"]},
+       fees:["Delivery Area Surcharge - Commercial","Delivery Area Surcharge - Residential",
+             "Delivery Area Surcharge - Extended Commercial","Delivery Area Surcharge - Extended Residential",
+             "Remote Area Surcharge","Remote Area Surcharge - Commercial","Remote Area Surcharge - Residential"]},
   ahs:{head:"Additional Handling Surcharge",
        fees:["Additional Handling Surcharge - Weight","Additional Handling Surcharge - Dimension",
              "Additional Handling Surcharge - Packaging"]},
@@ -13031,26 +13122,9 @@ const RECON_GROUPS={
        fees:["Additional Handling Surcharge - Weight","Additional Handling Surcharge - Dimension",
              "Additional Handling Surcharge - Packaging","Large Package Surcharge"]},
   sig:{head:"Signature / Adult Signature", fees:["Signature","Adult Signature"]},
+  scc:{head:"Base Rate + Shipping Charge Correction", fees:["Base Rate","Shipping Charge Correction"], auto:true},
 };
-const RECON_GROUPS_BY_SRC={WMS:["dasras","ahs","sig"], TMS:["dasras","ahslps","sig"]};
-/* 非承運費用(TMS 的 Service Fee、WMS 的作業費之類):它們在總收取金額裡,
-   卻不是 UPS 的任何一項。給它一欄,各欄合計才對得上總額,不必每張單都被
-   點名「合計不符」。比對表上自成一列,只有向客戶收那一側有數字。 */
 const RECON_OTHER="Other Fees (non-carrier)";
-/* 模板的費用欄順序,一個來源一份。TMS 照它匯出檔的欄序(Base Rate、
-   Residential、DAS、Fuel、Insurance、Signature、Delivery Surcharge、Service
-   Fee),同仁整欄複製過來就是;WMS 照帳單的邏輯:運費 → 附加費 → 燃油。
-   "@xxx" 是合併欄(RECON_GROUPS),"@other" 是非承運費用欄。 */
-const RECON_TPL_COLS={
-  WMS:["Base Rate","Residential Surcharge","@dasras","@ahs","Large Package Surcharge",
-       "@sig","Declared Value","Fuel Surcharge","@other"],
-  TMS:["Base Rate","Residential Surcharge","@dasras","Fuel Surcharge","Declared Value",
-       "@sig","@ahslps","@other"],
-};
-function reconTplCols(src){
-  return RECON_TPL_COLS[src==="TMS"?"TMS":"WMS"].map(k=>
-    k==="@other"?RECON_OTHER : k[0]==="@"?RECON_GROUPS[k.slice(1)].head : k);
-}
 /* 這個欄名是哪一組的合併欄;不是就回空字串。 */
 function reconGroupOf(name){
   const n=String(name||"").trim().toLowerCase();
@@ -13099,8 +13173,8 @@ function reconRestore(){
   if(!CFG||!SHIPS||!SHIPS.length){
     RECON={issues:[], res:null, list:rows, pending:true};
     reconRerunBtn(); renderRecon();
-    reconMsg(L("上次匯入的 "+rows.length+" 張單還留著。載入這一期的 UPS 帳單之後會自動比對。",
-               "The "+rows.length+" order(s) from last time are still here. Load this period's UPS invoice and the comparison runs by itself."),true);
+    reconMsg(L("上次匯入的 "+rows.length+" 筆還留著。載入這一期的 UPS 帳單之後會自動比對。",
+               "The "+rows.length+" row(s) from last time are still here. Load this period's UPS invoice and the comparison runs by itself."),true);
     return;
   }
   reconRerunFrom(rows, true);
@@ -13118,8 +13192,8 @@ function reconAutoRun(){
   const fname=RECON.fname||"";
   reconRerunFrom(rows, true);
   if(RECON) RECON.fname=fname;
-  if(wasPending) toast(L("帳單進來了,"+rows.length+" 張單已自動比對,結果在「07 對帳分析」。",
-                         "Invoice loaded — "+rows.length+" order(s) compared automatically. See 07 Reconciliation Analysis."),true);
+  if(wasPending) toast(L("帳單進來了,"+rows.length+" 筆已自動比對,結果在「07 對帳分析」。",
+                         "Invoice loaded — "+rows.length+" row(s) compared automatically. See 07 Reconciliation Analysis."),true);
   renderRecon();
   return true;
 }
@@ -13142,9 +13216,9 @@ function reconRerunFrom(rows, quiet){
   }
   RECON={issues:[], res, list:rows, sumWarn:sw};
   renderRecon(); reconRerunBtn();
-  const head=quiet?L("已用留著的 "+rows.length+" 張單重新比對。",
-                     "Re-compared the "+rows.length+" order(s) kept from last time.")
-                 :L("已重新比對 "+rows.length+" 張單。","Re-compared "+rows.length+" order(s).");
+  const head=quiet?L("已用留著的 "+rows.length+" 筆重新比對。",
+                     "Re-compared the "+rows.length+" row(s) kept from last time.")
+                 :L("已重新比對 "+rows.length+" 筆。","Re-compared "+rows.length+" row(s).");
   if(pf.blocked)
     reconMsg(head+L("其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
                     " "+pf.blocked+" customer(s) were not repriced — see the notice below."),false);
@@ -13209,29 +13283,66 @@ function reconParse(sheetRows){
   const rows=(sheetRows||[]).filter(r=>(r||[]).some(c=>reconTxt(c)!==""));
   if(rows.length<2) return {err:L("這份檔案裡沒有資料列。","The file has no data rows.")};
   const head=rows[0].map(reconTxt);
-  const ix={};
-  for(const k of Object.keys(RECON_COL)){
-    const want=RECON_COL[k].toLowerCase();
-    ix[k]=head.findIndex(h=>h.toLowerCase()===want);
-  }
-  /* 舊模板的總額欄叫全名 —— 用別名再找一次,發出去的檔不作廢。 */
-  if(ix.amt<0) ix.amt=head.findIndex(h=>RECON_AMT_ALIAS.includes(h.toLowerCase()));
-  const gone=RECON_REQ.filter(k=>ix[k]<0).map(k=>RECON_COL[k]);
+  const low=head.map(h=>h.toLowerCase());
+  const find=(...names)=>{ for(const n of names){ const j=low.indexOf(String(n).toLowerCase()); if(j>=0) return j; } return -1; };
+  /* 「欄名 - WMS」是同仁填的那一欄,有字尾的優先。新版式(一個追蹤號一列,欄名
+     Tracking Number)上沒有字尾的 Zone、Billed Weight、Shipping Channel 是帳單
+     抄來的,不當同仁填的讀;舊版式沒有字尾,照舊。 */
+  const findMine=(...names)=>{
+    for(const n of names) for(const sfx of RECON_SFX){ const j=low.indexOf((n+" - "+sfx).toLowerCase()); if(j>=0) return j; }
+    return -1;
+  };
+  const isNew=find("Tracking Number")>=0;
+  const mineOr=(names, legacy)=>{ const j=findMine(...names); return j>=0?j:find(...(isNew?[]:legacy)); };
+  const ix={
+    trk:  find("Tracking Number","Tracking Numbers"),
+    cus:  mineOr(["Customer Code"],["Customer Code"]),
+    order:mineOr(["Order Number"],["Order Number"]),
+    amt:  mineOr(["Total Amount"],["Total Amount"].concat(RECON_AMT_ALIAS)),
+    date: find("Transaction Date","Ship Date"),
+    ref1: find("Shipment Reference Number 1"), ref2: find("Shipment Reference Number 2"),
+    chan: mineOr(["Channel","Shipping Channel"],["Channel"]),
+    zone: mineOr(["Zone"],["Zone"]),
+    wt:   mineOr(["Billed Weight","Billed Weight (lb)"],["Billed Weight (lb)"]),
+  };
+  /* 客戶代碼、單號、總額這三欄新舊版式都沒有字尾也認 —— 它們本來就只有同仁會填。 */
+  if(ix.cus<0)   ix.cus=find("Customer Code");
+  if(ix.order<0) ix.order=find("Order Number");
+  if(ix.amt<0)   ix.amt=find("Total Amount",...RECON_AMT_ALIAS);
+  const gone=[];
+  if(ix.trk<0) gone.push(RECON_COL.trk);
+  if(ix.cus<0) gone.push(RECON_COL.cus);
+  if(ix.amt<0) gone.push(RECON_COL.amt);
   if(gone.length) return {err:L("模板少了這幾欄:","The template is missing these columns: ")
                               +gone.join(", ")};
-  /* 逐項費用欄:名稱對得上系統費用名稱的才收。舊五欄模板一欄都對不上,
-     整段自然跳過 —— 同一支程式吃兩代模板。 */
-  const chgIx=[];
-  for(const nm of REPORT_MONEY){
-    const j=head.findIndex(h=>h.toLowerCase()===nm.toLowerCase());
-    if(j>=0) chgIx.push([nm,j]);
-  }
+  /* 費用欄,認三種:
+       · 帶字尾的 Consolidated 欄名(「Base Rate - WMS」)—— 新模板;任何名字都收,
+         帳單自己長出來的欄也在內。「- UPS」那些是帳單的數字,不讀。
+       · 沒有字尾、旁邊也沒有「- UPS」對照欄的 Consolidated 欄名 —— 直接照那一頁填的檔。
+       · 舊版模板的系統費用名稱、合併欄名、非承運欄。 */
+  const ID_NAMES=new Set(["customer code","order number","channel","shipping channel","zone",
+                          "billed weight","billed weight (lb)","total amount"]);
+  const chgIx=[], taken=new Set();
+  const addCol=(nm,j)=>{ if(j<0||taken.has(j)) return; taken.add(j); chgIx.push([nm,j]); };
+  head.forEach((h,j)=>{
+    const m=/^(.*?)\s+-\s+(WMS|TMS|Billed|Client)$/i.exec(h);
+    if(!m) return;
+    const base=m[1].trim();
+    if(!base || ID_NAMES.has(base.toLowerCase())) return;
+    if(Object.values(RECON_GROUPS).some(d=>d.head.toLowerCase()===base.toLowerCase())) return;
+    if(base.toLowerCase()===RECON_OTHER.toLowerCase()) return;
+    addCol(reconLegacyName(base), j);
+  });
+  const plainOk=nm=>{ const j=find(nm); if(j<0) return -1; return find(nm+" - UPS")>=0?-1:j; };
+  for(const nm of AUD_FEES) addCol(nm, plainOk(nm));
+  for(const nm of REPORT_MONEY){ const j=plainOk(nm); if(j>=0) addCol(reconLegacyName(nm), j); }
   /* 合併欄:欄名對得上 RECON_GROUPS 的組名就收,值和細項欄一樣處理。
      同一組既有合併欄又有細項欄、或 AHS 與 AHS+LPS 兩種合併欄同時出現,
-     就不猜 —— 整份退回,講清楚是哪幾欄撞在一起。 */
+     就不猜 —— 整份退回,講清楚是哪幾欄撞在一起。比對用的自動組不是模板欄。 */
   const gIx=[];
   for(const [g,def] of Object.entries(RECON_GROUPS)){
-    const j=head.findIndex(h=>h.toLowerCase()===def.head.toLowerCase());
+    if(def.auto) continue;
+    let j=findMine(def.head); if(j<0) j=plainOk(def.head);
     if(j<0) continue;
     const dup=def.fees.filter(f=>chgIx.some(([nm])=>nm===f));
     if(dup.length) return {err:L("「"+def.head+"」是合併欄,不能和它的細項欄同時存在:"+dup.join("、"),
@@ -13241,21 +13352,22 @@ function reconParse(sheetRows){
   if(gIx.some(x=>x[2]==="ahs")&&gIx.some(x=>x[2]==="ahslps"))
     return {err:L("「Additional Handling Surcharge」和「Additional Handling + Large Package Surcharge」只能留一欄。",
                   "Keep only one of \"Additional Handling Surcharge\" and \"Additional Handling + Large Package Surcharge\".")};
-  for(const [hd,j] of gIx) chgIx.push([hd,j]);
-  const jo=head.findIndex(h=>h.toLowerCase()===RECON_OTHER.toLowerCase());
-  if(jo>=0) chgIx.push([RECON_OTHER,jo]);
+  for(const [hd,j] of gIx) addCol(hd,j);
+  { let j=findMine(RECON_OTHER); if(j<0) j=plainOk(RECON_OTHER); addCol(RECON_OTHER,j); }
   const out=[], issues=[], sumWarn=[];
-  const seenOrder=new Map(), seenTrk=new Map();
+  const seenTrk=new Map();
   const known=new Set(cusReg().map(c=>c.code));
   for(let i=1;i<rows.length;i++){
     const r=rows[i], ln=i+1;
     const cell=k=>ix[k]>=0?reconTxt(r[ix[k]]):"";
-    const order=cell("order");
     const cus=cusNorm(cell("cus"));
     const amtRaw=cell("amt");
     const trks=cell("trk").split(/[,;\n\r]+/).map(reconTrk).filter(Boolean);
+    const ref1=cell("ref1"), ref2=cell("ref2");
+    /* 單號可以不填:沒填就用帳單上的參考號 1、2,再不然用追蹤號 —— 一個追蹤號
+       一列時,單號只是給人看的,一票多件同一個單號出現在幾列上是正常的。 */
+    const order=cell("order")||ref1||ref2||trks[0]||"";
     const blank=[];
-    if(!order)        blank.push(RECON_COL.order);
     if(!trks.length)  blank.push(RECON_COL.trk);
     if(!cus)          blank.push(RECON_COL.cus);
     if(!amtRaw)       blank.push(RECON_COL.amt);
@@ -13267,8 +13379,6 @@ function reconParse(sheetRows){
     if(wtRaw!=="" && !/^\d+(\.\d+)?$/.test(wtRaw)){
       issues.push({ln, kind:"wt", what:cell("wt")}); continue; }
     if(!known.has(cus)){ issues.push({ln, kind:"cus", what:cus}); continue; }
-    if(seenOrder.has(order)){
-      issues.push({ln, kind:"dupOrder", what:order, at:seenOrder.get(order)}); continue; }
     const clash=trks.find(t=>seenTrk.has(t));
     if(clash){ issues.push({ln, kind:"dupTrk", what:clash, at:seenTrk.get(clash)}); continue; }
     /* 逐項費用:填了才算。空格是「沒填」,0 是「填了零」—— 兩回事,
@@ -13279,14 +13389,16 @@ function reconParse(sheetRows){
       if(raw==="") continue;
       if(!/^-?\d+(\.\d+)?$/.test(raw.replace(/[$,\s]/g,""))){ badChg={nm,raw}; break; }
       const v=cents(toNum(raw.replace(/[$,\s]/g,"")));
-      chg[nm]=v; itemSum=cents(itemSum+v); nItem++;
+      chg[nm]=cents((chg[nm]||0)+v); itemSum=cents(itemSum+v); nItem++;
     }
     if(badChg){ issues.push({ln, kind:"chgval", what:badChg.nm+": "+badChg.raw}); continue; }
-    seenOrder.set(order,ln);
     for(const t of trks) seenTrk.set(t,ln);
     const amt=cents(toNum(amtRaw.replace(/[$,\s]/g,"")));
-    const row={ln, order, trks, cus, amt, date:cell("date"), zone:cell("zone"), chan:cell("chan"),
-               wt:wtRaw===""?null:toNum(wtRaw)};
+    /* 日期欄是模板抄帳單來的真日期;CSV 或另存過的檔可能剩下 Excel 序號,換回 yyyy-mm-dd。 */
+    const dRaw=cell("date");
+    const date=/^\d{5}$/.test(dRaw)?xlDate(new Date(Date.UTC(1899,11,30)+(+dRaw)*86400000+43200000)):dRaw;
+    const row={ln, order, trks, cus, amt, date, zone:cell("zone"), chan:cell("chan"),
+               wt:wtRaw===""?null:toNum(wtRaw), ref1, ref2};
     if(nItem){
       row.chg=chg;
       /* 各項合計對不上總額就記下來 —— 不擋,但要講。差額常是 TMS 自己的
@@ -13302,88 +13414,111 @@ function reconParse(sheetRows){
 /* 欄位太多,filter 範圍要用真的欄號算出來,寫死會少蓋。 */
 function xlColName(n){ let s=""; while(n>0){ s=String.fromCharCode(65+(n-1)%26)+s; n=Math.floor((n-1)/26); } return s; }
 async function reconTemplate(src){
-  /* WMS 和 TMS 各下各的檔。欄位是同一套 —— 逐項拆欄本來就是為了讓來源系統
-     的欄名(TMS 把 AHS/LPS 混成 Delivery Surcharge)進不了系統;分開下載是
-     讓兩邊的同仁各拿各的檔、各填各的,不會兩個系統填進同一份互相蓋。 */
   src=(src==="TMS")?"TMS":"WMS";
-  /* 版式:識別四欄(凍結) → 三十七項費用各一欄 → 總收取金額固定最後。
-     費用欄名用系統自己的費用名稱 —— 來源系統(例如 TMS 把 AHS 和 LPS 都寫成
-     Delivery Surcharge)怎麼命名不影響:同仁把金額填進對的欄,含糊的名字
-     根本進不了系統。 */
-  /* 前兩格放日期與客戶代碼 —— 出貨同仁先按日期核對、再認客戶,
-     單號與追蹤號排在後面。匯入端照欄名認欄,順序怎麼排都讀得回來。 */
-  /* Zone 放在識別欄最後:來源系統計價用的 Zone,匯入後和 UPS 帳單上的 Zone
-     對一次 —— Zone 對不上,運費和 DAS 就不可能對得上。選填。 */
-  /* Channel:來源系統計價用的渠道,用系統的名字(下拉),匯入後和系統判的渠道
-     對一次;Zone 同理。兩者都選填。 */
-  /* 計費重量也在識別欄,但只記錄、不核對:帳單上的是合約計費重量,向客戶
-     收的重量本來就不必一樣。選填。 */
-  const idc=[RECON_COL.date,RECON_COL.cus,RECON_COL.order,RECON_COL.trk,RECON_COL.chan,RECON_COL.zone,RECON_COL.wt];
-  const req=new Set([RECON_COL.order,RECON_COL.trk,RECON_COL.cus]);
-  const H=n=>({v:n,t:"s",s:{bold:true,align:"left",
-      fill:req.has(n)?"351C15":"EFE3CB", color:req.has(n)?"FFFFFF":"351C15"}});
-  /* 三種顏色三種身分:深棕=識別、琥珀=同仁要填的費用、綠=總額。
-     打開檔案不用讀說明,顏色先講一次規則。 */
-  const HC=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"8A6104",color:"FFFFFF",wrap:true}});
-  const HT=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"1F5638",color:"FFFFFF"}});
-  const CH=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
-  /* 只列出貨當下就存在、而且來源系統分得出來的費用(RECON_TPL_COLS)。
-     要等 UPS 開了帳單才會出現的(地址更正、退件、攔截、超大件、Demand、
-     漏傳 PLD…)不列 —— WMS / TMS 出貨時根本沒有這些數字。匯入端照費用名
-     認欄,舊模板帶著細項欄照樣讀得進來。 */
-  const tplFees=reconTplCols(src);
-  const hd=idc.map(H).concat(tplFees.map(HC),[HT(RECON_COL.amt)]);
+  /* 版式照稽核中心匯出的 Consolidated Invoice 那一頁,以手上的帳單為基準,一個
+     追蹤號一列:
+       · 識別十欄(深棕)從帳單抄來,加帳單期號 —— 不用改。
+       · 同仁填的識別欄(綠):客戶代碼(必填)、單號、計價用的渠道、Zone、計費重量。
+       · 每一項費用兩欄並排:「費用 - UPS」(黃)是帳單收的,先填好;
+         「費用 - WMS」(綠)填向客戶收的。帳單上有收的費用一欄都不缺;
+         沒載入帳單時列全部固定欄。
+       · 最後是總額兩欄,「Total Amount - WMS」必填。
+     匯入端照欄名認欄,「- UPS」那些欄只是給人對照,不讀。 */
+  const ships=(SHIPS||[]);
+  const feeCols=ships.length?consColsOf(ships):AUD_FEES.slice();
+  const HI=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF",wrap:true}});
+  const HU=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"FFC000",color:"1F1F1F",wrap:true}});
+  const HM=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"92D050",color:"1F1F1F",wrap:true}});
+  const HQ=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"1F5638",color:"FFFFFF",wrap:true}});
+  const mineCols=[RECON_COL.cus, RECON_COL.order, "Channel - "+src, "Zone - "+src, "Billed Weight - "+src];
+  const hd=AUD_BASE.map(HI).concat([HI("Invoice Number")],
+      [HQ(mineCols[0])], mineCols.slice(1).map(HM));
+  for(const c of feeCols){ hd.push(HU(c+" - UPS")); hd.push(HM(c+" - "+src)); }
+  hd.push(HU("Total Amount - UPS")); hd.push(HQ("Total Amount - "+src));
   const nCol=hd.length;
+  const D="yyyy-mm-dd", MONEY="#,##0.00", UPSC="FFF2CC", MINEC="E2EFDA";
+  const serial=v=>{
+    const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(normYmd(String(v||""))||"");
+    return m?Math.floor((Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/86400000):null;
+  };
+  const uc=v=>(v==null||cents(v)===0)?{v:"",t:"s",s:{fill:UPSC}}:{v:cents(v),t:"n",s:{fmt:MONEY,fill:UPSC}};
+  const mc=()=>({v:"",t:"s",s:{fill:MINEC}});
+  const num=v=>({v:toNum(v),t:"n"});
+  const rows=[hd];
+  for(const s of ships){
+    const ls=s.allLines||s.lines||[];
+    const id=consIdentityOf(ls);
+    const {fees}=consFeesOf(ls);
+    const inv=String((ls.find(l=>l.invoice)||{}).invoice||"").trim();
+    const d=serial(id.date);
+    const r=[d==null?String(id.date||""):{v:d,t:"n",s:{fmt:D,align:"right"}},
+             id.ref1, id.ref2, String(s.tracking||""), id.dimsC, id.dimsA, num(id.entered), num(id.billed),
+             id.zone, id.chan, inv, mc(), mc(), mc(), mc(), mc()];
+    for(const c of feeCols){ r.push(uc(fees[c])); r.push(mc()); }
+    r.push(uc(s.upsTotal)); r.push(mc());
+    rows.push(r);
+  }
   const reg=cusReg();
   const fams=reconChanFamilies();
   /* 填寫說明放在活頁簿裡自己一頁:拿到檔的人不必另外找文件。 */
   const G=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
   const gRow=(c,f,n)=>[c,f,n];
   const guide=[[G("Column"),G("Fill with / 填什麼"),G("Notes / 說明")],
-    gRow(RECON_COL.date,"出貨日 Ship date","YYYY-MM-DD;選填 optional"),
+    gRow(AUD_BASE.join(", ")+", Invoice Number","帳單抄來的識別欄,不用改 Identity from the invoice — leave as is",
+         "版式與稽核中心匯出的 Consolidated Invoice 相同,一個追蹤號一列 Same layout as the Audit Center's Consolidated Invoice sheet, one tracking per row"),
     gRow(RECON_COL.cus,"客戶代碼 Customer code","必填;要在客戶名單裡,對照 Customers 分頁 Required; must be on the client list, see the Customers sheet"),
-    gRow(RECON_COL.order,"系統單號 Order number","必填;一單一列、不可重複 Required; one order per row, unique"),
-    gRow(RECON_COL.trk,"UPS 追蹤號 Tracking numbers","必填;一票多件以逗號分隔 Required; comma-separated for multi-piece"),
-    gRow(RECON_COL.chan,"計價用的渠道 Channel used for pricing","選填;寫系統的渠道名稱,對照 Channels 分頁;Ground 不分商業／住宅;名單上沒有的可在匯入時新增 Optional; a system channel name, see the Channels sheet; Ground is one channel, no commercial/residential split; a channel not on the list can be added on import"),
-    gRow(RECON_COL.zone,"計價用的 UPS Zone Zone used for pricing","選填;匯入後與帳單上的 Zone 核對 Optional; checked against the invoice zone"),
-    gRow(RECON_COL.wt,"向客戶計價用的計費重量(lb)Billable weight the client was charged on, in lb","選填;整張單各件合計;只記錄不核對,合約計費重量本來就不必相同 Optional; whole-order total; recorded only, not checked — the contract billed weight need not match")];
-  const fillOf={
-    "Base Rate":["向客戶收的運費 Freight billed to the client",""],
-    "Residential Surcharge":["住宅附加費 Residential surcharge",""],
+    gRow(RECON_COL.order,"系統單號 Order number","選填;空白時用參考號 1、2;一票多件時各件同一個單號 Optional; blank falls back to reference 1 / 2; a multi-piece order repeats its number on each package"),
+    gRow("Channel - "+src,"計價用的渠道 Channel used for pricing","選填;系統的渠道名稱,對照 Channels 分頁;Ground 不分商業／住宅;匯入後與系統判的渠道核對 Optional; a system channel name, see the Channels sheet; Ground has no com/res split; checked against the system's channel"),
+    gRow("Zone - "+src,"計價用的 UPS Zone Zone used for pricing","選填;匯入後與帳單上的 Zone(左邊那一欄)核對 Optional; checked against the invoice Zone column"),
+    gRow("Billed Weight - "+src,"向客戶計價的計費重量(lb)Billable weight the client was charged on, lb","選填;只記錄不核對,合約計費重量本來就不必相同 Optional; recorded only, the contract billed weight need not match"),
+    gRow("<費用> - UPS  <charge> - UPS","帳單收的,先填好 Charged by UPS, pre-filled","不用改;空白 = 這一件 UPS 沒收這一項 Leave as is; blank = UPS did not bill it on this package"),
+    gRow("<費用> - "+src+"  <charge> - "+src,"向客戶收的 Billed to the client","按件填;空白 = 未填,0 = 實收零 Per package; blank = not filled, 0 = billed zero"),
+    gRow("Total Amount - UPS","帳單這一件的合計 UPS total for the package","不用改 Leave as is"),
+    gRow("Total Amount - "+src,"這一件向客戶收的總額 Whole amount billed to the client for the package","必填;應等於各「- "+src+"」費用欄合計 Required; should equal the "+src+" charge columns"),
+    ["","",""],
+    gRow(L("費用欄","Charge columns"),L("帳單上有收的每一項,照 Consolidated 的順序","Every charge UPS billed, in Consolidated order"),
+         L("UPS 開帳後才有的(更正、地址更正、退件…)向客戶補收了才填,沒補收留空","Charges that only exist once UPS invoiced (corrections, address correction, returns…) are filled only if re-billed to the client, else left blank"))];
+  const notes={
+    "Base Rate":["出貨當時向客戶收的運費 Freight billed at shipping time",""],
     "Fuel Surcharge":["燃油附加費 Fuel surcharge",""],
+    "Residential Surcharge":["住宅附加費 Residential surcharge",""],
     "Declared Value":["保價費 Declared value / insurance",src==="TMS"?"TMS 的 Insurance 欄 TMS column: Insurance":""],
-    "Large Package Surcharge":["大包裹附加費 Large package surcharge",""],
+    "Large Package Surcharge":["大包裹附加費 Large package surcharge",src==="TMS"?"TMS 的 Delivery Surcharge 拆出大包裹的部分 The large-package part of the TMS Delivery Surcharge":""],
+    "Shipping Charge Correction":["UPS 重新量過之後補收的運費差額 Freight difference UPS back-billed after re-measuring","向客戶補收了才填;比對時與 Base Rate 合計看「最後的運費」Fill only if re-billed to the client; compared together with Base Rate as the final freight"],
+    "Over Maximum Size":["超大件 Over maximum size","UPS 開帳才有 Only once UPS has invoiced"],
+    "Address Correction":["地址更正 Address correction","UPS 開帳才有 Only once UPS has invoiced"],
+    "Undeliverable Return":["無法投遞退回 Undeliverable return","UPS 開帳才有 Only once UPS has invoiced"],
   };
-  fillOf[RECON_GROUPS.dasras.head]=["DAS 與偏遠地區合計一格 DAS and remote area, one figure",
-    src==="TMS"?"TMS 的 DAS 欄 TMS column: DAS":"含 DAS、DAS Extended、Remote Area、AK / HI"];
-  fillOf[RECON_GROUPS.ahs.head]=["加值處理費合計 Additional handling, all types","含重量、尺寸、包裝 Weight, dimension, packaging"];
-  fillOf[RECON_GROUPS.ahslps.head]=["加值處理費 + 大包裹 Additional handling + large package","TMS 的 Delivery Surcharge 整筆填這一欄 TMS column: Delivery Surcharge, whole"];
-  fillOf[RECON_GROUPS.sig.head]=["簽名服務(含成人簽名)Signature, incl. adult",src==="TMS"?"TMS 的 Signature 欄 TMS column: Signature":""];
-  fillOf[RECON_OTHER]=["非承運費用 Non-carrier fees",src==="TMS"?"TMS 的 Service Fee 填這裡,合計才對得上 TMS column: Service Fee, so the row adds up":"作業費等 UPS 沒有的費用 Handling fees UPS does not bill"];
-  for(const n of tplFees){ const f=fillOf[n]||["",""]; guide.push(gRow(n,f[0],f[1])); }
-  guide.push(gRow(RECON_COL.amt,"整張單向客戶收的總額 Whole-order total billed to the client","必填;應等於各費用欄合計 Required; should equal the charge columns"));
+  const grp=n=>/^Delivery Area Surcharge/.test(n)?["DAS 分商住、延伸四欄,照帳單那一欄填 DAS, four columns by com/res and extended — fill the column UPS billed",src==="TMS"?"TMS 的 DAS 欄 TMS column: DAS":""]
+             :/^Remote Area Surcharge/.test(n)?["偏遠地區,照帳單那一欄填 Remote area — fill the column UPS billed",""]
+             :/^Additional Handling Surcharge/.test(n)?["加值處理費,照帳單那一欄填 Additional handling — fill the column UPS billed",src==="TMS"?"TMS 的 Delivery Surcharge 拆出加值處理的部分 The additional-handling part of the TMS Delivery Surcharge":""]
+             :/Signature$/.test(n)?["簽名服務 Signature service",src==="TMS"?"TMS 的 Signature 欄 TMS column: Signature":""]
+             :null;
+  for(const c of feeCols){ const f=notes[c]||grp(c)||[c,""]; guide.push(gRow(c+" - "+src, f[0], f[1])); }
   guide.push(["","",""]);
-  guide.push(gRow(L("規則","Rules"),"空白 = 未填,0 = 實收零 Blank = not filled, 0 = billed zero","欄名不可改、不可增刪 Do not rename, add or remove columns"));
+  guide.push(gRow(L("規則","Rules"),"欄名不可改、不可增刪;不要動黃色與深棕色的欄 Do not rename, add or remove columns; leave the yellow and dark-brown columns alone",
+                  "只讀綠色欄;缺客戶代碼或總額的列整份退回 Only the green columns are read; a row missing Customer Code or Total Amount rejects the whole file"));
+  const idW=[12,22,22,22,16,16,10,10,7,26,18, 16,20,18,10,14];
   const sheets=[
-    {name:RECON_SHEET, rows:[hd], freeze:{r:1,c:7},
+    {name:RECON_SHEET, rows, freeze:{r:1,c:4},
      filter:"A1:"+xlColName(nCol)+"1",
-     /* 欄寬跟著欄名走:合併欄的名字長,16 格會被截掉一半。 */
-     cols:[{w:14},{w:18},{w:22},{w:38},{w:22},{w:8},{w:12}]
-       .concat(tplFees.map(n=>({w:Math.min(30,Math.max(16,n.length+2))})),[{w:16}])},
-    {name:"Guide", freeze:{r:1,c:0}, cols:[{w:44},{w:52},{w:60}], rows:guide},
+     cols:idW.concat(feeCols.flatMap(n=>[Math.min(30,Math.max(14,n.length+8)),Math.min(30,Math.max(14,n.length+8))]),[18,18]).map(w=>({w}))},
+    {name:"Guide", freeze:{r:1,c:0}, cols:[{w:46},{w:54},{w:62}], rows:guide},
     /* 兩張對照表,都是可見的參考頁,不做下拉:客戶代碼和渠道都是同仁從自己
        系統抄過來的,下拉反而擋手。渠道列的是族名,旁邊寫系統裡對應的幾條。 */
     {name:"Channels", freeze:{r:1,c:0}, cols:[{w:26},{w:44}],
-     rows:[[CH("Channel"),CH("System channels covered")]]
+     rows:[[G("Channel"),G("System channels covered")]]
        .concat(fams.map(f=>[f.name, f.members.join(", ")]))},
     {name:"Customers", freeze:{r:1,c:0}, cols:[{w:18},{w:34}],
-     rows:[[CH("Customer Code"),CH("Customer Name")]]
+     rows:[[G("Customer Code"),G("Customer Name")]]
        .concat(reg.map(c=>[c.code, c.name||c.code]))}
   ];
   await xlWrite(sheets, src+"_Reconciliation_Template.xlsx");
-  reconMsg(L(src+" 模板已下載:識別四欄 + "+tplFees.length+" 個費用欄 + 總收取金額,含客戶 "+reg.length+" 筆;填寫說明在 Guide 分頁。",
-             src+" template downloaded: 4 identity columns + "+tplFees.length
-             +" charge columns + Total Amount, with "+reg.length+" customer(s). Fill-in notes are on the Guide sheet."), true);
+  reconMsg(ships.length
+    ? L(src+" 模板已下載:"+ships.length+" 個追蹤號、"+feeCols.length+" 項費用(帳單上有收的都在),同仁填綠色欄;填寫說明在 Guide 分頁。",
+        src+" template downloaded: "+ships.length+" tracking number(s), "+feeCols.length+" charge(s) — every one UPS billed. Fill the green columns; notes are on the Guide sheet.")
+    : L(src+" 模板已下載(還沒載入帳單,列的是全部固定費用欄);先到「06 UPS 帳單匯入」載入帳單再下載,追蹤號與 UPS 金額會先填好。",
+        src+" template downloaded with the full fixed charge set — no invoice is loaded. Load the invoice under 06 UPS Invoice Import first and the tracking numbers and UPS amounts come pre-filled."), true);
 }
 
 /* --------------------------------------------------------------------
@@ -13406,9 +13541,9 @@ function reconRun(list){
   };
   const hasBilled=list.some(e=>e.chg);
   /* 模板用了哪些合併欄:看 chg 的鍵。用了的組,重算與 UPS 兩側的細項就
-     加總成同一組再比,細項留作子列。 */
+     加總成同一組再比,細項留作子列。比對用的自動組不在這裡,看數字才成組。 */
   const active=new Set();
-  for(const e of list) for(const k of Object.keys(e.chg||{})){ const g=reconGroupOf(k); if(g) active.add(g); }
+  for(const e of list) for(const k of Object.keys(e.chg||{})){ const g=reconGroupOf(k); if(g && !RECON_GROUPS[g].auto) active.add(g); }
   const byTrk=new Map();
   for(const s of (SHIPS||[])){
     const k=reconTrk(s.tracking);
@@ -13418,25 +13553,37 @@ function reconRun(list){
   const reg=cusReg();
   const byCode=new Map(reg.map(c=>[c.code,c]));
   const orders=[], perCus=new Map(), lostLevel=new Set(), noLevel=new Set();
+  /* 三邊都講 Consolidated 的名字。UPS 那一側每一行照稽核中心的分欄歸位 ——
+     帳單上有收的一欄都不缺;重算那一側的欄名事後對過去(audNameOf)。對名字
+     要用整批帳單上「代碼落在哪一欄」的紀錄,所以先跑一遍收齊 codeCol,再回頭
+     把重算那一側入桶。 */
+  const codeCol={};
+  const repPend=[];
   for(const e of list){
     const c=byCode.get(e.cus)||{};
-    /* 每一張訂單都自己解析一次層級 —— 靠的是這張單的客戶,不是畫面上正在編輯
+    /* 每一列都自己解析一次層級 —— 靠的是這一列的客戶,不是畫面上正在編輯
        的那一層。同一批資料裡兩個客戶用不同層級,各算各的。 */
     const {cfg, block}=reconResolve(c.level);
     if(block===RL_NONE) noLevel.add(e.cus);
     else if(block) lostLevel.add(e.cus);
     let cost=0, rep=0;
     const missTrk=[], upsZones=new Set(), sysChans=new Set();
-    const feesRep={}, feesUps={};    /* 這一張單每一項費用兩側的數,匯出明細用 */
+    const feesRep={}, feesUps={};    /* 這一列每一項費用兩側的數,匯出明細用 */
     const invDates=new Set();        /* 對到的帳單期別日期,匯出明細第一欄 */
-    let upsWt=0, wtN=0;
+    let upsWt=0, wtN=0, upsId=null;
     for(const t of e.trks){
       const s=byTrk.get(t);
       if(!s){ missTrk.push(t); continue; }
       if(s.zone) upsZones.add(normZoneKey(s.zone));
       for(const l of (s.allLines||[])){ const d=l.invDate?(normYmd(l.invDate)||String(l.invDate)):""; if(d){ invDates.add(d); break; } }
       cost+=toNum(s.upsTotal);
-      /* UPS 收多少不需要費率表,照收;重算需要,沒有層級就不算。 */
+      /* 帳單上的識別欄(尺寸、重量、Zone、渠道),匯出明細照 Consolidated 列。 */
+      if(!upsId) upsId=consIdentityOf(s.allLines||[]);
+      /* UPS 收多少不需要費率表:每一行照 Consolidated 的分欄歸位,先收下。 */
+      const cf=consFeesOf(s.allLines||[]);
+      for(const k of Object.keys(cf.codeCol)) if(!codeCol[k]) codeCol[k]=cf.codeCol[k];
+      for(const [col,v] of Object.entries(cf.fees)) feesUps[col]=cents((feesUps[col]||0)+v);
+      /* 重算需要費率,沒有層級就不算;逐項表三邊只收有重算的,免得歪一邊。 */
       if(!cfg) continue;
       try{
         const priced=priceShipment(cfg,s);
@@ -13444,24 +13591,12 @@ function reconRun(list){
         /* 帳單的計費重量:一件一件加,UPS 每件都是整磅。 */
         if(priced.bw && priced.bw.billable!=null){ upsWt+=Math.ceil(toNum(priced.bw.billable)); wtN++; }
         rep+=cents(toNum(priced.total));
-        /* 逐項比對的兩邊都在這裡收:重算那一側攤成報表的一列,帳單那一側把
-           每一行歸到同一組費用名稱底下。同一組名字兩邊才對得起來。 */
-        const row=reportRowOf(priced);
-        for(const c of REPORT_MONEY){
-          const v=toNum(row[c]);
-          if(Math.abs(v)>0.004){ chgBump(e.cus, c, "rep", v); feesRep[c]=cents((feesRep[c]||0)+v); }
-        }
-        for(const l of (s.allLines||[])){
-          const k=upsBucketOf(l,false);
-          if(!k) continue;
-          const v=toNum(l.net);
-          const nm=k===DASH_UNKNOWN?RECON_UNKNOWN:k;
-          if(Math.abs(v)>0.004){ chgBump(e.cus, nm, "ups", v); feesUps[nm]=cents((feesUps[nm]||0)+v); }
-        }
+        repPend.push([e.cus, reportRowOf(priced), !!priced.residential, feesRep]);
+        for(const [col,v] of Object.entries(cf.fees)) chgBump(e.cus, col, "ups", v);
       }catch(err){}
     }
     if(e.chg && !block)
-      /* 逐項向客戶收:一單一次入桶。沒重算的訂單三側都不進逐項表 ——
+      /* 逐項向客戶收:一列一次入桶。沒重算的列三側都不進逐項表 ——
          只有 billed 進的話,三方對比會歪一邊。 */
       for(const [nm,v] of Object.entries(e.chg)) chgBump(e.cus, nm, "billed", v);
     /* 模板的 Zone 對帳單的 Zone:兩邊都有才比,對不上就標起來。 */
@@ -13476,7 +13611,9 @@ function reconRun(list){
                      && ![...sysChans].some(c=>chanFamKey(c)===chanFamKey(chan)));
     /* 計費重量只記錄、不核對:帳單上的是合約計費重量,向客戶收的重量本來
        就不必一樣。兩個數字並排放在匯出的 Orders 分頁,給人參考。 */
-    const o={ln:e.ln, order:e.order, cus:e.cus, date:e.date,
+    const o={ln:e.ln, order:e.order, cus:e.cus, date:e.date||(upsId&&upsId.date)||"",
+             trks:e.trks.slice(), ref1:e.ref1||(upsId&&upsId.ref1)||"", ref2:e.ref2||(upsId&&upsId.ref2)||"",
+             ups:upsId,
              zone:String(e.zone||""), upsZone, zoneMis,
              chan, sysChan, chanMis, chanUnknown,
              wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"",
@@ -13495,7 +13632,16 @@ function reconRun(list){
     a.orders++; a.pkgs+=o.pkgs; a.found+=o.found;
     a.amt+=o.amt; a.cost+=o.cost; if(!block) a.rep+=o.rep;
   }
-    const cus=[...perCus.values()].map(a=>{
+  /* 重算那一側現在才入桶:名字對到這批帳單上實際用的欄。 */
+  for(const [cus,row,resi,feesRep] of repPend){
+    for(const c of REPORT_MONEY){
+      const v=toNum(row[c]);
+      if(Math.abs(v)<=0.004) continue;
+      const nm=audNameOf(c,resi,codeCol);
+      chgBump(cus, nm, "rep", v); feesRep[nm]=cents((feesRep[nm]||0)+v);
+    }
+  }
+  const cus=[...perCus.values()].map(a=>{
     a.amt=cents(a.amt); a.cost=cents(a.cost);
     a.rep=a.block?null:cents(a.rep);
     a.profit=cents(a.amt-a.cost);
@@ -13504,7 +13650,7 @@ function reconRun(list){
     a.margin=a.amt?a.profit/Math.abs(a.amt)*100:null;
     return a;
   }).sort((x,y)=>y.amt-x.amt);
-  /* 合計:重算那幾欄只加得起來的部分,擋下來的訂單不混進去 —— 混進去的話
+  /* 合計:重算那幾欄只加得起來的部分,擋下來的列不混進去 —— 混進去的話
      合計會小於實際,而且看不出來少了誰。 */
   const tot=cus.reduce((t,a)=>({orders:t.orders+a.orders, pkgs:t.pkgs+a.pkgs,
       found:t.found+a.found, amt:cents(t.amt+a.amt), cost:cents(t.cost+a.cost),
@@ -13523,20 +13669,33 @@ function reconRun(list){
          0 會被讀成「這一項向客戶收了零元」。 */
       billed:o.billedN?cents(o.billed):null,
       pgap:o.billedN?cents(o.billed-o.rep):null});
-  /* 差得最多的排前面 —— 三十七項裡真正要看的通常是前五項。 */
+  /* 差得最多的排前面 —— 幾十項裡真正要看的通常是前五項。 */
   const byGap=(a,b)=>Math.abs(b.gap)-Math.abs(a.gap)||Math.abs(b.ups)-Math.abs(a.ups);
   const chgRows=m=>{
     const fine=[...m.values()], used=new Set(), rows=[];
-    for(const g of active){
+    /* 比對用的自動組(運費 + 更正):這一份裡有更正的數字才成組。 */
+    const act=new Set(active);
+    for(const [g,def] of Object.entries(RECON_GROUPS)){
+      if(!def.auto) continue;
+      if(def.fees.slice(1).some(f=>{ const o=m.get(f);
+           return o && (Math.abs(o.ups)>0.004||Math.abs(o.rep)>0.004||o.billedN); })) act.add(g);
+    }
+    for(const g of act){
       const def=RECON_GROUPS[g];
       const kids=fine.filter(o=>def.fees.includes(o.name));
       const self=m.get(def.head);
       if(!kids.length&&!self) continue;
       const rep=cents(kids.reduce((a,o)=>a+o.rep,0)), ups=cents(kids.reduce((a,o)=>a+o.ups,0));
-      const billed=(self&&self.billedN)?cents(self.billed):null;
+      /* 向客戶收:模板填了合併欄就用它;填的是細項欄就把細項加起來。 */
+      let billed=null;
+      if(self&&self.billedN) billed=cents(self.billed);
+      else { const ks=kids.filter(o=>o.billedN); if(ks.length) billed=cents(ks.reduce((a,o)=>a+o.billed,0)); }
+      const kidRows=kids.map(fmt).sort(byGap);
+      /* 自動組的細項只看 UPS 那一側的拆分:重算算的是最後的運費,拆不出
+         「更正」那一份,所以細項不寫重算與差異。 */
+      if(def.auto) for(const k of kidRows){ k.rep=null; k.gap=null; k.pgap=null; }
       rows.push({name:def.head, group:g, rep, ups, gap:cents(rep-ups), billed,
-                 pgap:billed==null?null:cents(billed-rep),
-                 kids:kids.map(fmt).sort(byGap)});
+                 pgap:billed==null?null:cents(billed-rep), kids:kidRows});
       kids.forEach(o=>used.add(o.name)); if(self) used.add(def.head);
     }
     for(const o of fine) if(!used.has(o.name)) rows.push(fmt(o));
@@ -13611,7 +13770,7 @@ function reconIssueText(it){
     case "chgCode":  return L("這個費用代碼不在清單上(到「費用代碼」那一頁設,或從模板的下拉選):",
                               "Charge code not on the list — set it on Charge Codes, or pick from the template dropdown: ")+it.what;
     case "dupOrder": return L("單號重複:","Duplicate order number: ")+it.what+at;
-    case "dupTrk":   return L("同一個追蹤號出現在兩張單上:",
+    case "dupTrk":   return L("同一個追蹤號出現在兩筆上:",
                               "Tracking number claimed twice: ")+it.what+at;
     default:         return it.what||"";
   }
@@ -13697,38 +13856,38 @@ function renderRecon(){
     +chips(r.lostLevel.map(c=>cusNameOf(c))));
   const warn=[];
   if(r.unmatched.length) warn.push(L(
-    "有 "+r.unmatched.length+" 張單的追蹤號在這期帳單上找不到,那幾件的 UPS 成本算 0。",
-    r.unmatched.length+" order(s) have tracking numbers that are not in this invoice; those packages count as zero UPS cost."));
+    "有 "+r.unmatched.length+" 筆的追蹤號在這期帳單上找不到,那幾件的 UPS 成本算 0。",
+    r.unmatched.length+" row(s) have tracking numbers that are not in this invoice; those packages count as zero UPS cost."));
   if(r.tot.blocked) warn.push(L(
-    "合計的重算與兩個差異只加了有重算的 "+(r.tot.orders-r.tot.blocked)+" 張單。",
-    "The recomputed total and both variances cover only the "+(r.tot.orders-r.tot.blocked)+" order(s) that were priced."));
+    "合計的重算與兩個差異只加了有重算的 "+(r.tot.orders-r.tot.blocked)+" 筆。",
+    "The recomputed total and both variances cover only the "+(r.tot.orders-r.tot.blocked)+" row(s) that were priced."));
   /* 模板的 Zone 和帳單的 Zone 不同:不擋,逐單點名。Zone 不同,運費和 DAS
      就不可能對得上 —— 這一句先講,人才知道差異從哪裡來。 */
   const zm=(r.orders||[]).filter(o=>o.zoneMis);
   if(zm.length){
     const show=zm.slice(0,6).map(o=>o.order+" ("+o.zone+" → "+o.upsZone+")").join(", ");
     warn.push(L(
-      "有 "+zm.length+" 張單的 Zone 和帳單上的不同:"+show+(zm.length>6?" …":"")
+      "有 "+zm.length+" 筆的 Zone 和帳單上的不同:"+show+(zm.length>6?" …":"")
         +"。運費與 DAS 的差異多半由此而來;匯出的 Orders 分頁有逐單標記。",
-      zm.length+" order(s) were priced with a different zone than the invoice: "+show
+      zm.length+" row(s) were priced with a different zone than the invoice: "+show
         +(zm.length>6?" …":"")+". Most freight and DAS variances trace back to this; the exported Orders sheet flags each one."));
   }
   const cm=(r.orders||[]).filter(o=>o.chanMis), cu=(r.orders||[]).filter(o=>o.chanUnknown);
   if(cm.length) warn.push(L(
-    "有 "+cm.length+" 張單的渠道和系統判的不同:"+cm.slice(0,8).map(o=>o.order+" ("+o.chan+" → "+o.sysChan+")").join(", ")+(cm.length>8?" …":"")+"。",
-    cm.length+" order(s) priced on a different channel than the system determined: "
+    "有 "+cm.length+" 筆的渠道和系統判的不同:"+cm.slice(0,8).map(o=>o.order+" ("+o.chan+" → "+o.sysChan+")").join(", ")+(cm.length>8?" …":"")+"。",
+    cm.length+" row(s) priced on a different channel than the system determined: "
       +cm.slice(0,8).map(o=>o.order+" ("+o.chan+" → "+o.sysChan+")").join(", ")+(cm.length>8?" …":"")+"."));
   if(cu.length) warn.push(L(
-    "有 "+cu.length+" 張單寫了系統沒有的渠道:"+[...new Set(cu.map(o=>o.chan))].join(", ")+"。要用的話到「04 渠道與附加費費率」新增,或匯入時勾選新增。",
-    cu.length+" order(s) name a channel the system does not have: "+[...new Set(cu.map(o=>o.chan))].join(", ")
+    "有 "+cu.length+" 筆寫了系統沒有的渠道:"+[...new Set(cu.map(o=>o.chan))].join(", ")+"。要用的話到「04 渠道與附加費費率」新增,或匯入時勾選新增。",
+    cu.length+" row(s) name a channel the system does not have: "+[...new Set(cu.map(o=>o.chan))].join(", ")
       +". Add it under 04 Channel & Surcharge Rates, or tick Add on import."));
   const sw=(RECON&&RECON.sumWarn)||[];
   if(sw.length){
     const show=sw.slice(0,6).map(w=>w.order+" ("+(w.diff>0?"+":"")+money(w.diff)+")").join(", ");
     warn.push(L(
-      "有 "+sw.length+" 張單的各項費用合計與總收取金額不符:"+show
+      "有 "+sw.length+" 筆的各項費用合計與總收取金額不符:"+show
         +(sw.length>6?" …":"")+"。差額可能是服務費等非 UPS 費用,也可能是漏填。",
-      sw.length+" order(s) whose itemized charges do not add up to the Total Amount: "+show
+      sw.length+" row(s) whose itemized charges do not add up to the Total Amount: "+show
         +(sw.length>6?" …":"")+". The difference may be non-carrier fees such as a service fee, or a missed entry."));
   }
   const w=$("#reconWarn");
@@ -13756,8 +13915,9 @@ function renderReconChg(){
   const rows=(RECON_SCOPE&&r.chgBy[RECON_SCOPE])||r.chg;
   const sign=v=>`<span class="mny ${v<0?"neg":(v>0?"pos":"")}">${money(v)}</span>`;
   const tb=$("#tReconChg")&&$("#tReconChg").tBodies[0];
-  /* 合併組一列,底下縮排列出細項:細項只有重算與 UPS 兩欄有數字,向客戶收
-     是整組一個數。子列跟著主列走,排序也不拆散(ui-patch 的 sortTable)。 */
+  /* 合併組一列,底下縮排列出細項。模板填的是合併欄時,細項只有重算與 UPS
+     兩欄有數字;運費 + 更正那一組相反 —— 細項只拆 UPS 那一側,重算留白。
+     子列跟著主列走,排序也不拆散(ui-patch 的 sortTable)。 */
   const tr=(o,sub)=>{
     const unknown=o.name===RECON_UNKNOWN;
     /* 非承運費用沒有代碼可對 —— 那一列的兩個代碼欄留白,不寫「未設定」。 */
@@ -13775,9 +13935,9 @@ function renderReconChg(){
         codes?`<div class="chgcodes">${codes}</div>`:""}</td>
       <td class="num c-cli">${o.billed==null?`<span class="empty">—</span>`:money(o.billed)}</td>
       <td class="num c-ups">${money(o.ups)}</td>
-      <td class="num c-rep">${money(o.rep)}</td>
+      <td class="num c-rep">${o.rep==null?`<span class="empty">—</span>`:money(o.rep)}</td>
       <td class="num">${o.pgap==null?`<span class="empty">—</span>`:sign(o.pgap)}</td>
-      <td class="num">${sign(o.gap)}</td></tr>`;
+      <td class="num">${o.gap==null?`<span class="empty">—</span>`:sign(o.gap)}</td></tr>`;
   };
   if(tb) tb.innerHTML=rows.map(o=>tr(o,false)+(o.kids||[]).map(k=>tr(k,true)).join("")).join("")
     ||`<tr><td colspan="6" class="empty">—</td></tr>`;
@@ -13847,23 +14007,24 @@ async function reconExport(){
 
   /* ---- Summary:一個客戶一列 ---- */
   const sumCols=[["Customer Code","id"],["Customer Name","id"],["Rate Level","id"],["Repricing Status","id"],
-    ["Orders","id"],["Packages Matched","id"],["Packages","id"],
+    ["Rows","id"],["Packages Matched","id"],["Packages","id"],
     ["Billed to Client","cli"],["Charged by UPS","ups"],["Recomputed","rep"],
     ["Profit (Billed − UPS)","chk"],["Billed vs Recomputed","chk"],["UPS vs Recomputed","chk"]].map(([name,g])=>({name,g}));
   const sumRows=r.cus.map(a=>[a.code, a.name, lvl(a), why(a.block), a.orders, a.found, a.pkgs,
      m(a.amt,"cli"), m(a.cost,"ups"), m(a.rep,"rep"), m(a.profit), m(a.pgap), m(a.gap)]);
 
-  /* ---- Orders:一張單一列。模板那一側(綠)和帳單那一側(棕)各自成一塊,
+  /* ---- Orders:模板一列一列。模板那一側(綠)和帳單那一側(棕)各自成一塊,
           同一個順序:渠道、Zone、計費重量、金額;核對結果與差異放最後。 ---- */
-  const ordCols=[["Order Number","id"],["Ship Date","id"],["Customer Code","id"],["Rate Level","id"],
-    ["Repricing Status","id"],["Tracking Numbers","id"],["Packages","id"],["Packages Matched","id"],["Not On Invoice","id"],
-    ["Channel","cli"],["Zone","cli"],["Billed Weight (lb)","cli"],["Billed to Client","cli"],
+  const ordCols=[["Order Number","id"],["Transaction Date","id"],["Customer Code","id"],["Rate Level","id"],
+    ["Repricing Status","id"],["Tracking Number","id"],["Shipment Reference Number 1","id"],["Shipment Reference Number 2","id"],
+    ["Packages","id"],["Packages Matched","id"],["Not On Invoice","id"],
+    ["Channel","cli"],["Zone","cli"],["Billed Weight","cli"],["Billed to Client","cli"],
     ["Channel (UPS)","ups"],["Zone (UPS)","ups"],["Billed Weight (UPS)","ups"],["Charged by UPS","ups"],
     ["Recomputed","rep"],
     ["Channel Match","chk"],["Zone Match","chk"],["Profit (Billed − UPS)","chk"],["Billed vs Recomputed","chk"],["UPS vs Recomputed","chk"]]
     .map(([name,g])=>({name,g}));
-  const ordRows=r.orders.map((o,i)=>[o.order, o.date, o.cus, lvl(o), why(o.block),
-     RECON.list[i]?RECON.list[i].trks.join(", "):"", o.pkgs, o.found, o.missTrk.join(", "),
+  const ordRows=r.orders.map(o=>[o.order, o.date, o.cus, lvl(o), why(o.block),
+     (o.trks||[]).join(", "), o.ref1||"", o.ref2||"", o.pkgs, o.found, o.missTrk.join(", "),
      tx(o.chan||"","cli"), tx(o.zone||"","cli"), n0(o.wt,"cli"), m(o.amt,"cli"),
      tx(o.sysChan||"","ups"), tx(o.upsZone||"","ups"), n0(o.upsWt,"ups","0"), m(o.cost,"ups"),
      m(o.rep,"rep"),
@@ -13886,39 +14047,46 @@ async function reconExport(){
   cpush("ALL", r.chg||[]);
   for(const a of r.cus) cpush(a.code, (r.chgBy||{})[a.code]||[]);
 
-  /* ---- Detail:一張單一列,每一項費用兩欄並排 —— 「費用 - UPS」(黃)是
-          帳單收的,「費用 - WMS」(綠)是向客戶收的;最後一組是整單合計。
-          費用照模板的欄位順序,帳單上有而模板沒有的費用接在後面。 ---- */
-  /* 來源看導入檔實際用的合併欄(TMS 才有 AHS+LPS 一欄),沒有線索才看切換鈕。 */
-  const gs=r.groups||[];
-  const src=gs.includes("ahslps")?"TMS":gs.includes("ahs")?"WMS":((RECON_SRC==="TMS")?"TMS":"WMS");
-  const tplGroups=RECON_GROUPS_BY_SRC[src].map(g=>RECON_GROUPS[g]);
+  /* ---- Detail:模板一列一列(一個追蹤號一列),識別欄照 Consolidated Invoice,
+          每一項費用兩欄並排 —— 「費用 - UPS」(黃)是帳單收的,「費用 - WMS」(綠)
+          是向客戶收的;最後一組是這一件的合計。費用照 Consolidated 的順序,帳單上
+          有收的一欄都不缺;模板填了合併欄的檔照組列。 ---- */
+  const src=(RECON_SRC==="TMS")?"TMS":"WMS";
+  const gs=(r.groups||[]).map(g=>RECON_GROUPS[g]).filter(Boolean);
   const headOf=new Map();                       /* 細項 → 它在模板上屬於哪一個合併欄 */
-  for(const g of tplGroups) for(const f of g.fees) headOf.set(f,g.head);
-  const base=reconTplCols(src);
-  const extra=[];
-  for(const c of (r.chg||[])){
-    const nm=c.name;
-    if(base.includes(nm)||headOf.has(nm)||c.kids) continue;
-    extra.push(nm);
+  for(const g of gs) for(const f of g.fees) headOf.set(f,g.head);
+  const seen=new Set();
+  for(const o of r.orders){
+    for(const k of Object.keys((o.fees&&o.fees.ups)||{})) seen.add(k);
+    for(const k of Object.keys((o.fees&&o.fees.rep)||{})) seen.add(k);
+    for(const k of Object.keys(o.billedFees||{})) seen.add(k);
   }
-  const charges=base.concat(extra);
-  const membersOf=nm=>{ const g=tplGroups.find(x=>x.head===nm); return g?g.fees:[nm]; };
+  const charges=[];
+  const add=n=>{ if(!charges.includes(n)) charges.push(n); };
+  for(const n of AUD_FEES.filter(n=>seen.has(n)).concat([...seen].filter(n=>!AUD_FEES.includes(n)).sort()))
+    add(headOf.has(n)?headOf.get(n):n);
+  /* 非承運費用固定最後 —— 只有向客戶收那一側有它。 */
+  if(charges.includes(RECON_OTHER)){ charges.splice(charges.indexOf(RECON_OTHER),1); charges.push(RECON_OTHER); }
+  const membersOf=nm=>{ const g=gs.find(x=>x.head===nm); return g?g.fees:[nm]; };
   const UPSH="FFC000", WMSH="92D050", UPSC="FFF2CC", WMSC="E2EFDA";
   const dh=(n,fill)=>({v:n,t:"s",s:{bold:true,fill,color:"1F1F1F",align:"left",wrap:true,border:true}});
   const dm=(v,fill)=>v==null?{v:"",t:"s",s:{fill}}:{v:cents(v),t:"n",s:{fmt:MONEY,fill}};
-  const dHead=[dh("Invoice Date","EFE3CB"),dh("Ship Date","EFE3CB"),dh("Customer Code","EFE3CB"),
-    dh("Customer Level","EFE3CB"),dh("Order Number","EFE3CB"),dh("Tracking","EFE3CB")];
+  const idNames=["Invoice Date","Transaction Date","Customer Code","Customer Level","Order Number","Tracking Number",
+    "Shipment Reference Number 1","Shipment Reference Number 2","Package Dimensions","Detail Keyed Dim",
+    "Entered Weight","Billed Weight","Zone","Shipping Channel"];
+  const dHead=idNames.map(n=>dh(n,"EFE3CB"));
   for(const nm of charges){ dHead.push(dh(chgName(nm)+" - UPS",UPSH)); dHead.push(dh(chgName(nm)+" - "+src,WMSH)); }
-  dHead.push(dh("Total - UPS",UPSH)); dHead.push(dh("Total - "+src,WMSH));
-  const dRows=r.orders.map((o,i)=>{
-    const fees=o.fees||{rep:{},ups:{}}, billed=o.billedFees||null;
-    const row=[o.invDate||"", o.date||"", o.cus, lvl(o), o.order,
-               RECON.list[i]?RECON.list[i].trks.join(", "):""];
+  dHead.push(dh("Total Amount - UPS",UPSH)); dHead.push(dh("Total Amount - "+src,WMSH));
+  const dRows=r.orders.map(o=>{
+    const fees=o.fees||{rep:{},ups:{}}, billed=o.billedFees||null, u=o.ups||{};
+    const row=[o.invDate||"", o.date||"", o.cus, lvl(o), o.order, (o.trks||[]).join(", "),
+               o.ref1||"", o.ref2||"", u.dimsC||"", u.dimsA||"",
+               u.entered==null?"":{v:toNum(u.entered),t:"n"}, u.billed==null?"":{v:toNum(u.billed),t:"n"},
+               o.upsZone||u.zone||"", u.chan||""];
     for(const nm of charges){
       const mem=membersOf(nm);
-      const u=mem.reduce((a,f)=>a+(fees.ups[f]||0),0);
-      const ups=nm===RECON_OTHER?null:u;
+      const hasU=mem.some(f=>fees.ups[f]!=null);
+      const ups=(nm===RECON_OTHER||!hasU)?null:mem.reduce((a,f)=>a+(fees.ups[f]||0),0);
       /* 向客戶收:模板有這一欄就取;模板填的是細項欄時把成員加起來。 */
       let w=null;
       if(billed){
@@ -13930,14 +14098,15 @@ async function reconExport(){
     row.push(dm(o.cost,UPSC)); row.push(dm(o.amt,WMSC));
     return row;
   });
-  const dWidths=[12,12,16,16,20,34].concat(charges.flatMap(nm=>[Math.min(30,Math.max(14,nm.length+8)),Math.min(30,Math.max(14,nm.length+8))]),[14,14]);
+  const dWidths=[12,12,16,16,20,22,22,22,16,16,10,10,7,26]
+    .concat(charges.flatMap(nm=>[Math.min(30,Math.max(14,nm.length+8)),Math.min(30,Math.max(14,nm.length+8))]),[16,16]);
   const detailSheet={name:"Detail", rows:[dHead,...dRows], freeze:{r:1,c:6},
     filter:"A1:"+xlColName(dHead.length)+"1", cols:dWidths.map(w=>({w}))};
 
   await xlWrite([
     sheetOf("Summary", sumCols, sumRows, [16,26,16,30,9,12,11,17,17,14,19,19,19], 2),
     detailSheet,
-    sheetOf("Orders", ordCols, ordRows, [20,12,16,16,30,34,10,12,22, 18,8,12,16, 20,10,12,16, 14, 15,12,17,19,19], 1),
+    sheetOf("Orders", ordCols, ordRows, [20,12,16,16,30,22,22,22,10,12,22, 18,8,12,16, 20,10,12,16, 14, 15,12,17,19,19], 1),
     sheetOf("Charges", chgCols, chgRows, [14,42,14,22,17,17,14,19,18], 2),
   ], "WMS_TMS_Reconciliation.xlsx");
   reconMsg(L("已匯出:Summary、Detail、Orders、Charges 四張表。","Exported: Summary, Detail, Orders and Charges."), true);
@@ -13970,8 +14139,8 @@ function reconAccept(p, fname){
     RECON={issues:[], res:null, list:p.rows, sumWarn:p.sumWarn||[], fname:fname||"", pending:true};
     const kept=reconRowsSave(p.rows);
     reconRerunBtn(); renderRecon();
-    const m=L("已收下 "+p.rows.length+" 張單。這一期的 UPS 帳單還沒匯入,到「06 UPS 帳單匯入」匯入後會自動比對。",
-              "Accepted "+p.rows.length+" order(s). This period's UPS invoice is not loaded yet — import it under 06 UPS Invoice Import and the comparison runs by itself.");
+    const m=L("已收下 "+p.rows.length+" 筆。這一期的 UPS 帳單還沒匯入,到「06 UPS 帳單匯入」匯入後會自動比對。",
+              "Accepted "+p.rows.length+" row(s). This period's UPS invoice is not loaded yet — import it under 06 UPS Invoice Import and the comparison runs by itself.");
     reconMsg(m,true); toast(m,true);
     if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
     return true;
@@ -13987,13 +14156,13 @@ function reconAccept(p, fname){
   else renderRecon();
   if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
   if(pf.blocked)
-    reconMsg(L("已對帳 "+p.rows.length+" 張單,其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
-               "Reconciled "+p.rows.length+" order(s); "+pf.blocked
+    reconMsg(L("已對帳 "+p.rows.length+" 筆,其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
+               "Reconciled "+p.rows.length+" row(s); "+pf.blocked
                +" customer(s) were not repriced — see the notice below."),false);
   else
-    reconMsg(L("已對帳 "+p.rows.length+" 張單"
+    reconMsg(L("已對帳 "+p.rows.length+" 筆"
                +(p.rows.some(r=>r.chg)?"(含逐項費用)":"")+"。",
-               "Reconciled "+p.rows.length+" order(s)"
+               "Reconciled "+p.rows.length+" row(s)"
                +(p.rows.some(r=>r.chg)?" with itemized charges":"")+"."),true);
   return true;
 }
@@ -14016,7 +14185,7 @@ async function reconPreviewImport(file){
   const bad=(p.issues||[]).length;
   const head=`<div class="pvsum">
      <span><b>${esc(r.fname||"—")}</b></span>
-     <span>${rows.length} ${esc(L("張單","orders"))}</span>
+     <span>${rows.length} ${esc(L("筆","rows"))}</span>
      <span>${itemized} ${esc(L("張含逐項費用","with itemized charges"))}</span>
      <span class="${bad?"neg":""}">${bad} ${esc(L("列被退回","rejected rows"))}</span>
      <span class="${sw?"neg":""}">${sw} ${esc(L("張合計不符","total mismatches"))}</span></div>`;
@@ -14109,7 +14278,7 @@ function renderAnalysis(){
 
   const scope=$("#anaScope");
   if(scope) scope.textContent=L(
-    r.cus.length+" 個客戶 · "+t.orders+" 張單"
+    r.cus.length+" 個客戶 · "+t.orders+" 筆"
       +(r.hasBilled?" · 逐項費用已匯入":" · 沒有逐項費用"),
     r.cus.length+" client"+(r.cus.length>1?"s":"")+" · "+t.orders
       +" order"+(t.orders>1?"s":"")
@@ -14120,7 +14289,7 @@ function renderAnalysis(){
     [L("UPS 收","Charged by UPS"),     money(t.cost), ""],
     [L("毛利","Profit"),               money(t.profit), "", t.profit<0],
     [L("毛利率","Margin"),             anaPct(t.margin),
-      L(t.orders+" 張單 · "+r.cus.length+" 個客戶",
+      L(t.orders+" 筆 · "+r.cus.length+" 個客戶",
         t.orders+" order"+(t.orders>1?"s":"")+" · "+r.cus.length
         +" client"+(r.cus.length>1?"s":""))],
   ].map(([k,v,sub,neg])=>`<div class="tile sketch-soft"><div class="k">${esc(k)}</div>
@@ -14257,7 +14426,7 @@ function bindRecon(){
         <td class="num">${money(o.amt)}</td></tr>`).join("");
       uiPreview(L("目前留著的訂單資料","Order data on hand"),
         `<div class="pvsum"><span><b>${esc((RECON&&RECON.fname)||"—")}</b></span>
-           <span>${rows.length} ${esc(L("張單","orders"))}</span>
+           <span>${rows.length} ${esc(L("筆","rows"))}</span>
            <span>${rows.filter(o=>o.chg).length} ${esc(L("張含逐項費用","with itemized charges"))}</span></div>
          <div class="tablewrap" style="max-height:44vh;margin-top:8px"><table>
            <thead><tr><th>${esc(L("訂單","Order"))}</th><th>${esc(L("客戶","Customer"))}</th>
@@ -18750,7 +18919,7 @@ const I18N={
   "hd.recon":["WMS / TMS 資料","WMS / TMS data"],
   "hint.invmulti":["可一次選多個帳單檔:每一期各自存入歷史,整批一起計價與對帳。同一期出現在兩個檔裡以後面的檔為準。",
     "Select several invoice files at once to import them in one go; each period is filed to history and the batch is reconciled together. If the same invoice is in two files, the later file is used."],
-  "hint.recon":["一張訂單一列;檔案受理後逐項三方比對。欄位規範與 TMS 對應詳見填寫說明(PDF)。","One order per row; every itemized charge is compared three ways on acceptance. Column rules and the TMS mapping are in the guide."],
+  "hint.recon":["以手上的帳單為基準:模板照稽核中心的 Consolidated Invoice,一個追蹤號一列,帳單上有收的每一項費用都有一欄,UPS 的數字先填好,同仁在旁邊填向客戶收的。檔案受理後逐項三方比對;欄位規範詳見填寫說明(PDF)。","Built from the invoice in hand: the template follows the Audit Center's Consolidated Invoice, one tracking number per row, with a column for every charge UPS billed — the UPS figure pre-filled and the amount billed to the client beside it. Every charge is compared three ways on acceptance; column rules are in the guide."],
   "lb.tpl":["模板","Template"],
   "btn.tplpdf":["填寫說明(PDF)","Guide (PDF)"],
   "lb.datasrc":["資料來源","Data source"],
@@ -18760,24 +18929,24 @@ const I18N={
   "hd.orderdata":["📦 訂單資料","📦 Order data"],
   "hd.mapping":["🔗 欄位對應","🔗 Column mapping"],
   "lb.lastfile":["檔案","File"],
-  "lb.orders":["訂單數","Orders"],
+  "lb.orders":["資料列","Rows"],
   "lb.itemized":["含逐項","Itemized"],
   "lb.state":["狀態","Status"],
-  "mp.trk":["Tracking Numbers","Tracking Numbers"],
+  "mp.trk":["Tracking Number","Tracking Number"],
   "mp.trk2":["與帳單追蹤號比對","Invoice tracking match"],
   "mp.cus":["Customer Code","Customer Code"],
   "mp.cus2":["客戶名單","Client directory"],
-  "mp.chk":["Channel · Zone","Channel · Zone"],
+  "mp.chk":["Channel · Zone - WMS / TMS","Channel · Zone - WMS / TMS"],
   "mp.chk2":["與帳單核對","Checked against the invoice"],
-  "mp.chg":["費用欄(WMS 9 / TMS 8)","Charge columns (WMS 9 / TMS 8)"],
-  "mp.chg2":["系統費用,合併欄依組比對","System charges, combined by group"],
-  "mp.amt":["Total Amount","Total Amount"],
-  "mp.amt2":["整單總額","Whole-order total"],
+  "mp.chg":["費用欄(照 Consolidated)","Charge columns (Consolidated)"],
+  "mp.chg2":["帳單上有收的一欄不缺,三方比對","Every charge UPS billed, compared three ways"],
+  "mp.amt":["Total Amount - WMS / TMS","Total Amount - WMS / TMS"],
+  "mp.amt2":["這一件向客戶收的總額","Per-package total billed"],
   "mp.note":["由模板固定,毋須設定。","Fixed by the template — nothing to configure."],
   "st.src":["選擇來源","Choose source"],
   "st.src2":["WMS 或 TMS","WMS or TMS"],
   "st.dl":["下載模板","Download template"],
-  "st.dl2":["一張訂單一列","Fill one order per row"],
+  "st.dl2":["以載入的帳單為基準","Built from the loaded invoice"],
   "st.imp":["匯入檔案","Import the file"],
   "st.imp2":["先預覽,確認才寫入","Preview before commit"],
   "st.res":["讀取結果","Read the results"],
@@ -18791,7 +18960,7 @@ const I18N={
   "th.reconline":["列","Line"],
   "th.reconwhy":["原因","Reason"],
   "hd.reconres":["依客戶","By customer"],
-  "th.reconorders":["單數","Orders"],
+  "th.reconorders":["筆數","Rows"],
   "th.reconpkgs":["件數","Packages"],
   "th.reconbilled":["客戶實收","Billed to customer"],
   "th.reconups":["UPS 實收","Charged by UPS"],
