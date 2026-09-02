@@ -12899,7 +12899,8 @@ const DYN_COLS=["AS Code","AR","Surcharge Name","Type","Fuel Eligible","Enabled"
 const RECON_SHEET="Shipments";
 const RECON_COL={ order:"Order Number", trk:"Tracking Numbers",
                   cus:"Customer Code",  amt:"Total Amount",
-                  date:"Ship Date",     zone:"Zone",  chan:"Channel" };
+                  date:"Ship Date",     zone:"Zone",  chan:"Channel",
+                  wt:"Billed Weight (lb)" };
 /* 系統裡的渠道名稱:04 渠道那一頁登記的那幾條。模板的 Channel 欄用這份當
    下拉,名字才會和系統一致;匯入時對不到的就是「系統沒有的渠道」。 */
 /* 模板上的渠道是「族」:WMS / TMS 的 Ground 就是一條渠道,不分商業／住宅,
@@ -13173,6 +13174,10 @@ function reconParse(sheetRows){
     if(blank.length){ issues.push({ln, kind:"blank", what:blank.join(", ")}); continue; }
     if(!/^-?\d+(\.\d+)?$/.test(amtRaw.replace(/[$,\s]/g,""))){
       issues.push({ln, kind:"amt", what:amtRaw}); continue; }
+    /* 計費重量:選填,填了就要是數字。「12 lb」這種寫法把單位拿掉再收。 */
+    const wtRaw=cell("wt").replace(/\s*(lbs?|磅)$/i,"").replace(/[,\s]/g,"");
+    if(wtRaw!=="" && !/^\d+(\.\d+)?$/.test(wtRaw)){
+      issues.push({ln, kind:"wt", what:cell("wt")}); continue; }
     if(!known.has(cus)){ issues.push({ln, kind:"cus", what:cus}); continue; }
     if(seenOrder.has(order)){
       issues.push({ln, kind:"dupOrder", what:order, at:seenOrder.get(order)}); continue; }
@@ -13192,7 +13197,8 @@ function reconParse(sheetRows){
     seenOrder.set(order,ln);
     for(const t of trks) seenTrk.set(t,ln);
     const amt=cents(toNum(amtRaw.replace(/[$,\s]/g,"")));
-    const row={ln, order, trks, cus, amt, date:cell("date"), zone:cell("zone"), chan:cell("chan")};
+    const row={ln, order, trks, cus, amt, date:cell("date"), zone:cell("zone"), chan:cell("chan"),
+               wt:wtRaw===""?null:toNum(wtRaw)};
     if(nItem){
       row.chg=chg;
       /* 各項合計對不上總額就記下來 —— 不擋,但要講。差額常是 TMS 自己的
@@ -13222,7 +13228,9 @@ async function reconTemplate(src){
      對一次 —— Zone 對不上,運費和 DAS 就不可能對得上。選填。 */
   /* Channel:來源系統計價用的渠道,用系統的名字(下拉),匯入後和系統判的渠道
      對一次;Zone 同理。兩者都選填。 */
-  const idc=[RECON_COL.date,RECON_COL.cus,RECON_COL.order,RECON_COL.trk,RECON_COL.chan,RECON_COL.zone];
+  /* 計費重量也在識別欄:運費看的就是 Zone 和計費重量,兩個都對了,運費差異
+     才是真的費率差異。選填。 */
+  const idc=[RECON_COL.date,RECON_COL.cus,RECON_COL.order,RECON_COL.trk,RECON_COL.chan,RECON_COL.zone,RECON_COL.wt];
   const req=new Set([RECON_COL.order,RECON_COL.trk,RECON_COL.cus]);
   const H=n=>({v:n,t:"s",s:{bold:true,align:"left",
       fill:req.has(n)?"351C15":"EFE3CB", color:req.has(n)?"FFFFFF":"351C15"}});
@@ -13249,7 +13257,8 @@ async function reconTemplate(src){
     gRow(RECON_COL.order,"系統單號 Order number","必填;一單一列、不可重複 Required; one order per row, unique"),
     gRow(RECON_COL.trk,"UPS 追蹤號 Tracking numbers","必填;一票多件以逗號分隔 Required; comma-separated for multi-piece"),
     gRow(RECON_COL.chan,"計價用的渠道 Channel used for pricing","選填;寫系統的渠道名稱,對照 Channels 分頁;Ground 不分商業／住宅;名單上沒有的可在匯入時新增 Optional; a system channel name, see the Channels sheet; Ground is one channel, no commercial/residential split; a channel not on the list can be added on import"),
-    gRow(RECON_COL.zone,"計價用的 UPS Zone Zone used for pricing","選填;匯入後與帳單上的 Zone 核對 Optional; checked against the invoice zone")];
+    gRow(RECON_COL.zone,"計價用的 UPS Zone Zone used for pricing","選填;匯入後與帳單上的 Zone 核對 Optional; checked against the invoice zone"),
+    gRow(RECON_COL.wt,"原系統計價用的計費重量(lb)Billable weight your system priced with, in lb","選填;整張單各件合計;匯入後與帳單上的計費重量核對 Optional; whole-order total; checked against the invoice billed weight")];
   const fillOf={
     "Base Rate":["向客戶收的運費 Freight billed to the client",""],
     "Residential Surcharge":["住宅附加費 Residential surcharge",""],
@@ -13268,10 +13277,10 @@ async function reconTemplate(src){
   guide.push(["","",""]);
   guide.push(gRow(L("規則","Rules"),"空白 = 未填,0 = 實收零 Blank = not filled, 0 = billed zero","欄名不可改、不可增刪 Do not rename, add or remove columns"));
   const sheets=[
-    {name:RECON_SHEET, rows:[hd], freeze:{r:1,c:6},
+    {name:RECON_SHEET, rows:[hd], freeze:{r:1,c:7},
      filter:"A1:"+xlColName(nCol)+"1",
      /* 欄寬跟著欄名走:合併欄的名字長,16 格會被截掉一半。 */
-     cols:[{w:14},{w:18},{w:22},{w:38},{w:22},{w:8}]
+     cols:[{w:14},{w:18},{w:22},{w:38},{w:22},{w:8},{w:12}]
        .concat(tplFees.map(n=>({w:Math.min(30,Math.max(16,n.length+2))})),[{w:16}])},
     {name:"Guide", freeze:{r:1,c:0}, cols:[{w:44},{w:52},{w:60}], rows:guide},
     /* 兩張對照表,都是可見的參考頁,不做下拉:客戶代碼和渠道都是同仁從自己
@@ -13330,6 +13339,7 @@ function reconRun(list){
     else if(block) lostLevel.add(e.cus);
     let cost=0, rep=0;
     const missTrk=[], upsZones=new Set(), sysChans=new Set();
+    let upsWt=0, wtN=0;
     for(const t of e.trks){
       const s=byTrk.get(t);
       if(!s){ missTrk.push(t); continue; }
@@ -13340,6 +13350,8 @@ function reconRun(list){
       try{
         const priced=priceShipment(cfg,s);
         if(priced.channel) sysChans.add(String(priced.channel));
+        /* 帳單的計費重量:一件一件加,UPS 每件都是整磅。 */
+        if(priced.bw && priced.bw.billable!=null){ upsWt+=Math.ceil(toNum(priced.bw.billable)); wtN++; }
         rep+=cents(toNum(priced.total));
         /* 逐項比對的兩邊都在這裡收:重算那一側攤成報表的一列,帳單那一側把
            每一行歸到同一組費用名稱底下。同一組名字兩邊才對得起來。 */
@@ -13370,9 +13382,14 @@ function reconRun(list){
     const chanUnknown=!!(chan && !reconChanKnown(chan));
     const chanMis=!!(chan && sysChan && !chanUnknown
                      && ![...sysChans].some(c=>chanFamKey(c)===chanFamKey(chan)));
+    /* 模板的計費重量對帳單的:兩邊都有才比。模板可能寫 11.5,UPS 收整磅,
+       所以先進位再比;多件的單是各件合計。 */
+    const tplWt=(e.wt==null)?null:Math.ceil(toNum(e.wt));
+    const wtMis=!!(tplWt!=null && wtN && tplWt!==upsWt);
     const o={ln:e.ln, order:e.order, cus:e.cus, date:e.date,
              zone:String(e.zone||""), upsZone, zoneMis,
              chan, sysChan, chanMis, chanUnknown,
+             wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"", wtMis,
              name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
              amt:e.amt, cost:cents(cost), rep:block?null:cents(rep)};
@@ -13495,6 +13512,7 @@ function reconIssueText(it){
   switch(it.kind){
     case "blank":    return L("必填欄位是空的:","Required field empty: ")+it.what;
     case "amt":      return L("金額不是數字:","Amount is not a number: ")+it.what;
+    case "wt":       return L("計費重量不是數字:","Billed weight is not a number: ")+it.what;
     case "chgval":   return L("費用欄的值不是數字:","Charge value is not a number: ")+it.what;
     case "cus":      return L("這個客戶代號沒有建檔:","No such customer code: ")+it.what;
     case "chgOrder": return L("這個單號不在 "+RECON_SHEET+" 那一頁上:",
@@ -13602,8 +13620,14 @@ function renderRecon(){
       zm.length+" order(s) were priced with a different zone than the invoice: "+show
         +(zm.length>6?" …":"")+". Most freight and DAS variances trace back to this; the exported Orders sheet flags each one."));
   }
-  /* 各項合計對不上總額:不擋,但逐列點名。差額常是 TMS 自己的服務費之類
-     非 UPS 費用 —— 也可能真的漏填,講出來讓人判斷。 */
+  /* 模板的計費重量和帳單的不同:不擋,逐單點名。運費差異多半由此而來。 */
+  const wm=(r.orders||[]).filter(o=>o.wtMis);
+  if(wm.length) warn.push(L(
+    "有 "+wm.length+" 張單的計費重量和帳單上的不同:"+wm.slice(0,8).map(o=>o.order+" ("+o.wt+" → "+o.upsWt+" lb)").join(", ")+(wm.length>8?" …":"")
+      +"。運費差異多半由此而來;匯出的 Orders 分頁有逐單標記。",
+    wm.length+" order(s) priced on a different billed weight than the invoice: "
+      +wm.slice(0,8).map(o=>o.order+" ("+o.wt+" → "+o.upsWt+" lb)").join(", ")+(wm.length>8?" …":"")
+      +". Most freight variances trace back to this; the exported Orders sheet flags each one."));
   const cm=(r.orders||[]).filter(o=>o.chanMis), cu=(r.orders||[]).filter(o=>o.chanUnknown);
   if(cm.length) warn.push(L(
     "有 "+cm.length+" 張單的渠道和系統判的不同:"+cm.slice(0,8).map(o=>o.order+" ("+o.chan+" → "+o.sysChan+")").join(", ")+(cm.length>8?" …":"")+"。",
@@ -13718,6 +13742,7 @@ async function reconExport(){
      m(a.rep), m(a.pgap), m(a.gap)]));
   const det=[["Order Number","Ship Date","Channel (Template)","Channel (System)","Channel Match",
     "Zone (Template)","Zone (UPS)","Zone Match",
+    "Weight (Template)","Weight (UPS)","Weight Match",
     "Customer Code","Rate Level","Repricing Status",
     "Tracking Numbers","Packages","Packages Matched","Not On Invoice","Billed to Customer",
     "Charged by UPS","Profit","Recomputed","Billed vs Recomputed","UPS vs Recomputed"].map(HD)]
@@ -13725,11 +13750,13 @@ async function reconExport(){
      o.chanUnknown?"UNKNOWN CHANNEL":(o.chan&&o.sysChan)?(o.chanMis?"MISMATCH":"OK"):"",
      o.zone||"", o.upsZone||"",
      (o.zone&&o.upsZone)?(o.zoneMis?"MISMATCH":"OK"):"",
+     o.wt===""?"":{v:toNum(o.wt),t:"n",s:{fmt:"0.##"}}, o.upsWt===""?"":{v:o.upsWt,t:"n",s:{fmt:"0"}},
+     (o.wt!==""&&o.upsWt!=="")?(o.wtMis?"MISMATCH":"OK"):"",
      o.cus, lvl(o), why(o.block),
      "", o.pkgs, o.found, o.missTrk.join(", "),
      m(o.amt), m(o.cost), m(o.profit), m(o.rep), m(o.pgap), m(o.gap)]));
   /* 追蹤號整串塞回去 —— 匯出的這份要能拿去對原檔,少了它就得回頭翻模板。 */
-  r.orders.forEach((o,i)=>{ det[i+1][11]=RECON.list[i]?RECON.list[i].trks.join(", "):""; });
+  r.orders.forEach((o,i)=>{ det[i+1][14]=RECON.list[i]?RECON.list[i].trks.join(", "):""; });
   /* 逐項那一張:全部一段,接著每個客戶各一段。分成幾十張分頁不好翻,
      多一欄 Scope 就能在同一張表上篩。 */
   const chgRows=[["Scope","Charge","Your Code","System Code","Billed to Client",
@@ -13751,9 +13778,8 @@ async function reconExport(){
     {name:"Summary", rows:sum, freeze:{r:1,c:0}, filter:"A1:N1",
      cols:[{w:16},{w:26},{w:16},{w:30},{w:9},{w:12},{w:11},{w:16},{w:15},{w:12},{w:11},
            {w:14},{w:19},{w:19}]},
-    {name:"Orders", rows:det, freeze:{r:1,c:0}, filter:"A1:U1",
-     cols:[{w:20},{w:12},{w:22},{w:22},{w:16},{w:9},{w:9},{w:11},{w:16},{w:16},{w:30},{w:34},{w:10},{w:12},{w:22},{w:16},{w:15},
-           {w:12},{w:14},{w:19},{w:19}]},
+    {name:"Orders", rows:det, freeze:{r:1,c:0}, filter:"A1:X1",
+     cols:[{w:20},{w:12},{w:16},{w:16},{w:14},{w:9},{w:9},{w:11},{w:10},{w:10},{w:12},{w:16},{w:16},{w:30},{w:34},{w:10},{w:12},{w:22},{w:16},{w:15},{w:12},{w:14},{w:19},{w:19}]},
     {name:"Charges", rows:chgRows, freeze:{r:1,c:0}, filter:"A1:I1",
      cols:[{w:14},{w:40},{w:14},{w:20},{w:17},{w:14},{w:16},{w:19},{w:18}]}
   ], "WMS_TMS_Reconciliation.xlsx");
@@ -13839,6 +13865,7 @@ async function reconPreviewImport(file){
       <td class="mono">${esc(o.order)}</td><td class="mono">${esc(o.cus)}</td>
       <td>${esc(o.chan||"—")}</td>
       <td class="mono">${esc(o.zone||"—")}</td>
+      <td class="num">${o.wt==null?"—":esc(o.wt)}</td>
       <td class="num">${o.trks.length}</td>
       <td class="num">${o.chg?Object.keys(o.chg).length:0}</td>
       <td class="num">${money(o.amt)}</td></tr>`).join("");
@@ -13847,7 +13874,7 @@ async function reconPreviewImport(file){
     +((p.issues||[]).length>6?`<div class="note warn">…</div>`:"");
   const table=rows.length?`<div class="tablewrap" style="max-height:38vh;margin-top:10px"><table>
      <thead><tr><th>${esc(L("訂單","Order"))}</th><th>${esc(L("客戶","Customer"))}</th>
-     <th>${esc(L("渠道","Channel"))}</th><th>Zone</th>
+     <th>${esc(L("渠道","Channel"))}</th><th>Zone</th><th class="num">lb</th>
      <th class="num">${esc(L("件數","Pkgs"))}</th><th class="num">${esc(L("逐項欄","Charges"))}</th>
      <th class="num">${esc(L("總額","Total"))}</th></tr></thead>
      <tbody>${sample}</tbody></table></div>
