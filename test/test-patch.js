@@ -122,7 +122,7 @@ pin.forEach(id=>{ const e=D.getElementById(id);
   ok(!!e&&e.classList.contains('pinfirst'), id+' \u5df2\u91d8\u4f4f\u9996\u6b04'); });
 
 console.log('\n[5] \u6c92\u6709\u640d\u5230\u539f\u672c\u7684\u6771\u897f');
-ok(D.querySelectorAll('table').length===28, '\u8868\u683c\u6578\u91cf\u6c92\u8b8a\uff0828\uff09');
+ok(D.querySelectorAll('table').length===31, '\u8868\u683c\u6578\u91cf\u6c92\u8b8a\uff0831\uff09');
 ok(D.querySelectorAll('.modalbg').length===25, '\u8996\u7a97\u6578\u91cf\u6c92\u8b8a\uff0825\uff09');
 ok(D.querySelectorAll('[data-i18n]').length>0, 'i18n \u6a19\u8a18\u9084\u5728');
 

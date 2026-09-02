@@ -1984,9 +1984,12 @@ label:has(#newChanOn){display:none !important}
   </div>
 
   <div class="lf sketch" id="reconResCard" hidden>
-    <h3 class="display"><span class="em">📊</span><span data-i18n="hd.reconres">By customer</span></h3>
+    <h3 class="display"><span class="em">📌</span><span data-i18n="hd.rebill">To re-bill</span></h3>
+    <p class="hint" style="margin:0 0 11px;max-width:80ch" data-i18n="hint.rebill">Charges UPS billed that WMS / TMS did not bill the client, one item per row, largest first. To re-bill is the customer's own rate where the rate level gives one, otherwise the UPS amount. Profit is only accurate once these are re-billed; the full comparison is folded below.</p>
     <div class="row" style="margin-bottom:9px">
       <button class="act ghost sm" id="bReconRerun" hidden data-i18n="btn.reconrerun">Re-run comparison</button>
+      <label class="inlab" style="margin-left:0" data-i18n="lb.reconscope">Showing</label>
+      <span class="foldwrap"><select id="rebillScope" class="fold"></select></span>
       <span style="flex:1 1 auto"></span>
       <button class="act ghost sm eye" id="bResPrev" data-i18n="btn.respv">👁 Preview report</button>
       <button class="act ghost sm" id="bReconXls" data-i18n="btn.reconxls">Export reconciliation</button>
@@ -1995,11 +1998,53 @@ label:has(#newChanOn){display:none !important}
       <span id="reconMsg2" class="savenote"></span>
     </div>
     <div id="reconWarn" hidden></div>
+    <div id="rebillSum" class="affsum" style="margin:0 0 8px"></div>
+    <div class="tablewrap" style="max-height:56vh"><table id="tRebill"><thead><tr>
+      <th data-i18n="th.cuscode">Code</th>
+      <th data-i18n="th.cusname">Name</th>
+      <th data-i18n="th.rebillorder">Order Number</th>
+      <th data-i18n="th.rebilltrk">Tracking Number</th>
+      <th data-i18n="th.chgname">Charge</th>
+      <th class="num" data-i18n="th.reconups">Charged by UPS</th>
+      <th class="num" data-i18n="th.chgbilled">Billed to client</th>
+      <th class="num" data-i18n="th.rebillrate">Client rate</th>
+      <th class="num" data-i18n="th.rebillamt">To re-bill</th>
+    </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
+  </div>
+
+  <div class="lf sketch" id="reconRebillByCard" hidden>
+    <h3 class="display"><span class="em">📊</span><span data-i18n="hd.rebillsum">Re-bill summary</span></h3>
+    <p class="hint" style="margin:0 0 11px;max-width:78ch" data-i18n="hint.rebillsum">How much to re-bill per customer, and which charges are missed most.</p>
+    <div class="duo">
+      <div class="tablewrap" style="max-height:40vh"><table id="tRebillCus"><thead><tr>
+        <th data-i18n="th.cuscode">Code</th>
+        <th data-i18n="th.cusname">Name</th>
+        <th class="num" data-i18n="th.reconorders">Rows</th>
+        <th class="num" data-i18n="th.rebillitems">Items</th>
+        <th class="num" data-i18n="th.rebillamt">To re-bill</th>
+      </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
+      <div class="tablewrap" style="max-height:40vh"><table id="tRebillChg"><thead><tr>
+        <th data-i18n="th.chgname">Charge</th>
+        <th class="num" data-i18n="th.rebillitems">Items</th>
+        <th class="num" data-i18n="th.rebillamt">To re-bill</th>
+      </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
+    </div>
+  </div>
+
+  <!-- 利潤與差異收起來:漏收的補上之前,利潤與毛利率都不是準的,先不要擺在眼前。 -->
+  <div class="lf sketch" id="reconDetailCard" hidden>
+    <h3 class="display"><span class="em">🧮</span><span data-i18n="hd.recondetail">Full comparison — profit and variances</span></h3>
+    <p class="hint" style="margin:0 0 9px;max-width:78ch" data-i18n="hint.recondetail">Read this after re-billing: profit and margin are only accurate once the missed charges above have been billed.</p>
+    <div class="row" style="margin-bottom:9px">
+      <button class="act ghost sm" id="bReconDetail" data-i18n="btn.recondetail">Show</button>
+    </div>
+    <div id="reconDetailBody" hidden>
+    <div class="subhd" data-i18n="hd.reconres">By customer</div>
     <div class="tablewrap" style="max-height:56vh"><table id="tRecon"><thead><tr>
       <th data-i18n="th.cuscode">Code</th>
       <th data-i18n="th.cusname">Name</th>
       <th data-i18n="th.cuslevel">Rate level</th>
-      <th class="num" data-i18n="th.reconorders">Orders</th>
+      <th class="num" data-i18n="th.reconorders">Rows</th>
       <th class="num" data-i18n="th.reconpkgs">Packages</th>
       <th class="num" data-i18n="th.reconbilled">Billed to customer</th>
       <th class="num" data-i18n="th.reconups">Charged by UPS</th>
@@ -2010,10 +2055,9 @@ label:has(#newChanOn){display:none !important}
       <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
     <p class="hint" style="margin:11px 0 0;max-width:76ch" data-i18n="hint.reconcols">Each customer is repriced at its assigned rate level; billed, recomputed and UPS amounts yield the pricing and UPS variances. Definitions and edge cases are in the guide.</p>
-  </div>
 
-  <div class="lf sketch" id="reconChgCard" hidden>
-    <h3 class="display"><span class="em">🔍</span><span data-i18n="hd.reconchg">By charge</span></h3>
+    <div id="reconChgCard" hidden style="margin-top:16px">
+    <div class="subhd" data-i18n="hd.reconchg">By charge</div>
     <p class="hint" style="margin:0 0 11px;max-width:78ch" data-i18n="hint.reconchg">Every charge on the matched shipments, priced two ways: what this customer’s rate level says it should be, and what UPS actually billed. The difference is where the invoice departs from the agreement — sorted with the largest gap first.</p>
     <div class="row" style="margin-bottom:9px">
       <label class="inlab" style="margin-left:0" data-i18n="lb.reconscope">Showing</label>
@@ -2029,6 +2073,8 @@ label:has(#newChanOn){display:none !important}
       <th class="num" data-i18n="th.chgpgap">Billed vs recomputed</th>
       <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
+    </div>
+    </div>
   </div>
   </div>
 
@@ -13126,6 +13172,19 @@ const RECON_GROUPS={
   scc:{head:"Base Rate + Shipping Charge Correction", fees:["Base Rate","Shipping Charge Correction"], auto:true},
 };
 const RECON_OTHER="Other Fees (non-carrier)";
+/* 補收清單用的「家族」:客戶端和 UPS 端可能用不同的細項收同一件事 —— 出貨時收
+   AHS、UPS 量過改收 LPS;WMS 收商業 DAS、UPS 改判住宅 DAS。同一家族先抵,只補
+   UPS 比客戶多收的部分。 */
+const REBILL_FAMILIES=[
+  {name:"Additional Handling / Large Package",
+   fees:["Additional Handling Surcharge - Weight","Additional Handling Surcharge - Dimension",
+         "Additional Handling Surcharge - Packaging","Large Package Surcharge"]},
+  {name:"Delivery Area / Remote Area",
+   fees:["Delivery Area Surcharge - Commercial","Delivery Area Surcharge - Residential",
+         "Delivery Area Surcharge - Extended Commercial","Delivery Area Surcharge - Extended Residential",
+         "Remote Area Surcharge","Remote Area Surcharge - Commercial","Remote Area Surcharge - Residential"]},
+  {name:"Signature / Adult Signature", fees:["Signature","Adult Signature"]},
+];
 /* 這個欄名是哪一組的合併欄;不是就回空字串。 */
 function reconGroupOf(name){
   const n=String(name||"").trim().toLowerCase();
@@ -13664,6 +13723,68 @@ function reconRun(list){
   tot.gap  = tot.blocked===tot.orders?null:cents(tot.rep-tot.repCost);
   tot.pgap = tot.blocked===tot.orders?null:cents(tot.repAmt-tot.rep);
   tot.margin=tot.amt?tot.profit/Math.abs(tot.amt)*100:null;
+  /* ---- 補收清單:UPS 有收、向客戶沒收的項目 ----
+     一個追蹤號一項費用一列,金額大的在前。「應補收」用客戶自己的費率(重算那一側
+     算出來的數),沒有層級或算不出來就照 UPS 實收轉嫁。
+     同一家族先抵:出貨時收 AHS、UPS 量過改收 LPS;WMS 收商業 DAS、UPS 改判住宅
+     DAS —— 這種不是「沒收」,是「改收」,只有 UPS 比客戶多收的部分要補。運費不在
+     家族裡:基本運費的小差額不追;UPS 的更正(SCC)自己一欄,沒補收就列。
+     沒有逐項費用欄的列看不出漏了什麼,不列,只計數。 */
+  const famOf=new Map();
+  REBILL_FAMILIES.forEach((f,i)=>f.fees.forEach(n=>famOf.set(n,i)));
+  const heads=new Map();
+  for(const g of active) for(const f of RECON_GROUPS[g].fees) heads.set(f, RECON_GROUPS[g].head);
+  const items=[]; let skipped=0;
+  for(const o of orders){
+    const upsF=(o.fees&&o.fees.ups)||{}, rep=(o.fees&&o.fees.rep)||{};
+    const b=o.billedFees;
+    if(!b){ if(Object.keys(upsF).length) skipped++; continue; }
+    const billedOf=c=>{ let w=b[c]; if(w==null && heads.has(c)) w=b[heads.get(c)]; return w==null?null:cents(w); };
+    const hasRep=!o.block;
+    const buckets=new Map();
+    for(const c of new Set([...Object.keys(upsF), ...Object.keys(b)])){
+      if(c===RECON_OTHER) continue;
+      const k=famOf.has(c)?"f"+famOf.get(c):c;
+      (buckets.get(k)||buckets.set(k,[]).get(k)).push(c);
+    }
+    const base={cus:o.cus, order:o.order, trk:o.trks.join(", "), invDate:o.invDate||""};
+    for(const [k,cols] of buckets){
+      const upsCols=cols.filter(c=>upsF[c]>0.004);
+      const U=cents(upsCols.reduce((a,c)=>a+upsF[c],0));
+      if(U<=0.004) continue;
+      const wCols=cols.filter(c=>{ const w=billedOf(c); return w!=null && Math.abs(w)>0.004; });
+      const W=cents(wCols.reduce((a,c)=>a+billedOf(c),0));
+      if(!wCols.length){
+        for(const c of upsCols){
+          const u=cents(upsF[c]);
+          const rate=hasRep&&rep[c]!=null?cents(rep[c]):null;
+          items.push(Object.assign({kind:"miss", charge:c, ups:u, billed:0, rate,
+                                    amt:(rate!=null&&rate>0.004)?rate:u}, base));
+        }
+      }else if(k[0]==="f"){
+        const same=upsCols.every(c=>wCols.includes(c)) && wCols.every(c=>upsCols.includes(c));
+        const diff=cents(U-W);
+        if(same || diff<=0.004) continue;
+        const R=hasRep?cents(cols.reduce((a,c)=>a+(rep[c]||0),0)):null;
+        const rd=R==null?null:cents(R-W);
+        const amt=(rd!=null&&rd>0.004)?rd:diff;
+        if(rd!=null && rd<=0.004) continue;      /* 客戶費率算出來沒有多的,不補 */
+        items.push(Object.assign({kind:"swap", charge:REBILL_FAMILIES[+k.slice(1)].name,
+                                  billedAs:wCols, upsAs:upsCols, ups:U, billed:W, rate:R, amt}, base));
+      }
+    }
+  }
+  items.sort((a,b)=>b.amt-a.amt||a.cus.localeCompare(b.cus)||a.order.localeCompare(b.order));
+  const byCusR=new Map(), byChgR=new Map();
+  for(const it of items){
+    const a=byCusR.get(it.cus)||{items:0,amt:0}; a.items++; a.amt=cents(a.amt+it.amt); byCusR.set(it.cus,a);
+    const c=byChgR.get(it.charge)||{charge:it.charge,items:0,amt:0}; c.items++; c.amt=cents(c.amt+it.amt); byChgR.set(it.charge,c);
+  }
+  const rebill={items, total:cents(items.reduce((a,i)=>a+i.amt,0)), skipped, noItem:!hasBilled,
+    byCus:cus.map(a=>({code:a.code, name:a.name, rows:a.orders,
+                       items:(byCusR.get(a.code)||{}).items||0, amt:(byCusR.get(a.code)||{}).amt||0}))
+          .sort((x,y)=>y.amt-x.amt||y.rows-x.rows),
+    byChg:[...byChgR.values()].sort((x,y)=>y.amt-x.amt)};
   const fmt=o=>({
       name:o.name, rep:cents(o.rep), ups:cents(o.ups), gap:cents(o.rep-o.ups),
       /* billed 填了才有意義。沒填寫 null 而不是 0 ——
@@ -13706,7 +13827,7 @@ function reconRun(list){
   for(const [k,m] of chgBy) byCus[k]=chgRows(m);
   return {orders, cus, tot, lostLevel:[...lostLevel], noLevel:[...noLevel],
           unmatched:orders.filter(o=>o.found<o.pkgs), hasBilled,
-          chg:chgRows(chgAll), chgBy:byCus, groups:[...active]};
+          chg:chgRows(chgAll), chgBy:byCus, groups:[...active], rebill};
 }
 
 /* --------------------------------------------------------------------
@@ -13805,7 +13926,7 @@ function renderRecon(){
   }
   const r=RECON&&RECON.res;
   if(card) card.hidden=!r||!onRes;
-  if(!r||!onRes){ if(typeof renderReconChg==="function") renderReconChg(); return; }
+  if(!r||!onRes){ if(typeof renderReconChg==="function") renderReconChg(); renderRebill(); return; }
   const pc=v=>v==null?`<span class="empty">—</span>`
                      :(v<0?"-":"")+Math.abs(v).toFixed(1)+"%";
   const sign=v=>`<span class="mny ${v<0?"neg":(v>0?"pos":"")}">${money(v)}</span>`;
@@ -13896,6 +14017,7 @@ function renderRecon(){
                     +warn.map(t=>`<div class="note warn">${esc(t)}</div>`).join("");
          w.hidden=!(block.length||warn.length); }
   renderReconChg();
+  renderRebill();
 }
 /* 逐項比對。看的範圍可以是全部,也可以單看一個客戶 —— 一個客戶用的是他自己
    那一層費率,混在一起看差異會被別的客戶稀釋掉。 */
@@ -13963,6 +14085,68 @@ function renderReconChg(){
       rows.length+" charge(s), "+over+" of them billed above the recomputed figure."
       +(noBill?" Billed to client is empty — the template's charge columns were left blank.":""));
   }
+}
+
+/* 補收清單:UPS 有收、向客戶沒收的項目。金額大的在前;可以只看一個客戶。
+   利潤那兩張表收在下面,補收完再看。 */
+let REBILL_SCOPE="";
+function renderRebill(){
+  const r=RECON&&RECON.res, onRes=RECON_VIEW==="res";
+  const rb=r&&r.rebill;
+  const byCard=$("#reconRebillByCard"), dCard=$("#reconDetailCard");
+  if(byCard) byCard.hidden=!(r&&onRes);
+  if(dCard) dCard.hidden=!(r&&onRes);
+  if(!r||!onRes) return;
+  const sel=$("#rebillScope");
+  if(sel){
+    const keep=REBILL_SCOPE;
+    sel.innerHTML=`<option value="">${esc(L("全部客戶","All customers"))}</option>`
+      +r.cus.map(a=>`<option value="${esc(a.code)}">${esc(a.code+" · "+a.name)}</option>`).join("");
+    sel.value=(keep&&r.cus.some(a=>a.code===keep))?keep:"";
+    REBILL_SCOPE=sel.value;
+  }
+  const all=(rb&&rb.items)||[];
+  const items=all.filter(it=>!REBILL_SCOPE||it.cus===REBILL_SCOPE);
+  const dash=`<span class="empty">—</span>`;
+  const tb=$("#tRebill")&&$("#tRebill").tBodies[0];
+  /* 改收的那一列在費用名稱底下寫清楚:客戶端收的是哪幾項、UPS 收的是哪幾項。 */
+  const chgCell=it=>`${esc(it.charge)} <span class="chggrp">${esc(it.kind==="swap"?L("改收","Substituted"):L("未收","Not billed"))}</span>`
+      +(it.kind==="swap"?`<div class="chgcodes">${esc(L("客戶端收:","Billed as: ")+it.billedAs.join(" · ")+L("  UPS 收:","  UPS charged: ")+it.upsAs.join(" · "))}</div>`:"");
+  if(tb) tb.innerHTML=items.map(it=>`<tr><td class="mono">${esc(it.cus)}</td><td>${esc(cusNameOf(it.cus))}</td>
+      <td class="mono">${esc(it.order)}</td><td class="mono">${esc(it.trk)}</td><td>${chgCell(it)}</td>
+      <td class="num">${money(it.ups)}</td><td class="num">${money(it.billed)}</td>
+      <td class="num">${it.rate==null?dash:money(it.rate)}</td><td class="num"><b>${money(it.amt)}</b></td></tr>`).join("")
+    ||`<tr><td colspan="9" class="empty">${esc(rb&&rb.noItem
+        ? L("模板沒有逐項費用欄,列不出漏收的項目。","The file has no itemised charge columns, so missed charges cannot be listed.")
+        : L("沒有漏收的項目。","Nothing to re-bill."))}</td></tr>`;
+  const tot=items.reduce((a,it)=>cents(a+it.amt),0);
+  const tf=$("#tRebill")&&$("#tRebill").tFoot;
+  if(tf) tf.innerHTML=items.length?`<tr><td colspan="5"><b>${esc(L("合計","Total"))}</b></td>
+      <td class="num"><b>${money(items.reduce((a,it)=>cents(a+it.ups),0))}</b></td>
+      <td class="num"><b>${money(items.reduce((a,it)=>cents(a+it.billed),0))}</b></td>
+      <td class="num"></td>
+      <td class="num"><b>${money(tot)}</b></td></tr>`:"";
+  const sum=$("#rebillSum");
+  if(sum){
+    const cusN=new Set(items.map(it=>it.cus)).size;
+    const skip=rb&&rb.skipped?rb.skipped:0;
+    sum.textContent=(rb&&rb.noItem)?"":L(
+      "應補收 "+money(tot)+" · "+items.length+" 項 · "+cusN+" 個客戶"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":""),
+      money(tot)+" to re-bill · "+items.length+" item(s) · "+cusN+" customer(s)"+(skip?" · "+skip+" row(s) without itemised charges not listed":""));
+  }
+  const tc=$("#tRebillCus")&&$("#tRebillCus").tBodies[0];
+  if(tc) tc.innerHTML=((rb&&rb.byCus)||[]).map(a=>`<tr><td class="mono">${esc(a.code)}</td><td>${esc(a.name)}</td>
+      <td class="num">${a.rows}</td><td class="num">${a.items}</td><td class="num"><b>${money(a.amt)}</b></td></tr>`).join("")
+    ||`<tr><td colspan="5" class="empty">${dash}</td></tr>`;
+  const tcf=$("#tRebillCus")&&$("#tRebillCus").tFoot;
+  if(tcf) tcf.innerHTML=(rb&&rb.byCus&&rb.byCus.length)?`<tr><td colspan="2"><b>${esc(L("合計","Total"))}</b></td>
+      <td class="num"><b>${r.tot.orders}</b></td><td class="num"><b>${all.length}</b></td><td class="num"><b>${money(rb.total)}</b></td></tr>`:"";
+  const tg=$("#tRebillChg")&&$("#tRebillChg").tBodies[0];
+  if(tg) tg.innerHTML=((rb&&rb.byChg)||[]).map(c=>`<tr><td>${esc(c.charge)}</td><td class="num">${c.items}</td>
+      <td class="num"><b>${money(c.amt)}</b></td></tr>`).join("")||`<tr><td colspan="3" class="empty">${dash}</td></tr>`;
+  const tgf=$("#tRebillChg")&&$("#tRebillChg").tFoot;
+  if(tgf) tgf.innerHTML=(rb&&rb.byChg&&rb.byChg.length)?`<tr><td><b>${esc(L("合計","Total"))}</b></td>
+      <td class="num"><b>${all.length}</b></td><td class="num"><b>${money(rb.total)}</b></td></tr>`:"";
 }
 
 /* --------------------------------------------------------------------
@@ -14108,17 +14292,30 @@ async function reconExport(){
     .concat(charges.flatMap(nm=>[cw(nm),cw(nm),cw(nm)]),[16,16,16]);
   const detailSheet={name:"Detail", rows:[dHead,...dRows], cols:dWidths.map(w=>({w}))};
 
+  /* ---- To re-bill:補收清單,和畫面上同一份 —— 一個追蹤號一項費用一列。 ---- */
+  const rb=r.rebill||{items:[]};
+  const RATEH="FBEBC8";
+  const rbHead=[["Customer Code","EFE3CB"],["Customer Name","EFE3CB"],["Order Number","EFE3CB"],
+    ["Tracking Number","EFE3CB"],["Invoice Date","EFE3CB"],["Charge","EFE3CB"],["Type","EFE3CB"],
+    ["Billed As","EFE3CB"],["UPS Charged As","EFE3CB"],
+    ["Charged by UPS",UPSH],["Billed to Client",WMSH],["Client Rate",RATEH],["To re-bill",DIFH]].map(([n,f])=>dh(n,f));
+  const rbRows=rb.items.map(it=>[it.cus, cusNameOf(it.cus), it.order, it.trk, it.invDate||"", it.charge,
+     it.kind==="swap"?"Substituted":"Not billed", (it.billedAs||[]).join(", "), (it.upsAs||[it.charge]).join(", "),
+     dm(it.ups), dm(it.billed), it.rate==null?"":dm(it.rate), dm(it.amt)]);
+  const rebillSheet={name:"To re-bill", rows:[rbHead,...rbRows],
+    cols:[16,24,20,22,12,40,12,36,36,16,16,14,14].map(w=>({w}))};
+
   /* Summary / Orders / Charges 先不用 —— 留著,要開回來只改這一個開關。 */
   const RECON_XLS_EXTRA=false;
   const sheets=RECON_XLS_EXTRA
     ? [sheetOf("Summary", sumCols, sumRows, [16,26,16,30,9,12,11,17,17,14,19,19,19], 2),
-       detailSheet,
+       detailSheet, rebillSheet,
        sheetOf("Orders", ordCols, ordRows, [20,12,16,16,30,22,22,22,10,12,22, 18,8,12,16, 20,10,12,16, 14, 15,12,17,19,19], 1),
        sheetOf("Charges", chgCols, chgRows, [14,42,14,22,17,17,14,19,18], 2)]
-    : [detailSheet];
+    : [detailSheet, rebillSheet];
   await xlWrite(sheets, src+"_Reconciliation_Detail.xlsx");
-  reconMsg(L("已匯出 Detail:每一項費用 UPS / "+src+" / 差額三欄並排,共 "+r.orders.length+" 筆。",
-             "Exported Detail: UPS / "+src+" / Difference side by side for every charge, "+r.orders.length+" row(s)."), true);
+  reconMsg(L("已匯出:Detail(每一項費用 UPS / "+src+" / 差額三欄)"+r.orders.length+" 筆,補收清單 "+rb.items.length+" 項。",
+             "Exported: Detail (UPS / "+src+" / Difference per charge) "+r.orders.length+" row(s), To re-bill "+rb.items.length+" item(s)."), true);
 }
 
 /* 讀檔+解析,不寫入。回 {err} 或 {p, fname} —— 匯入與預覽共用同一條讀取路。 */
@@ -14461,10 +14658,12 @@ function bindRecon(){
   $("#bResPrev") && ($("#bResPrev").onclick=()=>{
     const r=RECON&&RECON.res;
     if(!r){ toast(L("還沒有對帳結果。","No comparison yet."),false); return; }
-    const t1=$("#tRecon"), t2=$("#tReconChg");
-    uiPreview(L("對帳報表預覽","Reconciliation report preview"),
-      `<div class="tablewrap">${t1?t1.outerHTML.replace(/ id="tRecon"/,""):""}</div>
-       <div class="tablewrap" style="margin-top:12px">${t2?t2.outerHTML.replace(/ id="tReconChg"/,""):""}</div>`);
+    const t1=$("#tRebill"), t2=$("#tRebillCus"), t3=$("#tRebillChg");
+    const strip=(t,id)=>t?t.outerHTML.replace(new RegExp(' id="'+id+'"'),""):"";
+    uiPreview(L("補收清單預覽","To re-bill preview"),
+      `<div class="tablewrap">${strip(t1,"tRebill")}</div>
+       <div class="tablewrap" style="margin-top:12px">${strip(t2,"tRebillCus")}</div>
+       <div class="tablewrap" style="margin-top:12px">${strip(t3,"tRebillChg")}</div>`);
   });
   $("#bReconImp") && ($("#bReconImp").onclick=()=>$("#fRecon").click());
   $("#bReconRerun") && ($("#bReconRerun").onclick=()=>{
@@ -14478,6 +14677,13 @@ function bindRecon(){
   bindPreview();
   $("#reconScope") && ($("#reconScope").onchange=e=>{
     RECON_SCOPE=e.target.value; renderReconChg(); });
+  $("#rebillScope") && ($("#rebillScope").onchange=e=>{ REBILL_SCOPE=e.target.value; renderRebill(); });
+  /* 利潤與差異那兩張表收著,按了才展開 —— 補收完再看才準。 */
+  $("#bReconDetail") && ($("#bReconDetail").onclick=()=>{
+    const body=$("#reconDetailBody"); if(!body) return;
+    body.hidden=!body.hidden;
+    $("#bReconDetail").textContent=body.hidden?L("展開","Show"):L("收起","Hide");
+  });
   /* 表上點一個客戶,下面那張表就只看他 —— 比拉選單快,而且點的是眼睛已經
      停在的那一列。 */
   $("#tRecon") && ($("#tRecon").onclick=e=>{
@@ -18870,6 +19076,19 @@ const I18N={
   "btn.chgpdf":["說明文件(PDF)","Guide (PDF)"],
   "th.cusrecon":["最近對帳","Last reconciliation"],
   "hd.reconchg":["逐項比對","By charge"],
+  "hd.rebill":["補收清單","To re-bill"],
+  "hint.rebill":["UPS 有收、WMS / TMS 沒向客戶收的項目,一項一列,金額大的在前。「應補收」用客戶自己的費率(層級算得出來就用它),算不出來照 UPS 實收。補收完利潤才準;完整的比對收在下面。",
+    "Charges UPS billed that WMS / TMS did not bill the client, one item per row, largest first. To re-bill is the customer's own rate where the rate level gives one, otherwise the UPS amount. Profit is only accurate once these are re-billed; the full comparison is folded below."],
+  "th.rebillorder":["單號","Order Number"],
+  "th.rebilltrk":["追蹤號","Tracking Number"],
+  "th.rebillrate":["客戶費率","Client rate"],
+  "th.rebillamt":["應補收","To re-bill"],
+  "th.rebillitems":["項目","Items"],
+  "hd.rebillsum":["補收彙總","Re-bill summary"],
+  "hint.rebillsum":["每個客戶要補收多少;哪幾種費用最常漏收。","How much to re-bill per customer, and which charges are missed most."],
+  "hd.recondetail":["完整比對 — 利潤與差異","Full comparison — profit and variances"],
+  "hint.recondetail":["補收完再看:漏收的項目補上之後,利潤與毛利率才是準的。","Read this after re-billing: profit and margin are only accurate once the missed charges above have been billed."],
+  "btn.recondetail":["展開","Show"],
   "hint.reconchg":["同一筆費用由左到右三個數字:向客戶收多少(WMS/TMS 檔填的)、UPS 實際收多少、這個客戶的費率層級算出來應該收多少。最後兩欄是差異:向客戶收對重算是你的定價落差,UPS 收對重算是帳單和合約的落差 —— 差最多的排前面。",
     "Every charge on the matched shipments, left to right: what you billed the client (from the WMS/TMS file), what UPS actually charged, and what this customer's rate level says it should be. The last two columns are the variances: billed vs recomputed is your pricing variance, UPS vs recomputed is where the invoice departs from the agreement — sorted with the largest gap first."],
   "lb.reconscope":["檢視範圍","Showing"],
