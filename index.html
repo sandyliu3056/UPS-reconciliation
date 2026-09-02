@@ -12902,14 +12902,25 @@ const RECON_COL={ order:"Order Number", trk:"Tracking Numbers",
                   date:"Ship Date",     zone:"Zone",  chan:"Channel" };
 /* 系統裡的渠道名稱:04 渠道那一頁登記的那幾條。模板的 Channel 欄用這份當
    下拉,名字才會和系統一致;匯入時對不到的就是「系統沒有的渠道」。 */
-function reconChannelNames(){
+/* 模板上的渠道是「族」:WMS / TMS 的 Ground 就是一條渠道,不分商業／住宅,
+   商住是系統照帳單判的。所以模板列的是族名(Ground、2nd Day Air…),
+   對照時也只比族 —— 模板寫 Ground,系統判 Ground Residential,算相符。 */
+function reconChanFamilies(){
   const zn=(CFG&&CFG.raw&&CFG.raw.builtin_service_zones)||{};
-  return Object.keys(zn).filter(Boolean).sort(chanSort);
+  const fam=new Map();
+  for(const k of Object.keys(zn).filter(Boolean).sort(chanSort)){
+    const f=svcOfChan(k);
+    if(!fam.has(f)) fam.set(f,[]);
+    fam.get(f).push(k);
+  }
+  return [...fam.entries()].map(([name,members])=>({name,members}));
 }
+function reconChannelNames(){ return reconChanFamilies().map(f=>f.name); }
 const normChanKey=v=>String(v==null?"":v).trim().replace(/\s+/g," ").toLowerCase();
+const chanFamKey=v=>normChanKey(svcOfChan(v));
 function reconChanKnown(name){
-  const k=normChanKey(name); if(!k) return "";
-  return reconChannelNames().find(c=>normChanKey(c)===k)||"";
+  const k=chanFamKey(name); if(!k) return "";
+  return reconChannelNames().find(c=>chanFamKey(c)===k)||"";
 }
 /* 把模板裡系統沒有的渠道登記進去:和「登錄未識別代碼」加渠道同一條路 ——
    Zone 留白,基本運費之後到 04 匯入;每一層都同步建立。 */
@@ -13228,16 +13239,16 @@ async function reconTemplate(src){
   const hd=idc.map(H).concat(tplFees.map(HC),[HT(RECON_COL.amt)]);
   const nCol=hd.length;
   const reg=cusReg();
-  const chans=reconChannelNames();
+  const fams=reconChanFamilies();
   /* 填寫說明放在活頁簿裡自己一頁:拿到檔的人不必另外找文件。 */
   const G=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
   const gRow=(c,f,n)=>[c,f,n];
   const guide=[[G("Column"),G("Fill with / 填什麼"),G("Notes / 說明")],
     gRow(RECON_COL.date,"出貨日 Ship date","YYYY-MM-DD;選填 optional"),
-    gRow(RECON_COL.cus,"客戶代碼 Customer code","必填;從下拉選 Required; pick from the dropdown"),
+    gRow(RECON_COL.cus,"客戶代碼 Customer code","必填;要在客戶名單裡,對照 Customers 分頁 Required; must be on the client list, see the Customers sheet"),
     gRow(RECON_COL.order,"系統單號 Order number","必填;一單一列、不可重複 Required; one order per row, unique"),
     gRow(RECON_COL.trk,"UPS 追蹤號 Tracking numbers","必填;一票多件以逗號分隔 Required; comma-separated for multi-piece"),
-    gRow(RECON_COL.chan,"計價用的渠道 Channel used for pricing","選填;從下拉選系統的渠道名稱;不在名單上的可在匯入時新增 Optional; pick a system channel from the dropdown; unknown ones can be added on import"),
+    gRow(RECON_COL.chan,"計價用的渠道 Channel used for pricing","選填;寫系統的渠道名稱,對照 Channels 分頁;Ground 不分商業／住宅;名單上沒有的可在匯入時新增 Optional; a system channel name, see the Channels sheet; Ground is one channel, no commercial/residential split; a channel not on the list can be added on import"),
     gRow(RECON_COL.zone,"計價用的 UPS Zone Zone used for pricing","選填;匯入後與帳單上的 Zone 核對 Optional; checked against the invoice zone")];
   const fillOf={
     "Base Rate":["向客戶收的運費 Freight billed to the client",""],
@@ -13263,29 +13274,15 @@ async function reconTemplate(src){
      cols:[{w:14},{w:18},{w:22},{w:38},{w:22},{w:8}]
        .concat(tplFees.map(n=>({w:Math.min(30,Math.max(16,n.length+2))})),[{w:16}])},
     {name:"Guide", freeze:{r:1,c:0}, cols:[{w:44},{w:52},{w:60}], rows:guide},
-    /* 客戶名單只是下拉選單的來源。Excel 的清單驗證一定要指向活頁簿裡的一個
-       範圍,所以這一頁必須存在;但它不是給人填的,所以藏起來。 */
-    {name:"Customers", hidden:true, freeze:{r:1,c:0}, cols:[{w:18},{w:34}],
+    /* 兩張對照表,都是可見的參考頁,不做下拉:客戶代碼和渠道都是同仁從自己
+       系統抄過來的,下拉反而擋手。渠道列的是族名,旁邊寫系統裡對應的幾條。 */
+    {name:"Channels", freeze:{r:1,c:0}, cols:[{w:26},{w:44}],
+     rows:[[CH("Channel"),CH("System channels covered")]]
+       .concat(fams.map(f=>[f.name, f.members.join(", ")]))},
+    {name:"Customers", freeze:{r:1,c:0}, cols:[{w:18},{w:34}],
      rows:[[CH("Customer Code"),CH("Customer Name")]]
-       .concat(reg.map(c=>[c.code, c.name||c.code]))},
-    /* 渠道名單同樣只是下拉的來源,藏起來。 */
-    {name:"Channels", hidden:true, freeze:{r:1,c:0}, cols:[{w:26}],
-     rows:[[CH("Channel")]].concat(chans.map(c=>[c]))}
+       .concat(reg.map(c=>[c.code, c.name||c.code]))}
   ];
-  /* 名單是空的就不下驗證 —— 來源範圍指到一列空白,Excel 會判檔案有問題。 */
-  const dv=[];
-  if(reg.length) dv.push({
-    sqref:"B2:B20000",
-    list:"Customers!$A$2:$A$"+(reg.length+1),
-    title:L("代碼不在名單上","Unknown customer code"),
-    msg:L("請從 Customers 分頁選一個代碼。","Pick a code from the Customers sheet.")});
-  if(chans.length) dv.push({
-    sqref:"E2:E20000",
-    list:"Channels!$A$2:$A$"+(chans.length+1),
-    title:L("渠道不在系統裡","Channel not in the system"),
-    msg:L("請從 Channels 分頁選一條渠道;系統沒有的渠道可在匯入時新增。",
-          "Pick a channel from the Channels sheet; a channel the system lacks can be added on import.")});
-  if(dv.length) sheets[0].dv=dv;
   await xlWrite(sheets, src+"_Reconciliation_Template.xlsx");
   reconMsg(L(src+" 模板已下載:識別四欄 + "+tplFees.length+" 個費用欄 + 總收取金額,含客戶 "+reg.length+" 筆;填寫說明在 Guide 分頁。",
              src+" template downloaded: 4 identity columns + "+tplFees.length
@@ -13372,7 +13369,7 @@ function reconRun(list){
     const chan=String(e.chan||"").trim();
     const chanUnknown=!!(chan && !reconChanKnown(chan));
     const chanMis=!!(chan && sysChan && !chanUnknown
-                     && ![...sysChans].some(c=>normChanKey(c)===normChanKey(chan)));
+                     && ![...sysChans].some(c=>chanFamKey(c)===chanFamKey(chan)));
     const o={ln:e.ln, order:e.order, cus:e.cus, date:e.date,
              zone:String(e.zone||""), upsZone, zoneMis,
              chan, sysChan, chanMis, chanUnknown,
