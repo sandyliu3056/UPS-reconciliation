@@ -94,13 +94,19 @@ function cellVal(td){
   return {n:null,s:t.toLowerCase()};
 }
 function sortTable(tb,idx,dir){
-  var rows=Array.prototype.slice.call(tb.rows)
+  var all=Array.prototype.slice.call(tb.rows)
            .filter(function(r){ return !r.querySelector("td.empty")&&r.cells.length>idx; });
-  if(rows.length<2) return;
-  rows.forEach(function(r,i){ if(r.__ord===undefined) r.__ord=i; });
-  if(dir===0){ rows.sort(function(a,b){ return a.__ord-b.__ord; }); }
-  else rows.sort(function(a,b){
-    var x=cellVal(a.cells[idx]), y=cellVal(b.cells[idx]), c;
+  /* 子列(class=sub)跟著它上面那一列主列走:排序只看主列,子列原封跟過去。 */
+  var units=[];
+  all.forEach(function(r){
+    if(r.classList.contains("sub")&&units.length) units[units.length-1].push(r);
+    else units.push([r]);
+  });
+  if(units.length<2) return;
+  units.forEach(function(u,i){ if(u[0].__ord===undefined) u[0].__ord=i; });
+  if(dir===0){ units.sort(function(a,b){ return a[0].__ord-b[0].__ord; }); }
+  else units.sort(function(a,b){
+    var x=cellVal(a[0].cells[idx]), y=cellVal(b[0].cells[idx]), c;
     if(x.miss||y.miss) return (x.miss?1:0)-(y.miss?1:0);
     if(x.n!==null&&y.n!==null) c=x.n-y.n;
     else if(x.n!==null) c=-1;
@@ -108,7 +114,7 @@ function sortTable(tb,idx,dir){
     else c=x.s<y.s?-1:x.s>y.s?1:0;
     return dir<0?-c:c;
   });
-  rows.forEach(function(r){ tb.appendChild(r); });
+  units.forEach(function(u){ u.forEach(function(r){ tb.appendChild(r); }); });
 }
 /* 重畫之後排序不歸零:tbody 被重畫、表頭上還掛著方向時,照原方向再排
    一次;表頭整列被換掉(tRate 每次 render 都重寫)就重新掛一次排序。 */

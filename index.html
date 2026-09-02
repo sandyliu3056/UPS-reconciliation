@@ -757,6 +757,14 @@ tr.blocked{opacity:.72}
 .srcdot.rep{background:#ffb500}
 .srcdot.ups{background:#d9a97e}
 .srcdot.wms{background:#7fc7a3}
+/* 逐項表的合併組:主列粗體帶「合併」標籤,細項子列縮排、字小一號、字色淡。 */
+#tReconChg tr.grp td:first-child{font-weight:700}
+#tReconChg tr.sub td{color:var(--muted);font-size:12px;padding-top:3px;padding-bottom:3px}
+#tReconChg tr.sub td:first-child{padding-left:28px}
+#tReconChg .subarm{display:inline-block;width:14px;margin-left:-17px;opacity:.7}
+.chggrp{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;letter-spacing:.4px;
+  text-transform:uppercase;line-height:1.5;padding:0 7px;border-radius:999px;color:var(--text);
+  background:var(--stripe);border:1px solid color-mix(in srgb, var(--text) 40%, transparent);vertical-align:middle}
 .lvlbad{
   display:inline-block;padding:1px 7px;border-radius:4px;
   border:1px solid var(--neg);color:var(--neg);font-size:11.5px;white-space:nowrap;
@@ -6810,6 +6818,15 @@ function chgCodeOf(name){
   const o=chgCodes()[name];
   return o?String(o.code||"").trim():"";
 }
+/* 合併組那一列的代碼:成員的代碼合起來;單項就是自己的。 */
+function chgCodeMine(o){
+  if(!o.kids) return chgCodeOf(o.name);
+  return [...new Set(o.kids.map(k=>chgCodeOf(k.name)).filter(Boolean))].join(" · ");
+}
+function chgUpsOf(o){
+  if(!o.kids) return chgUpsCodes(o.name);
+  return [...new Set(o.kids.flatMap(k=>chgUpsCodes(k.name)))].sort();
+}
 /* =====================================================================
    費率層級
    ---------------------------------------------------------------------
@@ -12765,6 +12782,30 @@ const RECON_COL={ order:"Order Number", trk:"Tracking Numbers",
    兩個名字都收。 */
 const RECON_AMT_ALIAS=["total amount","total amount billed to customer"];
 const RECON_REQ=["order","trk","cus","amt"];
+/* 合併欄。WMS / TMS 沒有把 DAS、偏遠、AHS、簽名分到系統這麼細,一組一欄;
+   WMS 的 AHS 與 LPS 分開,TMS 是併在一起的,所以兩版模板的組不同。匯入端
+   照欄名認組,比對時重算與 UPS 兩側把細項加總成同一組 —— 三邊同一個口徑。
+   Demand 四欄先照舊,不併。 */
+const RECON_GROUPS={
+  das:{head:"Delivery Area Surcharge",
+       fees:["DAS Commercial","DAS Residential","DAS Extended Commercial","DAS Extended Residential"]},
+  ras:{head:"Remote Area Surcharge",
+       fees:["Remote Area Commercial","Remote Area Residential","Remote Area - AK","Remote Area - HI"]},
+  ahs:{head:"Additional Handling Surcharge",
+       fees:["Additional Handling Surcharge - Weight","Additional Handling Surcharge - Dimension",
+             "Additional Handling Surcharge - Packaging"]},
+  ahslps:{head:"Additional Handling + Large Package Surcharge",
+       fees:["Additional Handling Surcharge - Weight","Additional Handling Surcharge - Dimension",
+             "Additional Handling Surcharge - Packaging","Large Package Surcharge"]},
+  sig:{head:"Signature / Adult Signature", fees:["Signature","Adult Signature"]},
+};
+const RECON_GROUPS_BY_SRC={WMS:["das","ras","ahs","sig"], TMS:["das","ras","ahslps","sig"]};
+/* 這個欄名是哪一組的合併欄;不是就回空字串。 */
+function reconGroupOf(name){
+  const n=String(name||"").trim().toLowerCase();
+  for(const [g,def] of Object.entries(RECON_GROUPS)) if(def.head.toLowerCase()===n) return g;
+  return "";
+}
 let RECON=null;
 let RECON_SRC="WMS";
 
@@ -12920,6 +12961,22 @@ function reconParse(sheetRows){
     const j=head.findIndex(h=>h.toLowerCase()===nm.toLowerCase());
     if(j>=0) chgIx.push([nm,j]);
   }
+  /* 合併欄:欄名對得上 RECON_GROUPS 的組名就收,值和細項欄一樣處理。
+     同一組既有合併欄又有細項欄、或 AHS 與 AHS+LPS 兩種合併欄同時出現,
+     就不猜 —— 整份退回,講清楚是哪幾欄撞在一起。 */
+  const gIx=[];
+  for(const [g,def] of Object.entries(RECON_GROUPS)){
+    const j=head.findIndex(h=>h.toLowerCase()===def.head.toLowerCase());
+    if(j<0) continue;
+    const dup=def.fees.filter(f=>chgIx.some(([nm])=>nm===f));
+    if(dup.length) return {err:L("「"+def.head+"」是合併欄,不能和它的細項欄同時存在:"+dup.join("、"),
+                                 "\""+def.head+"\" is a combined column and cannot coexist with its itemised columns: "+dup.join(", "))};
+    gIx.push([def.head,j,g]);
+  }
+  if(gIx.some(x=>x[2]==="ahs")&&gIx.some(x=>x[2]==="ahslps"))
+    return {err:L("「Additional Handling Surcharge」和「Additional Handling + Large Package Surcharge」只能留一欄。",
+                  "Keep only one of \"Additional Handling Surcharge\" and \"Additional Handling + Large Package Surcharge\".")};
+  for(const [hd,j] of gIx) chgIx.push([hd,j]);
   const out=[], issues=[], sumWarn=[];
   const seenOrder=new Map(), seenTrk=new Map();
   const known=new Set(cusReg().map(c=>c.code));
@@ -13002,7 +13059,16 @@ async function reconTemplate(src){
     "Returns 3 UPS Pickup Attempts","Residential Pickup surcharge",
     "Missing PLD Fee","Return To Sender","2nd Mile Road Base Rate",
     "Undeliverable Return","Address Correction","Over Maximum Size Surcharge"]);
-  const tplFees=REPORT_MONEY.filter(n=>!UPS_ONLY.has(n));
+  /* 合併欄取代該組的細項欄,擺在該組第一個細項的位置;組的成員照來源系統
+     (WMS / TMS)決定。 */
+  const member=new Map();
+  for(const g of RECON_GROUPS_BY_SRC[src])
+    RECON_GROUPS[g].fees.forEach((f,i)=>member.set(f,{g,first:i===0}));
+  const tplFees=[];
+  for(const n of REPORT_MONEY.filter(n=>!UPS_ONLY.has(n))){
+    const m=member.get(n);
+    if(!m) tplFees.push(n); else if(m.first) tplFees.push(RECON_GROUPS[m.g].head);
+  }
   const hd=idc.map(H).concat(tplFees.map(HC),[HT(RECON_COL.amt)]);
   const nCol=hd.length;
   const reg=cusReg();
@@ -13048,6 +13114,10 @@ function reconRun(list){
     }
   };
   const hasBilled=list.some(e=>e.chg);
+  /* 模板用了哪些合併欄:看 chg 的鍵。用了的組,重算與 UPS 兩側的細項就
+     加總成同一組再比,細項留作子列。 */
+  const active=new Set();
+  for(const e of list) for(const k of Object.keys(e.chg||{})){ const g=reconGroupOf(k); if(g) active.add(g); }
   const byTrk=new Map();
   for(const s of (SHIPS||[])){
     const k=reconTrk(s.tracking);
@@ -13131,14 +13201,31 @@ function reconRun(list){
   tot.gap  = tot.blocked===tot.orders?null:cents(tot.rep-tot.repCost);
   tot.pgap = tot.blocked===tot.orders?null:cents(tot.repAmt-tot.rep);
   tot.margin=tot.amt?tot.profit/Math.abs(tot.amt)*100:null;
-  const chgRows=m=>[...m.values()].map(o=>({
+  const fmt=o=>({
       name:o.name, rep:cents(o.rep), ups:cents(o.ups), gap:cents(o.rep-o.ups),
       /* billed 填了才有意義。沒填寫 null 而不是 0 ——
          0 會被讀成「這一項向客戶收了零元」。 */
       billed:o.billedN?cents(o.billed):null,
-      pgap:o.billedN?cents(o.billed-o.rep):null}))
-    /* 差得最多的排前面 —— 三十七項裡真正要看的通常是前五項。 */
-    .sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap)||Math.abs(b.ups)-Math.abs(a.ups));
+      pgap:o.billedN?cents(o.billed-o.rep):null});
+  /* 差得最多的排前面 —— 三十七項裡真正要看的通常是前五項。 */
+  const byGap=(a,b)=>Math.abs(b.gap)-Math.abs(a.gap)||Math.abs(b.ups)-Math.abs(a.ups);
+  const chgRows=m=>{
+    const fine=[...m.values()], used=new Set(), rows=[];
+    for(const g of active){
+      const def=RECON_GROUPS[g];
+      const kids=fine.filter(o=>def.fees.includes(o.name));
+      const self=m.get(def.head);
+      if(!kids.length&&!self) continue;
+      const rep=cents(kids.reduce((a,o)=>a+o.rep,0)), ups=cents(kids.reduce((a,o)=>a+o.ups,0));
+      const billed=(self&&self.billedN)?cents(self.billed):null;
+      rows.push({name:def.head, group:g, rep, ups, gap:cents(rep-ups), billed,
+                 pgap:billed==null?null:cents(billed-rep),
+                 kids:kids.map(fmt).sort(byGap)});
+      kids.forEach(o=>used.add(o.name)); if(self) used.add(def.head);
+    }
+    for(const o of fine) if(!used.has(o.name)) rows.push(fmt(o));
+    return rows.sort(byGap);
+  };
   const byCus={};
   for(const [k,m] of chgBy) byCus[k]=chgRows(m);
   return {orders, cus, tot, lostLevel:[...lostLevel], noLevel:[...noLevel],
@@ -13332,12 +13419,16 @@ function renderReconChg(){
   const rows=(RECON_SCOPE&&r.chgBy[RECON_SCOPE])||r.chg;
   const sign=v=>`<span class="mny ${v<0?"neg":(v>0?"pos":"")}">${money(v)}</span>`;
   const tb=$("#tReconChg")&&$("#tReconChg").tBodies[0];
-  if(tb) tb.innerHTML=rows.map(o=>{
+  /* 合併組一列,底下縮排列出細項:細項只有重算與 UPS 兩欄有數字,向客戶收
+     是整組一個數。子列跟著主列走,排序也不拆散(ui-patch 的 sortTable)。 */
+  const tr=(o,sub)=>{
     const unknown=o.name===RECON_UNKNOWN;
     const nm=unknown?L("未辨識代碼","Unrecognised codes"):o.name;
-    const mine=unknown?"":chgCodeOf(o.name);
-    const ups=unknown?"":chgUpsCodes(o.name);
-    return `<tr${unknown?' style="opacity:.72"':""}><td>${esc(nm)}</td>
+    const mine=unknown?"":chgCodeMine(o);
+    const ups=unknown?"":chgUpsOf(o);
+    return `<tr class="${sub?"sub":(o.kids?"grp":"")}"${unknown?' style="opacity:.72"':""}><td>${
+        sub?`<span class="subarm" aria-hidden="true">└</span>`:""}${esc(nm)}${
+        o.kids?` <span class="chggrp">${L("合併","Combined")}</span>`:""}</td>
       <td class="mono">${mine?"<b>"+esc(mine)+"</b>"
         :`<span class="empty">${L("未設定","not set")}</span>`}</td>
       <td class="mono">${ups&&ups.length?esc(ups.join(" · "))
@@ -13347,7 +13438,9 @@ function renderReconChg(){
       <td class="num">${money(o.ups)}</td>
       <td class="num">${o.pgap==null?`<span class="empty">—</span>`:sign(o.pgap)}</td>
       <td class="num">${sign(o.gap)}</td></tr>`;
-  }).join("")||`<tr><td colspan="8" class="empty">—</td></tr>`;
+  };
+  if(tb) tb.innerHTML=rows.map(o=>tr(o,false)+(o.kids||[]).map(k=>tr(k,true)).join("")).join("")
+    ||`<tr><td colspan="8" class="empty">—</td></tr>`;
   const t=rows.reduce((a,o)=>({rep:cents(a.rep+o.rep), ups:cents(a.ups+o.ups),
       billed:o.billed==null?a.billed:cents((a.billed||0)+o.billed)}),
       {rep:0, ups:0, billed:null});
@@ -13407,12 +13500,14 @@ async function reconExport(){
                   "Recomputed","Charged by UPS","Billed vs Recomputed",
                   "Recomputed vs UPS"].map(HD)];
   const chgName=n=>n===RECON_UNKNOWN?"Unrecognised codes":n;
-  const push=(scope,list)=>{ for(const o of list) chgRows.push([
-      scope, chgName(o.name),
-      o.name===RECON_UNKNOWN?"":chgCodeOf(o.name),
-      o.name===RECON_UNKNOWN?"":chgUpsCodes(o.name).join(" "),
+  const row=(scope,o,pre)=>chgRows.push([
+      scope, pre+chgName(o.name),
+      o.name===RECON_UNKNOWN?"":chgCodeMine(o),
+      o.name===RECON_UNKNOWN?"":chgUpsOf(o).join(" "),
       m(o.billed), {v:o.rep,t:"n",s:M},{v:o.ups,t:"n",s:M},
-      m(o.pgap), {v:o.gap,t:"n",s:M}]); };
+      m(o.pgap), {v:o.gap,t:"n",s:M}]);
+  /* 合併組之後接它的細項,名稱前加「└」—— 篩 Scope 時一起留下。 */
+  const push=(scope,list)=>{ for(const o of list){ row(scope,o,""); for(const k of (o.kids||[])) row(scope,k,"  └ "); } };
   push("ALL", r.chg||[]);
   for(const a of r.cus) push(a.code, (r.chgBy||{})[a.code]||[]);
 
@@ -20038,13 +20133,19 @@ function cellVal(td){
   return {n:null,s:t.toLowerCase()};
 }
 function sortTable(tb,idx,dir){
-  var rows=Array.prototype.slice.call(tb.rows)
+  var all=Array.prototype.slice.call(tb.rows)
            .filter(function(r){ return !r.querySelector("td.empty")&&r.cells.length>idx; });
-  if(rows.length<2) return;
-  rows.forEach(function(r,i){ if(r.__ord===undefined) r.__ord=i; });
-  if(dir===0){ rows.sort(function(a,b){ return a.__ord-b.__ord; }); }
-  else rows.sort(function(a,b){
-    var x=cellVal(a.cells[idx]), y=cellVal(b.cells[idx]), c;
+  /* 子列(class=sub)跟著它上面那一列主列走:排序只看主列,子列原封跟過去。 */
+  var units=[];
+  all.forEach(function(r){
+    if(r.classList.contains("sub")&&units.length) units[units.length-1].push(r);
+    else units.push([r]);
+  });
+  if(units.length<2) return;
+  units.forEach(function(u,i){ if(u[0].__ord===undefined) u[0].__ord=i; });
+  if(dir===0){ units.sort(function(a,b){ return a[0].__ord-b[0].__ord; }); }
+  else units.sort(function(a,b){
+    var x=cellVal(a[0].cells[idx]), y=cellVal(b[0].cells[idx]), c;
     if(x.miss||y.miss) return (x.miss?1:0)-(y.miss?1:0);
     if(x.n!==null&&y.n!==null) c=x.n-y.n;
     else if(x.n!==null) c=-1;
@@ -20052,7 +20153,7 @@ function sortTable(tb,idx,dir){
     else c=x.s<y.s?-1:x.s>y.s?1:0;
     return dir<0?-c:c;
   });
-  rows.forEach(function(r){ tb.appendChild(r); });
+  units.forEach(function(u){ u.forEach(function(r){ tb.appendChild(r); }); });
 }
 /* 重畫之後排序不歸零:tbody 被重畫、表頭上還掛著方向時,照原方向再排
    一次;表頭整列被換掉(tRate 每次 render 都重寫)就重新掛一次排序。 */
