@@ -92,10 +92,10 @@ ok(px('html.ink .lf>h3')>=19, '\u6bb5\u843d\u6a19\u984c \u2265 19px');
 ok(px('html.ink .nav button')>=14.5, '\u5074\u6b04 \u2265 14.5px');
 
 console.log('\n[7] \u6c92\u640d\u5230\u539f\u672c\u7684\u6771\u897f');
-ok(D.querySelectorAll('.sketch').length===57&&D.querySelectorAll('.sketch-soft').length===16,
-   '57 \u500b .sketch\u300116 \u500b .sketch-soft \u90fd\u5728');
-ok(D.querySelectorAll('table').length===28&&D.querySelectorAll('.modalbg').length===25,
-   '\u8868\u683c 28\u3001\u8996\u7a97 25\uff0c\u6c92\u8b8a');
+ok(D.querySelectorAll('.sketch').length===58&&D.querySelectorAll('.sketch-soft').length===16,
+   '58 \u500b .sketch\u300116 \u500b .sketch-soft \u90fd\u5728');
+ok(D.querySelectorAll('table').length===31&&D.querySelectorAll('.modalbg').length===25,
+   '\u8868\u683c 31\u3001\u8996\u7a97 25\uff0c\u6c92\u8b8a');
 ok(D.querySelectorAll('[data-i18n]').length===575, 'i18n \u6a19\u8a18 575 \u500b\uff0c\u6c92\u8b8a');
 
 console.log('\n[8] \u7d19\u7684\u984f\u8272');
