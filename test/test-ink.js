@@ -96,7 +96,7 @@ ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft')
    '61 \u500b .sketch\u300116 \u500b .sketch-soft \u90fd\u5728');
 ok(D.querySelectorAll('table').length===34&&D.querySelectorAll('.modalbg').length===26,
    '\u8868\u683c 34\u3001\u8996\u7a97 26\uff08\u5df2\u532f\u5165\u7684\u6a21\u677f\u8207\u5b83\u7684\u660e\u7d30\u8996\u7a97\uff09');
-ok(D.querySelectorAll('[data-i18n]').length===628, 'i18n 標記 628 個(已匯入的模板那張表與明細視窗)');
+ok(D.querySelectorAll('[data-i18n]').length===621, 'i18n 標記 621 個(補收清單畫面上只列哪一筆哪一項)');
 
 console.log('\n[8] \u7d19\u7684\u984f\u8272');
 ok(/--paper-mask:url\(/.test(face), '\u6709\u4e00\u5f35\u5c08\u9580\u7576\u906e\u7f69\u7684\u5642\u9ede');

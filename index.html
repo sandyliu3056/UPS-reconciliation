@@ -1928,13 +1928,6 @@ label:has(#newChanOn){display:none !important}
       <th data-i18n="th.rebillorder">Order Number</th>
       <th data-i18n="th.rebilltrk">Tracking Number</th>
       <th data-i18n="th.chgname">Charge</th>
-      <th class="num" data-i18n="th.rbwms">WMS / TMS</th>
-      <th class="num" data-i18n="th.rbups">UPS</th>
-      <th class="num" data-i18n="th.rbrep">Reprice</th>
-      <th class="num" data-i18n="th.rebillamt">Difference</th>
-      <th class="num" data-i18n="th.rbover">Over-collected</th>
-      <th class="num" data-i18n="th.rebillfuel">Fuel surcharge</th>
-      <th class="num" data-i18n="th.rebillgrand">Total</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
   </div>
 
@@ -14228,10 +14221,9 @@ function reconRun(list){
     it.fuel=fuelOn(it.charge)?cents(it.amt*pct/100):0;
     it.total=cents(it.amt+it.fuel);
     /* 表上那一欄「客戶端實收」:一般的漏收就是 0,改收的那一列是實際收的金額。
-       差額一律是「應收 − 實收」,所以改收多收的時候是負數,而「要補收多少」
-       (amt)照舊是不含負數的那個數 —— 兩件事不要混成一欄。 */
+       應收(rate)擺在旁邊,差自己看得出來,不再多一欄差額 —— 那一欄一邊是
+       還要收的、一邊是收多了的,加起來的合計沒有意義。 */
     if(it.wms==null) it.wms=it.billed;
-    it.diff=it.rate==null?it.amt:cents(it.rate-it.wms);
     if(it.over==null) it.over=0;
   }
   items.sort((a,b)=>b.total-a.total||a.cus.localeCompare(b.cus)||a.order.localeCompare(b.order));
@@ -14600,33 +14592,28 @@ function renderRebill(){
   const tagOf=it=>it.kind==="swap"?L("改收","Substituted"):it.kind==="audit"?L("稽核費","Audit fee"):it.unset?L("費率未設定","Rate not set"):(it.rate===0?L("合約無此項","No contract rate"):L("未收","Not billed"));
   const chgCell=it=>`${esc(it.charge)} <span class="chggrp">${esc(tagOf(it))}</span>`;
   const chgTip=it=>esc([it.desc?L("UPS 名目:","UPS: ")+it.desc:"",
+    L("客戶端實收 ","billed to the client ")+money(it.wms)
+      +L(" · 應收 "," · should be ")+(it.rate==null?"—":money(it.rate))
+      +L(" · UPS 收 "," · UPS charged ")+money(it.ups)
+      +(it.total>0.004?L(" · 補收 "+money(it.total)+"(含燃油)"," · to re-bill "+money(it.total)+" incl. fuel"):""),
     it.credit?L("客戶端是照「","billed to the client as \"")+(it.creditFrom||[]).join(" · ")
       +L("」收的,實收 ","\", ")+money(it.wms):"",
     it.over>0.004?L("其中多收 "+money(it.over)+",應退客戶","of which "+money(it.over)+" was over-collected and is owed back"):""]
     .filter(Boolean).join("\n"));
+  /* 這一份在畫面上只回答「哪些單、哪一項要補收」——一筆一筆的金額擠成七八欄
+     只會看不下去,而真正要動手的人開的是匯出的活頁簿。合計與多收寫在下面
+     那一行,每一列的金額留在滑入提示裡。 */
   if(tb) tb.innerHTML=items.map(it=>`<tr><td class="mono">${esc(it.cus)}</td><td>${esc(cusNameOf(it.cus))}</td>
-      <td class="mono">${esc(it.order)}</td><td class="mono">${esc(it.trk)}</td><td title="${chgTip(it)}">${chgCell(it)}</td>
-      <td class="num">${money(it.wms)}</td><td class="num">${money(it.ups)}</td>
-      <td class="num">${it.rate==null?dash:money(it.rate)}</td>
-      <td class="num"><b${it.diff<-0.004?' style="color:var(--neg)"':""}>${money(it.diff)}</b></td>
-      <td class="num">${it.over>0.004?`<b style="color:var(--neg)">${money(it.over)}</b>`:dash}</td>
-      <td class="num">${it.fuel?money(it.fuel)+` <span class="empty">${esc(String(it.fuelPct))}%</span>`:dash}</td><td class="num"><b>${money(it.total)}</b></td></tr>`).join("")
-    ||`<tr><td colspan="12" class="empty">${esc(rb&&rb.noItem
+      <td class="mono">${esc(it.order)}</td><td class="mono">${esc(it.trk)}</td>
+      <td title="${chgTip(it)}">${chgCell(it)}</td></tr>`).join("")
+    ||`<tr><td colspan="5" class="empty">${esc(rb&&rb.noItem
         ? L("模板沒有逐項費用欄,列不出漏收的項目。","The file has no itemised charge columns, so missed charges cannot be listed.")
         : L("沒有漏收的項目。","Nothing to re-bill."))}</td></tr>`;
   const tot=items.reduce((a,it)=>cents(a+it.amt),0);
   const totFuel=items.reduce((a,it)=>cents(a+(it.fuel||0)),0), grand=cents(tot+totFuel);
   const totOver=items.reduce((a,it)=>cents(a+(it.over||0)),0);
-  const totDiff=items.reduce((a,it)=>cents(a+(it.diff||0)),0);
   const tf=$("#tRebill")&&$("#tRebill").tFoot;
-  if(tf) tf.innerHTML=items.length?`<tr><td colspan="5"><b>${esc(L("合計","Total"))}</b></td>
-      <td class="num"><b>${money(items.reduce((a,it)=>cents(a+it.wms),0))}</b></td>
-      <td class="num"><b>${money(items.reduce((a,it)=>cents(a+it.ups),0))}</b></td>
-      <td class="num"></td>
-      <td class="num"><b${totDiff<-0.004?' style="color:var(--neg)"':""}>${money(totDiff)}</b></td>
-      <td class="num"><b${totOver>0.004?' style="color:var(--neg)"':""}>${money(totOver)}</b></td>
-      <td class="num"><b>${money(totFuel)}</b></td>
-      <td class="num"><b>${money(grand)}</b></td></tr>`:"";
+  if(tf) tf.innerHTML="";
   const sum=$("#rebillSum");
   if(sum){
     const cusN=new Set(items.map(it=>it.cus)).size;
@@ -14634,10 +14621,10 @@ function renderRebill(){
     const unset=items.filter(it=>it.unset).length;
     sum.textContent=(rb&&rb.noItem)?"":L(
       "補收 "+money(tot)+" · 燃油附加費 "+money(totFuel)+" · 合計 "+money(grand)
-        +(totOver>0.004?" · 多收(應退客戶)"+money(totOver):"")+" · "+items.length+" 項 · "+cusN+" 個客戶"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":"")
+        +(totOver>0.004?" · 多收(應退客戶)"+money(totOver):"")+" · "+items.length+" 項 · "+cusN+" 個客戶 · 逐筆金額在匯出的活頁簿裡"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":"")
         +(unset?" · "+unset+" 項費率未設定(到 04 渠道與附加費費率設好再匯一次)":""),
       "To re-bill "+money(tot)+" · fuel surcharge "+money(totFuel)+" · total "+money(grand)
-        +(totOver>0.004?" · over-collected (owed back) "+money(totOver):"")+" · "+items.length+" item(s) · "+cusN+" customer(s)"+(skip?" · "+skip+" row(s) without itemised charges not listed":"")
+        +(totOver>0.004?" · over-collected (owed back) "+money(totOver):"")+" · "+items.length+" item(s) · "+cusN+" customer(s) · the figures are in the exported workbook"+(skip?" · "+skip+" row(s) without itemised charges not listed":"")
         +(unset?" · "+unset+" item(s) with no rate set (set them under 04 Channel & Surcharge Rates and import again)":""));
   }
   const tc=$("#tRebillCus")&&$("#tRebillCus").tBodies[0];
@@ -14861,19 +14848,19 @@ async function reconExport(){
   const rbHead=[["Customer Code","EFE3CB"],["Customer Name","EFE3CB"],["Order Number","EFE3CB"],
     ["Tracking Number","EFE3CB"],["Invoice Date","EFE3CB"],["Charge","EFE3CB"],["UPS Description","EFE3CB"],
     ["Type","EFE3CB"],["Less Billed As","EFE3CB"],
-    ["UPS",UPSH],["WMS / TMS",WMSH],["Reprice",REPH],["Difference",DIFH],
+    ["UPS",UPSH],["WMS / TMS",WMSH],["Reprice",REPH],
     ["Over-collected",DIFH],["To re-bill",DIFH],
     ["Fuel %",REPH],["Fuel",DIFH],["Total incl. Fuel",DIFH]].map(([n,f])=>dh(n,f));
-  /* WMS / TMS 那一欄是客戶端實收的金額,Difference 是「應收 − 實收」——
-     UPS 改收別的費用而客戶端照舊收的那一列於是是負數,多收多少寫在
-     Over-collected;要向客戶補收多少是 To re-bill 那一欄,不含負數。 */
+  /* WMS / TMS 那一欄是客戶端實收的金額,Reprice 是應收的。兩者的差自己看得出來,
+     所以不再多一欄「差額」—— 真正要拿去做事的是兩個數:還要向客戶收多少
+     (To re-bill),以及收多了該退多少(Over-collected)。 */
   const rbRows=rb.items.map(it=>[it.cus, cusNameOf(it.cus), it.order, it.trk, dcell(it.invDate), it.charge, it.desc||"",
      typeOf(it), (it.creditFrom||[]).join(", "),
-     dm(it.ups), dm(it.wms), it.rate==null?"":dm(it.rate), dm(it.diff),
+     dm(it.ups), dm(it.wms), it.rate==null?"":dm(it.rate),
      it.over>0.004?dm(it.over):"", dm(it.amt),
      it.fuel?{v:it.fuelPct,t:"n",s:{fmt:"0.00"}}:"", dm(it.fuel), dm(it.total)]);
   const rebillSheet={name:"To re-bill", rows:[rbHead,...rbRows], ignoreTextNumbers:true,
-    cols:[16,24,20,22,12,40,44,16,36,16,16,14,14,15,14,10,12,18].map(w=>({w}))};
+    cols:[16,24,20,22,12,40,44,16,36,16,16,14,15,14,10,12,18].map(w=>({w}))};
 
   /* ---- 每個客戶一頁:給客戶看的對帳單,照舊 SOP 的 Item / Amount 兩欄 ----
      一個追蹤號底下一項一列,燃油自己一列(Item 寫 Fuel Surcharge),最後一列合計。
@@ -15576,6 +15563,51 @@ function dashWmsAgg(){
   return {src:RECON_SRC, buckets, total:cents(total), n:r.orders.length, rebill:cents((r.rebill&&r.rebill.grand)||0),
     cost:cents(t.cost||0), chargeable:cents(t.chargeable!=null?t.chargeable:total+((r.rebill&&r.rebill.grand)||0)),
     profit:cents(t.profit!=null?t.profit:0)};
+}
+/* 成本拆解那三欄要能互相比對,就得站在同一批單子上。WMS / TMS 匯進來的
+   通常只是這一期的一部分,拿它跟整批帳單並排,左邊幾百萬、右邊幾百塊,
+   三個圓餅講的不是同一件事。有對帳在畫面上的時候,重算側與 UPS 側都只
+   算這一份對到的追蹤號 —— 匯進來哪些,就只產出哪些。 */
+function dashPieScoped(){
+  const r=(typeof RECON!=="undefined")&&RECON&&RECON.res;
+  if(!r||!(r.orders||[]).length) return null;
+  const keep=new Set();
+  for(const o of r.orders) for(const t of (o.trks||[])) if(t) keep.add(reconTrk(t));
+  if(!keep.size) return null;
+  const rows=reportRows(), rated=RATED||[];
+  if(!rows.length) return null;
+  const bucketCols=REPORT_COLS.filter(c=>!REPORT_META.has(c));
+  const buckets={}, upsBuckets={}, unknownBy={}, upsUnknownBy={};
+  let repriced=0, billed=0, n=0;
+  rows.forEach((o,i)=>{
+    const trk=reconTrk(o["Tracking Number"]||o["Tracking"]||"");
+    if(!trk||!keep.has(trk)) return;
+    n++;
+    repriced+=toNum(o["Total"]);
+    for(const c of bucketCols){ const v=toNum(o[c]); if(Math.abs(v)>0.005) buckets[c]=(buckets[c]||0)+v; }
+    const rr=rated[i]; if(!rr) return;
+    billed+=toNum(rr.s&&rr.s.upsTotal);
+    for(const seg of [rr, rr.rtn, rr.npb]){
+      if(!seg) continue;
+      for(const [c,v] of Object.entries(seg.unknownBy||{})) unknownBy[c]=(unknownBy[c]||0)+toNum(v);
+    }
+    const recl=[rr,rr.rtn,rr.npb].some(x=>x&&(x.issues||[]).some(m=>RECLASS_RE.test(m)));
+    if(recl) for(const c of RECLASS_COLS){
+      const v=toNum(o[c]);
+      if(Math.abs(v)>0.005){ buckets[c]-=v; buckets[DASH_RECLASS]=(buckets[DASH_RECLASS]||0)+v; }
+    }
+    for(const l of ((rr.s&&rr.s.allLines)||[])){
+      const v=toNum(l.net); if(Math.abs(v)<0.005) continue;
+      const k=upsBucketOf(l,recl);
+      if(k) upsBuckets[k]=(upsBuckets[k]||0)+v;
+      if(k===DASH_UNKNOWN){
+        const c=String(l.code||l.detail||"").toUpperCase()||"—";
+        upsUnknownBy[c]=(upsUnknownBy[c]||0)+v;
+      }
+    }
+  });
+  return n?{buckets, upsBuckets, unknownBy, upsUnknownBy,
+            repriced:cents(repriced), billed:cents(billed), n}:null;
 }
 const RECLASS_RE=/AHS\/Large Package|AHS\/大包裹/;
 /* 同一種附加費被 UPS 拆成多個變體收費的,在圓餅上合成一塊來排名。
@@ -16890,9 +16922,14 @@ function renderDashboard(){
       +`</div>`;
   };
   const wmsAgg=dashWmsAgg();
-  const compHTML=`<div class="pie2">`
-    +oneP(d.buckets,uAmt,L("重算","REPRICED"),d.repriced,d.unknownBy)
-    +oneP(d.upsBuckets||{},0,L("UPS 帳單","UPS BILLED"),d.billed,d.upsUnknownBy)
+  /* 有對帳在畫面上就只拿這一份涵蓋到的單子畫,三欄才在同一個基準上。 */
+  const sc=wmsAgg?dashPieScoped():null;
+  const compHTML=(sc?`<p class="hint" style="margin:0 0 10px">${esc(L(
+      "只計 "+wmsAgg.src+" 匯入涵蓋、且對到這期帳單的 "+sc.n.toLocaleString()+" 筆 —— 三欄站在同一批單子上才比得起來。整批帳單的金額在上面的數字帶。",
+      "Covers only the "+sc.n.toLocaleString()+" shipment(s) the "+wmsAgg.src+" import matched to this invoice, so the three columns stand on the same set. The figures for the whole invoice are in the strip above."))}</p>`:"")
+    +`<div class="pie2">`
+    +oneP(sc?sc.buckets:d.buckets, sc?0:uAmt, L("重算","REPRICED"), sc?sc.repriced:d.repriced, sc?sc.unknownBy:d.unknownBy)
+    +oneP(sc?sc.upsBuckets:(d.upsBuckets||{}), 0, L("UPS 帳單","UPS BILLED"), sc?sc.billed:d.billed, sc?sc.upsUnknownBy:d.upsUnknownBy)
     +(wmsAgg?oneP(wmsAgg.buckets,0,L(wmsAgg.src+" 實收",wmsAgg.src+" BILLED"),wmsAgg.total,{}):"")
     +`</div>`;
   const chItems=Object.entries(d.chanAgg||{}).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))
