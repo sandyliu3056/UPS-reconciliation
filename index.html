@@ -2361,6 +2361,8 @@ label:has(#newChanOn){display:none !important}
 /* 儀表板:所有顏色走 App 的主題變數,切主題整頁跟著變。圓角膠囊風,配合 Scoobi。 */
 /* 這一頁最寬的東西是那張十欄的表,1060 擠不下,最後一欄的標題就被切掉。 */
 #p-dash .dwrap{max-width:1360px;margin:0 auto}
+/* 08 那一頁底下還有利潤分析的卡片,兩邊要齊,儀表板就不能自己縮在中間。 */
+#p-analysis #p-dash .dwrap{max-width:none}
 #p-dash .dhead{margin:0 0 14px;display:flex;align-items:flex-start;gap:12px}
 /* 按鈕靠右。以前只有一顆按鈕直接掛在 .dhead 底下,加了第二顆之後它們包成
    一個 span,這條規則就選不到了,兩顆按鈕全部黏在標題後面。 */
@@ -2712,6 +2714,11 @@ label:has(#newChanOn){display:none !important}
      哪一個客戶在賺錢」。數字全部來自同一份 RECON.res,不另外算一次 ——
      另外算就會有兩個版本的毛利。 -->
 <section class="page" id="p-analysis">
+  <!-- 和重算那一套同一個儀表板:本期費用組成、渠道、Zone 的圓餅,全部期別的
+       走勢。程式(renderDashboard)本來就在,差的只是這一個容器;樣式全掛在
+       #p-dash 底下,所以容器沿用那個 id。 -->
+  <div id="p-dash"><div class="dwrap" id="dashBody"></div></div>
+
   <div class="lf sketch" id="anaEmpty">
     <h3 class="display"><span class="em">📈</span><span data-i18n="hd.analysis">Profit analysis</span></h3>
     <p class="hint" style="margin:0 0 11px;max-width:70ch" data-i18n="hint.anaempty">Nothing to analyse yet. This page reads the reconciliation — once the filled template is imported, the numbers land here and the whole analysis can be exported.</p>
@@ -8411,6 +8418,7 @@ function showTab(p){
   if(p==="admin"&&ME&&ME.role==="admin"){ loadLoginHistory(); loadUsers(); }
   if(p==="cus"&&typeof renderCustomers==="function") renderCustomers();
   if(p==="analysis"&&typeof renderAnalysis==="function") renderAnalysis();
+  if(p==="analysis"&&typeof renderDashboard==="function") renderDashboard();
   /* 層級表以前只有動過才重畫,所以載入設定之後第一次進來是一張空表。
      現在這一頁是費率設定的落點,進來就得是對的。 */
   if(p==="setting"&&typeof renderLevels==="function") renderLevels();
@@ -13549,7 +13557,7 @@ async function reconTemplate(src){
       [HQ(mineCols[0])], mineCols.slice(1).map(HM));
   for(const c of feeCols){ hd.push(HU(c+" - UPS")); hd.push(HM(c+" - "+src)); }
   hd.push(HU("Total Amount - UPS")); hd.push(HQ("Total Amount - "+src));
-  const D="yyyy-mm-dd", MONEY="#,##0.00";
+  const D="m/d/yyyy", MONEY="#,##0.00";
   const serial=v=>{
     const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(normYmd(String(v||""))||"");
     return m?Math.floor((Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/86400000):null;
@@ -14419,7 +14427,7 @@ async function reconExport(){
     const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(normYmd(String(v||""))||"");
     if(!m) return v==null?"":String(v);
     const n=Math.floor((Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/86400000);
-    return {v:n,t:"n",s:{fmt:"yyyy-mm-dd",align:"right"}};
+    return {v:n,t:"n",s:{fmt:"m/d/yyyy",align:"right"}};
   };
   const dimTxt=v=>(v==null||String(v).trim()==="0")?"":String(v);
   const zoneCell=z=>/^\d+$/.test(String(z||""))?{v:+z,t:"n"}:String(z||"");
@@ -14515,26 +14523,60 @@ async function reconExport(){
     let n=String(code||"Customer").replace(/[\\\/\?\*\[\]:]/g," ").trim().slice(0,31)||"Customer";
     let k=n, i=2; while(usedNames.has(k)) k=(n.slice(0,28)+" "+(i++)); usedNames.add(k); return k;
   };
-  const cHead=[["Transaction Date","EFE3CB"],["Tracking Number","EFE3CB"],["Order Number","EFE3CB"],
-    ["Item","EFE3CB"],["Description","EFE3CB"],["Amount",DIFH]].map(([n,f])=>dh(n,f));
+  /* 給客戶看的對帳單,一位客戶兩頁:英文一頁、中文一頁,內容相同。
+     金額 0 的(費率未設定、合約無此項)不上。不合併儲存格、表頭不上色、
+     日期 m/d/yyyy —— 這一頁是要貼進客戶帳單的,越素越好搬。
+     中文頁的項目名稱照 Consolidated 名稱翻譯,說明欄保留 UPS 帳單原文,
+     客戶拿著 UPS 的帳單也對得上;沒有譯名的(自訂附加費)照英文。 */
+  const CUS_ZH={
+    "Base Rate":"基本運費","Fuel Surcharge":"燃油附加費","Residential Surcharge":"住宅附加費",
+    "Delivery Area Surcharge - Commercial":"配送區域附加費 - 商業",
+    "Delivery Area Surcharge - Residential":"配送區域附加費 - 住宅",
+    "Delivery Area Surcharge - Extended Commercial":"配送區域附加費 - 延伸商業",
+    "Delivery Area Surcharge - Extended Residential":"配送區域附加費 - 延伸住宅",
+    "Remote Area Surcharge":"偏遠地區附加費",
+    "Remote Area Surcharge - Commercial":"偏遠地區附加費 - 商業",
+    "Remote Area Surcharge - Residential":"偏遠地區附加費 - 住宅",
+    "Additional Handling Surcharge - Dimension":"額外處理費 - 尺寸",
+    "Additional Handling Surcharge - Weight":"額外處理費 - 重量",
+    "Additional Handling Surcharge - Packaging":"額外處理費 - 包裝",
+    "Large Package Surcharge":"大型包裹附加費","Over Maximum Size":"超過最大尺寸附加費",
+    "Signature":"簽收服務費","Adult Signature":"成人簽收服務費","Declared Value":"申報價值費",
+    "Returns Electronic Label":"退件電子標籤費","Return To Sender - Web Request":"退回寄件人(網路申請)",
+    "Reroute - Web Request":"改址遞送(網路申請)","Reschedule Delivery - Web Request":"改期遞送(網路申請)",
+    "Future Day Pickup - Alternate Address - Web Request":"預約取件 - 其他地址(網路申請)",
+    "Residential Pickup surcharge":"住宅取件附加費","Address Correction":"地址更正費",
+    "Undeliverable Return":"無法投遞退回運費","Return to Sender - Base Rate":"退回寄件人運費",
+    "Returns - Base Rate":"退件運費","Shipping Charge Correction":"運費更正",
+    "Shipping Charge Correction Audit Fee":"運費更正稽核費",
+    "Direct Delivery Only":"僅限直接投遞","Returns Print Label":"退件列印標籤費",
+    "Package Protection":"包裹保障費","Third Party Billing Service":"第三方付費服務費",
+    "Not Previously Billed Missing PLD Fee":"未預先計費 - PLD 未傳送費",
+    "Not Previously Billed Shipping Correction Fee":"未預先計費 - 運費更正費",
+    "Commercial Adjustment":"商業重分類","Delivery Intercept":"包裹攔截費",
+    "Returns 3 UPS Pickup Attempts":"退件三次取件服務費","Service Charge":"服務費",
+  };
+  const zhName=n=>CUS_ZH[n]||n;
+  const cusHead=names=>names.map(n=>({v:n,t:"s",s:{bold:true,align:"left",border:true}}));
+  const CUS_HEAD_EN=["Transaction Date","Tracking Number","Order Number","Item","Description","Amount"];
+  const CUS_HEAD_ZH=["交易日期","追蹤號碼","訂單號碼","項目","說明","金額"];
   for(const [code,list] of byCusItems){
-    /* 給客戶看的:金額 0 的(費率未設定、合約無此項)不上;同一個追蹤號的幾列,
-       日期、追蹤號、單號合併成一格。 */
-    const rows=[], merges=[];
     const sorted=list.filter(it=>it.amt>0.004).sort((a,b)=>a.trk.localeCompare(b.trk)||b.total-a.total);
     if(!sorted.length) continue;
-    let sum=0, grpStart=1, prevTrk=null;
-    const closeGroup=end=>{ if(end>grpStart) for(const c of [0,1,2]) merges.push({s:{r:grpStart,c},e:{r:end,c}}); };
-    for(const it of sorted){
-      if(prevTrk!==null && it.trk!==prevTrk){ closeGroup(rows.length); grpStart=rows.length+1; }
-      prevTrk=it.trk;
-      rows.push([dcell(it.invDate), it.trk, it.order, it.charge, it.desc||"", dm(it.amt)]); sum=cents(sum+it.amt);
-      if(it.fuel>0.004){ rows.push([dcell(it.invDate), it.trk, it.order, "Fuel Surcharge", it.charge+" @ "+it.fuelPct+"%", dm(it.fuel)]); sum=cents(sum+it.fuel); }
-    }
-    closeGroup(rows.length);
-    rows.push(["","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:MONEY,bold:true}}]);
-    cusSheets.push({name:sheetName(code), rows:[cHead,...rows], merges, cols:[12,22,20,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
+    const build=zh=>{
+      const nm=zh?zhName:(n=>n); const rows=[]; let sum=0;
+      for(const it of sorted){
+        rows.push([dcell(it.invDate), it.trk, it.order, nm(it.charge), it.desc||"", dm(it.amt)]); sum=cents(sum+it.amt);
+        if(it.fuel>0.004){ rows.push([dcell(it.invDate), it.trk, it.order, nm("Fuel Surcharge"), nm(it.charge)+" @ "+it.fuelPct+"%", dm(it.fuel)]); sum=cents(sum+it.fuel); }
+      }
+      rows.push(["","","",{v:zh?"合計":"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:MONEY,bold:true}}]);
+      return rows;
+    };
+    const cw=[12,22,20,40,44,14].map(w=>({w}));
+    cusSheets.push({name:sheetName(code), rows:[cusHead(CUS_HEAD_EN),...build(false)], cols:cw, ignoreTextNumbers:true});
+    cusSheets.push({name:sheetName(code+" 中文"), rows:[cusHead(CUS_HEAD_ZH),...build(true)], cols:cw, ignoreTextNumbers:true});
   }
+  const cusN=cusSheets.length/2;
 
   /* ---- 帳單上有、WMS / TMS 檔上沒有的追蹤號:另外一頁,照 Consolidated 列識別欄
           和 UPS 收的每一項,讓人知道那些件是誰的、UPS 收了什麼。 ---- */
@@ -14567,8 +14609,8 @@ async function reconExport(){
        sheetOf("Charges", chgCols, chgRows, [14,42,14,22,17,17,14,19,18], 2)]
     : [detailSheet, rebillSheet, ...notSheets, ...cusSheets];
   await xlWrite(sheets, src+"_Reconciliation_Detail.xlsx");
-  reconMsg(L("已匯出:Detail "+r.orders.length+" 筆、補收清單 "+rb.items.length+" 項"+(missing.length?"、帳單上有但 "+src+" 沒有的 "+missing.length+" 件另一頁":"")+"、客戶對帳單 "+cusSheets.length+" 頁。",
-             "Exported: Detail "+r.orders.length+" row(s), To re-bill "+rb.items.length+" item(s)"+(missing.length?", "+missing.length+" tracking(s) not in "+src+" on their own sheet":"")+", "+cusSheets.length+" customer sheet(s)."), true);
+  reconMsg(L("已匯出:Detail "+r.orders.length+" 筆、補收清單 "+rb.items.length+" 項"+(missing.length?"、帳單上有但 "+src+" 沒有的 "+missing.length+" 件另一頁":"")+"、客戶對帳單 "+cusN+" 家(英文、中文各一頁)。",
+             "Exported: Detail "+r.orders.length+" row(s), To re-bill "+rb.items.length+" item(s)"+(missing.length?", "+missing.length+" tracking(s) not in "+src+" on their own sheet":"")+", "+cusN+" customer statement(s), an English and a Chinese sheet each."), true);
 }
 
 /* 讀檔+解析,不寫入。回 {err} 或 {p, fname} —— 匯入與預覽共用同一條讀取路。 */
