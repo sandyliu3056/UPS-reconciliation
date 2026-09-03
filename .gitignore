@@ -27,3 +27,6 @@ __pycache__/
 
 # apply.py 動 index.html 之前的備份
 *.bak-*
+
+# 倉儲計費工具的資料檔(層級、客戶、本期數量),客戶資料不進 git
+warehouse_billing.json
