@@ -9136,14 +9136,16 @@ $("#fInv") && ($("#fInv").onchange=e=>{
     const notes=[];
     if(bad.length) notes.push(`<div class="note warn"><b>`
       +esc(L("跳過 "+bad.length+" 個檔案。","Skipped "+bad.length+" file(s)."))+`</b> `+esc(bad.join(" / "))+`</div>`);
-    /* 一次幾百 MB:瀏覽器一個分頁能用的記憶體是有上限的,超過就是整頁掛掉。
-       先講,而且講清楚分批不會漏掉什麼 —— 每一期都各自進歷史,上一期沒在
-       帳單上的單子下一期會自動帶進來。 */
-    if(big>200*1024*1024) notes.push(`<div class="note warn"><b>`
+    /* 一次幾百 MB 是跑得完的:39 個檔 / 359 MB / 507,780 列實測約 30 秒,尖峰
+       記憶體 1.3 GB。講的是那個 1.3 GB —— 它已經接近一個瀏覽器分頁的上限,
+       記憶體吃緊的電腦(或同時開著別的重分頁)還是可能中途掛掉。所以照實
+       講數字,並且說清楚分批不會漏掉什麼:每一期各自進歷史,上一期沒在帳
+       單上的單子下一期會自動帶進來。 */
+    if(big>250*1024*1024) notes.push(`<div class="note warn"><b>`
       +esc(L("這一批很大("+fmtSize(big)+","+good.length+" 個檔)。",
              "That is a large batch ("+fmtSize(big)+", "+good.length+" files)."))+`</b> `
-      +esc(L("瀏覽器一個分頁能用的記憶體有上限,一次吃這麼多可能中途掛掉。建議分批處理(例如一次 5 個檔)—— 每一期都會各自存進歷史,分批不影響對帳。",
-             "A browser tab has a memory ceiling and this much at once may crash it. Process in smaller batches (five files, say) — each period is filed to history on its own, so batching does not affect the reconciliation."))+`</div>`);
+      +esc(L("這個量跑得完(實測 359 MB、50 萬列約 30 秒),但記憶體尖峰會到 1.3 GB 上下,接近瀏覽器單一分頁的上限 —— 電腦記憶體不多、或同時開著別的大分頁時可能中途掛掉。真的掛了就分批(例如一次 10 個檔):每一期都各自存進歷史,分批不影響對帳,上一期沒對到的下一期也會自動帶進來。",
+             "It will go through — 359 MB and half a million lines took about 30 seconds in testing — but the peak is around 1.3 GB, close to what a single browser tab can hold. On a machine with little memory, or with other heavy tabs open, it may still die. If it does, import in batches of ten or so: each period is filed to history on its own, batching does not affect the reconciliation, and rows not matched in one period are carried into the next."))+`</div>`);
     if($("#invNote")) $("#invNote").innerHTML=notes.join("");
     $("#pathInv") && ($("#pathInv").value=invBatchLabel());
     setStatus(good.length
