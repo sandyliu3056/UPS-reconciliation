@@ -1733,18 +1733,8 @@ label:has(#newChanOn){display:none !important}
       <span class="pill ok" data-i18n="pill.shared">Account-wide</span></h3>
     <p class="hint" style="margin:0 0 10px;max-width:78ch" data-i18n="hint.accmgr">Which surcharges exist. Adding one creates it in every rate level at once; each level fills its own rates under 04 Channel &amp; Surcharge Rates.</p>
     <div class="row" style="margin-bottom:8px">
-      <label class="inlab" style="margin-left:0" data-i18n="lb.newacc">New surcharge</label>
-      <input id="newAccName" class="cell" style="text-align:left;width:190px">
-      <label class="inlab" data-i18n="lb.acctype">Billing</label>
-      <span class="foldwrap"><select class="fold" id="newAccType">
-        <option value="REPRICE" data-i18n="o.reprice">Repriced</option>
-        <option value="COPY INVOICE" data-i18n="o.copyinv">Copy invoice</option>
-        <option value="REPORT ONLY" data-i18n="o.reportonly">Report only</option></select></span>
-      <label class="bulkchk"><input type="checkbox" id="newAccFuel" checked><span data-i18n="lb.accfuelon">Fuel eligible</span></label>
       <button class="act" id="bAddAcc" data-i18n="btn.addacc">Add surcharge</button>
       <span class="savenote" id="accMgrMsg"></span>
-    </div>
-    <div class="row" style="margin-bottom:8px">
       <button class="act ghost" id="bCustomAcc" data-i18n="btn.customacc">Custom Surcharges…</button>
       <button class="act ghost" id="bAccPrev">👁 <span data-i18n="btn.accprev">Preview rates by level</span></button>
       <span style="flex:1 1 auto"></span>
@@ -12321,34 +12311,18 @@ function renderAccMgr(){
     ? `${rows.length} / ${all.length} surcharges` : `顯示 ${rows.length} / ${all.length} 項`;
 }
 /* 手動新增自訂附加費:代碼可留空 —— 名稱本身就是對帳與費率表的身分。 */
-function accCodeFor(name){
-  const base=String(name).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,3)||"ACC";
-  const dyn=CFG.raw.dynamic_surcharge_mapping||{};
-  if(!(base in dyn)) return base;
-  for(let i=2;i<100;i++) if(!((base+i) in dyn)) return base+i;
-  return base+Date.now()%1000;
-}
 function bindAccMgr(){
+  /* 新增附加費和 reprice 那一支走同一個視窗:AR、AS Code、名稱、費率形狀、
+     燃油、啟用,連「這個代碼在匯入過的帳單裡沒出現過」那一次確認都一樣。
+     這一頁本來有一排簡化版的欄位,只問名稱就建立,AS Code 是拿名稱的前三個
+     字母湊出來的(Handling fee → HAN)—— 帳單上的代碼不是這樣編的,湊出來的
+     那個對不到任何一行,建出來的附加費於是永遠不會被算到,而畫面上看起來
+     一切正常。要建就要連代碼一起講清楚,所以改用同一個視窗。 */
   $("#bAddAcc") && ($("#bAddAcc").onclick=()=>{
     if(!CFG) return;
-    const nm=(($("#newAccName")||{}).value||"").trim();
     const msg=$("#accMgrMsg");
-    const say=(t,ok)=>{ if(msg){ msg.textContent=t; msg.className="savenote"+(ok?"":" bad"); } };
-    if(!nm){ say(L("請填附加費名稱。","Surcharge name required."),false); return; }
-    const exists=accMgrRows().some(r=>r.fee.toLowerCase()===nm.toLowerCase());
-    if(exists){ say(L("「"+nm+"」已存在。","\""+nm+"\" already exists."),false); return; }
-    const dyn=CFG.raw.dynamic_surcharge_mapping||(CFG.raw.dynamic_surcharge_mapping={});
-    dyn[accCodeFor(nm)]={ar:"ACC", name:nm,
-      type:normDynType((($("#newAccType")||{}).value)||"REPRICE"),
-      fuel_eligible:!!(($("#newAccFuel")||{}).checked), enabled:true};
-    if(typeof dynLoad==="function") dynLoad(); else seedAccRowsInto(CFG.raw);
-    rlSyncShared();
-    CFG=readConfig(CFG.raw); DIRTY=true; saveSettings();
-    renderConfigTabs();
-    $("#newAccName").value="";
-    const nlv=lvlListAll().length;
-    say(L("已建立於全部 "+nlv+" 個層級,費率請至 04 填寫。",
-          "Created in all "+nlv+" level(s) — rates to fill under 04."),true);
+    if(msg){ msg.textContent=""; msg.className="savenote"; }
+    dynAddOpen();
   });
   $("#accMgrSearch") && ($("#accMgrSearch").oninput=renderAccMgr);
   $("#accMgrFilter") && ($("#accMgrFilter").onchange=renderAccMgr);
@@ -19810,12 +19784,6 @@ const I18N={
   "pill.perlvl":["分層 · 每層一份","Per level"],
   "hd.accmgr":["附加費管理","Surcharge Management"],
   "hint.accmgr":["這裡決定「有哪些附加費」。新增一項即同步建立於所有費率層級;各層費率到「04 渠道與附加費費率」填寫。","Which surcharges exist. Adding one creates it in every rate level at once; each level fills its own rates under 04 Channel & Surcharge Rates."],
-  "lb.newacc":["新增附加費","New surcharge"],
-  "lb.acctype":["收費方式","Billing"],
-  "o.reprice":["重新計價","Repriced"],
-  "o.copyinv":["照帳單收","Copy invoice"],
-  "o.reportonly":["只列出不收","Report only"],
-  "lb.accfuelon":["收燃油","Fuel eligible"],
   "btn.addacc":["新增附加費","Add surcharge"],
   "btn.accprev":["預覽各層費率","Preview rates by level"],
   "o.all":["全部","All"],
