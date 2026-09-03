@@ -1794,7 +1794,7 @@ label:has(#newChanOn){display:none !important}
       <input id="cusSearch" class="cell" style="width:150px;text-align:left">
       <span id="cusCount" style="color:var(--muted);font-size:12.5px"></span>
     </div>
-    <div class="tablewrap" style="max-height:30vh"><table id="tCus"><thead><tr>
+    <div class="tablewrap" style="max-height:none"><table id="tCus"><thead><tr>
       <th data-i18n="th.cuscode">Code</th>
       <th data-i18n="th.cusname">Name</th>
       <th data-i18n="th.cuslevel">Rate level</th>
@@ -1808,6 +1808,7 @@ label:has(#newChanOn){display:none !important}
       <button class="act" id="bCusAdd" data-i18n="btn.cusadd">Add customer</button>
       <button class="act ghost" id="bCusTpl" data-i18n="btn.custpl">Import template</button>
       <button class="act ghost" id="bCusImp" data-i18n="btn.cusimp">Import list</button>
+      <button class="act ghost" id="bCusXls" data-i18n="btn.cusxls">Export list</button>
       <input type="file" id="fCusImp" accept=".xlsx,.xls,.csv,.txt" style="display:none">
       <span id="cusMsg" class="savenote"></span>
     </div>
@@ -2711,8 +2712,9 @@ label:has(#newChanOn){display:none !important}
       <th data-i18n="th.cuslevel">Rate level</th>
       <th class="num" data-i18n="th.anaclients">Clients</th>
       <th class="num" data-i18n="th.reconorders">Orders</th>
-      <th class="num" data-i18n="th.reconbilled">Billed to customer</th>
-      <th class="num" data-i18n="th.reconups">Charged by UPS</th>
+      <th class="num" data-i18n="th.reconbilled">WMS / TMS</th>
+      <th class="num" data-i18n="th.runrebill">Difference</th>
+      <th class="num" data-i18n="th.reconups">UPS</th>
       <th class="num" data-i18n="th.reconprofit">Profit</th>
       <th class="num" data-i18n="th.reconmargin">Margin</th>
       <th class="num" data-i18n="th.anashare">Share of profit</th>
@@ -2737,8 +2739,9 @@ label:has(#newChanOn){display:none !important}
       <th data-i18n="th.cusname">Name</th>
       <th data-i18n="th.cuslevel">Rate level</th>
       <th class="num" data-i18n="th.reconorders">Orders</th>
-      <th class="num" data-i18n="th.reconbilled">Billed to customer</th>
-      <th class="num" data-i18n="th.reconups">Charged by UPS</th>
+      <th class="num" data-i18n="th.reconbilled">WMS / TMS</th>
+      <th class="num" data-i18n="th.runrebill">Difference</th>
+      <th class="num" data-i18n="th.reconups">UPS</th>
       <th class="num" data-i18n="th.reconprofit">Profit</th>
       <th class="num" data-i18n="th.reconmargin">Margin</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
@@ -7564,6 +7567,18 @@ async function cusTemplate(){
   ], "Customer_Import_Template.xlsx");
   cusNote(L("匯入模板已下載:三欄,層級用下拉選。","Import template downloaded: three columns, levels in a dropdown."),true);
 }
+/* 客戶名單倒成 Excel:代碼、名稱、層級、最近對帳的筆數與金額。和匯入模板同一套欄名,
+   倒出來的檔改一改可以再匯回去。 */
+async function cusExport(){
+  const HD=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
+  const per={};
+  for(const a of ((RECON&&RECON.res&&RECON.res.cus)||[])) per[a.code]={n:a.orders, amt:a.amt};
+  const rows=cusReg().map(c=>{ const p=per[c.code];
+    return [c.code, c.name||"", cusLevelLabel(c.level)||"", p?{v:p.n,t:"n"}:"", p?{v:cents(p.amt),t:"n",s:{fmt:"#,##0.00"}}:""]; });
+  await xlWrite([{name:"Customers", rows:[["Customer Code","Customer Name","Rate Level","Last Reconciliation Rows","Last Reconciliation Amount"].map(HD),...rows],
+    freeze:{r:1,c:1}, cols:[{w:18},{w:34},{w:22},{w:24},{w:26}], ignoreTextNumbers:true}], "Customers.xlsx");
+  cusNote(L("客戶清單已匯出:"+rows.length+" 位。","Customer list exported: "+rows.length+" client(s)."),true);
+}
 function renderCustomers(){
   if(!CFG) return;
   cusEnsure(); chgEnsure();
@@ -7673,6 +7688,7 @@ function bindCustomers(){
   $("#bCusAdd") && ($("#bCusAdd").onclick=openCusNew);
   $("#bCusTpl") && ($("#bCusTpl").onclick=()=>{ cusTemplate().catch(e=>cusNote(String((e&&e.message)||e),false)); });
   $("#bCusImp") && ($("#bCusImp").onclick=()=>$("#fCusImp").click());
+  $("#bCusXls") && ($("#bCusXls").onclick=()=>{ cusExport().catch(e=>cusNote(String((e&&e.message)||e),false)); });
   $("#fCusImp") && ($("#fCusImp").onchange=e=>{
     const f=e.target.files&&e.target.files[0]; e.target.value="";
     if(f) cusImportFile(f); });
@@ -13964,6 +13980,17 @@ function reconRun(list){
                        items:r.items||0, amt:r.amt||0, fuel:r.fuel||0, total:r.total||0}; })
           .sort((x,y)=>y.total-x.total||y.rows-x.rows),
     byChg:[...byChgR.values()].sort((x,y)=>y.total-x.total)};
+  /* 毛利的算法:向客戶實收 + 補收差額(含燃油)− UPS 實收。重算只用來找漏收,
+     不拿來當毛利的基準。每個客戶和合計都照這一條重算一次。 */
+  for(const a of cus){
+    const rb=byCusR.get(a.code); a.rebill=cents((rb&&rb.total)||0);
+    a.chargeable=cents(a.amt+a.rebill);
+    a.profit=cents(a.chargeable-a.cost);
+    a.margin=a.chargeable?a.profit/Math.abs(a.chargeable)*100:null;
+  }
+  tot.rebill=cents(rebill.grand); tot.chargeable=cents(tot.amt+tot.rebill);
+  tot.profit=cents(tot.chargeable-tot.cost);
+  tot.margin=tot.chargeable?tot.profit/Math.abs(tot.chargeable)*100:null;
   const fmt=o=>({
       name:o.name, rep:cents(o.rep), ups:cents(o.ups), gap:cents(o.rep-o.ups),
       /* billed 填了才有意義。沒填寫 null 而不是 0 ——
@@ -14767,13 +14794,14 @@ function anaLevels(r){
   for(const a of r.cus){
     const key=a.level||"";
     let o=byLvl.get(key);
-    if(!o){ o={level:key, n:0, orders:0, amt:0, cost:0}; byLvl.set(key,o); }
-    o.n++; o.orders+=a.orders; o.amt+=a.amt; o.cost+=a.cost;
+    if(!o){ o={level:key, n:0, orders:0, amt:0, cost:0, rebill:0}; byLvl.set(key,o); }
+    o.n++; o.orders+=a.orders; o.amt+=a.amt; o.cost+=a.cost; o.rebill+=(a.rebill||0);
   }
   return [...byLvl.values()].map(o=>{
-    o.amt=cents(o.amt); o.cost=cents(o.cost);
-    o.profit=cents(o.amt-o.cost);
-    o.margin=o.amt?o.profit/Math.abs(o.amt)*100:null;
+    o.amt=cents(o.amt); o.cost=cents(o.cost); o.rebill=cents(o.rebill);
+    const chargeable=cents(o.amt+o.rebill);
+    o.profit=cents(chargeable-o.cost);
+    o.margin=chargeable?o.profit/Math.abs(chargeable)*100:null;
     /* 佔比拿總毛利當分母。總毛利是 0 就不畫 —— 除以 0 會得到 Infinity,
        而畫面上出現 Infinity% 比空白更難解釋。 */
     o.share=t.profit?o.profit/t.profit*100:null;
@@ -14807,8 +14835,9 @@ function renderAnalysis(){
   const tiles=$("#anaTiles");
   if(tiles) tiles.innerHTML=[
     ["WMS / TMS", money(t.amt), ""],
+    [L("差額(補收)","Difference (to re-bill)"), money(t.rebill||0), ""],
     ["UPS",       money(t.cost), ""],
-    [L("毛利","Profit"),               money(t.profit), "", t.profit<0],
+    [L("毛利","Profit"),               money(t.profit), L("實收 + 差額 − UPS","billed + difference − UPS"), t.profit<0],
     [L("毛利率","Margin"),             anaPct(t.margin),
       L(t.orders+" 筆 · "+r.cus.length+" 個客戶",
         t.orders+" order"+(t.orders>1?"s":"")+" · "+r.cus.length
@@ -14824,6 +14853,7 @@ function renderAnalysis(){
       <td class="num">${o.n}</td>
       <td class="num">${o.orders}</td>
       <td class="num">${money(o.amt)}</td>
+      <td class="num">${money(o.rebill||0)}</td>
       <td class="num">${money(o.cost)}</td>
       <td class="num">${sign(o.profit)}</td>
       <td class="num">${pcCell(o.margin)}</td>
@@ -14833,6 +14863,7 @@ function renderAnalysis(){
       <td class="num"><b>${r.cus.length}</b></td>
       <td class="num"><b>${t.orders}</b></td>
       <td class="num"><b>${money(t.amt)}</b></td>
+      <td class="num"><b>${money(t.rebill||0)}</b></td>
       <td class="num"><b>${money(t.cost)}</b></td>
       <td class="num"><b>${sign(t.profit)}</b></td>
       <td class="num"><b>${pcCell(t.margin)}</b></td>
@@ -14855,6 +14886,7 @@ function renderAnalysis(){
       <td>${a.level?esc(lvlName(a.level)):`<span class="empty">—</span>`}</td>
       <td class="num">${a.orders}</td>
       <td class="num">${money(a.amt)}</td>
+      <td class="num">${money(a.rebill||0)}</td>
       <td class="num">${money(a.cost)}</td>
       <td class="num">${sign(a.profit)}</td>
       <td class="num">${pcCell(a.margin)}</td></tr>`).join("");
@@ -14862,6 +14894,7 @@ function renderAnalysis(){
   if(cf) cf.innerHTML=`<tr><td colspan="3"><b>${esc(L("合計","Total"))}</b></td>
       <td class="num"><b>${t.orders}</b></td>
       <td class="num"><b>${money(t.amt)}</b></td>
+      <td class="num"><b>${money(t.rebill||0)}</b></td>
       <td class="num"><b>${money(t.cost)}</b></td>
       <td class="num"><b>${sign(t.profit)}</b></td>
       <td class="num"><b>${pcCell(t.margin)}</b></td></tr>`;
@@ -14884,21 +14917,21 @@ async function anaExport(){
   const m=v=>v==null?"":{v,t:"n",s:M};
   const pc=v=>v==null?"":{v:+v.toFixed(2),t:"n",s:P};
   const t=r.tot, lvls=anaLevels(r);
-  const lvlRows=[["Rate Level","Clients","Orders","WMS / TMS","UPS",
+  const lvlRows=[["Rate Level","Clients","Orders","WMS / TMS","Difference","UPS",
     "Profit","Margin %","Share of Profit %"].map(HD)]
    .concat(lvls.map(o=>[anaLvlName(o.level), o.n, o.orders,
-     m(o.amt), m(o.cost), m(o.profit), pc(o.margin), pc(o.share)]))
-   .concat([["TOTAL", r.cus.length, t.orders, m(t.amt), m(t.cost), m(t.profit),
+     m(o.amt), m(o.rebill||0), m(o.cost), m(o.profit), pc(o.margin), pc(o.share)]))
+   .concat([["TOTAL", r.cus.length, t.orders, m(t.amt), m(t.rebill||0), m(t.cost), m(t.profit),
      pc(t.margin), t.profit?pc(100):""]]);
   const why=b=>b===RL_NONE?"NOT PRICED — no rate level assigned"
              :b===RL_GONE?"NOT PRICED — rate level deleted":"";
   const cusRows=[["Customer Code","Customer Name","Rate Level","Repricing Status","Orders",
-    "Packages","WMS / TMS","UPS","Profit","Margin %","Reprice",
+    "Packages","WMS / TMS","Difference","UPS","Profit","Margin %","Reprice",
     "WMS / TMS vs Reprice","UPS vs Reprice"].map(HD)]
    .concat(r.cus.slice().sort((x,y)=>y.profit-x.profit).map(a=>[
      a.code, a.name, a.block?"":anaLvlName(a.level), why(a.block), a.orders, a.pkgs,
-     m(a.amt), m(a.cost), m(a.profit), pc(a.margin), m(a.rep), m(a.pgap), m(a.gap)]))
-   .concat([["TOTAL","","","",t.orders,t.pkgs,m(t.amt),m(t.cost),m(t.profit),
+     m(a.amt), m(a.rebill||0), m(a.cost), m(a.profit), pc(a.margin), m(a.rep), m(a.pgap), m(a.gap)]))
+   .concat([["TOTAL","","","",t.orders,t.pkgs,m(t.amt),m(t.rebill||0),m(t.cost),m(t.profit),
      pc(t.margin),m(t.rep),m(t.pgap),m(t.gap)]]);
   const chgName=n=>n===RECON_UNKNOWN?"Unrecognised codes":n;
   const chgRows=[["Charge","Your Code","System Code","WMS / TMS","Reprice",
@@ -15253,7 +15286,10 @@ function dashWmsAgg(){
   }
   const rest=cents(total-itemised);
   if(Math.abs(rest)>=0.005) buckets[DASH_WMS_REST]=rest;
-  return {src:RECON_SRC, buckets, total:cents(total), n:r.orders.length, rebill:cents((r.rebill&&r.rebill.grand)||0)};
+  const t=r.tot||{};
+  return {src:RECON_SRC, buckets, total:cents(total), n:r.orders.length, rebill:cents((r.rebill&&r.rebill.grand)||0),
+    cost:cents(t.cost||0), chargeable:cents(t.chargeable!=null?t.chargeable:total+((r.rebill&&r.rebill.grand)||0)),
+    profit:cents(t.profit!=null?t.profit:0)};
 }
 const RECLASS_RE=/AHS\/Large Package|AHS\/大包裹/;
 /* 同一種附加費被 UPS 拆成多個變體收費的,在圓餅上合成一塊來排名。
@@ -16603,31 +16639,35 @@ function renderDashboard(){
          上下文,而且是它剛發生的當下。 -->
     <!-- 帳戶層費用不算進毛利,所以它前面不掛減號 —— 掛了就是在說它有被扣掉。
          中間那條線把它和前面那條算式分開。 -->
-    <div class="dflow">
-      <div class="dcell"><div class="dk">${L("重算","Reprice")}</div>
-        <div class="dv">${money(d.repriced)}</div></div>
-      <div class="dcell dop" data-op="−"><div class="dk">UPS</div>
-        <div class="dv">${money(d.billed)}</div></div>
-      <div class="dcell dop" data-op="="><div class="dk">${L("毛利","Profit")}</div>
-        <div class="dv ${(d.repriced-d.billed)<0?"neg":"pos"}">${money(d.repriced-d.billed)}</div></div>
-      <div class="dcell dapart"><div class="dk">${L("帳戶層費用","Account charges")}</div>
-        <div class="dv">${money(d.account)}</div></div>
-    </div>
-    ${wmsAgg?`<!-- 對帳那一側:向客戶實收的 + 補收清單的差額 = 應向客戶收的 -->
-    <div class="dflow" style="margin-top:8px">
+    <!-- 毛利只從對帳算:向客戶實收 + 補收差額 − 那幾筆的 UPS 實收。重算不是毛利的基準,
+         它只用來找漏收,所以放在第二行,和整批帳單的 UPS 總額、帳戶層費用並列。 -->
+    ${wmsAgg?`<div class="dflow">
       <div class="dcell"><div class="dk">${esc(wmsAgg.src)}</div>
         <div class="dv">${money(wmsAgg.total)}</div></div>
       <div class="dcell dop" data-op="+"><div class="dk">${L("差額(補收)","Difference (to re-bill)")}</div>
         <div class="dv">${money(wmsAgg.rebill)}</div></div>
       <div class="dcell dop" data-op="="><div class="dk">${L("應收合計","Chargeable")}</div>
-        <div class="dv">${money(cents(wmsAgg.total+wmsAgg.rebill))}</div></div>
+        <div class="dv">${money(wmsAgg.chargeable)}</div></div>
+      <div class="dcell dop" data-op="−"><div class="dk">UPS</div>
+        <div class="dv">${money(wmsAgg.cost)}</div></div>
+      <div class="dcell dop" data-op="="><div class="dk">${L("毛利","Profit")}</div>
+        <div class="dv ${wmsAgg.profit<0?"neg":"pos"}">${money(wmsAgg.profit)}</div></div>
       <div class="dcell dapart"><div class="dk">${L("對帳筆數","Reconciled rows")}</div>
         <div class="dv">${wmsAgg.n}</div></div>
-    </div>`:""}
+    </div>`:`<div class="dempty" style="padding:14px 18px;margin-bottom:12px">${L("毛利要等對帳:匯入 WMS / TMS 檔之後,這裡才會有「實收 + 補收 − UPS」。",
+        "Profit waits for the reconciliation: import the WMS / TMS file and this line shows billed + difference − UPS.")}</div>`}
+    <div class="dflow" style="margin-top:8px">
+      <div class="dcell"><div class="dk">${L("UPS(載入的全部期別)","UPS (all loaded periods)")}</div>
+        <div class="dv">${money(d.billed)}</div></div>
+      <div class="dcell dapart"><div class="dk">${L("重算(找漏收用)","Reprice (missed-charge check)")}</div>
+        <div class="dv">${money(d.repriced)}</div></div>
+      <div class="dcell dapart"><div class="dk">${L("帳戶層費用","Account charges")}</div>
+        <div class="dv">${money(d.account)}</div></div>
+    </div>
     <div class="dcard">
       <div class="ch"><h3>${L("費用組成","Cost breakdown")}</h3>
         <button class="act ghost" id="bPerXls" style="padding:3px 11px;font-size:12px">${
-          L("利潤報表…","Profit report…")}</button></div>
+          L("重算報表…","Reprice report…")}</button></div>
       ${compHTML}
     </div>
     <div class="dcard" style="margin-top:12px">
@@ -19516,6 +19556,7 @@ const I18N={
     "Your own list. Assign a rate level and this customer's shipments are repriced at that level. The list is shared across the whole account and does not change when you switch levels."],
   "hd.cusedit":["編輯客戶","Edit customer"],
   "hd.cusnew":["新增客戶","New customer"],
+  "btn.cusxls":["匯出清單","Export list"],
   "lb.cecode":["客戶代碼","Customer code"],
   "hint.cecodenew":["只能用英數字和 . _ -,至少兩個字。WMS / TMS 模板的 Customer Code 填的就是這個代碼。",
     "Letters, digits, . _ - only, at least two characters. This is the code the WMS / TMS template's Customer Code column takes."],

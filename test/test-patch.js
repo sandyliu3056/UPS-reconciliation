@@ -93,12 +93,12 @@ const t=D.getElementById('tAnaCus');
 ok(!!t&&t.classList.contains('sortable'), 'tAnaCus \u5df2\u6302\u4e0a\u6392\u5e8f');
 const tb=t.tBodies[0];
 tb.innerHTML=`
- <tr><td>C003</td><td>\u4e19</td><td>L1</td><td class="num">5</td><td class="num">$1,200.00</td><td class="num">$900.00</td><td class="num">$300.00</td><td class="num">25.0%</td></tr>
- <tr><td>C001</td><td>\u7532</td><td>L2</td><td class="num">9</td><td class="num">$900.00</td><td class="num">$950.00</td><td class="num">($50.00)</td><td class="num">-5.6%</td></tr>
- <tr><td>C002</td><td>\u4e59</td><td>L1</td><td class="num">7</td><td class="num">$3,400.00</td><td class="num">$2,000.00</td><td class="num">$1,400.00</td><td class="num">41.2%</td></tr>`;
+ <tr><td>C003</td><td>\u4e19</td><td>L1</td><td class="num">5</td><td class="num">$1,200.00</td><td class="num">$0.00</td><td class="num">$900.00</td><td class="num">$300.00</td><td class="num">25.0%</td></tr>
+ <tr><td>C001</td><td>\u7532</td><td>L2</td><td class="num">9</td><td class="num">$900.00</td><td class="num">$0.00</td><td class="num">$950.00</td><td class="num">($50.00)</td><td class="num">-5.6%</td></tr>
+ <tr><td>C002</td><td>\u4e59</td><td>L1</td><td class="num">7</td><td class="num">$3,400.00</td><td class="num">$0.00</td><td class="num">$2,000.00</td><td class="num">$1,400.00</td><td class="num">41.2%</td></tr>`;
 const th=t.tHead.rows[t.tHead.rows.length-1].cells;
 const col=[...th].findIndex(h=>/Margin|\u6bdb\u5229/i.test(h.textContent));
-const use = col>=0?col:7;
+const use = col>=0?col:8;
 const codes=()=>[...tb.rows].map(r=>r.cells[0].textContent);
 th[use].dispatchEvent(new W.MouseEvent('click',{bubbles:true}));
 ok(codes().join()==='C002,C003,C001', '\u7b2c\u4e00\u4e0b\uff1a\u5927\u5230\u5c0f\uff08\u542b\u62ec\u865f\u8ca0\u6578\uff09');
