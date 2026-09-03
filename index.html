@@ -1869,6 +1869,24 @@ label:has(#newChanOn){display:none !important}
     <div class="row" style="margin-top:8px"><span id="reconMsg" class="savenote"></span></div>
   </div>
 
+  <!-- 匯入過的模板:一次匯入一列,帶匯入時間。點「明細」看那一次到底進了
+       哪些列、對到了沒有;點「載入」把那一份對帳整份叫回畫面上。 -->
+  <div class="lf sketch" id="reconTplHistCard" hidden>
+    <h3 class="display"><span class="em">🗂️</span><span data-i18n="hd.tplhist">Imported templates</span></h3>
+    <p class="hint" style="margin:0 0 10px;max-width:76ch" data-i18n="hint.tplhist">Every accepted WMS / TMS file, most recent first, with the time it was imported. Detail shows the rows that came in and whether each was matched to the invoice; Load brings that reconciliation back on screen.</p>
+    <div class="tablewrap" style="max-height:44vh"><table id="tTplHist"><thead><tr>
+      <th data-i18n="th.tplwhen">Imported</th>
+      <th data-i18n="th.tplfile">File</th>
+      <th data-i18n="th.tplsrc">Source</th>
+      <th data-i18n="th.tplperiod">Invoice date</th>
+      <th class="num" data-i18n="th.tplrows">Rows</th>
+      <th class="num" data-i18n="th.tplcus">Clients</th>
+      <th class="num" data-i18n="th.tploff">Not on invoice</th>
+      <th class="num" data-i18n="th.tplamt">Billed to clients</th>
+      <th></th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+
   <!-- 05 那一側還沒有結果時的空狀態:講清楚路怎麼走,不留白牆。 -->
   <div class="lf sketch" id="reconEmpty" hidden>
     <h3 class="display"><span class="em">⚖️</span><span data-i18n="hd.reconempty">No comparison yet</span></h3>
@@ -2868,6 +2886,20 @@ label:has(#newChanOn){display:none !important}
     <div class="modalft">
       <button class="act" id="bDynAddSave" data-i18n="btn.save">Save</button>
       <button class="act ghost" id="bDynAddCancel" data-i18n="btn.close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="tplDetBg" class="modalbg">
+  <div class="modal sketch" id="tplDetModal" style="width:min(1040px,100%);height:min(80vh,900px);max-height:94vh">
+    <div class="modalhd">
+      <span data-i18n="hd.tpldet">Imported template</span>
+      <button class="mx" id="bTplDetX">✕</button>
+    </div>
+    <div class="modalbody" id="tplDetBody"></div>
+    <div class="modalft">
+      <button class="act" id="bTplDetOpen" data-i18n="btn.tplload">Load this reconciliation</button>
+      <button class="act ghost" id="bTplDetClose" data-i18n="btn.close">Close</button>
     </div>
   </div>
 </div>
@@ -10418,6 +10450,16 @@ $("#fImportAcc") && ($("#fImportAcc").onchange=async e=>{
   if(warn.length) toast(warn.join("\n"),false);
   if(inp) inp.value="";
 });
+/* 明細視窗:關、以及「載入這一份對帳」—— 載入之後畫面就換到第 3 步的結果,
+   視窗留著沒有意義,關掉。 */
+const tplDetClose=()=>{ const b=$("#tplDetBg"); if(b) b.classList.remove("on"); };
+$("#bTplDetX") && ($("#bTplDetX").onclick=tplDetClose);
+$("#bTplDetClose") && ($("#bTplDetClose").onclick=tplDetClose);
+$("#bTplDetOpen") && ($("#bTplDetOpen").onclick=()=>{
+  const key=TPL_DET_KEY; if(!key) return;
+  tplDetClose();
+  reconOpenRun(key,false).catch(err=>reconMsg(String((err&&err.message)||err),false));
+});
 $("#bSetFuel") && ($("#bSetFuel").onclick=()=>openFuel());
 $("#bDvOpen") && ($("#bDvOpen").onclick=()=>openDvSet());
 $("#bDvHelp") && ($("#bDvHelp").onclick=()=>openDvHelp());
@@ -13212,6 +13254,7 @@ function renderReconRuns(){
           <td style="white-space:nowrap"><button class="act ghost" data-open="${esc(r.key)}"${cur?" disabled":""}>${esc(cur?L("目前","Current"):L("開啟","Open"))}</button>
           <button class="act ghost" data-del="${esc(r.key)}" title="${esc(L("刪除這份對帳","Delete this reconciliation"))}">✕</button></td></tr>`; }).join("");
     }
+    renderTplHist(runs);
     if(mini) mini.innerHTML=runs.length
       ? `<div class="subhd" style="margin-top:12px">${esc(L("已存的對帳","Stored reconciliations"))}</div>`
         +runs.map(r=>`<button class="act ghost" data-open="${esc(r.key)}" style="margin:6px 6px 0 0">${esc((r.invDate||"—")+" · "+(r.invoices||[]).join(", ")+" · "+r.src+" · "+(r.n||0)+" "+L("筆","row(s)"))}</button>`).join("")
@@ -13219,6 +13262,101 @@ function renderReconRuns(){
   };
   if(RECON_RUNS) paint(RECON_RUNS); else idbRunAll().then(paint).catch(()=>paint([]));
 }
+/* 第 2 步那張「已匯入的模板」:一次匯入一列。和第 3 步那張存的是同一批資料
+   (recon_runs),差別只在這裡是站在「我剛剛倒進去的那個檔」的角度看 ——
+   什麼時候倒的、倒了幾列、對到了沒有。 */
+function tplWhen(ms){
+  if(!ms) return "—";
+  const d=new Date(ms), p=n=>String(n).padStart(2,"0");
+  return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
+}
+function renderTplHist(list){
+  const card=$("#reconTplHistCard"); if(!card) return;
+  const runs=(list||RECON_RUNS||[]).slice().sort((a,b)=>(b.when||0)-(a.when||0));
+  card.hidden=!(runs.length && RECON_VIEW==="data");
+  const tb=$("#tTplHist")&&$("#tTplHist").tBodies[0];
+  if(!tb) return;
+  tb.innerHTML=runs.map(r=>{ const s=r.sum||{}, cur=r.key===RECON_RUN_KEY;
+    return `<tr${cur?' class="cur"':""}><td>${esc(tplWhen(r.when))}</td>
+      <td class="mono">${r.fname?esc(r.fname):`<span class="empty">—</span>`}</td>
+      <td>${esc(r.src||"")}</td><td>${esc(r.invDate||"—")}</td>
+      <td class="num">${r.n||0}</td><td class="num">${s.cus||0}</td>
+      <td class="num">${s.offInv?`<b>${s.offInv}</b>`:`<span class="empty">0</span>`}</td>
+      <td class="num">${money(s.amt||0)}</td>
+      <td style="white-space:nowrap">
+        <button class="act ghost sm" data-tpldet="${esc(r.key)}">${esc(L("明細","Detail"))}</button>
+        <button class="act ghost sm" data-tplopen="${esc(r.key)}"${cur?" disabled":""}>${esc(cur?L("目前","Current"):L("載入","Load"))}</button>
+        <button class="act sm danger" data-tpldel="${esc(r.key)}">${esc(L("刪除","Delete"))}</button>
+      </td></tr>`; }).join("");
+}
+/* 點開來看那一次到底進了什麼:摘要 + 每一列,狀態分成對到帳單、帳單上沒有
+   (留給下一期)、上一期帶進來的。 */
+let TPL_DET_KEY="";
+function tplDetOpen(key){
+  const run=(RECON_RUNS||[]).find(r=>r.key===key);
+  const body=$("#tplDetBody"); if(!run||!body) return;
+  TPL_DET_KEY=key;
+  const s=run.sum||{};
+  const pend=new Set();
+  for(const r of (run.pending||[])) for(const t of (r.trks||[])) pend.add(reconTrk(t));
+  const kv=[[L("匯入時間","Imported"),tplWhen(run.when)],
+            [L("檔名","File"),run.fname||"—"],
+            [L("來源","Source"),run.src||""],
+            [L("帳單日","Invoice date"),run.invDate||"—"],
+            [L("期號","Invoice number"),(run.invoices||[]).join(", ")||"—"],
+            [L("列數","Rows"),String(run.n||0)],
+            [L("客戶數","Clients"),String(s.cus||0)],
+            [L("帳單上沒有","Not on invoice"),String(s.offInv||0)],
+            [L("向客戶收","Billed to clients"),money(s.amt||0)],
+            [L("UPS 收","UPS charged"),money(s.cost||0)],
+            [L("補收","To re-bill"),money(s.rebill||0)]];
+  const CAP=800;
+  const rows=(run.rows||[]).slice(0,CAP);
+  const stateOf=r=>{
+    const ts=(r.trks||[]).map(reconTrk);
+    if(r.carried) return `<span class="pill">${esc(L("上一期帶入","Carried in"))}</span>`;
+    if(ts.length && ts.every(t=>pend.has(t)))
+      return `<span class="pill warn">${esc(L("帳單上沒有","Not on invoice"))}</span>`;
+    return `<span class="empty">${esc(L("已對到","Matched"))}</span>`;
+  };
+  body.innerHTML=`<dl class="kv2">`
+    +kv.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")+`</dl>
+    <div class="tablewrap" style="max-height:46vh;margin-top:10px"><table><thead><tr>
+      <th>${esc(L("客戶","Client"))}</th><th>${esc(L("單號","Order"))}</th>
+      <th>${esc(L("追蹤號","Tracking"))}</th><th>${esc(L("渠道","Channel"))}</th>
+      <th class="num">Zone</th><th class="num">${esc(L("計費重","Billed weight"))}</th>
+      <th class="num">${esc(L("向客戶收","Billed"))}</th><th>${esc(L("狀態","Status"))}</th>
+    </tr></thead><tbody>`
+    +(rows.map(r=>`<tr><td class="mono">${esc(r.cus||"")}</td><td class="mono">${esc(r.order||"")}</td>
+      <td class="mono">${esc((r.trks||[]).join(", "))}</td><td>${esc(r.chan||"")}</td>
+      <td class="num">${esc(r.zone||"")}</td><td class="num">${r.wt==null?"":esc(String(r.wt))}</td>
+      <td class="num">${money(r.amt||0)}</td><td>${stateOf(r)}</td></tr>`).join("")
+      ||`<tr><td colspan="8" class="empty">—</td></tr>`)
+    +`</tbody></table></div>`
+    +((run.rows||[]).length>CAP?`<p class="hint" style="margin:8px 0 0">${esc(L(
+        "只列前 "+CAP+" 列(共 "+(run.rows||[]).length+" 列)—— 要看全部請載入這一份對帳再匯出。",
+        "First "+CAP+" of "+(run.rows||[]).length+" rows — load the reconciliation and export it to see them all."))}</p>`:"");
+  $("#tplDetBg").classList.add("on");
+}
+document.addEventListener("click", e=>{
+  const d=e.target.closest("#tTplHist [data-tpldet]");
+  if(d){ tplDetOpen(d.dataset.tpldet); return; }
+  const o=e.target.closest("#tTplHist [data-tplopen]");
+  if(o){ reconOpenRun(o.dataset.tplopen,false).catch(err=>reconMsg(String((err&&err.message)||err),false)); return; }
+  const x=e.target.closest("#tTplHist [data-tpldel]");
+  if(!x) return;
+  const key=x.dataset.tpldel;
+  uiConfirm({title:L("刪除這一次匯入","Delete this import"),
+    body:L("只刪這一份的 WMS / TMS 列與摘要;帳單歷史不動。","Removes this file's WMS / TMS rows and summary only; invoice history is untouched."),
+    okText:L("刪除","Delete")}).then(ok=>{
+      if(!ok) return;
+      idbRunDel(key).then(()=>{
+        RECON_RUNS=null;
+        if(RECON_RUN_KEY===key){ RECON_RUN_KEY=""; try{ localStorage.removeItem(reconLastKey()); }catch(e){} }
+        renderReconRuns();
+      }).catch(()=>{});
+    });
+});
 document.addEventListener("click", e=>{
   const o=e.target.closest("#reconRunsCard [data-open],#reconRunsMini [data-open]");
   if(o){ reconOpenRun(o.dataset.open,false).catch(err=>reconMsg(String((err&&err.message)||err),false)); return; }
@@ -14177,6 +14315,7 @@ function reconView(mode){
   const show=(id,on)=>{ const e=$("#"+id); if(e&&on===false) e.hidden=true;
                         else if(e&&on===true) e.hidden=false; };
   show("reconTplCard", RECON_VIEW==="data");
+  if(typeof renderTplHist==="function") renderTplHist();
   /* 結果那幾張交給 renderRecon 決定 —— 它知道現在有沒有結果。 */
   if(typeof renderRecon==="function") renderRecon();
 }
@@ -19683,6 +19822,19 @@ const I18N={
   "th.rebillorder":["單號","Order Number"],
   "th.rebilltrk":["追蹤號","Tracking Number"],
   "th.rebillrate":["重算","Reprice"],
+  "hd.tplhist":["已匯入的模板","Imported templates"],
+  "hint.tplhist":["每一份收下的 WMS / TMS 檔一列,新的在前,帶匯入時間。「明細」看那一次進了哪些列、有沒有對到帳單;「載入」把那一份對帳叫回畫面上。",
+    "Every accepted WMS / TMS file, most recent first, with the time it was imported. Detail shows the rows that came in and whether each was matched to the invoice; Load brings that reconciliation back on screen."],
+  "th.tplwhen":["匯入時間","Imported"],
+  "th.tplfile":["檔名","File"],
+  "th.tplsrc":["來源","Source"],
+  "th.tplperiod":["帳單日","Invoice date"],
+  "th.tplrows":["列數","Rows"],
+  "th.tplcus":["客戶數","Clients"],
+  "th.tploff":["帳單上沒有","Not on invoice"],
+  "th.tplamt":["向客戶收","Billed to clients"],
+  "hd.tpldet":["這一次匯入的明細","Imported template"],
+  "btn.tplload":["載入這一份對帳","Load this reconciliation"],
   "th.rbover":["多收 / 應退","Over-collected"],
   "th.rebillamt":["差額","Difference"],
   "th.rbwms":["WMS / TMS","WMS / TMS"],

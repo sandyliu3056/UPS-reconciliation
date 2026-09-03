@@ -21,7 +21,7 @@ W.eval(patch);
 (async()=>{
 console.log('\n[1] ESC \u95dc\u7a97');
 const bgs=[...D.querySelectorAll('.modalbg')];
-ok(bgs.length===25, `\u627e\u5230 ${bgs.length} \u500b\u8996\u7a97\uff08\u9810\u671f 25\uff09`);
+ok(bgs.length===26, `\u627e\u5230 ${bgs.length} \u500b\u8996\u7a97\uff08\u9810\u671f 26\uff09`);
 ok(bgs.every(b=>b.querySelector('.modalhd .mx')), '\u6bcf\u500b\u8996\u7a97\u90fd\u6709 .mx \u95dc\u9589\u9215');
 
 let clicks=[];
@@ -122,8 +122,8 @@ pin.forEach(id=>{ const e=D.getElementById(id);
   ok(!!e&&e.classList.contains('pinfirst'), id+' \u5df2\u91d8\u4f4f\u9996\u6b04'); });
 
 console.log('\n[5] \u6c92\u6709\u640d\u5230\u539f\u672c\u7684\u6771\u897f');
-ok(D.querySelectorAll('table').length===33, '\u8868\u683c\u6578\u91cf\u6c92\u8b8a\uff0831\uff09');
-ok(D.querySelectorAll('.modalbg').length===25, '\u8996\u7a97\u6578\u91cf\u6c92\u8b8a\uff0825\uff09');
+ok(D.querySelectorAll('table').length===34, '\u8868\u683c\u6578\u91cf\uff0834\uff09');
+ok(D.querySelectorAll('.modalbg').length===26, '\u8996\u7a97\u6578\u91cf\uff0826\uff09');
 ok(D.querySelectorAll('[data-i18n]').length>0, 'i18n \u6a19\u8a18\u9084\u5728');
 
 console.log(`\n\u2500\u2500 ${pass} pass / ${fail} fail \u2500\u2500`);
