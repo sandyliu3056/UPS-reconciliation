@@ -1883,7 +1883,8 @@ label:has(#newChanOn){display:none !important}
     <h3 class="display"><span class="em">⚖️</span><span data-i18n="hd.reconempty">No comparison yet</span></h3>
     <p class="hint" style="margin:0;max-width:70ch" data-i18n="hint.reconempty">Import this period's UPS invoice under Batch Invoice Import, then bring in the filled WMS/TMS template under WMS/TMS Data. The comparison appears here the moment the file is accepted.</p>
     <!-- 分析:拿匯入的 WMS / TMS 列和載入的帳單比。還沒匯入就說要先匯入。 -->
-    <div class="row" style="margin-top:10px"><button class="act" id="bReconRun2" data-i18n="btn.reconrerun">Analyse</button></div>
+    <div class="row" style="margin-top:10px"><button class="act" id="bReconRun2" data-i18n="btn.reconrerun">Analyse</button>
+      <span id="reconMsg3" class="savenote"></span></div>
     <div id="reconRunsMini"></div>
   </div>
 
@@ -14024,7 +14025,7 @@ function reconView(mode){
 }
 function reconMsg(m,ok){
   /* 兩個入口各有一條狀態列,訊息兩邊都寫 —— 人站在哪一邊都看得到。 */
-  for(const id of ["#reconMsg","#reconMsg2"]){
+  for(const id of ["#reconMsg","#reconMsg2","#reconMsg3"]){
     const e=$(id);
     if(e){ e.textContent=m||""; e.className="savenote"+(m&&!ok?" bad":""); }
   }
@@ -14986,9 +14987,12 @@ function bindRecon(){
   /* 「分析」:拿匯入的列和載入的帳單比。兩邊缺哪一邊就講哪一邊。 */
   const analyse=()=>{
     const rows=RECON&&RECON.list;
-    if(!rows||!rows.length){ reconMsg(L("還沒有 WMS / TMS 資料,先到「2. WMS / TMS 匯入」導入模板。","No WMS / TMS rows yet — import the template under step 2, WMS / TMS Import, first."),false); return; }
-    if(!SHIPS||!SHIPS.length){ reconMsg(L("還沒載入這一期的 UPS 帳單,先到「1. UPS 帳單匯入」處理帳單。","This period's UPS invoice is not loaded — process it under step 1, UPS Invoice Import, first."),false); return; }
-    reconRerunFrom(rows, false, RECON&&RECON.charges);
+    const say=m=>{ reconMsg(m,false); toast(m,false); };
+    if(!rows||!rows.length){ say(L("還沒有 WMS / TMS 資料,先到「2. WMS / TMS 匯入」導入模板。","No WMS / TMS rows yet — import the template under step 2, WMS / TMS Import, first.")); return; }
+    if(!SHIPS||!SHIPS.length){ say(L("還沒載入這一期的 UPS 帳單,先到「1. UPS 帳單匯入」處理帳單。","This period's UPS invoice is not loaded — process it under step 1, UPS Invoice Import, first.")); return; }
+    if(!CFG){ say(L("還沒載入費率設定。","No rate configuration is loaded.")); return; }
+    const ok=reconRerunFrom(rows, false, RECON&&RECON.charges);
+    if(ok) toast(L("已分析 "+rows.length+" 筆。","Analysed "+rows.length+" row(s)."),true);
   };
   $("#bReconRerun") && ($("#bReconRerun").onclick=analyse);
   $("#bReconRun2") && ($("#bReconRun2").onclick=analyse);
