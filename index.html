@@ -2099,9 +2099,10 @@ label:has(#newChanOn){display:none !important}
       <button class="act ghost" id="bRemoveTicked" data-i18n="btn.removeticked">Remove Ticked</button>
       <span class="tplgrp">
         <button class="act ghost" id="bExportAcc" data-i18n="btn.exportacc">Export Accessorials Template</button>
+        <button class="act ghost" id="bExportAccAll" data-i18n="btn.exportaccall">Export All Channels Template</button>
         <button class="act ghost" id="bImportAcc" data-i18n="btn.importacc">Import Accessorials Template</button>
       </span>
-      <input type="file" id="fImportAcc" accept=".csv,.txt,.xlsx,.xls">
+      <input type="file" id="fImportAcc" accept=".csv,.txt,.xlsx,.xls" multiple>
     </div>
     <!-- 載入設定檔的動作搬到「設定」分頁了。整份設定檔是一次取代全部渠道、
          附加費、DIM、燃油、Demand 與申報價值級距,擺在這裡緊貼「儲存費率」,
@@ -10030,15 +10031,19 @@ $("#dynAr")    && ($("#dynAr").onchange   =()=>{ dynSyncWhy(); dynCheckCode(); }
 $("#dynShape") && ($("#dynShape").onchange=dynSyncWhy);
 $("#dynAs")    && ($("#dynAs").addEventListener("keyup",dynCheckCode));
 $("#dynAs")    && ($("#dynAs").addEventListener("blur",dynCheckCode));
-$("#bExportAcc") && ($("#bExportAcc").onclick=()=>{
-  /* 只倒目前選的渠道,Zone 用它自己的那組 ——
-     整張表倒出來的話,填的人得先在幾百列裡找自己要的那幾列。
-     工作表名稱與欄位跟桌面版的 per-channel 模板一致,兩邊互通。 */
-  /* 按鈕旁選的是渠道族(Ground、3 Day Select…),不分 com / res ——
-     一份模板涵蓋全族,com / res 的區別由第一頁每一列的 Shipment Type 扛。
-     Large Package 兩邊費率就是不同,列要分開,檔不必分開。 */
-  const fam=($("#accFilter")||{}).value||"";
-  if(!fam){ setStatus(LANG?"Pick a channel first":"請先選渠道"); return; }
+/* 申報價值那張分頁的欄名。匯出照這一組寫;匯入另外容許大小寫、舊名,
+   以及沒有 Service 欄的舊模板(見 accImportBook)。 */
+const DV_TPL_HEAD=["Service","Free up to","Minimum charge","Step","Per step","Max value","Flat up to"];
+function accDvRow(fam){
+  const o=(CFG.raw.declared_value_by_channel||{})[fam]||{};
+  const c=k=>String(o[k]||"").trim()===""?"":toNum(o[k]);
+  return [fam,c("free"),c("min"),c("unit"),c("rate"),c("max"),c("flat")];
+}
+/* 一條渠道族的模板內容:第一頁(Fee Type | Shipment Type | Zone …)、平費、
+   申報價值那一列。單一渠道匯出和全部渠道匯出都從這裡拿,格式才不會分家。
+   族裡沒有任何成員回 null;有成員但沒有 Zone 的,zones 是空的 —— 單一渠道
+   匯出拒絕(欄位對不上,硬塞會錯格),全部渠道匯出就只帶它的平費。 */
+function accTemplateFor(fam){
   const t=CFG.raw.accessorial_rate_table||{};
   const svcOf=c=>String(c).replace(/\s+(Commercial|Residential)$/i,"").trim();
   const znMap=CFG.raw.builtin_service_zones||{};
@@ -10053,7 +10058,7 @@ $("#bExportAcc") && ($("#bExportAcc").onclick=()=>{
   const zstr=members.map(znStr).find(z=>z)||"";
   const zones=zstr.split(",").filter(Boolean);
   /* 同一條渠道的三種寫法只留兩種。空運服務在渠道清單裡是不帶後綴的名字
-     (Next Day Air Saver),而附加費費率可以分商業／住宅,設定頁因此另外
+     (Next Day Air Saver),而附加費費率可以分商業/住宅,設定頁因此另外
      生出兩個帶後綴的標籤 —— 三個名字都算族成員,一項費用就印三列,而三列
      裡只有一列真的會被讀到(計價先找不帶後綴的,找到就用,填 0 也算)。
      地面件本來就是兩條真的渠道(Ground Commercial / Ground Residential),
@@ -10067,10 +10072,7 @@ $("#bExportAcc") && ($("#bExportAcc").onclick=()=>{
   /* 平費那一頁的值取自哪一個成員:不帶後綴的那個有費率就用它(計價也是它
      優先),否則用族裡第一個。 */
   const ch=family.find(c=>!suffixed(c)&&hasRate(c))||family[0]||"";
-  if(!family.length||!zones.length){
-    setStatus(LANG?"That channel has no zones configured":"這個渠道沒有設定 Zone");
-    return;
-  }
+  if(!family.length) return null;
 
   /* 這個設定檔裡出現過的費用,依實際形狀分成分區 / 單一金額兩組。
      內建清單擺在前面,順序才跟桌面版的模板對得起來。 */
@@ -10086,7 +10088,7 @@ $("#bExportAcc") && ($("#bExportAcc").onclick=()=>{
 
   const ahsHead=["Fee Type","Shipment Type",...zones.map(z=>"Zone "+z)];
   const ahsRows=[];
-  for(const fee of zoneFees) for(const c of family){
+  if(zones.length) for(const fee of zoneFees) for(const c of family){
     const v=t[fee+"|||"+c];
     ahsRows.push([feeDisplay(fee),c,...zones.map(z=>
       (v&&typeof v==="object"&&v[z]!=null&&v[z]!=="")?toNum(v[z]):"")]);
@@ -10094,194 +10096,267 @@ $("#bExportAcc") && ($("#bExportAcc").onclick=()=>{
   /* 平費不帶 Shipment Type:com / res 的區別已經在費用名稱裡
      (DAS Commercial / DAS Residential…),再掛一欄渠道只是重複。
      值取所選渠道的;族裡如有不同值,先講,不悄悄壓平。 */
+  const flatAmt=(fee,c)=>{ const v=t[fee+"|||"+c]; return (v!=null&&typeof v!=="object")?toNum(v):0; };
   const flatDiff=flatFees.filter(fee=>family.some(c=>{
     const a=t[fee+"|||"+ch], b=t[fee+"|||"+c];
     return b!=null&&typeof b!=="object"&&toNum(b)!==toNum(a!=null&&typeof a!=="object"?a:0);
   }));
-  const flatRows=flatFees.map(fee=>{
-    const v=t[fee+"|||"+ch];
-    return [feeDisplay(fee),(v!=null&&typeof v!=="object")?toNum(v):0];
-  });
-  const fname="UPS_Accessorials_"+svcOf(ch).replace(/[^A-Za-z0-9]+/g,"_")+lvlFileSuffix()+".xlsx";
-  /* 申報價值那四個數也要跟著模板走 —— 不然拿到模板的人附加費都有了,
-     偏偏保價費用預設值算。名字照畫面上那四格。它是全域設定,每個渠道
-     的模板都帶同一份。 */
-  const dvA=CFG.raw.accessorial_charges||{};
-  /* 保價級距一條服務一列,外加一列 Default —— 只有 Ground 打折這種合約,
-     模板要能把「差別在哪」帶著走,不然收到模板的人只看得到一組數字。 */
-  /* 這份模板是為哪條渠道匯出的,保價級距就只帶那一條 —— 其他分頁也是
-     只帶這條渠道的費率,這裡跟著一致。一個渠道一份模板,一份一列。 */
-  const dvFam=svcOfChan(ch);
-  const dvO=(CFG.raw.declared_value_by_channel||{})[dvFam]||{};
-  const dvC=k=>String(dvO[k]||"").trim()===""?"":toNum(dvO[k]);
-  const dvTblRows=[[dvFam,dvC("free"),dvC("min"),dvC("unit"),dvC("rate"),
-                    dvC("max"),dvC("flat")]];
+  const flatRows=flatFees.map(fee=>[feeDisplay(fee),flatAmt(fee,ch)]);
+  /* 全部渠道一起匯出時,平費一條渠道一列(帶 Shipment Type),族裡兩邊值
+     不同就各自帶著走,不必再挑一邊。 */
+  const flatByChan=[];
+  for(const fee of flatFees) for(const c of family) flatByChan.push([feeDisplay(fee),c,flatAmt(fee,c)]);
+  return {fam, family, zones, ch, ahsHead, ahsRows, flatRows, flatByChan, flatDiff,
+          dvRow:accDvRow(svcOfChan(ch))};
+}
+/* 匯出一律 xlsx。寫檔元件就在站內,載不到代表它沒被部署上去 ——
+   這時給不出 xlsx,就說清楚,不要偷偷換成另一種格式的檔。 */
+function accExportFailed(){
+  setStatus(L("匯出失敗:xlsx-0.18.5.full.min.js 沒有載到,請確認它和 index.html 放在一起",
+              "Export failed: xlsx-0.18.5.full.min.js did not load. Check it sits next to index.html"));
+}
+$("#bExportAcc") && ($("#bExportAcc").onclick=()=>{
+  /* 只倒目前選的渠道,Zone 用它自己的那組 ——
+     整張表倒出來的話,填的人得先在幾百列裡找自己要的那幾列。
+     工作表名稱與欄位跟桌面版的 per-channel 模板一致,兩邊互通。 */
+  /* 按鈕旁選的是渠道族(Ground、3 Day Select…),不分 com / res ——
+     一份模板涵蓋全族,com / res 的區別由第一頁每一列的 Shipment Type 扛。
+     Large Package 兩邊費率就是不同,列要分開,檔不必分開。 */
+  const fam=($("#accFilter")||{}).value||"";
+  if(!fam){ setStatus(LANG?"Pick a channel first":"請先選渠道"); return; }
+  const p=accTemplateFor(fam);
+  if(!p||!p.zones.length){
+    setStatus(LANG?"That channel has no zones configured":"這個渠道沒有設定 Zone");
+    return;
+  }
+  const fname="UPS_Accessorials_"+fam.replace(/[^A-Za-z0-9]+/g,"_")+lvlFileSuffix()+".xlsx";
   loadXLSX().then(X=>{
     const wb=X.utils.book_new();
-    X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([ahsHead,...ahsRows]),"AHS_LPS");
+    X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([p.ahsHead,...p.ahsRows]),"AHS_LPS");
     X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(
-      [["Fee Type","Amount"],...flatRows]),"FLAT_CHARGES");
-    X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(
-      [["Service","Free up to","Minimum charge","Step","Per step","Max value",
-        "Flat up to"], ...dvTblRows]),"DECLARED_VALUE");
+      [["Fee Type","Amount"],...p.flatRows]),"FLAT_CHARGES");
+    X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([DV_TPL_HEAD,p.dvRow]),"DECLARED_VALUE");
     const buf=X.write(wb,{bookType:"xlsx",type:"array"});
     dlBlob(new Blob([buf],{type:"application/octet-stream"}),fname);
-    setStatus((LANG?"Template exported for ":"已匯出模板:")+family.join(" + ")
-      +"  ("+(ahsRows.length+flatRows.length)+(LANG?" rows":" 列")+")"
-      +(flatDiff.length?(LANG?"  ⚠ flat fees differ between channels: ":"  ⚠ 平費兩邊值不同,已取所選渠道的:")+flatDiff.map(feeDisplay).join(", "):"")
+    setStatus((LANG?"Template exported for ":"已匯出模板:")+p.family.join(" + ")
+      +"  ("+(p.ahsRows.length+p.flatRows.length)+(LANG?" rows":" 列")+")"
+      +(p.flatDiff.length?(LANG?"  ⚠ flat fees differ between channels: ":"  ⚠ 平費兩邊值不同,已取所選渠道的:")+p.flatDiff.map(feeDisplay).join(", "):"")
       +(LANG?" — opens in the desktop tool too":" — 桌面版可直接匯入"));
-  }).catch(()=>{
-    const q=v=>/[",\r\n]/.test(String(v))?'"'+String(v).replace(/"/g,'""')+'"':String(v);
-    const lines=["Fee Type,Shipment Type,Zone,Amount"];
-    for(const fee of zoneFees){
-      const v=t[fee+"|||"+ch];
-      for(const z of zones)
-        lines.push([q(feeDisplay(fee)),q(ch),z,
-          (v&&typeof v==="object"&&v[z]!=null)?toNum(v[z]):""].join(","));
+  }).catch(accExportFailed);
+});
+/* 全部渠道一本活頁簿:每一族一張第一頁(工作表名就是族名,Zone 用它自己
+   那組)、一張 FLAT_CHARGES 帶 Shipment Type、一張 DECLARED_VALUE 一條服務
+   一列。匯入端本來就吃「任何帶 Fee Type + Shipment Type 的工作表」,所以
+   這本和單一渠道的模板走同一顆匯入按鈕,一次就整批進來。 */
+$("#bExportAccAll") && ($("#bExportAccAll").onclick=()=>{
+  const sel=$("#accFilter");
+  const fams=sel?[...sel.options].map(o=>o.value).filter(Boolean):[];
+  const parts=fams.map(accTemplateFor).filter(Boolean);
+  if(!parts.length){ setStatus(LANG?"No channel has any rates or zones configured":"沒有任何渠道設定了費率或 Zone"); return; }
+  const noZone=parts.filter(p=>!p.zones.length).map(p=>p.fam);
+  const fname="UPS_Accessorials_All_Channels"+lvlFileSuffix()+".xlsx";
+  loadXLSX().then(X=>{
+    const wb=X.utils.book_new();
+    const used=new Set(["FLAT_CHARGES","DECLARED_VALUE","_ChannelInfo"]);
+    for(const p of parts){
+      if(!p.zones.length) continue;
+      const base=p.fam.replace(/[\[\]:*?\/\\]/g," ").replace(/\s+/g," ").trim().slice(0,31)||"Sheet";
+      let nm=base, k=2;
+      while(used.has(nm)) nm=base.slice(0,28)+" "+(k++);
+      used.add(nm);
+      X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([p.ahsHead,...p.ahsRows]),nm);
     }
-    for(const fee of flatFees){
-      const v=t[fee+"|||"+ch];
-      lines.push([q(feeDisplay(fee)),q(ch),"",(v!=null&&typeof v!=="object")?toNum(v):""].join(","));
-    }
-    /* 匯出一律 xlsx。寫檔元件就在站內,載不到代表它沒被部署上去 ——
-       這時給不出 xlsx,就說清楚,不要偷偷換成另一種格式的檔。 */
-    setStatus(L("匯出失敗:xlsx-0.18.5.full.min.js 沒有載到,請確認它和 index.html 放在一起",
-                "Export failed: xlsx-0.18.5.full.min.js did not load. Check it sits next to index.html"));
-  });
+    X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(
+      [["Fee Type","Shipment Type","Amount"],...parts.flatMap(p=>p.flatByChan)]),"FLAT_CHARGES");
+    X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(
+      [DV_TPL_HEAD,...dvFamilies().map(accDvRow)]),"DECLARED_VALUE");
+    const buf=X.write(wb,{bookType:"xlsx",type:"array"});
+    dlBlob(new Blob([buf],{type:"application/octet-stream"}),fname);
+    const rows=parts.reduce((s,p)=>s+p.ahsRows.length+p.flatByChan.length,0);
+    setStatus((LANG?"Template exported for all channels: ":"已匯出全部渠道模板:")
+      +parts.length+(LANG?" channels, ":" 條渠道,")+rows+(LANG?" rows":" 列")
+      +(noZone.length?(LANG?"  ⚠ no zones, flat fees only: ":"  ⚠ 沒有 Zone,只帶平費:")+noZone.join(", "):"")
+      +(LANG?" — import it back with Import Accessorials Template":" — 用「匯入附加費範本」一次整批匯回"));
+  }).catch(accExportFailed);
 });
 $("#bImportAcc") && ($("#bImportAcc").onclick=()=>$("#fImportAcc").click());
-$("#fImportAcc") && ($("#fImportAcc").onchange=e=>{
-  const inp=e.target, f=inp.files&&inp.files[0];
-  if(!f){ inp.value=""; return; }
-  setStatus((LANG?"Reading ":"讀取 ")+f.name+"…");
-  readWorkbookRows(f).then(bk=>{
-    const t=CFG.raw.accessorial_rate_table||(CFG.raw.accessorial_rate_table={});
-    let n=0, shapes=[];
+/* 一本活頁簿讀進費率表,回 {n, shapes, dvSkipped, err},不碰畫面 ——
+   多個檔一起匯入時由外面統一講結果。單一渠道模板、全部渠道模板、桌面版
+   模板都走這裡:第一頁只要有 Fee Type + Shipment Type + Zone 欄就吃。 */
+function accImportBook(bk){
+  const t=CFG.raw.accessorial_rate_table||(CFG.raw.accessorial_rate_table={});
+  let n=0, shapes=[], dvSkipped=[], sawShape=0;
+  const isDvName=nm=>/^declared[ _-]?value$/i.test(String(nm==null?"":nm).trim());
+  const isAux=nm=>nm==="FLAT_CHARGES"||nm==="_ChannelInfo"||isDvName(nm);
 
-    /* --- 寬表:Fee Type | Shipment Type | Zone … ------------------------
-       桌面版叫 AHS_LPS,但它自己也吃「任何帶 Fee Type + Shipment Type 的
-       工作表」,這裡照同一條規則,per-channel 模板才不用另外處理。 */
-    for(const nm of bk.order){
-      if(nm==="FLAT_CHARGES"||nm==="_ChannelInfo"||nm==="DECLARED_VALUE") continue;
-      const rows=bk.sheets[nm]||[]; if(rows.length<2) continue;
-      const hdr=sheetHeader(rows);
-      const fi=hdr.indexOf("Fee Type"), ci=hdr.indexOf("Shipment Type");
-      const zc=zoneCols(hdr);
-      if(fi<0||ci<0||!zc.length) continue;
+  /* --- 寬表:Fee Type | Shipment Type | Zone … ------------------------
+     桌面版叫 AHS_LPS,但它自己也吃「任何帶 Fee Type + Shipment Type 的
+     工作表」,這裡照同一條規則,per-channel 模板才不用另外處理。 */
+  for(const nm of bk.order){
+    if(isAux(nm)) continue;
+    const rows=bk.sheets[nm]||[]; if(rows.length<2) continue;
+    const hdr=sheetHeader(rows);
+    const fi=hdr.indexOf("Fee Type"), ci=hdr.indexOf("Shipment Type");
+    const zc=zoneCols(hdr);
+    if(fi<0||ci<0||!zc.length) continue;
+    sawShape++;
+    let m=0;
+    for(const r of rows.slice(1)){
+      const fee=feeKey(r[fi]), ch=String(r[ci]||"").trim();
+      if(!fee||!ch) continue;
+      /* 整列 Zone 都空白 = 還沒填的空模板,不是費率 0。匯進去會把原本
+         好的費率蓋成一張全 0 的表。 */
+      if(zc.every(z=>blankCell(r[z.i]))) continue;
+      const key=fee+"|||"+ch, box={};
+      for(const z of zc){ if(blankCell(r[z.i])) continue; box[z.zone]=toNum(r[z.i]); }
+      t[key]=box; m++;
+    }
+    if(m){ n+=m; shapes.push(nm+"("+m+")"); }
+  }
+
+  /* --- 平表:Fee Type | [Shipment Type] | Amount --------------------- */
+  const flat=bk.sheets["FLAT_CHARGES"];
+  if(flat&&flat.length>1){
+    const hdr=sheetHeader(flat);
+    const fi=hdr.indexOf("Fee Type"), ci=hdr.indexOf("Shipment Type"), ai=hdr.indexOf("Amount");
+    if(fi>=0&&ai>=0){
+      sawShape++;
+      /* 沒有 Shipment Type 欄就是「一列一個費用,寫進整個渠道族」——
+         族就是這本活頁簿第一頁列出來的那些渠道;第一頁沒有渠道
+         (桌面版全渠道模板)才寫進每一條標準 Zone 的渠道。 */
+      const seen=new Set();
+      for(const nm of bk.order){
+        if(isAux(nm)) continue;
+        const rows=bk.sheets[nm]||[]; if(rows.length<2) continue;
+        const hdr2=sheetHeader(rows), ci2=hdr2.indexOf("Shipment Type");
+        if(ci2<0) continue;
+        for(const r of rows.slice(1)){ const c=String(r[ci2]||"").trim(); if(c) seen.add(c); }
+      }
+      const targets=ci>=0?null:(seen.size?[...seen]:standardZoneChannels());
       let m=0;
-      for(const r of rows.slice(1)){
-        const fee=feeKey(r[fi]), ch=String(r[ci]||"").trim();
-        if(!fee||!ch) continue;
-        /* 整列 Zone 都空白 = 還沒填的空模板,不是費率 0。匯進去會把原本
-           好的費率蓋成一張全 0 的表。 */
-        if(zc.every(z=>blankCell(r[z.i]))) continue;
-        const key=fee+"|||"+ch, box={};
-        for(const z of zc){ if(blankCell(r[z.i])) continue; box[z.zone]=toNum(r[z.i]); }
-        t[key]=box; m++;
-      }
-      if(m){ n+=m; shapes.push(nm+"("+m+")"); }
-    }
-
-    /* --- 平表:Fee Type | [Shipment Type] | Amount --------------------- */
-    const flat=bk.sheets["FLAT_CHARGES"];
-    if(flat&&flat.length>1){
-      const hdr=sheetHeader(flat);
-      const fi=hdr.indexOf("Fee Type"), ci=hdr.indexOf("Shipment Type"), ai=hdr.indexOf("Amount");
-      if(fi>=0&&ai>=0){
-        /* 沒有 Shipment Type 欄就是「一列一個費用,寫進整個渠道族」——
-           族就是這本活頁簿第一頁列出來的那些渠道;第一頁沒有渠道
-           (桌面版全渠道模板)才寫進每一條標準 Zone 的渠道。 */
-        const seen=new Set();
-        for(const nm of bk.order){
-          if(nm==="FLAT_CHARGES"||nm==="_ChannelInfo"||nm==="DECLARED_VALUE") continue;
-          const rows=bk.sheets[nm]||[]; if(rows.length<2) continue;
-          const hdr2=sheetHeader(rows), ci2=hdr2.indexOf("Shipment Type");
-          if(ci2<0) continue;
-          for(const r of rows.slice(1)){ const c=String(r[ci2]||"").trim(); if(c) seen.add(c); }
+      for(const r of flat.slice(1)){
+        const fee=feeKey(r[fi]); if(!fee) continue;
+        if(blankCell(r[ai])) continue;
+        const amt=toNum(r[ai]);
+        if(ci>=0){
+          const ch=String(r[ci]||"").trim(); if(!ch) continue;
+          t[fee+"|||"+ch]=amt; m++;
+        }else{
+          for(const ch of targets){ t[fee+"|||"+ch]=amt; m++; }
         }
-        const targets=ci>=0?null:(seen.size?[...seen]:standardZoneChannels());
-        let m=0;
-        for(const r of flat.slice(1)){
-          const fee=feeKey(r[fi]); if(!fee) continue;
-          if(blankCell(r[ai])) continue;
-          const amt=toNum(r[ai]);
-          if(ci>=0){
-            const ch=String(r[ci]||"").trim(); if(!ch) continue;
-            t[fee+"|||"+ch]=amt; m++;
-          }else{
-            for(const ch of targets){ t[fee+"|||"+ch]=amt; m++; }
-          }
-        }
-        if(m){ n+=m; shapes.push("FLAT_CHARGES("+m+")"); }
       }
+      if(m){ n+=m; shapes.push("FLAT_CHARGES("+m+")"); }
     }
+  }
 
-    /* --- 長表:Fee Type | Shipment Type | Zone | Amount ----------------
-       本站自己匯出的形狀。上面兩種都沒中才走這裡。 */
-    if(!n){
-      const rows=bk.sheets[bk.order.find(x=>(bk.sheets[x]||[]).length>1)||bk.order[0]]||[];
-      if(rows.length<2){ setStatus(LANG?"That file is empty":"這個檔是空的"); return; }
-      const hdr=rows[0].map(c=>String(c||"").trim().toLowerCase());
-      const ci={fee:hdr.indexOf("fee type"),ch:hdr.indexOf("shipment type"),
-                z:hdr.indexOf("zone"),amt:hdr.indexOf("amount")};
-      if(ci.fee<0||ci.ch<0||ci.amt<0){
-        setStatus(LANG?"That file has no Fee Type / Shipment Type / Amount columns, and no AHS_LPS or FLAT_CHARGES sheet"
-                      :"這個檔沒有 Fee Type / Shipment Type / Amount 欄,也沒有 AHS_LPS 或 FLAT_CHARGES 工作表"); return; }
-      for(const r of rows.slice(1)){
-        const fee=feeKey(r[ci.fee]), ch=(r[ci.ch]||"").trim();
-        if(!fee||!ch) continue;
-        const key=fee+"|||"+ch, z=(ci.z>=0?(r[ci.z]||"").trim():"");
-        if(z){
-          if(typeof t[key]!=="object"||t[key]===null) t[key]={};
-          t[key][z]=toNum(r[ci.amt]);
-        }else t[key]=toNum(r[ci.amt]);
-        n++;
-      }
-    }
-
-    /* --- 申報價值:DECLARED_VALUE 工作表,一列四個數 -------------------
-       空格不動原值 —— 空白模板匯進來不該把設定洗掉,和 Zone 的規則同一條。 */
-    const dvs=bk.sheets["DECLARED_VALUE"];
-    if(dvs&&dvs.length>1){
-      const hdr=sheetHeader(dvs);
-      const si=hdr.indexOf("Service");
-      const map=[["Free up to","dv_free_limit","free"],
-                 ["Minimum charge","dv_min_charge","min"],
-                 ["Step","dv_unit","unit"],["Per step","dv_unit_rate","rate"],
-                 ["Max value","dv_max","max"],["Flat up to","","flat"]];
-      const a=CFG.raw.accessorial_charges||(CFG.raw.accessorial_charges={});
+  /* --- 申報價值:DECLARED_VALUE 工作表,一條服務一列 ------------------
+     欄名不分大小寫,舊名也認;沒有 Service 欄的舊模板(全域一列)寫進每一
+     條服務,Default / All 也是;服務名可帶 Commercial / Residential 後綴。
+     空格不動原值 —— 空白模板匯進來不該把設定洗掉,和 Zone 的規則同一條。
+     認不得的服務名不猜(猜錯會把費率寫到別條線上),記下來讓外面講。 */
+  const dvName=bk.order.find(isDvName);
+  const dvs=dvName?bk.sheets[dvName]:null;
+  if(dvs&&dvs.length>1){
+    const norm=s=>String(s==null?"":s).toLowerCase().replace(/[^a-z0-9一-鿿]+/g,"");
+    const hdr=sheetHeader(dvs).map(norm);
+    const col=(...names)=>{ for(const nm of names){ const i=hdr.indexOf(norm(nm)); if(i>=0) return i; } return -1; };
+    const si=col("Service","Channel","Shipment Type","服務","渠道");
+    const cols={free:col("Free up to","Free allowance","Free limit","Free","免費額度"),
+                min:col("Minimum charge","Min charge","Minimum","最低收費"),
+                unit:col("Step","Unit","Per","級距","級距單位"),
+                rate:col("Per step","Unit rate","Rate","Per unit","每級距","每級距費率"),
+                max:col("Max value","Max insurable value","Maximum","Max","Cap","最高保額","上限"),
+                flat:col("Flat up to","Flat","Flat limit","固定費率適用至")};
+    if(Object.values(cols).every(i=>i<0)) shapes.push("DECLARED_VALUE!columns");
+    else{
+      sawShape++;
+      const fams=dvFamilies();
+      const byNorm=new Map(fams.map(f=>[norm(f),f]));
+      const resolve=who=>{
+        const w=String(who==null?"":who).trim();
+        if(!w||/^(default|all|\*|全部|預設|所有)$/i.test(w)) return fams;
+        const f=byNorm.get(norm(svcOfChan(w)))||byNorm.get(norm(w));
+        return f?[f]:null;
+      };
       const ov=CFG.raw.declared_value_by_channel||(CFG.raw.declared_value_by_channel={});
-      const known=new Set([...new Set(Object.keys(CFG.raw.builtin_service_zones||{})
-                    .map(svcOfChan))]);
-      let m=0;
+      const done=new Set();
       for(let r=1;r<dvs.length;r++){
         const row=dvs[r]; if(!row) continue;
-        /* 沒有 Service 欄就不知道這一列是哪條服務的費率 —— 不猜。
-           舊模板(全域一列)也走這裡:講出來,讓人重新匯出一份。 */
-        if(si<0){ shapes.push("DECLARED_VALUE!noservice"); break; }
-        const who=String(row[si]||"").trim();
-        if(!who) continue;
-        if(!known.has(who)){
-          /* 認不得的服務名不猜,講出來就好 —— 猜錯會把費率寫到別條線上。 */
-          shapes.push("DECLARED_VALUE?"+who); continue;
+        const vals={};
+        for(const k of Object.keys(cols)){
+          const i=cols[k]; if(i<0||blankCell(row[i])) continue;
+          vals[k]=String(toNum(row[i]));
         }
-        for(const [,,ok] of map){
-          const col=map.find(x=>x[2]===ok)[0];
-          const i=hdr.indexOf(col);
-          if(i<0||blankCell(row[i])) continue;
-          (ov[who]||(ov[who]={}))[ok]=String(toNum(row[i]));
-          m++;
+        if(!Object.keys(vals).length) continue;
+        const targets=resolve(si>=0?row[si]:"");
+        if(!targets){ dvSkipped.push(String(row[si]).trim()); continue; }
+        for(const f of targets){
+          const o=ov[f]||(ov[f]={});
+          for(const k of Object.keys(vals)) o[k]=vals[k];
+          done.add(f);
         }
       }
-      if(m){ n+=m; shapes.push("DECLARED_VALUE("+m+")"); }
+      if(done.size){ n+=done.size; shapes.push("DECLARED_VALUE("+done.size+")"); }
     }
+  }
 
-    CFG=readConfig(CFG.raw); DIRTY=true; renderConfigTabs();
-    setStatus((LANG?"Imported ":"已匯入 ")+n+(LANG?" rate row(s)":" 列費率")
-      +(shapes.length?"  ["+shapes.join(" ")+"]":""));
-  }).catch(err=>{
-    setStatus((err&&err.message)||String(err));
-  }).then(()=>{ inp.value=""; });
+  /* --- 長表:Fee Type | Shipment Type | Zone | Amount ----------------
+     本站自己匯出的形狀。上面幾種都沒中才走這裡。 */
+  /* 認得的形狀都看過了,只是每一格都空白 —— 那是還沒填的空模板,不是
+     格式不對。走到下面的長表分支會冒出「沒有 Fee Type 欄」,講的是另一
+     件事,拿到空模板的人會以為檔壞了。 */
+  if(!n&&sawShape&&!dvSkipped.length)
+    return {n, shapes, dvSkipped, err:LANG?"nothing in that file is filled in — no change"
+                                         :"這個檔每一格都是空的,沒有變更"};
+  if(!n&&!shapes.length&&!dvSkipped.length&&!sawShape){
+    const rows=bk.sheets[bk.order.find(x=>(bk.sheets[x]||[]).length>1)||bk.order[0]]||[];
+    if(rows.length<2) return {n, shapes, dvSkipped, err:LANG?"that file is empty":"這個檔是空的"};
+    const hdr=rows[0].map(c=>String(c||"").trim().toLowerCase());
+    const ci={fee:hdr.indexOf("fee type"),ch:hdr.indexOf("shipment type"),
+              z:hdr.indexOf("zone"),amt:hdr.indexOf("amount")};
+    if(ci.fee<0||ci.ch<0||ci.amt<0)
+      return {n, shapes, dvSkipped, err:LANG?"no Fee Type / Shipment Type / Amount columns, and no AHS_LPS, FLAT_CHARGES or DECLARED_VALUE sheet"
+                                            :"沒有 Fee Type / Shipment Type / Amount 欄,也沒有 AHS_LPS、FLAT_CHARGES 或 DECLARED_VALUE 工作表"};
+    for(const r of rows.slice(1)){
+      const fee=feeKey(r[ci.fee]), ch=String(r[ci.ch]||"").trim();
+      if(!fee||!ch) continue;
+      const key=fee+"|||"+ch, z=(ci.z>=0?String(r[ci.z]||"").trim():"");
+      if(z){
+        if(typeof t[key]!=="object"||t[key]===null) t[key]={};
+        t[key][z]=toNum(r[ci.amt]);
+      }else t[key]=toNum(r[ci.amt]);
+      n++;
+    }
+  }
+  return {n, shapes, dvSkipped, err:""};
+}
+$("#fImportAcc") && ($("#fImportAcc").onchange=async e=>{
+  const inp=e.target, files=[...((inp&&inp.files)||[])];
+  if(!files.length){ if(inp) inp.value=""; return; }
+  /* 可以一次選好幾個檔:一條渠道一份模板的,不必一份一份按。 */
+  let n=0, shapes=[], dvSkipped=[], errs=[];
+  const tag=f=>files.length>1?f.name+": ":"";
+  for(const f of files){
+    setStatus((LANG?"Reading ":"讀取 ")+f.name+"…");
+    try{
+      const r=accImportBook(await readWorkbookRows(f));
+      n+=r.n; dvSkipped.push(...r.dvSkipped);
+      shapes.push(...r.shapes.map(s=>tag(f)+s));
+      if(r.err) errs.push(tag(f)+r.err);
+    }catch(err){ errs.push(tag(f)+((err&&err.message)||String(err))); }
+  }
+  if(n){ CFG=readConfig(CFG.raw); DIRTY=true; renderConfigTabs(); }
+  const warn=[];
+  if(dvSkipped.length) warn.push(L("申報價值:認不得的服務,未匯入:","Declared value: unrecognised service(s), not imported: ")
+                                 +[...new Set(dvSkipped)].join(", "));
+  warn.push(...errs);
+  if(!n&&warn.length){ setStatus(warn.join("; ")); toast(warn.join("\n"),false); if(inp) inp.value=""; return; }
+  setStatus((LANG?"Imported ":"已匯入 ")+n+(LANG?" rate row(s)":" 列費率")
+    +(files.length>1?(LANG?" from "+files.length+" files":",共 "+files.length+" 個檔"):"")
+    +(shapes.length?"  ["+shapes.join(" ")+"]":"")
+    +(warn.length?"  ⚠ "+warn.join("; "):""));
+  if(warn.length) toast(warn.join("\n"),false);
+  if(inp) inp.value="";
 });
 $("#bSetFuel") && ($("#bSetFuel").onclick=()=>openFuel());
 $("#bDvOpen") && ($("#bDvOpen").onclick=()=>openDvSet());
@@ -19492,6 +19567,7 @@ const I18N={
   "btn.impacc":["匯入清單","Import List"],
   "btn.removeticked":["✕ 移除勾選","✕ Remove Ticked"],
   "btn.exportacc":["匯出附加費範本","Export Accessorials Template"],
+  "btn.exportaccall":["匯出全部渠道範本","Export All Channels Template"],
   "btn.importacc":["匯入附加費範本","Import Accessorials Template"],
   "hd.code":["UPS 收費代碼查詢","UPS Charge Code Lookup"],
   "hint.code":["每個收費代碼代表什麼。按「掃描已載入帳單」列出這張帳單實際出現的代碼。",
