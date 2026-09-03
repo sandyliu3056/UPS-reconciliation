@@ -13466,11 +13466,16 @@ function reconParse(sheetRows){
   const out=[], issues=[], sumWarn=[];
   const seenTrk=new Map();
   const known=new Set(cusReg().map(c=>c.code));
+  let untouched=0;
   for(let i=1;i<rows.length;i++){
     const r=rows[i], ln=i+1;
     const cell=k=>ix[k]>=0?reconTxt(r[ix[k]]):"";
     const cus=cusNorm(cell("cus"));
     const amtRaw=cell("amt");
+    /* 新版式的模板每一個追蹤號都先列好了;WMS / TMS 那邊沒有這一件(不是他們出的、
+       或沒開帳)就整列不填。同仁一格都沒動的列不是錯,跳過、記個數,不進檔案。 */
+    if(isNew && !cus && !cell("order") && !amtRaw && !cell("chan") && !cell("zone") && !cell("wt")
+       && !chgIx.some(([,j])=>reconTxt(r[j])!=="")){ untouched++; continue; }
     const trks=cell("trk").split(/[,;\n\r]+/).map(reconTrk).filter(Boolean);
     const ref1=cell("ref1"), ref2=cell("ref2");
     /* 單號可以不填:沒填就用帳單上的參考號 1、2,再不然用追蹤號 —— 一個追蹤號
@@ -13517,7 +13522,7 @@ function reconParse(sheetRows){
     }
     out.push(row);
   }
-  return {rows:out, issues, sumWarn};
+  return {rows:out, issues, sumWarn, untouched};
 }
 
 /* 欄位太多,filter 範圍要用真的欄號算出來,寫死會少蓋。 */
@@ -14547,13 +14552,16 @@ function reconAccept(p, fname){
     reconMsg(L("有 "+p.issues.length+" 列不能收,整份沒有匯入。",
                p.issues.length+" row(s) rejected, nothing imported."),false);
     return false; }
+  /* 一格都沒填的列(WMS / TMS 沒有這一件)跳過了,要講一聲,不然人會以為少了。 */
+  const skipNote=p.untouched?L("(另 "+p.untouched+" 列沒有 WMS / TMS 資料,略過)",
+                                " ("+p.untouched+" row(s) without WMS / TMS data skipped)"):"";
   /* 帳單還沒進來:先收下、留著,帳單一匯入(06)就自動比對。 */
   if(!CFG||!SHIPS||!SHIPS.length){
     RECON={issues:[], res:null, list:p.rows, sumWarn:p.sumWarn||[], fname:fname||"", pending:true};
     const kept=reconRowsSave(p.rows);
     reconRerunBtn(); renderRecon();
-    const m=L("已收下 "+p.rows.length+" 筆。這一期的 UPS 帳單還沒匯入,到「06 UPS 帳單匯入」匯入後會自動比對。",
-              "Accepted "+p.rows.length+" row(s). This period's UPS invoice is not loaded yet — import it under 06 UPS Invoice Import and the comparison runs by itself.");
+    const m=L("已收下 "+p.rows.length+" 筆"+skipNote+"。這一期的 UPS 帳單還沒匯入,到「06 UPS 帳單匯入」匯入後會自動比對。",
+              "Accepted "+p.rows.length+" row(s)"+skipNote+". This period's UPS invoice is not loaded yet — import it under 06 UPS Invoice Import and the comparison runs by itself.");
     reconMsg(m,true); toast(m,true);
     if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
     return true;
@@ -14569,14 +14577,14 @@ function reconAccept(p, fname){
   else renderRecon();
   if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
   if(pf.blocked)
-    reconMsg(L("已對帳 "+p.rows.length+" 筆,其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
-               "Reconciled "+p.rows.length+" row(s); "+pf.blocked
+    reconMsg(L("已對帳 "+p.rows.length+" 筆"+skipNote+",其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
+               "Reconciled "+p.rows.length+" row(s)"+skipNote+"; "+pf.blocked
                +" customer(s) were not repriced — see the notice below."),false);
   else
     reconMsg(L("已對帳 "+p.rows.length+" 筆"
-               +(p.rows.some(r=>r.chg)?"(含逐項費用)":"")+"。",
+               +(p.rows.some(r=>r.chg)?"(含逐項費用)":"")+skipNote+"。",
                "Reconciled "+p.rows.length+" row(s)"
-               +(p.rows.some(r=>r.chg)?" with itemized charges":"")+"."),true);
+               +(p.rows.some(r=>r.chg)?" with itemized charges":"")+skipNote+"."),true);
   return true;
 }
 /* 直接匯入(測試與既有呼叫端用)。畫面上的匯入鈕走預覽那條路。 */
@@ -14598,7 +14606,7 @@ async function reconPreviewImport(file){
   const bad=(p.issues||[]).length;
   const head=`<div class="pvsum">
      <span><b>${esc(r.fname||"—")}</b></span>
-     <span>${rows.length} ${esc(L("筆","rows"))}</span>
+     <span>${rows.length} ${esc(L("筆","rows"))}</span>${p.untouched?`<span>${p.untouched} ${esc(L("列沒有 WMS / TMS 資料,略過","row(s) without WMS / TMS data skipped"))}</span>`:""}
      <span>${itemized} ${esc(L("張含逐項費用","with itemized charges"))}</span>
      <span class="${bad?"neg":""}">${bad} ${esc(L("列被退回","rejected rows"))}</span>
      <span class="${sw?"neg":""}">${sw} ${esc(L("張合計不符","total mismatches"))}</span></div>`;
