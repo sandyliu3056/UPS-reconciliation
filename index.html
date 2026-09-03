@@ -797,6 +797,40 @@ tr.blocked{opacity:.72}
 .subpanel .hint{margin:0 0 10px}
 
 /* 燃油視窗 */
+/* 跑帳單的時候畫面正中央要有東西在動。以前只有最底下那一行狀態字,一批
+   四十個檔跑半分鐘,看起來就像按下去什麼都沒發生。沙漏會翻,沙子會掉,
+   下面一條進度條照檔數走;跑完整個換成一個綠色的勾。 */
+#runModal{width:min(520px,100%)}
+#runModal .modalbody{text-align:center;padding:20px 22px 16px}
+.glass{display:block;margin:2px auto 10px}
+.glass[hidden],.runok[hidden],#runBar[hidden]{display:none}
+.glass .sand{fill:var(--tab)}
+.glass .frame{fill:none;stroke:var(--accent);stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.glass.spin{animation:glassflip 2.6s cubic-bezier(.7,0,.3,1) infinite}
+@keyframes glassflip{0%,72%{transform:rotate(0)}88%,100%{transform:rotate(180deg)}}
+.glass{transform-origin:50% 50%}
+.glass .top{animation:sandtop 2.6s linear infinite}
+.glass .bot{animation:sandbot 2.6s linear infinite}
+.glass .grain{animation:graindrop .55s linear infinite}
+@keyframes sandtop{0%{transform:scaleY(1)}70%,100%{transform:scaleY(.06)}}
+@keyframes sandbot{0%{transform:scaleY(.06)}70%,100%{transform:scaleY(1)}}
+@keyframes graindrop{0%{opacity:0;transform:translateY(-4px)}30%{opacity:1}100%{opacity:0;transform:translateY(7px)}}
+.glass .top{transform-origin:50% 30px}
+.glass .bot{transform-origin:50% 74px}
+@media (prefers-reduced-motion:reduce){
+  .glass.spin,.glass .top,.glass .bot,.glass .grain{animation:none}
+}
+.runstep{font-weight:700;font-size:15px;margin:2px 0 4px;min-height:20px}
+.runsub{color:var(--muted);font-size:12.5px;min-height:18px}
+.runbar{height:12px;margin:12px auto 4px;max-width:360px;background:var(--panel);
+  border:2px solid var(--accent);border-radius:8px;overflow:hidden}
+.runbar i{display:block;height:100%;width:0;background:var(--tab);
+  transition:width .3s ease}
+.runbar.busy i{width:100%;background:repeating-linear-gradient(90deg,
+  var(--tab) 0 14px, var(--panel) 14px 28px);animation:runslide .8s linear infinite}
+@keyframes runslide{from{background-position:0 0}to{background-position:28px 0}}
+.runok{font-size:52px;line-height:1;margin:4px 0 8px;color:#1f7a3d}
+.runbad{color:var(--neg)}
 .modalbg{display:none;position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.35);
   align-items:flex-start;justify-content:center;padding:26px 16px;overflow:auto}
 .modalbg.on{display:flex}
@@ -2880,6 +2914,32 @@ label:has(#newChanOn){display:none !important}
       <button class="act" id="bDynAddSave" data-i18n="btn.save">Save</button>
       <button class="act ghost" id="bDynAddCancel" data-i18n="btn.close">Close</button>
     </div>
+  </div>
+</div>
+
+<!-- 處理帳單時的沙漏。不給關閉鈕:跑到一半關掉只會讓人以為停了。 -->
+<div id="runBg" class="modalbg">
+  <div class="modal sketch" id="runModal">
+    <div class="modalhd"><span id="runTitle">Processing</span>
+      <button class="mx" id="bRunX" hidden>✕</button></div>
+    <div class="modalbody">
+      <svg class="glass spin" id="runGlass" width="92" height="112" viewBox="0 0 64 104" aria-hidden="true">
+        <g class="frame">
+          <path d="M14 8h36M14 96h36"/>
+          <path d="M18 8c0 18 14 24 14 44s-14 26-14 44"/>
+          <path d="M46 8c0 18-14 24-14 44s14 26 14 44"/>
+        </g>
+        <rect class="sand top" x="21" y="14" width="22" height="22" rx="3"/>
+        <rect class="sand bot" x="21" y="70" width="22" height="22" rx="3"/>
+        <rect class="sand grain" x="30.5" y="48" width="3" height="8" rx="1.5"/>
+      </svg>
+      <div class="runok" id="runMark" hidden>✓</div>
+      <div class="runstep" id="runStep">—</div>
+      <div class="runsub" id="runSub"></div>
+      <div class="runbar" id="runBar"><i id="runFill"></i></div>
+    </div>
+    <div class="modalft"><span></span>
+      <button class="act" id="bRunOk" hidden>OK</button></div>
   </div>
 </div>
 
@@ -8669,6 +8729,49 @@ function invBatchLabel(){
 function paintTick(){
   return new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
 }
+/* 跑帳單時的沙漏視窗。四十個檔要跑半分鐘,期間畫面上必須有東西在動、而且
+   要講到第幾個檔;跑完換成一個綠色的勾,把數字講清楚 —— 「按了之後不知道
+   有沒有在動」和「不知道好了沒有」是同一件事的兩頭。 */
+function runBusy(title){
+  const bg=$("#runBg"); if(!bg) return;
+  $("#runTitle").textContent=title||L("處理帳單","Processing invoice");
+  /* <svg> 是 SVGElement,沒有 HTMLElement 的 hidden 那個屬性 —— 設了不會有事
+     發生,沙漏會留在完成畫面上跟綠勾疊著。用 style 收。 */
+  $("#runGlass").style.display=""; $("#runGlass").classList.add("spin");
+  $("#runMark").hidden=true; $("#runMark").classList.remove("runbad");
+  $("#runStep").textContent=L("開始…","Starting…");
+  $("#runSub").textContent="";
+  $("#runBar").hidden=false; $("#runBar").classList.add("busy");
+  $("#runFill").style.width="0";
+  $("#bRunOk").hidden=true;
+  $("#bRunX") && ($("#bRunX").hidden=true);
+  bg.classList.add("on");
+}
+/* pct 給了就是照進度走的實心條,沒給就是那條來回跑的斜紋(不知道還要多久) */
+function runStep(step,sub,pct){
+  if(!$("#runBg")||!$("#runBg").classList.contains("on")) return;
+  if(step!=null) $("#runStep").textContent=step;
+  if(sub!=null) $("#runSub").textContent=sub;
+  const bar=$("#runBar");
+  if(pct==null){ bar.classList.add("busy"); }
+  else { bar.classList.remove("busy");
+         $("#runFill").style.width=Math.max(0,Math.min(100,pct))+"%"; }
+}
+function runDone(step,sub,bad){
+  const bg=$("#runBg"); if(!bg) return;
+  $("#runGlass").style.display="none"; $("#runGlass").classList.remove("spin");
+  const mk=$("#runMark");
+  mk.hidden=false; mk.textContent=bad?"✕":"✓";
+  mk.classList.toggle("runbad",!!bad);
+  $("#runStep").textContent=step||(bad?L("沒有完成","Did not finish"):L("成功!","Done!"));
+  $("#runSub").textContent=sub||"";
+  $("#runBar").hidden=true;
+  const ok=$("#bRunOk");
+  ok.hidden=false; ok.textContent=L("好","OK"); ok.focus();
+  $("#bRunX") && ($("#bRunX").hidden=false);
+  bg.classList.add("on");
+}
+function runClose(){ const bg=$("#runBg"); if(bg) bg.classList.remove("on"); }
 /* 一個檔一個檔讀:讀進來、解析完、就把那份字串放掉,再讀下一個。
    以前是選檔的時候把二十一個檔全部讀成字串留在記憶體裡(391 MB 的 CSV 在
    JS 裡是七八百 MB),而且為了驗格式先整份解析一次、按下處理再解析第二次
@@ -18213,18 +18316,29 @@ $("#bRun").onclick=async ()=>{
      同時在解析,記憶體加倍。 */
   const btn=$("#bRun");
   if(btn) btn.disabled=true;
+  runBusy();
+  await paintTick();
   try{
     let ing, dup=[];
     if(INV_BATCH.length){
       const n=INV_BATCH.length;
-      const b=await invBatchIngest((i,name)=>setStatus(
-        (LANG?"Reading ":"讀取 ")+(i+1)+"/"+n+" · "+name+"…"));
+      const b=await invBatchIngest((i,name)=>{
+        setStatus((LANG?"Reading ":"讀取 ")+(i+1)+"/"+n+" · "+name+"…");
+        runStep(L("讀取第 "+(i+1)+" / "+n+" 個檔","Reading file "+(i+1)+" of "+n),
+                name, Math.round(i/n*55));
+      });
       ing=b.ing; dup=b.dup;
       INV_NAME="";   /* 每一列已經記了自己的來源檔,不要再整批蓋成同一個名字 */
       setStatus(L("計價中("+ing.rows.length.toLocaleString()+" 列)…",
                   "Pricing ("+ing.rows.length.toLocaleString()+" lines)…"));
+      /* 計價是一整段跑完才回來的,分不出進度 —— 條子改成來回跑的斜紋,
+         不要停在 70% 讓人以為卡住了。 */
+      runStep(L("整理出貨清單","Grouping shipments"),
+              ing.rows.length.toLocaleString()+L(" 列"," lines"), 58);
       await paintTick();
     } else {
+      runStep(L("讀取帳單","Reading the invoice"), INV_NAME||"", null);
+      await paintTick();
       ing=ingest(INV);
       if(!looksLikeInvoice(ing.rows))
         throw new Error(L("格式不正確:這不是 UPS 帳單檔,沒有匯入。",
@@ -18243,11 +18357,14 @@ $("#bRun").onclick=async ()=>{
       +esc(L("同一期出現在兩個檔裡,以後面的檔為準。","The same invoice was in two files; the later file was used."))
       +`</b> `+esc(dup.join(", "))+`</div>`;
   }catch(e){
+    runDone(L("沒有完成","Did not finish"),(e&&e.message)||String(e),true);
     $("#cfgNote").innerHTML=`<div class="note warn"><b>`
       +L("讀不動這張帳單。","Could not read that invoice.")+`</b> ${esc(e.message)}</div>`;
     setStatus(L("失敗","Failed"));
   }finally{ ready(); }
 };
+$("#bRunOk") && ($("#bRunOk").onclick=runClose);
+$("#bRunX") && ($("#bRunX").onclick=runClose);
 
 /* 真正的產生報表。 */
 async function runReport(ing, ships){
@@ -18265,8 +18382,25 @@ async function runReport(ing, ships){
     return ensureHistoryMap()
       .then(()=>prefetchOriginals(SHIPS))
       .then(()=>prefetchAddressClass(SHIPS).catch(()=>0))
-      .then(()=>{
-    RATED=SHIPS.map(s=>priceShipment(CFG,s));
+      .then(async()=>{
+    /* 一次算完十六萬個追蹤號要十幾秒,期間畫面完全停住,進度條只能在那裡
+       來回跑 —— 那條斜紋講不出「還要多久」。改成一批一批算,每一批之間讓
+       瀏覽器把畫面畫出來,進度就是真的:算到第幾個、佔幾成。 */
+    RATED=new Array(SHIPS.length);
+    const CH=2000;
+    for(let i=0;i<SHIPS.length;i+=CH){
+      const end=Math.min(i+CH, SHIPS.length);
+      for(let j=i;j<end;j++) RATED[j]=priceShipment(CFG,SHIPS[j]);
+      if(SHIPS.length>CH){
+        runStep(L("計價中","Pricing"),
+                end.toLocaleString()+" / "+SHIPS.length.toLocaleString()
+                  +L(" 個追蹤號"," tracking numbers"),
+                60+Math.round(end/SHIPS.length*32));
+        await paintTick();
+      }
+    }
+    runStep(L("產生報表","Building the report"), "", 95);
+    await paintTick();
     /* 這支工具不倒重計價活頁簿 —— 按下去要的是「把帳單算好,好拿去對帳」,
        不是每次都掉一份幾萬列的檔案下來。要那份檔案請用重算工具。 */
     /* 住宅／商業改用系統判定,這是一則說明,不是這次跑批失敗 —— 以前它走
@@ -18282,12 +18416,15 @@ async function runReport(ing, ships){
     /* 狀態列一行講完:幾列、幾個追蹤號、幾期進了歷史。期號一個個列出來會塞滿
        半個畫面,而且沒有人會去讀;讀檔有沒有標題列是程式自己的事。 */
     const nHist=(filed.replaced||[]).length+(filed.added||[]).length;
-    setStatus(L("完成:","Done: ")+ROWS.length.toLocaleString()
+    const doneLine=ROWS.length.toLocaleString()
       +L(" 列 / "," lines / ")+SHIPS.length.toLocaleString()
       +L(" 個追蹤號"," tracking numbers")
       +(filed.count&&nHist?"  ·  "+L(nHist+" 期"+((filed.replaced||[]).length?"已更新歷史":"已存入歷史"),
-                                     nHist+" invoice(s) "+((filed.replaced||[]).length?"updated in history":"filed to history")):""));
+                                     nHist+" invoice(s) "+((filed.replaced||[]).length?"updated in history":"filed to history")):"");
+    setStatus(L("完成:","Done: ")+doneLine);
+    runDone(L("成功!","Done!"), doneLine);
     }).catch(e=>{
+      runDone(L("沒有完成","Did not finish"),(e&&e.message)||String(e),true);
       $("#cfgNote").innerHTML=`<div class="note warn"><b>`
         +L("讀不動這張帳單。","Could not read that invoice.")+`</b> ${esc(e.message)}</div>`;
       setStatus(L("失敗","Failed"));

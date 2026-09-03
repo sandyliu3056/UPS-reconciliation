@@ -92,10 +92,10 @@ ok(px('html.ink .lf>h3')>=19, '\u6bb5\u843d\u6a19\u984c \u2265 19px');
 ok(px('html.ink .nav button')>=14.5, '\u5074\u6b04 \u2265 14.5px');
 
 console.log('\n[7] \u6c92\u640d\u5230\u539f\u672c\u7684\u6771\u897f');
-ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft').length===16,
-   '61 \u500b .sketch\u300116 \u500b .sketch-soft \u90fd\u5728');
-ok(D.querySelectorAll('table').length===34&&D.querySelectorAll('.modalbg').length===26,
-   '\u8868\u683c 34\u3001\u8996\u7a97 26\uff08\u5df2\u532f\u5165\u7684\u6a21\u677f\u8207\u5b83\u7684\u660e\u7d30\u8996\u7a97\uff09');
+ok(D.querySelectorAll('.sketch').length===62&&D.querySelectorAll('.sketch-soft').length===16,
+   '62 \u500b .sketch\u300116 \u500b .sketch-soft \u90fd\u5728');
+ok(D.querySelectorAll('table').length===34&&D.querySelectorAll('.modalbg').length===27,
+   '\u8868\u683c 34\u3001\u8996\u7a97 27\uff08\u591a\u4e86\u8dd1\u5e33\u55ae\u7684\u6c99\u6f0f\uff09');
 ok(D.querySelectorAll('[data-i18n]').length===621, 'i18n 標記 621 個(補收清單畫面上只列哪一筆哪一項)');
 
 console.log('\n[8] \u7d19\u7684\u984f\u8272');
