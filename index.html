@@ -1543,24 +1543,23 @@ label:has(#newChanOn){display:none !important}
      元素換了,id 和 button[data-p] 沒換 —— showTab 和 applyRole 照舊。 -->
 <aside class="nav" role="tablist" id="tabs">
   <!-- 順序與分組照規格書的側欄視覺稿:設定 → 對帳 → 管理,每一項帶編號。
-       編號是流程 —— 01 計價設定,02 客戶,03 渠道目錄,04 費率,05 對帳作業
-       (匯帳單 → 匯 WMS/TMS → 看結果,三步在同一顆按鈕底下),06 看趨勢,
-       07 查歷史,08 管理。 -->
+       順序就是流程:計價設定、客戶、渠道目錄、費率、對帳作業(匯帳單 → 匯 WMS/TMS
+       → 看結果,三步在同一顆按鈕底下)、看趨勢、查歷史、管理。左欄不再印編號。 -->
   <button role="tab" aria-selected="false" data-p="home" class="display" id="navHome"><i class="nnum">🏠</i><span class="nico"></span><span data-i18n="tab.home">Home</span></button>
   <div class="navgrp" data-i18n="nav.cfg">Configuration</div>
-  <button role="tab" aria-selected="false" data-p="general" class="display"><i class="nnum">01</i><span class="nico">⚙️</span><span data-i18n="tab.general">General Setting</span></button>
-  <button role="tab" aria-selected="false" data-p="rate" class="display"><i class="nnum">02</i><span class="nico">👥</span><span data-i18n="tab.rate">Account &amp; Client Setup</span></button>
-  <button role="tab" aria-selected="false" data-p="cat" class="display"><i class="nnum">03</i><span class="nico">🚚</span><span data-i18n="tab.cat">Channels &amp; Surcharges</span></button>
-  <button role="tab" aria-selected="false" data-p="fill" class="display"><i class="nnum">04</i><span class="nico">💵</span><span data-i18n="tab.fill">Channel &amp; Surcharge Rates</span></button>
+  <button role="tab" aria-selected="false" data-p="general" class="display"><span class="nico">⚙️</span><span data-i18n="tab.general">General Setting</span></button>
+  <button role="tab" aria-selected="false" data-p="rate" class="display"><span class="nico">👥</span><span data-i18n="tab.rate">Account &amp; Client Setup</span></button>
+  <button role="tab" aria-selected="false" data-p="cat" class="display"><span class="nico">🚚</span><span data-i18n="tab.cat">Channels &amp; Surcharges</span></button>
+  <button role="tab" aria-selected="false" data-p="fill" class="display"><span class="nico">💵</span><span data-i18n="tab.fill">Channel &amp; Surcharge Rates</span></button>
   <div class="navgrp" data-i18n="nav.recon">Reconciliation</div>
   <!-- 匯帳單、匯 WMS/TMS、看結果本來是三顆按鈕,其實是同一件事的三步,收成一顆:
        按它回到上次停的那一步,三步在頁面上方的分頁列換。三個頁面的 id 和
        showTab 的名字都沒動,底下收起來的那三顆替 currentTab() 記路。 -->
-  <button role="tab" aria-selected="true" data-p="recon" class="display" id="navRecon"><i class="nnum">05</i><span class="nico">⚖️</span><span data-i18n="tab.reconflow">Reconciliation</span></button>
-  <button role="tab" aria-selected="false" data-p="analysis" class="display"><i class="nnum">06</i><span class="nico">📈</span><span data-i18n="tab.analysis">Analytics Dashboard</span></button>
-  <button role="tab" aria-selected="false" data-p="hist" class="display"><i class="nnum">07</i><span class="nico">🗂️</span><span data-i18n="tab.hist">Invoice History</span></button>
+  <button role="tab" aria-selected="true" data-p="recon" class="display" id="navRecon"><span class="nico">⚖️</span><span data-i18n="tab.reconflow">Reconciliation</span></button>
+  <button role="tab" aria-selected="false" data-p="analysis" class="display"><span class="nico">📈</span><span data-i18n="tab.analysis">Analytics Dashboard</span></button>
+  <button role="tab" aria-selected="false" data-p="hist" class="display"><span class="nico">🗂️</span><span data-i18n="tab.hist">Invoice History</span></button>
   <div class="navgrp" data-i18n="nav.adm">Administration</div>
-  <button role="tab" aria-selected="false" data-p="admin" class="display"><i class="nnum">08</i><span class="nico">🛡️</span><span data-i18n="tab.admin">User Administration</span></button>
+  <button role="tab" aria-selected="false" data-p="admin" class="display"><span class="nico">🛡️</span><span data-i18n="tab.admin">User Administration</span></button>
   <!-- 底下這幾顆收起來(HIDDEN_TABS),各自由上面的入口進去。按鈕留著是因為
        currentTab() 靠 aria-selected 找現在在哪一頁。 -->
   <button role="tab" aria-selected="false" data-p="files"   class="display" data-i18n="tab.files">Batch Invoice Import</button>
