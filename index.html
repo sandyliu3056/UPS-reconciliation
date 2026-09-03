@@ -14307,9 +14307,35 @@ function reconView(mode){
   const show=(id,on)=>{ const e=$("#"+id); if(e&&on===false) e.hidden=true;
                         else if(e&&on===true) e.hidden=false; };
   show("reconTplCard", RECON_VIEW==="data");
+  if(typeof reconSrcPaint==="function") reconSrcPaint();
   if(typeof renderTplHist==="function") renderTplHist();
   /* 結果那幾張交給 renderRecon 決定 —— 它知道現在有沒有結果。 */
   if(typeof renderRecon==="function") renderRecon();
+}
+/* WMS / TMS 這個開關以前只改了一個變數:兩顆按鈕的外觀一樣、抬頭一樣、
+   欄位說明一樣,按了完全看不出差別,只有匯出的模板欄名不同 —— 於是誰也
+   不知道自己現在站在哪一邊。這裡把選到的那一邊寫在畫面上:抬頭、要下載
+   哪一份模板、匯入鈕、以及欄位說明裡的欄名。 */
+function reconSrcPaint(){
+  const src=(typeof RECON_SRC!=="undefined"&&RECON_SRC==="TMS")?"TMS":"WMS";
+  document.querySelectorAll("#reconSrcSeg button").forEach(x=>
+    x.setAttribute("aria-pressed", String(x.dataset.src===src)));
+  /* 選到的那一份模板用實心鈕,另一份留白 —— 一眼看得出按哪一顆。 */
+  for(const [id,s2] of [["#bReconTplW","WMS"],["#bReconTplT","TMS"]]){
+    const b=document.getElementById(id.slice(1));
+    if(b) b.className="act sm"+(s2===src?"":" ghost");
+  }
+  const hd=document.querySelector('#reconTplCard [data-i18n="hd.recon"]');
+  if(hd) hd.textContent=L(src+" 資料", src+" data");
+  const imp=document.getElementById("bReconImp");
+  if(imp) imp.textContent=L("匯入填好的 "+src+" 檔", "Import filled "+src+" file");
+  for(const [k,zh,en] of [
+      ["mp.chk","渠道 · Zone · 計費重 - "+src, "Channel · Zone · Billed Weight - "+src],
+      ["mp.chg","<費用名稱> - "+src, "<charge> - "+src],
+      ["mp.amt","Total Amount - "+src, "Total Amount - "+src]]){
+    const el=document.querySelector('#reconTplCard [data-i18n="'+k+'"]');
+    if(el) el.textContent=L(zh,en);
+  }
 }
 function reconMsg(m,ok){
   /* 兩個入口各有一條狀態列,訊息兩邊都寫 —— 人站在哪一邊都看得到。 */
@@ -14949,6 +14975,17 @@ async function reconAccept(p, fname){
   /* 一格都沒填的列(WMS / TMS 沒有這一件)跳過了,要講一聲,不然人會以為少了。 */
   const skipNote=p.untouched?L("(另 "+p.untouched+" 列沒有 WMS / TMS 資料,略過)",
                                 " ("+p.untouched+" row(s) without WMS / TMS data skipped)"):"";
+  /* 一列都沒填:那是剛下載、還沒填的空模板,不是一份對帳結果。以前這種檔照收,
+     狀態跟著跳成「已比對」、筆數 0 —— 看起來像對完了,其實什麼都沒發生,
+     而且會把上一份對帳從畫面上換掉。收下之前先擋住,把該做的事講清楚。 */
+  if(!p.rows.length){
+    const m=p.untouched
+      ? L("這份模板同仁那幾欄(綠色的「- "+((typeof RECON_SRC!=="undefined"&&RECON_SRC)||"WMS")+"」欄)一格都沒填,"+p.untouched+" 列全部略過,沒有匯入。填好向客戶收的金額再匯一次。",
+          "Nothing is filled in the green \u201c- "+((typeof RECON_SRC!=="undefined"&&RECON_SRC)||"WMS")+"\u201d columns — all "+p.untouched+" row(s) were skipped and nothing was imported. Fill in what was billed to the client and import again.")
+      : L("這份檔沒有可以匯入的資料列。","That file has no rows to import.");
+    reconMsg(m,false); toast(m,false);
+    return false;
+  }
   /* 帳單還沒進來:先收下、留著,帳單一匯入(06)就自動比對。 */
   if(!CFG||!SHIPS||!SHIPS.length){
     RECON={issues:[], res:null, list:p.rows, sumWarn:p.sumWarn||[], fname:fname||"", pending:true};
@@ -15236,12 +15273,12 @@ function bindRecon(){
   /* 來源只影響下載哪一個檔名 —— 欄位是同一套,匯入端不分。 */
   $("#reconSrcSeg") && ($("#reconSrcSeg").onclick=e=>{
     const b=e.target.closest("button[data-src]"); if(!b) return;
-    RECON_SRC=b.dataset.src==="TMS"?"TMS":"WMS";
+    RECON_SRC=b.dataset.src==="TMS"?"TMS":"WMS"; reconSrcPaint();
     document.querySelectorAll("#reconSrcSeg button").forEach(x=>
       x.setAttribute("aria-pressed", String(x.dataset.src===RECON_SRC)));
   });
   /* WMS 與 TMS 各自一顆下載鈕;按哪一顆,來源就切到哪一邊,之後的匯入與匯出跟著走。 */
-  const reconSetSrc=src=>{ RECON_SRC=src==="TMS"?"TMS":"WMS";
+  const reconSetSrc=src=>{ RECON_SRC=src==="TMS"?"TMS":"WMS"; reconSrcPaint();
     document.querySelectorAll("#reconSrcSeg button").forEach(x=>
       x.setAttribute("aria-pressed", String(x.dataset.src===RECON_SRC))); };
   for(const [id,src] of [["#bReconTplW","WMS"],["#bReconTplT","TMS"]])
@@ -20231,6 +20268,8 @@ function applyLang(){
     try{ renderRecon(); }catch(e){}
   }
   if(typeof renderAnalysis==="function"){ try{ renderAnalysis(); }catch(e){} }
+  /* 這幾個字是照著選到的來源寫的,字典蓋回去之後要再寫一次。 */
+  if(typeof reconSrcPaint==="function"){ try{ reconSrcPaint(); }catch(e){} }
   /* 三個帳號視窗的抬頭是算出來的(改的是誰、打了幾個字),開著切語言
      會停在原本那一種。只有開著的那個要重寫。 */
   if($("#uPwBg") && $("#uPwBg").classList.contains("on") && UPW){
