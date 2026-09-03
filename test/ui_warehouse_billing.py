@@ -56,6 +56,9 @@ check(app.edit_lv == "L1" and app.lv_box.get() == "Default", "a Default level ex
 check(app.c_level_box.get() == "Default", "blank client form defaults to the editing level")
 check(app.rate_w["c20"][0].get() == "380", "rates page shows the level's rates")
 check(app.rate_who.cget("text") == "Editing: Default", "rates page names the level being edited")
+check(not hasattr(app, "cl_box"), "no client box in the top bar")
+check(root.winfo_width() >= root.winfo_screenwidth() - 60, "window opens maximised")
+check([app.L[f"p{i}_title"].cget("text") for i in range(1, 6)] == ["Rate levels", "Clients", "Rates", "This period", "Invoice"], "every page has a title")
 tab(0); shot("01_levels_empty_en")
 
 # ---- levels page ---------------------------------------------------------
@@ -113,6 +116,36 @@ check(app.c_level_box.get() == "L9 (level deleted)" and app.level_from_box() == 
 app.on_update(); check(app.b.clients["NOL"]["level"] == "L9", "saving the form unchanged keeps the lost id")
 app.select("GEN"); root.update()
 shot("04_clients_en")
+
+# ---- pickers: search + select on every page that works on a client -------
+print("== pickers")
+tab(3); root.update()
+check([r[0] for r in rows(app.pick_calc["tv"])] == ["GEN", "NOL"] and app.pick_calc["tv"].selection() == ("GEN",), "④ picker lists every client with the current one selected")
+check(app.pick_calc["cur"].cget("text") == "GEN  Geniqua Client", "④ picker says who is current")
+app.pick_calc["var"].set("nol"); root.update()
+check([r[0] for r in rows(app.pick_calc["tv"])] == ["NOL"], "④ picker filters by code")
+app.pick_calc["tv"].selection_set("NOL"); root.update()
+check(app.cur == "NOL" and app.pick_calc["cur"].cget("text") == "NOL  No Level Yet", "clicking a row in ④ brings that client in")
+check(app.calc_lv.cget("text") == app.tr("lost_level").format(id="L9"), "④ repaints for the picked client")
+app.pick_calc["var"].set(""); root.update()
+check(len(rows(app.pick_calc["tv"])) == 2 and app.pick_calc["tv"].selection() == ("NOL",), "clearing the filter lists all, current stays selected")
+check(app.pick_bill["tv"].selection() == ("NOL",) and app.cl_tv.selection() == ("NOL",), "the other pickers follow")
+app.pick_cus["var"].set("level"); root.update()
+check([r[0] for r in rows(app.cl_tv)] == ["GEN", "NOL"], "② search matches the level name (and the lost-level label)")
+app.pick_cus["var"].set("level a geniqua"); root.update()
+check([r[0] for r in rows(app.cl_tv)] == ["GEN"], "② search: every word must match")
+app.pick_cus["var"].set("deleted"); root.update()
+check([r[0] for r in rows(app.cl_tv)] == ["NOL"], "② search finds the lost-level label")
+app.pick_cus["var"].set(""); root.update()
+tab(4); app.pick_bill["tv"].selection_set("GEN"); root.update()
+check(app.cur == "GEN" and app.bill_who.cget("text").startswith("GEN"), "clicking a row in ⑤ brings the client into the invoice")
+tab(0); app.lv_q.set("default"); root.update()
+check([r[0] for r in rows(app.lv_tv)] == ["Default"], "① level search filters the list")
+app.lv_q.set(""); root.update()
+check(len(rows(app.lv_tv)) == 3, "① clearing the search lists all levels")
+tags = [app.cl_tv.item(i, "tags") for i in app.cl_tv.get_children()]
+check([t[-1] for t in tags] == ["even", "odd"], "rows are striped")
+shot("04b_calc_picker_en")
 
 # ---- delete level guard --------------------------------------------------
 print("== delete guard")

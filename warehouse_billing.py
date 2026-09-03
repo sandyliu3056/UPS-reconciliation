@@ -1187,6 +1187,11 @@ T = {
  "cl_new": "新增客戶", "cl_edit": "修改選定客戶", "cl_list": "客戶清單",
  "money": "${v}",
  "levels": "費率層級", "level": "費率層級", "editing": "正在編輯",
+ "find_client": "搜尋客戶", "find_level": "搜尋層級",
+ "find_hint": "輸入代碼、名稱、聯絡人或層級過濾，點一列就帶進這一頁",
+ "pick_cols": ("代碼", "名稱", "費率層級"),
+ "p1_title": "費率層級", "p2_title": "客戶", "p3_title": "費率",
+ "p4_title": "本期計算", "p5_title": "帳單",
  "lv_name": "層級名稱", "lv_new": "＋ 新增層級", "lv_copy": "複製選定層級",
  "lv_rename": "改名", "lv_del": "刪除層級", "lv_list": "層級清單",
  "lv_cols": ("層級", "客戶數", "已設單價", "狀態"),
@@ -1256,6 +1261,11 @@ T = {
  "cl_new": "Add client", "cl_edit": "Update selected", "cl_list": "Client list",
  "money": "${v}",
  "levels": "Rate levels", "level": "Rate level", "editing": "Editing",
+ "find_client": "Find client", "find_level": "Find level",
+ "find_hint": "Type a code, name, contact or level to filter; click a row to bring it into this page",
+ "pick_cols": ("Code", "Name", "Rate level"),
+ "p1_title": "Rate levels", "p2_title": "Clients", "p3_title": "Rates",
+ "p4_title": "This period", "p5_title": "Invoice",
  "lv_name": "Level name", "lv_new": "+ New level", "lv_copy": "Duplicate selected",
  "lv_rename": "Rename", "lv_del": "Delete level", "lv_list": "Level list",
  "lv_cols": ("Level", "Clients", "Rates set", "State"),
@@ -1753,6 +1763,7 @@ class App:
         self.themed, self.plain, self.cards = [], [], []
         self.rate_w, self.rate_rows, self.rate_grp = {}, [], {}
         self.trees = []
+        self.pickers = []
         self._painting = False
         self.edit_pick_index = None
 
@@ -1765,8 +1776,8 @@ class App:
             pass
         self.s.configure("TNotebook", borderwidth=0, padding=0,
                          tabmargins=(6, 6, 6, 0))
-        self.s.configure("TNotebook.Tab", padding=(px(11), px(7)),
-                         borderwidth=0, font=title_font(10, "bold"))
+        self.s.configure("TNotebook.Tab", padding=(px(16), px(8)),
+                         borderwidth=0, font=title_font(11, "bold"))
         row_font = tkfont.Font(font=data_font(10))
         self.s.configure("Treeview",
                          rowheight=max(px(28),
@@ -1809,12 +1820,9 @@ class App:
         bar = tk.Frame(self.body)
         bar.pack(fill="x", pady=(0, px(6)))
         self.plain.append(bar)
-        self.lab(bar, "client", size=10).pack(side="left", padx=(0, px(6)))
-        self.cl_box = self.combo(bar, width=36)
-        self.cl_box.pack(side="left")
-        self.cl_box.bind("<<ComboboxSelected>>", self.on_pick)
-        # 右邊:正在編輯哪一層。跟 UPS 對帳工具右上角那顆 Editing 一樣,
-        # 每一頁都看得到,③ 費率頁改的就是它。
+        # 客戶不在這條列上:② ④ ⑤ 各自有搜尋框和清單,打字過濾、點一列
+        # 就把客戶帶進那一頁。這裡只剩「正在編輯哪一層」—— 跟 UPS 對帳工具
+        # 右上角那顆 Editing 一樣,每一頁都看得到,③ 費率頁改的就是它。
         self.lv_box = self.combo(bar, width=18)
         self.lv_box.pack(side="right")
         self.lv_box.bind("<<ComboboxSelected>>", self.on_pick_level)
@@ -1839,7 +1847,7 @@ class App:
         self.foot_in.pack(fill="x", padx=px(18), pady=px(8))
         self.t_period = tk.Label(self.foot_in, font=ui_font(10))
         self.t_period.pack(side="left")
-        self.total_val = tk.Label(self.foot_in, font=data_font(17, "bold"),
+        self.total_val = tk.Label(self.foot_in, font=data_font(20, "bold"),
                                   text="$0.00")
         self.total_val.pack(side="left", padx=px(10))
         self.small(self.foot_in, "clear", self.on_clear, pop=POP["coral"]).pack(side="left")
@@ -1855,6 +1863,23 @@ class App:
         # 設定做過一次就不會再改;每個月打開來要做的事在 ④。
         if self.b.clients:
             self.nb.select(self.pages[3])
+        self.maximize()
+
+    def maximize(self):
+        """開到最大。Windows 吃 zoomed,X11 吃 -zoomed;沒有視窗管理員
+        (或兩個都不理)就直接填滿螢幕。minsize 留著,縮回去版面不會壞。"""
+        root = self.root
+        sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
+        for attempt in (lambda: root.state("zoomed"),
+                        lambda: root.attributes("-zoomed", True)):
+            try:
+                attempt()
+            except tk.TclError:
+                continue
+            root.update_idletasks()
+            if root.winfo_width() >= sw - px(40):
+                return
+        root.geometry(f"{sw}x{sh}+0+0")
 
     def small(self, parent, key, cmd, primary=False, text_key=None,
               pop=None):
@@ -1928,10 +1953,137 @@ class App:
             self.plain += [outer, cv, inner]
             host = inner
         pad = tk.Frame(host)
-        pad.pack(fill="both", expand=True, padx=px(8), pady=(px(10), px(8)))
+        pad.pack(fill="both", expand=True, padx=px(10), pady=(px(12), px(10)))
         self.plain.append(pad)
-        self.lab(pad, f"p{n}_help", "dim", 9).pack(anchor="w", pady=(0, px(10)))
+        head = tk.Frame(pad)
+        head.pack(fill="x", pady=(0, px(12)))
+        self.plain.append(head)
+        self.lab(head, f"p{n}_title", "title", 15).pack(anchor="w")
+        self.lab(head, f"p{n}_help", "dim", 10).pack(anchor="w", pady=(px(2), 0))
         return pad
+
+    # ---- client pickers ---------------------------------------------------
+
+    def client_picker(self, parent, full=False, current=True, height=4):
+        """A search box and a short list. Type to filter, click a row to
+        bring that client into this page. One per page that works on a
+        client -- there is no client box up top to go looking for."""
+        n = len(self.pickers)
+        box = tk.Frame(parent)
+        box.pack(fill="both" if full else "x", expand=full, pady=(0, px(12)))
+        self.plain.append(box)
+        row = tk.Frame(box)
+        row.pack(fill="x", pady=(0, px(6)))
+        self.plain.append(row)
+        self.lab(row, f"pk_l{n}", "plain", 10, text_key="find_client").pack(
+            side="left", padx=(0, px(6)))
+        var = tk.StringVar()
+        self.entry(row, textvariable=var, width=26).pack(side="left")
+        self.lab(row, f"pk_h{n}", "dim", 9, text_key="find_hint").pack(
+            side="left", padx=(px(10), 0))
+        cur = None
+        if current:
+            cur = tk.Label(row, font=title_font(12, "bold"), anchor="e")
+            cur.pack(side="right")
+            self.themed.append(("title", cur))
+        if full:
+            tv = self.table(box, (90, 200, 140, 130, 200), ("w",) * 5, height)
+        else:
+            tv = self.table(box, (90, 260, 160), ("w", "w", "w"), height,
+                            expand=False)
+        # 代碼欄固定寬,開到最大時多出來的寬度給名稱和備註,不是給代碼。
+        tv.column("c0", stretch=False)
+        pk = {"var": var, "tv": tv, "full": full, "cur": cur}
+        self.pickers.append(pk)
+        var.trace_add("write", lambda *a, pk=pk: self.fill_picker(pk))
+        tv.bind("<<TreeviewSelect>>", lambda e, pk=pk: self.on_pick_row(pk))
+        return pk
+
+    def client_matches(self, code, q):
+        d = self.b.clients[code]
+        hay = " ".join((code, d["name"], d.get("contact", ""),
+                        d.get("note", ""), self.level_label(code))).lower()
+        return all(t in hay for t in q.lower().split())
+
+    def current_label(self):
+        if not self.cur:
+            return self.tr("need_client")
+        return f"{self.cur}  {self.b.clients[self.cur]['name']}"
+
+    def fill_picker(self, pk):
+        tv, q = pk["tv"], pk["var"].get().strip()
+        codes = [c for c in sorted(self.b.clients)
+                 if not q or self.client_matches(c, q)]
+        self._filling = True
+        try:
+            tv.delete(*tv.get_children())
+            for c in codes:
+                d = self.b.clients[c]
+                vals = (c, d["name"], self.level_label(c))
+                if pk["full"]:
+                    vals += (d.get("contact", ""), d.get("note", ""))
+                tv.insert("", "end", iid=c, values=vals)
+            self.stripe(tv)
+            if self.cur in codes:
+                tv.selection_set(self.cur)
+                tv.see(self.cur)
+        finally:
+            self._filling = False
+        if pk["cur"] is not None:
+            pk["cur"].configure(text=self.current_label())
+
+    def sync_pickers(self):
+        """Every picker highlights the current client and says its name."""
+        self._filling = True
+        try:
+            for pk in self.pickers:
+                tv = pk["tv"]
+                if self.cur and tv.exists(self.cur):
+                    tv.selection_set(self.cur)
+                    tv.see(self.cur)
+                elif tv.selection():
+                    tv.selection_remove(*tv.selection())
+                if pk["cur"] is not None:
+                    pk["cur"].configure(text=self.current_label())
+        finally:
+            self._filling = False
+
+    @staticmethod
+    def stripe(tv):
+        """Alternate row shading. Identity tags stay first -- the calc page
+        reads tags[0] to know which line a row is."""
+        for i, iid in enumerate(tv.get_children()):
+            tags = tv.item(iid, "tags")
+            tags = [tags] if isinstance(tags, str) and tags else list(tags or ())
+            tags = [t for t in tags if t not in ("odd", "even")]
+            tv.item(iid, tags=tags + ["odd" if i % 2 else "even"])
+
+    def duo_cards(self, host, left, right, wide_at=1500):
+        """Two cards: side by side when the window is wide enough, stacked
+        when it is not. Maximised they sit together; at the minimum size
+        they stack, and neither layout squeezes a field."""
+        host.columnconfigure(0, weight=1)
+        host.columnconfigure(1, weight=1)
+        state = {"wide": None}
+
+        def relayout(_e=None):
+            wide = host.winfo_width() >= px(wide_at)
+            if wide == state["wide"]:
+                return
+            state["wide"] = wide
+            for w in (left, right):
+                w.grid_forget()
+            if wide:
+                left.grid(row=0, column=0, sticky="nsew", padx=(0, px(14)),
+                          pady=(0, px(14)))
+                right.grid(row=0, column=1, sticky="nsew", pady=(0, px(14)))
+            else:
+                left.grid(row=0, column=0, columnspan=2, sticky="ew",
+                          pady=(0, px(14)))
+                right.grid(row=1, column=0, columnspan=2, sticky="ew",
+                           pady=(0, px(14)))
+        host.bind("<Configure>", relayout)
+        relayout()
 
     def money(self, v):
         return self.tr("money").format(v=f"{v:,.2f}")
@@ -1953,9 +2105,9 @@ class App:
         if flash:
             self.root.after(900, lambda: self.status.configure(fg=C["dim"]))
 
-    def table(self, parent, widths, aligns, height):
+    def table(self, parent, widths, aligns, height, expand=True):
         panel = SketchPanel(parent, pad=2)
-        panel.pack(fill="both", expand=True)
+        panel.pack(fill="both" if expand else "x", expand=expand)
         self.sketch.append(("panel", panel))
         wrap = panel.body
         cols = tuple(f"c{i}" for i in range(len(widths)))
@@ -1992,10 +2144,18 @@ class App:
         self.small(row, "lv_del", self.on_del_level, pop=POP["coral"]).pack(
             side="left", padx=px(6))
 
-        self.lab(pad, "lv_list", "title", 10).pack(anchor="w", pady=(0, px(6)))
+        row2 = tk.Frame(pad)
+        row2.pack(fill="x", pady=(0, px(6)))
+        self.plain.append(row2)
+        self.lab(row2, "lv_list", "title", 10).pack(side="left")
+        self.lv_q = tk.StringVar()
+        self.entry(row2, textvariable=self.lv_q, width=22).pack(side="right")
+        self.lab(row2, "f_lv_find", "plain", 10, text_key="find_level").pack(
+            side="right", padx=(0, px(6)))
         self.lv_tv = self.table(pad, (260, 90, 110, 130),
                                 ("w", "e", "e", "w"), 11)
         self.lv_tv.bind("<<TreeviewSelect>>", self.on_pick_level_row)
+        self.lv_q.trace_add("write", lambda *a: self.fill_levels())
 
     def build_clients(self, page):
         pad = self.page_head(page, 2)
@@ -2030,9 +2190,9 @@ class App:
         self.small(row, "del", self.on_del, pop=POP["coral"]).pack(side="left")
 
         self.lab(pad, "cl_list", "title", 10).pack(anchor="w", pady=(0, px(6)))
-        self.cl_tv = self.table(pad, (90, 200, 140, 130, 200),
-                                ("w", "w", "w", "w", "w"), 11)
-        self.cl_tv.bind("<<TreeviewSelect>>", self.on_pick_row)
+        self.pick_cus = self.client_picker(pad, full=True, current=False,
+                                           height=11)
+        self.cl_tv = self.pick_cus["tv"]
 
     def build_rates(self, page):
         pad = self.page_head(page, 3)
@@ -2111,14 +2271,17 @@ class App:
 
     def build_calc(self, page):
         pad = self.page_head(page, 4, scroll=True)
+        self.pick_calc = self.client_picker(pad)
         # 這個客戶用哪一層的單價 —— 或者為什麼算不出來。
         self.calc_lv = tk.Label(pad, font=ui_font(10, "bold"), anchor="w",
                                 justify="left", wraplength=px(940))
         self.calc_lv.pack(anchor="w", pady=(0, px(8)))
         self.themed.append(("title", self.calc_lv))
 
-        shell, card = self.card(pad)
-        shell.pack(fill="x", pady=(0, px(14)))
+        duo = tk.Frame(pad)
+        duo.pack(fill="x")
+        self.plain.append(duo)
+        shell_pick, card = self.card(duo)
         self.pick_card = card
 
         self.lab(card, "pick_card", "title", 11).grid(
@@ -2170,8 +2333,7 @@ class App:
         self.small(card, "add_pick", self.on_add_pick, True).grid(
             row=3, column=4, sticky="sw", padx=(px(4), 0), pady=(0, px(6)))
 
-        shell, sc = self.card(pad)
-        shell.pack(fill="x", pady=(0, px(14)))
+        shell_stor, sc = self.card(duo)
         self.storage_card = sc
         self.lab(sc, "storage_card", "title", 11).grid(row=0, column=0, columnspan=7, sticky="w", pady=(0, 3))
         self.lab(sc, "storage_hint", "dim", 9).grid(row=1, column=0, columnspan=7, sticky="w", pady=(0, px(10)))
@@ -2206,6 +2368,7 @@ class App:
             row=3, column=3, sticky="sw", padx=(px(4), 0), pady=(px(8), 0))
         for var in (self.storage_start_var, self.storage_end_var, self.storage_cbm_var):
             var.trace_add("write", lambda *a: self.refresh_storage_preview())
+        self.duo_cards(duo, shell_pick, shell_stor)
 
         row = tk.Frame(pad)
         row.pack(fill="x", pady=(0, px(10)))
@@ -2313,6 +2476,7 @@ class App:
 
     def build_bill(self, page):
         pad = self.page_head(page, 5)
+        self.pick_bill = self.client_picker(pad, current=False)
         head = tk.Frame(pad)
         head.pack(fill="x")
         self.plain.append(head)
@@ -2547,16 +2711,10 @@ class App:
         if sel and sel[0] in self.b.levels and sel[0] != self.edit_lv:
             self.select_level(sel[0])
 
-    def on_pick(self, _=None):
-        codes = sorted(self.b.clients)
-        i = self.cl_box.current()
-        if 0 <= i < len(codes):
-            self.select(codes[i])
-
-    def on_pick_row(self, _=None):
+    def on_pick_row(self, pk, _=None):
         if self._filling:
             return
-        sel = self.cl_tv.selection()
+        sel = pk["tv"].selection()
         if sel and sel[0] in self.b.clients and sel[0] != self.cur:
             self.select(sel[0])
 
@@ -2905,8 +3063,10 @@ class App:
         self.t_period.configure(text=self.tr("period"))
         for i, name in enumerate(self.tr("pages")):
             self.nb.tab(self.pages[i], text=f"  {name}  ")
-        for cid, h in zip(("c0", "c1", "c2", "c3", "c4"), self.tr("cl_cols")):
-            self.cl_tv.heading(cid, text=h)
+        for pk in self.pickers:
+            cols = self.tr("cl_cols") if pk["full"] else self.tr("pick_cols")
+            for i, h in enumerate(cols):
+                pk["tv"].heading(f"c{i}", text=h)
         for cid, h in zip(("c0", "c1", "c2", "c3"), self.tr("lv_cols")):
             self.lv_tv.heading(cid, text=h)
         for tv in (self.calc_tv, self.bill_tv):
@@ -2969,13 +3129,17 @@ class App:
                 self.lv_box.current(ids.index(self.edit_lv))
             else:
                 self.lv_box.set("")
+            q = self.lv_q.get().strip().lower()
+            shown = [l for l in ids
+                     if not q or q in self.b.level_name(l).lower()]
             self.lv_tv.delete(*self.lv_tv.get_children())
-            for lid in ids:
+            for lid in shown:
                 self.lv_tv.insert("", "end", iid=lid, values=(
                     self.b.level_name(lid), len(self.b.level_users(lid)),
                     f"{self.b.rates_set(lid)} / {len(KEYS)}",
                     self.tr("editing") if lid == self.edit_lv else ""))
-            if self.edit_lv in ids:
+            self.stripe(self.lv_tv)
+            if self.edit_lv in shown:
                 self.lv_tv.selection_set(self.edit_lv)
                 self.lv_tv.see(self.edit_lv)
             self.set_level_box(self.cur)
@@ -3027,51 +3191,27 @@ class App:
         self.paint()
 
     def fill_clients(self):
-        codes = sorted(self.b.clients)
-        self._filling = True
-        try:
-            self.cl_box.configure(
-                values=[f"{c}   {self.b.clients[c]['name']}" for c in codes])
-            if self.cur in codes:
-                self.cl_box.current(codes.index(self.cur))
-            else:
-                self.cl_box.set("")
-            self.cl_tv.delete(*self.cl_tv.get_children())
-            for c in codes:
-                d = self.b.clients[c]
-                self.cl_tv.insert("", "end", iid=c, values=(
-                    c, d["name"], self.level_label(c),
-                    d.get("contact", ""), d.get("note", "")))
-            if self.cur in codes:
-                self.cl_tv.selection_set(self.cur)
-        finally:
-            self._filling = False
+        for pk in self.pickers:
+            self.fill_picker(pk)
 
     def select(self, code):
         codes = sorted(self.b.clients)
         self.cur = code if code in self.b.clients else (codes[0] if codes else None)
         if self.cur:
-            self.cl_box.current(codes.index(self.cur))
             d = self.b.clients[self.cur]
             self.c_code.set(self.cur)
             self.c_name.set(d["name"])
             self.c_contact.set(d.get("contact", ""))
             self.c_note.set(d.get("note", ""))
             self.set_level_box(self.cur)
-            # 表格的選取要跟著 cur 走,不然 fill_clients() 剛選的舊列會在下一輪
-            # 事件裡把 cur 再切回去。
-            if self.cl_tv.exists(self.cur):
-                self._filling = True
-                try:
-                    self.cl_tv.selection_set(self.cur)
-                finally:
-                    self._filling = False
             self.say(f"{self.cur}  {d['name']} · {self.level_label(self.cur)}",
                      False)
         else:
-            self.cl_box.set("")
             self.set_level_box(None)
             self.say(self.tr("need_client"), False)
+        # 每一頁的清單都要跟著 cur 走,不然剛填表時選到的舊列會在下一輪事件
+        # 裡把 cur 再切回去。
+        self.sync_pickers()
         self.paint()
 
     def paint(self):
@@ -3128,6 +3268,7 @@ class App:
                 self.calc_tv.insert("", "end", tags=(k,), values=(
                     "", self.long_name(k), f"{q:g}" if q else "",
                     self.unit_of(k), "—", self.money(a) if a else "—"))
+            self.stripe(self.calc_tv)
             self.total_val.configure(text="—")
             return
 
@@ -3148,6 +3289,7 @@ class App:
                 self.unit_of(k),
                 self.tr("byquote") if r is None else self.money(r),
                 self.money(a)))
+        self.stripe(self.calc_tv)
         self.total_val.configure(text=self.money(self.b.total(self.cur)))
 
     def paint_bill(self):
@@ -3188,6 +3330,7 @@ class App:
                 "", "", "", self.money(self.b.group_total(self.cur, g))))
         self.bill_tv.insert("", "end", values=(
             "", self.tr("period"), "", "", "", self.money(self.b.total(self.cur))))
+        self.stripe(self.bill_tv)
 
     def load(self):
         if DATA.exists():
