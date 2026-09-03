@@ -13558,6 +13558,9 @@ async function reconTemplate(src){
   const uc=v=>({v:cents(v||0),t:"n",s:{fmt:MONEY}});
   const mc=()=>"";
   const num=v=>({v:toNum(v),t:"n"});
+  /* 沒有尺寸就留白,不寫 0;Zone 是數字就寫成數字 —— 都是為了 Excel 不畫綠三角。 */
+  const dimTxt=v=>(v==null||String(v).trim()==="0")?"":String(v);
+  const zoneCell=z=>/^\d+$/.test(String(z||""))?{v:+z,t:"n"}:String(z||"");
   const rows=[hd];
   for(const s of ships){
     const ls=s.allLines||s.lines||[];
@@ -13566,8 +13569,8 @@ async function reconTemplate(src){
     const inv=String((ls.find(l=>l.invoice)||{}).invoice||"").trim();
     const d=serial(id.date);
     const r=[d==null?String(id.date||""):{v:d,t:"n",s:{fmt:D,align:"right"}},
-             id.ref1, id.ref2, String(s.tracking||""), id.dimsC, id.dimsA, num(id.entered), num(id.billed),
-             id.zone, id.chan, inv, mc(), mc(), mc(), mc(), mc()];
+             id.ref1, id.ref2, String(s.tracking||""), dimTxt(id.dimsC), dimTxt(id.dimsA), num(id.entered), num(id.billed),
+             zoneCell(id.zone), id.chan, inv, mc(), mc(), mc(), mc(), mc()];
     for(const c of feeCols){ r.push(uc(fees[c])); r.push(mc()); }
     r.push(uc(s.upsTotal)); r.push(mc());
     rows.push(r);
@@ -13615,15 +13618,15 @@ async function reconTemplate(src){
   const idW=[12,22,22,22,16,16,10,10,7,26,18, 16,20,18,10,14];
   const sheets=[
     /* 不凍結、不加篩選:要的人自己在 Excel 開,一下就好;強加上去的反而礙事。 */
-    {name:RECON_SHEET, rows,
+    {name:RECON_SHEET, rows, ignoreTextNumbers:true,
      cols:idW.concat(feeCols.flatMap(n=>[Math.min(30,Math.max(14,n.length+8)),Math.min(30,Math.max(14,n.length+8))]),[18,18]).map(w=>({w}))},
-    {name:"Guide", freeze:{r:1,c:0}, cols:[{w:46},{w:54},{w:62}], rows:guide},
+    {name:"Guide", freeze:{r:1,c:0}, cols:[{w:46},{w:54},{w:62}], rows:guide, ignoreTextNumbers:true},
     /* 兩張對照表,都是可見的參考頁,不做下拉:客戶代碼和渠道都是同仁從自己
        系統抄過來的,下拉反而擋手。渠道列的是族名,旁邊寫系統裡對應的幾條。 */
     {name:"Channels", freeze:{r:1,c:0}, cols:[{w:26},{w:44}],
      rows:[[G("Channel"),G("System channels covered")]]
        .concat(fams.map(f=>[f.name, f.members.join(", ")]))},
-    {name:"Customers", freeze:{r:1,c:0}, cols:[{w:18},{w:34}],
+    {name:"Customers", freeze:{r:1,c:0}, cols:[{w:18},{w:34}], ignoreTextNumbers:true,
      rows:[[G("Customer Code"),G("Customer Name")]]
        .concat(reg.map(c=>[c.code, c.name||c.code]))}
   ];
@@ -14411,6 +14414,15 @@ async function reconExport(){
   const UPSH="FFC000", WMSH="92D050", DIFH="9BC2E6", REPH="FBEBC8";
   const dh=(n,fill)=>({v:n,t:"s",s:{bold:true,fill,color:"1F1F1F",align:"left",wrap:true,border:true}});
   const dm=v=>({v:cents(v||0),t:"n",s:{fmt:MONEY}});
+  /* 日期寫成真正的日期格,不是文字:Excel 才能篩選、排序。認不出格式的照原文。 */
+  const dcell=v=>{
+    const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(normYmd(String(v||""))||"");
+    if(!m) return v==null?"":String(v);
+    const n=Math.floor((Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/86400000);
+    return {v:n,t:"n",s:{fmt:"yyyy-mm-dd",align:"right"}};
+  };
+  const dimTxt=v=>(v==null||String(v).trim()==="0")?"":String(v);
+  const zoneCell=z=>/^\d+$/.test(String(z||""))?{v:+z,t:"n"}:String(z||"");
   /* 應收:重算有算這一項就用重算;沒有(合約沒費率、UPS 才有的項目)照 UPS 實收。 */
   const shouldOf=(o,c)=>{ const F=o.fees||{}; const known=F.known||new Set();
     const rp=cents((F.rep||{})[c]||0);
@@ -14438,10 +14450,10 @@ async function reconExport(){
   block("Total Amount", SUB);
   const dRows=r.orders.map(o=>{
     const fees=o.fees||{rep:{},ups:{}}, billed=o.billedFees||null, u=o.ups||{};
-    const row=[o.invDate||"", o.date||"", o.cus, lvl(o), o.order, (o.trks||[]).join(", "),
-               o.ref1||"", o.ref2||"", u.dimsC||"", u.dimsA||"",
+    const row=[dcell(o.invDate), dcell(o.date), o.cus, lvl(o), o.order, (o.trks||[]).join(", "),
+               o.ref1||"", o.ref2||"", dimTxt(u.dimsC), dimTxt(u.dimsA),
                u.entered==null?"":{v:toNum(u.entered),t:"n"}, u.billed==null?"":{v:toNum(u.billed),t:"n"},
-               o.upsZone||u.zone||"", u.chan||""];
+               zoneCell(o.upsZone||u.zone||""), u.chan||""];
     let tS=0, tW=0;
     /* 運費更正:重算算的是更正後的最後運費,拆不出「原運費」和「更正」兩段。
        有更正的那一列,Base Rate 視同出貨時已收足(Repriced = WMS 收的,差額 0),
@@ -14475,7 +14487,7 @@ async function reconExport(){
   });
   const dWidths=[12,12,16,16,20,22,22,22,16,16,10,10,7,26]
     .concat(charges.flatMap(()=>[14,14,14]),[14,14,14]);
-  const detailSheet={name:"Detail", rows:[h1,h2,...dRows], merges, cols:dWidths.map(w=>({w}))};
+  const detailSheet={name:"Detail", rows:[h1,h2,...dRows], merges, cols:dWidths.map(w=>({w})), ignoreTextNumbers:true};
 
   /* ---- To re-bill:補收清單,和畫面上同一份 —— 一個追蹤號一項費用一列。 ---- */
   const rb=r.rebill||{items:[]};
@@ -14485,11 +14497,11 @@ async function reconExport(){
     ["Type","EFE3CB"],["Less Billed As","EFE3CB"],
     ["Charged by UPS",UPSH],["Billed to Client",WMSH],["Client Rate",REPH],["To re-bill",DIFH],
     ["Fuel %",REPH],["Fuel",DIFH],["To re-bill incl. Fuel",DIFH]].map(([n,f])=>dh(n,f));
-  const rbRows=rb.items.map(it=>[it.cus, cusNameOf(it.cus), it.order, it.trk, it.invDate||"", it.charge, it.desc||"",
+  const rbRows=rb.items.map(it=>[it.cus, cusNameOf(it.cus), it.order, it.trk, dcell(it.invDate), it.charge, it.desc||"",
      typeOf(it), (it.creditFrom||[]).join(", "),
      dm(it.ups), dm(it.billed), it.rate==null?"":dm(it.rate), dm(it.amt),
      it.fuel?{v:it.fuelPct,t:"n",s:{fmt:"0.00"}}:"", dm(it.fuel), dm(it.total)]);
-  const rebillSheet={name:"To re-bill", rows:[rbHead,...rbRows],
+  const rebillSheet={name:"To re-bill", rows:[rbHead,...rbRows], ignoreTextNumbers:true,
     cols:[16,24,20,22,12,40,44,16,36,16,16,14,14,10,12,18].map(w=>({w}))};
 
   /* ---- 每個客戶一頁:給客戶看的對帳單,照舊 SOP 的 Item / Amount 兩欄 ----
@@ -14498,36 +14510,65 @@ async function reconExport(){
   const cusSheets=[];
   const byCusItems=new Map();
   for(const it of rb.items){ (byCusItems.get(it.cus)||byCusItems.set(it.cus,[]).get(it.cus)).push(it); }
-  const usedNames=new Set(["Detail","To re-bill"]);
+  const usedNames=new Set(["Detail","To re-bill","Not in WMS","Not in TMS"]);
   const sheetName=code=>{
     let n=String(code||"Customer").replace(/[\\\/\?\*\[\]:]/g," ").trim().slice(0,31)||"Customer";
     let k=n, i=2; while(usedNames.has(k)) k=(n.slice(0,28)+" "+(i++)); usedNames.add(k); return k;
   };
-  const cHead=[["Tracking Number","EFE3CB"],["Order Number","EFE3CB"],["Transaction Date","EFE3CB"],
+  const cHead=[["Transaction Date","EFE3CB"],["Tracking Number","EFE3CB"],["Order Number","EFE3CB"],
     ["Item","EFE3CB"],["Description","EFE3CB"],["Amount",DIFH]].map(([n,f])=>dh(n,f));
   for(const [code,list] of byCusItems){
-    const rows=[];
-    const sorted=list.slice().sort((a,b)=>a.trk.localeCompare(b.trk)||b.total-a.total);
-    let sum=0;
+    /* 給客戶看的:金額 0 的(費率未設定、合約無此項)不上;同一個追蹤號的幾列,
+       日期、追蹤號、單號合併成一格。 */
+    const rows=[], merges=[];
+    const sorted=list.filter(it=>it.amt>0.004).sort((a,b)=>a.trk.localeCompare(b.trk)||b.total-a.total);
+    if(!sorted.length) continue;
+    let sum=0, grpStart=1, prevTrk=null;
+    const closeGroup=end=>{ if(end>grpStart) for(const c of [0,1,2]) merges.push({s:{r:grpStart,c},e:{r:end,c}}); };
     for(const it of sorted){
-      rows.push([it.trk, it.order, it.invDate||"", it.charge, it.desc||"", dm(it.amt)]); sum=cents(sum+it.amt);
-      if(it.fuel>0.004){ rows.push([it.trk, it.order, it.invDate||"", "Fuel Surcharge", it.charge+" @ "+it.fuelPct+"%", dm(it.fuel)]); sum=cents(sum+it.fuel); }
+      if(prevTrk!==null && it.trk!==prevTrk){ closeGroup(rows.length); grpStart=rows.length+1; }
+      prevTrk=it.trk;
+      rows.push([dcell(it.invDate), it.trk, it.order, it.charge, it.desc||"", dm(it.amt)]); sum=cents(sum+it.amt);
+      if(it.fuel>0.004){ rows.push([dcell(it.invDate), it.trk, it.order, "Fuel Surcharge", it.charge+" @ "+it.fuelPct+"%", dm(it.fuel)]); sum=cents(sum+it.fuel); }
     }
+    closeGroup(rows.length);
     rows.push(["","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:MONEY,bold:true}}]);
-    cusSheets.push({name:sheetName(code), rows:[cHead,...rows], cols:[22,20,12,40,44,14].map(w=>({w}))});
+    cusSheets.push({name:sheetName(code), rows:[cHead,...rows], merges, cols:[12,22,20,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
+  }
+
+  /* ---- 帳單上有、WMS / TMS 檔上沒有的追蹤號:另外一頁,照 Consolidated 列識別欄
+          和 UPS 收的每一項,讓人知道那些件是誰的、UPS 收了什麼。 ---- */
+  const covered=new Set();
+  for(const o of r.orders) for(const t of (o.trks||[])) covered.add(reconTrk(t));
+  const missing=(SHIPS||[]).filter(sh=>!covered.has(reconTrk(sh.tracking)));
+  const notSheets=[];
+  if(missing.length){
+    const mCols=consColsOf(missing);
+    const nHead=AUD_BASE.map(n=>dh(n,"EFE3CB")).concat([dh("Invoice Number","EFE3CB")],
+      mCols.map(n=>dh(n+" - UPS",UPSH)), [dh("Total Amount - UPS",UPSH)]);
+    const nRows=missing.map(sh=>{
+      const ls=sh.allLines||sh.lines||[];
+      const id=consIdentityOf(ls), fees=consFeesOf(ls).fees;
+      const inv=String((ls.find(l=>l.invoice)||{}).invoice||"").trim();
+      return [dcell(id.date), id.ref1, id.ref2, String(sh.tracking||""), dimTxt(id.dimsC), dimTxt(id.dimsA),
+              {v:toNum(id.entered),t:"n"}, {v:toNum(id.billed),t:"n"}, zoneCell(id.zone), id.chan, inv]
+        .concat(mCols.map(c=>dm(fees[c])), [dm(sh.upsTotal)]);
+    });
+    notSheets.push({name:"Not in "+src, rows:[nHead,...nRows], ignoreTextNumbers:true,
+      cols:[12,22,22,22,16,16,10,10,7,26,18].concat(mCols.map(n=>Math.min(30,Math.max(14,n.length+8))),[18]).map(w=>({w}))});
   }
 
   /* Summary / Orders / Charges 先不用 —— 留著,要開回來只改這一個開關。 */
   const RECON_XLS_EXTRA=false;
   const sheets=RECON_XLS_EXTRA
     ? [sheetOf("Summary", sumCols, sumRows, [16,26,16,30,9,12,11,17,17,14,19,19,19], 2),
-       detailSheet, rebillSheet, ...cusSheets,
+       detailSheet, rebillSheet, ...notSheets, ...cusSheets,
        sheetOf("Orders", ordCols, ordRows, [20,12,16,16,30,22,22,22,10,12,22, 18,8,12,16, 20,10,12,16, 14, 15,12,17,19,19], 1),
        sheetOf("Charges", chgCols, chgRows, [14,42,14,22,17,17,14,19,18], 2)]
-    : [detailSheet, rebillSheet, ...cusSheets];
+    : [detailSheet, rebillSheet, ...notSheets, ...cusSheets];
   await xlWrite(sheets, src+"_Reconciliation_Detail.xlsx");
-  reconMsg(L("已匯出:Detail "+r.orders.length+" 筆、補收清單 "+rb.items.length+" 項、客戶對帳單 "+cusSheets.length+" 頁。",
-             "Exported: Detail "+r.orders.length+" row(s), To re-bill "+rb.items.length+" item(s), "+cusSheets.length+" customer sheet(s)."), true);
+  reconMsg(L("已匯出:Detail "+r.orders.length+" 筆、補收清單 "+rb.items.length+" 項"+(missing.length?"、帳單上有但 "+src+" 沒有的 "+missing.length+" 件另一頁":"")+"、客戶對帳單 "+cusSheets.length+" 頁。",
+             "Exported: Detail "+r.orders.length+" row(s), To re-bill "+rb.items.length+" item(s)"+(missing.length?", "+missing.length+" tracking(s) not in "+src+" on their own sheet":"")+", "+cusSheets.length+" customer sheet(s)."), true);
 }
 
 /* 讀檔+解析,不寫入。回 {err} 或 {p, fname} —— 匯入與預覽共用同一條讀取路。 */
@@ -16998,6 +17039,9 @@ async function xlWrite(sheets, fname, onProgress){
               +" sqref=\""+xe(d.sqref)+"\">"
               +"<formula1>"+xe(String(d.list||"").replace(/^=/,""))+"</formula1>"
               +"</dataValidation>").join("")+"</dataValidations>":"")
+      /* 追蹤號、單號、參考號都是文字,Excel 會在每一格角落畫綠三角說「數字存成文字」——
+         整頁關掉那個提示,識別欄還是文字。 */
+      +(sh.ignoreTextNumbers?"<ignoredErrors><ignoredError sqref=\"A1:XFD1048576\" numberStoredAsText=\"1\"/></ignoredErrors>":"")
       +"</worksheet>"));
     sheetXml.push(chunks);
   }
