@@ -50,7 +50,7 @@ ok(/Patrick Hand/.test(V('--bodyfam'))&&/Patrick Hand/.test(V('--dispfam')),
 console.log('\n[2] \u4e00\u500b\u5916\u89c0\uff0c\u6c92\u6709\u958b\u95dc');
 ok(R.classList.contains('ink'), 'html \u6302\u4e0a\u4e86 ink');
 ok(!D.getElementById('inkSel'), '\u6a19\u984c\u5217\u6c92\u6709\u591a\u51fa\u9078\u55ae');
-ok(D.querySelectorAll('.titlebar .ctrls select').length===5, '\u539f\u672c\u4e94\u9846\u9078\u55ae\u539f\u5c01\u4e0d\u52d5');
+ok(D.querySelectorAll('.titlebar .ctrls select').length===6, '六顆選單:原本五顆加上語言');
 ok(!/ink-full|ink-body|ink-paint/.test(face), '\u6a23\u5f0f\u88e1\u6c92\u6709\u6b98\u7559\u7684\u5206\u6bb5 class');
 
 console.log('\n[3] \u6de1\u8272 chrome');
@@ -96,7 +96,7 @@ ok(D.querySelectorAll('.sketch').length===58&&D.querySelectorAll('.sketch-soft')
    '58 \u500b .sketch\u300116 \u500b .sketch-soft \u90fd\u5728');
 ok(D.querySelectorAll('table').length===31&&D.querySelectorAll('.modalbg').length===25,
    '\u8868\u683c 31\u3001\u8996\u7a97 25\uff0c\u6c92\u8b8a');
-ok(D.querySelectorAll('[data-i18n]').length===581, 'i18n \u6a19\u8a18 575 \u500b\uff0c\u6c92\u8b8a');
+ok(D.querySelectorAll('[data-i18n]').length===587, 'i18n 標記 587 個(對帳作業一顆入口 + 兩條三步分頁列)');
 
 console.log('\n[8] \u7d19\u7684\u984f\u8272');
 ok(/--paper-mask:url\(/.test(face), '\u6709\u4e00\u5f35\u5c08\u9580\u7576\u906e\u7f69\u7684\u5642\u9ede');

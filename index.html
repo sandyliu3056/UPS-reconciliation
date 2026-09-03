@@ -879,6 +879,8 @@ tr.blocked{opacity:.72}
 /* 同 .setnav:display:flex 蓋掉 hidden 自帶的 display:none。客戶／對帳那條
    子分頁在 markup 裡本來就標了 hidden,少這一行它還是畫得出來。 */
 .subtabs[hidden]{display:none}
+/* 對帳作業三步的分頁列:站在頁面最上面,底線就是和下面卡片的分界。 */
+.subtabs.reconsteps{margin:0 0 12px}
 .subtabs button{font:inherit;font-size:13px;cursor:pointer;padding:7px 16px 6px;
   border:2px solid var(--accent);border-bottom:none;border-radius:8px 8px 0 0;
   background:transparent;color:var(--accent);margin-bottom:-2px;opacity:.62}
@@ -1129,6 +1131,12 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
 .bkdmeta .mp{font-size:11px;color:var(--text);background:var(--panel);
   border:1px solid var(--line);border-radius:999px;padding:1px 8px;white-space:nowrap}
 .bkdcols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+/* 第三欄:對帳匯進來的、向客戶收的。綠色 —— 和模板上「- WMS」那些綠欄同一個意思。 */
+.bkdcols.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.bkdside.wms{border:2px solid var(--wms,#4f8a3a)}
+.bkdside.wms .bkdside-lbl{background:var(--wms,#4f8a3a)}
+.bkdside.wms .bkdside-body{background:color-mix(in srgb, var(--wms,#4f8a3a) 9%, var(--panel))}
+.bkdside-note{font-size:11px;color:var(--muted);padding:4px 0 2px}
 .bkdside{border-radius:7px;overflow:hidden;display:flex;flex-direction:column}
 .bkdside.ups{border:2px solid var(--ups)}
 .bkdside.rp{border:2px solid var(--rp)}
@@ -1210,7 +1218,8 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
 .bkdtot .bt.d .v{color:#ffb3ad;font-weight:700}
 .bkdtot .chip{display:inline-block;padding:0 9px;border-radius:999px;line-height:1.5;
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25)}
-@media(max-width:640px){.bkdcols,.bkdtot{grid-template-columns:1fr}}
+@media(max-width:640px){.bkdcols,.bkdcols.three,.bkdtot{grid-template-columns:1fr}}
+@media(min-width:641px) and (max-width:980px){.bkdcols.three{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 
 /* 場景與時鐘 */
 #scene{width:100%;height:200px;display:block;border-radius:0}
@@ -1631,6 +1640,7 @@ label:has(#newChanOn){display:none !important}
   <b class="display" id="appTitle">UPS RECONCILIATION</b>
   <span class="devby" id="appBy">DEVELOPED BY SANDY LIU</span>
   <div class="ctrls">
+    <select id="langSel"  title="Language"></select>
     <select id="zoomSel"  title="Display size"></select>
     <select id="brandSel" title="Scene"></select>
     <select id="themeSel" title="Colour"></select>
@@ -1649,26 +1659,30 @@ label:has(#newChanOn){display:none !important}
      直欄一次看得完,加一項也不必重排。
      元素換了,id 和 button[data-p] 沒換 —— showTab 和 applyRole 照舊。 -->
 <aside class="nav" role="tablist" id="tabs">
-  <!-- 順序與分組照規格書的側欄視覺稿:設定 → 資料作業 → 對帳 → 管理,
-       每一項帶編號。編號是流程 —— 01 建好帳戶,02 填好費率,03 收 WMS/TMS
-       的檔,04 收 UPS 帳單,05 對出結果,06 看趨勢,07 查歷史。 -->
+  <!-- 順序與分組照規格書的側欄視覺稿:設定 → 對帳 → 管理,每一項帶編號。
+       編號是流程 —— 01 定價設定,02 客戶,03 渠道目錄,04 費率,05 對帳作業
+       (匯帳單 → 匯 WMS/TMS → 看結果,三步在同一顆按鈕底下),06 看趨勢,
+       07 查歷史,08 管理。 -->
   <button role="tab" aria-selected="false" data-p="home" class="display" id="navHome"><i class="nnum">🏠</i><span class="nico"></span><span data-i18n="tab.home">Home</span></button>
   <div class="navgrp" data-i18n="nav.cfg">Configuration</div>
   <button role="tab" aria-selected="false" data-p="general" class="display"><i class="nnum">01</i><span class="nico">⚙️</span><span data-i18n="tab.general">General Setting</span></button>
   <button role="tab" aria-selected="false" data-p="rate" class="display"><i class="nnum">02</i><span class="nico">👥</span><span data-i18n="tab.rate">Account &amp; Client Setup</span></button>
   <button role="tab" aria-selected="false" data-p="cat" class="display"><i class="nnum">03</i><span class="nico">🚚</span><span data-i18n="tab.cat">Channels &amp; Surcharges</span></button>
   <button role="tab" aria-selected="false" data-p="fill" class="display"><i class="nnum">04</i><span class="nico">💵</span><span data-i18n="tab.fill">Channel &amp; Surcharge Rates</span></button>
-  <div class="navgrp" data-i18n="nav.data">Data Operations</div>
-  <button role="tab" aria-selected="false" data-p="wmsdata" class="display"><i class="nnum">05</i><span class="nico">📄</span><span data-i18n="tab.wmsdata">WMS / TMS Data</span></button>
-  <button role="tab" aria-selected="true" data-p="files" class="display"><i class="nnum">06</i><span class="nico">📥</span><span data-i18n="tab.files">Batch Invoice Import</span></button>
   <div class="navgrp" data-i18n="nav.recon">Reconciliation</div>
-  <button role="tab" aria-selected="false" data-p="cus" class="display"><i class="nnum">07</i><span class="nico">⚖️</span><span data-i18n="tab.cus">Reconciliation Analysis</span></button>
-  <button role="tab" aria-selected="false" data-p="analysis" class="display"><i class="nnum">08</i><span class="nico">📈</span><span data-i18n="tab.analysis">Analytics Dashboard</span></button>
-  <button role="tab" aria-selected="false" data-p="hist" class="display"><i class="nnum">09</i><span class="nico">🗂️</span><span data-i18n="tab.hist">Invoice History</span></button>
+  <!-- 匯帳單、匯 WMS/TMS、看結果本來是三顆按鈕,其實是同一件事的三步,收成一顆:
+       按它回到上次停的那一步,三步在頁面上方的分頁列換。三個頁面的 id 和
+       showTab 的名字都沒動,底下收起來的那三顆替 currentTab() 記路。 -->
+  <button role="tab" aria-selected="true" data-p="recon" class="display" id="navRecon"><i class="nnum">05</i><span class="nico">⚖️</span><span data-i18n="tab.reconflow">Reconciliation</span></button>
+  <button role="tab" aria-selected="false" data-p="analysis" class="display"><i class="nnum">06</i><span class="nico">📈</span><span data-i18n="tab.analysis">Analytics Dashboard</span></button>
+  <button role="tab" aria-selected="false" data-p="hist" class="display"><i class="nnum">07</i><span class="nico">🗂️</span><span data-i18n="tab.hist">Invoice History</span></button>
   <div class="navgrp" data-i18n="nav.adm">Administration</div>
-  <button role="tab" aria-selected="false" data-p="admin" class="display"><i class="nnum">10</i><span class="nico">🛡️</span><span data-i18n="tab.admin">User Administration</span></button>
-  <!-- 底下這幾顆收起來(HIDDEN_TABS),各自由上面兩個入口進去。按鈕留著是因為
+  <button role="tab" aria-selected="false" data-p="admin" class="display"><i class="nnum">08</i><span class="nico">🛡️</span><span data-i18n="tab.admin">User Administration</span></button>
+  <!-- 底下這幾顆收起來(HIDDEN_TABS),各自由上面的入口進去。按鈕留著是因為
        currentTab() 靠 aria-selected 找現在在哪一頁。 -->
+  <button role="tab" aria-selected="false" data-p="files"   class="display" data-i18n="tab.files">Batch Invoice Import</button>
+  <button role="tab" aria-selected="false" data-p="wmsdata" class="display" data-i18n="tab.wmsdata">WMS / TMS Data</button>
+  <button role="tab" aria-selected="false" data-p="cus"     class="display" data-i18n="tab.cus">Reconciliation Analysis</button>
   <button role="tab" aria-selected="false" data-p="setting" class="display" data-i18n="tab.setting">Rate levels</button>
   <button role="tab" aria-selected="false" data-p="rules"  class="display" data-i18n="tab.rules">Surcharge Setup</button>
   <button role="tab" aria-selected="false" data-p="chan"   class="display" data-i18n="tab.chan">Channels</button>
@@ -1773,6 +1787,11 @@ label:has(#newChanOn){display:none !important}
 </section>
 
 <section class="page on" id="p-files">
+  <div class="subtabs reconsteps" role="tablist">
+    <button data-step="files" aria-selected="true" data-i18n="rs.inv">1. UPS Invoice Import</button>
+    <button data-step="wmsdata" aria-selected="false" data-i18n="rs.wms">2. WMS / TMS Import</button>
+    <button data-step="cus" aria-selected="false" data-i18n="rs.res">3. Reconciliation Analysis</button>
+  </div>
   <div class="clockcard">
     <div class="clockbox">
       <div><canvas id="dateCv"></canvas></div>
@@ -1916,6 +1935,11 @@ label:has(#newChanOn){display:none !important}
   </div>
 
   <div id="reconPane" hidden>
+  <div class="subtabs reconsteps" role="tablist">
+    <button data-step="files" aria-selected="true" data-i18n="rs.inv">1. UPS Invoice Import</button>
+    <button data-step="wmsdata" aria-selected="false" data-i18n="rs.wms">2. WMS / TMS Import</button>
+    <button data-step="cus" aria-selected="false" data-i18n="rs.res">3. Reconciliation Analysis</button>
+  </div>
   <div class="lf sketch" id="reconTplCard">
     <h3 class="display"><span class="em">📄</span><span data-i18n="hd.recon">WMS / TMS data</span></h3>
     <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.recon">One order per row; every itemized charge is compared three ways on acceptance. Column rules and the TMS mapping are in the guide.</p>
@@ -6342,7 +6366,10 @@ const ADMIN_ONLY=["admin"];
 /* 費率設定的六個內頁不再各佔一顆頂層頁籤 —— 它們現在掛在「Rate Configuration」
    底下那條列上。程式和頁面都原封不動,只是不從上排進去。
    「cus」不在這裡:那一顆是每月要用的對帳,留在上排。 */
-const HIDDEN_TABS=["setting","rules","chan","demand","code","ratefill"];
+const HIDDEN_TABS=["setting","rules","chan","demand","code","ratefill","files","wmsdata","cus"];
+/* 對帳作業的三步:同一顆左欄按鈕底下的三個頁面。按鈕記的是上次停在哪一步。 */
+const RECON_STEPS=["files","wmsdata","cus"];
+let RECON_LAST="files";
 let LOGIN_ROWS=[];
 
 function authIdentity(user){
@@ -8350,9 +8377,18 @@ async function initAuth(){
   });
 }
 function currentTab(){
-  const b=document.querySelector("#tabs button[aria-selected=true]");
+  /* 對帳作業那一顆是入口,亮著的時候底下那一步的按鈕也亮著 —— 要的是那一步。 */
+  const b=document.querySelector('#tabs button[aria-selected=true]:not([data-p="recon"])');
   return b?b.dataset.p:"files";
 }
+/* 三步的分頁列(帳單頁一條、對帳那一側一條)一起換亮。 */
+function reconStepsSync(lit){
+  document.querySelectorAll(".reconsteps button[data-step]").forEach(b=>
+    b.setAttribute("aria-selected", String(b.dataset.step===lit)));
+}
+document.querySelectorAll(".reconsteps").forEach(bar=>{
+  bar.onclick=e=>{ const b=e.target.closest("button[data-step]"); if(b) showTab(b.dataset.step); };
+});
 /* 你在看哪一頁。設定、費率、帳單歷史都是存著的,只有這件事以前每次
    重新整理都被丟掉 —— 明明什麼都還在,人卻被丟回匯入檔案那一頁。 */
 const TAB_KEY="ups_recon_tab";
@@ -8393,6 +8429,8 @@ function showTab(p){
   if(ADMIN_ONLY.includes(p) && !(ME && ME.role==="admin")) p="files";
   /* 兩個入口都不是真的頁面。回到那一組上次停的地方。 */
   if(SET_ENTRANCES.includes(p)) return showSetTab(SET_LAST[p]||SET_GROUPS[p][0]);
+  /* 對帳作業那一顆也不是頁面:回到上次停的那一步。 */
+  if(p==="recon") p=RECON_LAST;
   /* 在設定裡面 = 經由 showSetTab 進來的。左邊按「對帳」不算,即使它也是 p-cus。 */
   const inSet=RATE_ENTER;
   /* 05 WMS/TMS Data 不是自己的頁面 —— 是對帳 section 的「資料」那一側。 */
@@ -8409,9 +8447,13 @@ function showTab(p){
   if(p==="home" && typeof fmStart==="function") fmStart();
   /* 入口那兩顆自己不亮,交給 rateSideSync 決定亮哪一顆 —— 它才知道現在
      停的是哪一組。在設定裡面的時候,底下的頁面按鈕一律不亮。 */
+  if(!inSet && RECON_STEPS.includes(lit)) RECON_LAST=lit;
   document.querySelectorAll("#tabs button[data-p]").forEach(b=>
     b.setAttribute("aria-selected", String(
-      SET_ENTRANCES.includes(b.dataset.p) ? false : (!inSet && b.dataset.p===lit))));
+      SET_ENTRANCES.includes(b.dataset.p) ? false
+      : b.dataset.p==="recon" ? (!inSet && RECON_STEPS.includes(lit))
+      : (!inSet && b.dataset.p===lit))));
+  reconStepsSync(inSet?"":lit);
   document.querySelectorAll(".page").forEach(s=>
     s.classList.toggle("on", s.id==="p-"+p));
   sceneShow(p==="files");
@@ -10438,10 +10480,16 @@ function openBreakdown(){
       +`<td class="num" style="${TF}${tp!=null&&tp<0?";color:var(--neg)":""}">${tp==null?"—":tp.toFixed(2)+"%"}</td></tr></tfoot>`);
   }
   H.push(`</table></div></div>`);
+  /* 對帳那一列掛在本期(載入中的帳單)第一張卡上;同一個追蹤號跨兩期(原件
+     一期、更正一期)只掛一次,免得同一筆錢看起來收了兩次。 */
+  const loaded=new Set((ROWS||[]).map(r=>r.invoice||"(current)"));
+  let wmsUsed=false;
   pk.forEach((o,ci)=>{
+    o.wms=null;
+    if(!wmsUsed && o.r && loaded.has(o.inv||"(current)")){ o.wms=bkdWmsOf(t); if(o.wms) wmsUsed=true; }
     H.push(`<div class="bkdinv" id="bkdInv${ci}"><span class="no">${esc2(o.inv)}</span>`
       +`<span class="dt">${esc2(nd(o.invDate)||o.invDate)}</span></div>`);
-    if(o.r) H.push(`<div class="bkdchap">`+bkdSection(o.r)+`</div>`);
+    if(o.r) H.push(`<div class="bkdchap">`+bkdSection(o.r,o.wms)+`</div>`);
     else H.push(`<div class="bkdchap"><div class="note warn">${esc2(o.err)||L("這一期無法計價。","Could not price this period.")}</div></div>`);
   });
   /* 帳戶層費用自己一節,放在所有期別之後。 */
@@ -10471,9 +10519,31 @@ function openBreakdown(){
 let BKD_LAST=null;
 /* 一段(原始出貨／退件回程／第二段)的兩側明細,取成資料而不是 HTML。
    畫面那邊是同一組來源,這裡只是不套版。 */
-function bkdLines(res, groups){
-  const U=[], P=[];
-  let usub=0, psub=0;
+/* 對帳匯進來的那一列(向客戶收的):同一個追蹤號、這一次對帳的資料才有。
+   逐項有填就逐項列,沒填只有總額;逐項加起來和總額差的那一塊照實標成
+   「未逐項列示」—— TMS 自己的服務費常常就在那裡,不替它取名字。 */
+function bkdWmsOf(trk){
+  const r=(typeof RECON!=="undefined")&&RECON&&RECON.res; if(!r) return null;
+  const k=reconTrk(trk);
+  const o=(r.orders||[]).find(x=>(x.trks||[]).some(t=>reconTrk(t)===k));
+  if(!o) return null;
+  const rows=[]; let sum=0;
+  const fees=o.billedFees||{};
+  const ord=n=>{ const i=AUD_FEES.indexOf(n); return i<0?1e6:i; };
+  for(const k2 of Object.keys(fees).sort((a,b)=>ord(a)-ord(b)||a.localeCompare(b))){
+    const v=cents(toNum(fees[k2])); if(Math.abs(v)<0.005) continue;
+    rows.push([k2, v]); sum=cents(sum+v);
+  }
+  const amt=cents(toNum(o.amt));
+  const rest=cents(amt-sum);
+  if(rows.length && Math.abs(rest)>=0.005) rows.push([L("未逐項列示","Not itemised"), rest]);
+  if(!rows.length) rows.push([L("總額(未逐項)","Total amount (not itemised)"), amt]);
+  return {src:RECON_SRC, rows, amt, order:o.order, cus:o.cus, name:o.name, pieces:(o.trks||[]).length};
+}
+function bkdLines(res, groups, wms){
+  const U=[], P=[], W=[];
+  let usub=0, psub=0, wsub=0;
+  if(wms){ for(const [k,v] of wms.rows){ W.push([k,v]); } wsub=wms.amt; }
   for(const g of (groups||[])){
     for(const l of (g.lines||[])){
       if(Math.abs(l.net)<0.005) continue;
@@ -10490,7 +10560,7 @@ function bkdLines(res, groups){
   for(const [k,v] of Object.entries(res.acc||{})){ P.push([feeDisplay(k), cents(v)]); psub+=v; }
   P.push([L("燃油 ","Fuel ")+res.fuelPct+"%", cents(res.fuel||0)]);
   psub+=res.fuel||0;
-  return {U:U, P:P, usub:cents(usub), psub:cents(psub)};
+  return {U:U, P:P, W:W, usub:cents(usub), psub:cents(psub), wsub:cents(wsub)};
 }
 /* 攤開的內容倒成 Excel。UPS 和重算兩側的項目對不起來(UPS 寫「Ground
    Residential」、我們寫「基本運費」),硬排成左右兩欄只會製造假的對應關係。
@@ -10501,6 +10571,7 @@ async function bkdXlsx(){
   const {trk,out}=BKD_LAST;
   const MONEY="$#,##0.00", PCT="0.0%", DATE="mm/dd/yyyy";
   const HEAD="E8E2D6", UPSC="DDEBF7", UPSB="EFF6FD", REPC="FCE4D6", REPB="FDF3EC";
+  const WMSB="EEF6E8";
   const FOOT="FFF2CC", RED="C00000";
   const hc=(v,fill,al)=>({v:v,t:"s",s:{bold:true,fill:fill||HEAD,align:al||"right",
                                        wrap:true,border:true}});
@@ -10551,23 +10622,28 @@ async function bkdXlsx(){
   const det=[[hc(L("期別","Invoice"),HEAD,"left"),hc(L("段別","Segment"),HEAD,"left"),
               hc(L("來源","Source"),HEAD,"left"),hc(L("項目","Item"),HEAD,"left"),
               hc(L("金額","Amount"),HEAD)]];
-  const push=(inv,seg,side,item,amt,bold)=>{
-    const fill=side===0?UPSB:REPB;
+  const wsrc=(o)=>(o.wms&&o.wms.src)||RECON_SRC||"WMS";
+  const push=(inv,seg,side,item,amt,bold,src)=>{
+    const fill=side===0?UPSB:side===1?REPB:WMSB;
     det.push([c(inv,"","left",fill,bold),c(seg,"","left",fill,bold),
-      c(side===0?L("UPS 實收","UPS billed"):L("重算","Repriced"),"","left",fill,bold),
+      c(side===0?L("UPS 實收","UPS billed"):side===1?L("重算","Repriced"):(src||"WMS")+L(" 實收"," billed"),"","left",fill,bold),
       c(item,"","left",fill,bold),c(amt,MONEY,"right",fill,bold)]);
   };
   for(const o of out){
     if(!o.r) continue;
-    const segs=[[o.r,(o.r.s.groups)||[],segName(o.r.s.layer)]];
-    if(o.r.rtn) segs.push([o.r.rtn,(o.r.s.rtnSeg&&o.r.s.rtnSeg.groups)||[],L("退件回程","Return leg")]);
-    if(o.r.npb) segs.push([o.r.npb,(o.r.s.npb&&o.r.s.npb.groups)||[],L("第二段運送","Second movement")]);
-    for(const [res,groups,nm] of segs){
-      const L2=bkdLines(res,groups);
+    const segs=[[o.r,(o.r.s.groups)||[],segName(o.r.s.layer),o.wms||null]];
+    if(o.r.rtn) segs.push([o.r.rtn,(o.r.s.rtnSeg&&o.r.s.rtnSeg.groups)||[],L("退件回程","Return leg"),null]);
+    if(o.r.npb) segs.push([o.r.npb,(o.r.s.npb&&o.r.s.npb.groups)||[],L("第二段運送","Second movement"),null]);
+    for(const [res,groups,nm,wms] of segs){
+      const L2=bkdLines(res,groups,wms);
       for(const [it,v] of L2.U) push(o.inv,nm,0,it,v);
       push(o.inv,nm,0,L("小計","Subtotal"),L2.usub,true);
       for(const [it,v] of L2.P) push(o.inv,nm,1,it,v);
       push(o.inv,nm,1,L("小計","Subtotal"),L2.psub,true);
+      if(wms){
+        for(const [it,v] of L2.W) push(o.inv,nm,2,it,v,false,wsrc(o));
+        push(o.inv,nm,2,L("小計","Subtotal"),L2.wsub,true,wsrc(o));
+      }
     }
   }
   /* 帳戶層的行集中在最後一段,期別寫在第一欄,不進任何小計。 */
@@ -10590,7 +10666,7 @@ async function bkdXlsx(){
   toast(ok?L("已匯出 "+trk,"Exported "+trk):L("已取消存檔","Save cancelled"), ok);
 }
 /* 單一期的明細:讀 priceShipment 算出來的紀錄,原樣複述。 */
-function bkdSection(r){
+function bkdSection(r, wms){
   const money2=v=>"$"+(Math.round((v||0)*100)/100).toLocaleString(undefined,
     {minimumFractionDigits:2,maximumFractionDigits:2});
   const s=r.s, esc2=x=>esc(String(x==null?"":x));
@@ -10602,7 +10678,7 @@ function bkdSection(r){
     const neg=(v||0)<-0.0001;
     return `<span class="${neg?"bkdneg":""}">${money2(v)}</span>`;
   };
-  const segCard=(res, groups, name)=>{
+  const segCard=(res, groups, name, wms)=>{
     const resi=!!res.residential;
     const chip=esc2(res.channel||"");
     const bwv=res.bw&&res.bw.billable?res.bw.billable:0;
@@ -10647,25 +10723,42 @@ function bkdSection(r){
     P.push(`<tr><td>${L("燃油 ","Fuel ")+esc2(res.fuelPct)+"%"}</td><td class="num">${money(res.fuel||0)}</td></tr>`);
     psub+=res.fuel||0;
 
+    /* 第三欄:對帳匯進來的、向客戶收的。只有這一次對帳有這個追蹤號才長出來。 */
+    let Wc="";
+    if(wms){
+      const W=wms.rows.map(([k,v])=>`<tr><td>${esc2(k)}</td><td class="num">${money(v)}</td></tr>`);
+      const note=[];
+      if(wms.order) note.push(L("單號 ","Order ")+esc2(wms.order));
+      if(wms.pieces>1) note.push(L("此單 "+wms.pieces+" 件合計","Order total for "+wms.pieces+" packages"));
+      Wc=`<div class="bkdside wms"><div class="bkdside-lbl">${esc2(wms.src)+L(" 實收"," billed")}</div>`
+        +`<div class="bkdside-body"><table>${W.join("")}</table>`
+        +(note.length?`<div class="bkdside-note">${note.join(" · ")}</div>`:"")
+        +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(wms.amt)}</span></div></div></div>`;
+    }
     return `<div class="bkdseg ${resi?"resi":"com"}">`
       +`<div class="bkdseg-hd"><span class="bkdseg-name">${esc2(name)}</span>`
       +`<span class="bkdchip ${resi?"resi":"com"}">${chip}</span>`
       +`<span class="bkdmeta">${meta.map(m=>`<span class="mp">${m}</span>`).join("")}</span></div>`
-      +`<div class="bkdcols">`
+      +`<div class="bkdcols${wms?" three":""}">`
       +`<div class="bkdside ups"><div class="bkdside-lbl">${L("UPS 實收","UPS billed")}</div>`
       +`<div class="bkdside-body"><table>${U.join("")}</table>`
       +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(usub)}</span></div></div></div>`
       +`<div class="bkdside rp"><div class="bkdside-lbl">${L("重新計價","Reprice")}</div>`
       +`<div class="bkdside-body"><table>${P.join("")}</table>`
       +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(psub)}</span></div></div></div>`
+      +Wc
       +`</div></div>`;
   };
-  H.push(segCard(r, s.groups||[], segName(s.layer)));
+  H.push(segCard(r, s.groups||[], segName(s.layer), wms||null));
   if(r.rtn) H.push(segCard(r.rtn, (s.rtnSeg&&s.rtnSeg.groups)||[], L("退件回程","Return leg")));
   if(r.npb) H.push(segCard(r.npb, (s.npb&&s.npb.groups)||[], L("第二段運送","Second movement")));
   const bkDiff=(r.total||0)-s.upsTotal;
   const bkPct=(r.total&&Math.abs(r.total)>1e-9)?(bkDiff/Math.abs(r.total)*100):null;
   const bkTone=bkDiff<0?"d":"p";
+  /* 有對帳資料就多兩格:向客戶實收、實收毛利(實收 − UPS)。重算那一組是「應收」,
+     這一組是「真的收了多少」,兩個數字並排才看得出漏收。 */
+  const wDiff=wms?cents(wms.amt-s.upsTotal):null;
+  const wTone=wDiff==null?"":(wDiff<0?"d":"p");
   H.push(`<div class="bkdtot">`
     +`<div class="bt"><span class="l">${L("UPS 實收","UPS billed")}</span>`
     +`<span class="v">${money2(s.upsTotal)}</span></div>`
@@ -10676,6 +10769,11 @@ function bkdSection(r){
     +`<span class="v">${money2(bkDiff)}</span></div>`
     +`<div class="bt ${bkTone}"><span class="l">${L("毛利率","Margin")}</span>`
     +`<span class="v"><span class="chip">${bkPct==null?"—":bkPct.toFixed(2)+"%"}</span></span></div>`
+    +(wms?`<div class="rule"></div>`
+      +`<div class="bt"><span class="l">${esc2(wms.src)+L(" 實收"," billed")}</span>`
+      +`<span class="v">${money2(wms.amt)}</span></div>`
+      +`<div class="bt ${wTone}"><span class="l">${L("實收毛利","Profit on billed")}</span>`
+      +`<span class="v">${money2(wDiff)}</span></div>`:"")
     +`</div>`);
   return H.join("");
 }
@@ -12387,14 +12485,14 @@ const FM_GO={order:"rate", wms:"wmsdata", tms:"wmsdata",
   bill:"files", recon:"cus", fin:"analysis"};
 const FM_TIP={order:["客戶成立訂單 —— 名單與層級在 02","The client places an order — directory under 02"],
   erp:["公司 ERP 接單、開出貨指示(外部系統)","Your ERP takes the order (external)"],
-  wms:["倉庫揀貨出庫,出貨明細之後匯入 05","Warehouse picks & ships; details go into 05"],
+  wms:["倉庫揀貨出庫,出貨明細之後在 05 的第 2 步匯入","Warehouse picks & ships; details go into 05, step 2"],
   tms:["TMS 安排派送與費用(外部系統)","TMS plans the delivery (external)"],
   tender:["包裹交給 UPS(外部)","Handed to UPS (external)"],
   transit:["UPS 運送中(外部)","UPS linehaul (external)"],
   dlv:["送達 Consignee(外部)","Delivered to the consignee (external)"],
-  bill:["UPS 出當期帳單 —— 到 06 匯入","UPS bills the period — import under 06"],
-  recon:["本系統逐筆重算、三方比對 —— 07","This system reprices & compares — 07"],
-  fin:["財務依報告向客戶請款 —— 08 看毛利","Finance bills the client — margins under 08"]};
+  bill:["UPS 出當期帳單 —— 到 05 的第 1 步匯入","UPS bills the period — import under 05, step 1"],
+  recon:["本系統逐筆重算、三方比對 —— 05 的第 3 步","This system reprices & compares — 05, step 3"],
+  fin:["財務依報告向客戶請款 —— 06 看毛利","Finance bills the client — margins under 06"]};
 /* 站點:x、路面 y(高低錯落)、傾角 */
 const FM_ST=[
  ["order",  96,112,-2.4,"01"],
@@ -13309,8 +13407,8 @@ function reconAutoRun(){
   const fname=RECON.fname||"";
   reconRerunFrom(rows, true);
   if(RECON) RECON.fname=fname;
-  if(wasPending) toast(L("帳單進來了,"+rows.length+" 筆已自動比對,結果在「07 對帳分析」。",
-                         "Invoice loaded — "+rows.length+" row(s) compared automatically. See 07 Reconciliation Analysis."),true);
+  if(wasPending) toast(L("帳單進來了,"+rows.length+" 筆已自動比對,結果在「3. 對帳分析」。",
+                         "Invoice loaded — "+rows.length+" row(s) compared automatically. See step 3, Reconciliation Analysis."),true);
   renderRecon();
   return true;
 }
@@ -13642,8 +13740,8 @@ async function reconTemplate(src){
   reconMsg(ships.length
     ? L(src+" 模板已下載:"+ships.length+" 個追蹤號、"+feeCols.length+" 項費用(帳單上有收的都在),同仁填綠色欄;填寫說明在 Guide 分頁。",
         src+" template downloaded: "+ships.length+" tracking number(s), "+feeCols.length+" charge(s) — every one UPS billed. Fill the green columns; notes are on the Guide sheet.")
-    : L(src+" 模板已下載(還沒載入帳單,列的是全部固定費用欄);先到「06 UPS 帳單匯入」載入帳單再下載,追蹤號與 UPS 金額會先填好。",
-        src+" template downloaded with the full fixed charge set — no invoice is loaded. Load the invoice under 06 UPS Invoice Import first and the tracking numbers and UPS amounts come pre-filled."), true);
+    : L(src+" 模板已下載(還沒載入帳單,列的是全部固定費用欄);先在「1. UPS 帳單匯入」載入帳單再下載,追蹤號與 UPS 金額會先填好。",
+        src+" template downloaded with the full fixed charge set — no invoice is loaded. Load the invoice under step 1, UPS Invoice Import, first and the tracking numbers and UPS amounts come pre-filled."), true);
 }
 
 /* --------------------------------------------------------------------
@@ -13678,6 +13776,7 @@ function reconRun(list){
   const reg=cusReg();
   const byCode=new Map(reg.map(c=>[c.code,c]));
   const orders=[], perCus=new Map(), lostLevel=new Set(), noLevel=new Set();
+  const notOnInv=[];   /* WMS / TMS 有、這期帳單上沒有的:另外收著,不進對帳 */
   /* 三邊都講 Consolidated 的名字。UPS 那一側每一行照稽核中心的分欄歸位 ——
      帳單上有收的一欄都不缺;重算那一側的欄名事後對過去(audNameOf)。對名字
      要用整批帳單上「代碼落在哪一欄」的紀錄,所以先跑一遍收齊 codeCol,再回頭
@@ -13741,7 +13840,10 @@ function reconRun(list){
         for(const [col,v] of Object.entries(cf.fees)) chgBump(e.cus, col, "ups", v);
       }catch(err){}
     }
-    if(e.chg && !block)
+    /* 整筆一個追蹤號都不在這期帳單上:沒有 UPS 那一側可比,不進對帳、不進合計,
+       另外收著,匯出時自成一頁。一票多件只缺幾件的照常對,缺的那幾件成本算 0。 */
+    const offInv=e.trks.length>0 && missTrk.length===e.trks.length;
+    if(e.chg && !block && !offInv)
       /* 逐項向客戶收:一列一次入桶。沒重算的列三側都不進逐項表 ——
          只有 billed 進的話,三方對比會歪一邊。 */
       for(const [nm,v] of Object.entries(e.chg)) chgBump(e.cus, nm, "billed", v);
@@ -13771,6 +13873,7 @@ function reconRun(list){
     o.profit=cents(o.amt-o.cost);
     o.gap  = block?null:cents(o.rep-o.cost);   /* UPS 差異:帳單 vs 費率表 */
     o.pgap = block?null:cents(o.amt-o.rep);    /* 定價差異:實收 vs 應收 */
+    if(offInv){ notOnInv.push(o); continue; }
     orders.push(o);
     let a=perCus.get(e.cus);
     if(!a){ a={code:e.cus, name:o.name, level:o.level, block,
@@ -13970,7 +14073,7 @@ function reconRun(list){
   const byCus={};
   for(const [k,m] of chgBy) byCus[k]=chgRows(m);
   return {orders, cus, tot, lostLevel:[...lostLevel], noLevel:[...noLevel],
-          unmatched:orders.filter(o=>o.found<o.pkgs), hasBilled,
+          unmatched:orders.filter(o=>o.found<o.pkgs), notOnInv, hasBilled,
           chg:chgRows(chgAll), chgBy:byCus, groups:[...active], rebill};
 }
 
@@ -14121,9 +14224,15 @@ function renderRecon(){
     +esc(L("改派到一個還在的層級之後再匯一次。","Reassign them to a level that still exists, then import again."))
     +chips(r.lostLevel.map(c=>cusNameOf(c))));
   const warn=[];
+  if(r.notOnInv && r.notOnInv.length){
+    const offAmt=r.notOnInv.reduce((a,o)=>a+toNum(o.amt),0);
+    warn.push(L(
+      RECON_SRC+" 有、這期帳單上沒有的 "+r.notOnInv.length+" 筆("+money(offAmt)+")不進對帳與合計;匯出時另放「Not on Invoice」一頁。",
+      r.notOnInv.length+" row(s) are in "+RECON_SRC+" but not on this invoice ("+money(offAmt)+"); they stay out of the reconciliation and the totals and go on their own Not on Invoice sheet when exported."));
+  }
   if(r.unmatched.length) warn.push(L(
-    "有 "+r.unmatched.length+" 筆的追蹤號在這期帳單上找不到,那幾件的 UPS 成本算 0。",
-    r.unmatched.length+" row(s) have tracking numbers that are not in this invoice; those packages count as zero UPS cost."));
+    "有 "+r.unmatched.length+" 筆一票多件的單,部分追蹤號在這期帳單上找不到,那幾件的 UPS 成本算 0。",
+    r.unmatched.length+" multi-piece row(s) have some tracking numbers that are not in this invoice; those packages count as zero UPS cost."));
   if(r.tot.blocked) warn.push(L(
     "合計的重算與兩個差異只加了有重算的 "+(r.tot.orders-r.tot.blocked)+" 筆。",
     "The recomputed total and both variances cover only the "+(r.tot.orders-r.tot.blocked)+" row(s) that were priced."));
@@ -14518,86 +14627,46 @@ async function reconExport(){
   const cusSheets=[];
   const byCusItems=new Map();
   for(const it of rb.items){ (byCusItems.get(it.cus)||byCusItems.set(it.cus,[]).get(it.cus)).push(it); }
-  const usedNames=new Set(["Detail","To re-bill","Not in WMS","Not in TMS"]);
+  const usedNames=new Set(["Detail","To re-bill","Not on Invoice"]);
   const sheetName=code=>{
     let n=String(code||"Customer").replace(/[\\\/\?\*\[\]:]/g," ").trim().slice(0,31)||"Customer";
     let k=n, i=2; while(usedNames.has(k)) k=(n.slice(0,28)+" "+(i++)); usedNames.add(k); return k;
   };
-  /* 給客戶看的對帳單,一位客戶兩頁:英文一頁、中文一頁,內容相同。
-     金額 0 的(費率未設定、合約無此項)不上。不合併儲存格、表頭不上色、
-     日期 m/d/yyyy —— 這一頁是要貼進客戶帳單的,越素越好搬。
-     中文頁的項目名稱照 Consolidated 名稱翻譯,說明欄保留 UPS 帳單原文,
-     客戶拿著 UPS 的帳單也對得上;沒有譯名的(自訂附加費)照英文。 */
-  const CUS_ZH={
-    "Base Rate":"基本運費","Fuel Surcharge":"燃油附加費","Residential Surcharge":"住宅附加費",
-    "Delivery Area Surcharge - Commercial":"配送區域附加費 - 商業",
-    "Delivery Area Surcharge - Residential":"配送區域附加費 - 住宅",
-    "Delivery Area Surcharge - Extended Commercial":"配送區域附加費 - 延伸商業",
-    "Delivery Area Surcharge - Extended Residential":"配送區域附加費 - 延伸住宅",
-    "Remote Area Surcharge":"偏遠地區附加費",
-    "Remote Area Surcharge - Commercial":"偏遠地區附加費 - 商業",
-    "Remote Area Surcharge - Residential":"偏遠地區附加費 - 住宅",
-    "Additional Handling Surcharge - Dimension":"額外處理費 - 尺寸",
-    "Additional Handling Surcharge - Weight":"額外處理費 - 重量",
-    "Additional Handling Surcharge - Packaging":"額外處理費 - 包裝",
-    "Large Package Surcharge":"大型包裹附加費","Over Maximum Size":"超過最大尺寸附加費",
-    "Signature":"簽收服務費","Adult Signature":"成人簽收服務費","Declared Value":"申報價值費",
-    "Returns Electronic Label":"退件電子標籤費","Return To Sender - Web Request":"退回寄件人(網路申請)",
-    "Reroute - Web Request":"改址遞送(網路申請)","Reschedule Delivery - Web Request":"改期遞送(網路申請)",
-    "Future Day Pickup - Alternate Address - Web Request":"預約取件 - 其他地址(網路申請)",
-    "Residential Pickup surcharge":"住宅取件附加費","Address Correction":"地址更正費",
-    "Undeliverable Return":"無法投遞退回運費","Return to Sender - Base Rate":"退回寄件人運費",
-    "Returns - Base Rate":"退件運費","Shipping Charge Correction":"運費更正",
-    "Shipping Charge Correction Audit Fee":"運費更正稽核費",
-    "Direct Delivery Only":"僅限直接投遞","Returns Print Label":"退件列印標籤費",
-    "Package Protection":"包裹保障費","Third Party Billing Service":"第三方付費服務費",
-    "Not Previously Billed Missing PLD Fee":"未預先計費 - PLD 未傳送費",
-    "Not Previously Billed Shipping Correction Fee":"未預先計費 - 運費更正費",
-    "Commercial Adjustment":"商業重分類","Delivery Intercept":"包裹攔截費",
-    "Returns 3 UPS Pickup Attempts":"退件三次取件服務費","Service Charge":"服務費",
-  };
-  const zhName=n=>CUS_ZH[n]||n;
-  const cusHead=names=>names.map(n=>({v:n,t:"s",s:{bold:true,align:"left",border:true}}));
-  const CUS_HEAD_EN=["Transaction Date","Tracking Number","Order Number","Item","Description","Amount"];
-  const CUS_HEAD_ZH=["交易日期","追蹤號碼","訂單號碼","項目","說明","金額"];
+  /* 給客戶看的對帳單,一位客戶一頁。金額 0 的(費率未設定、合約無此項)不上。
+     不合併儲存格、表頭不上色、日期 m/d/yyyy —— 這一頁是要貼進客戶帳單的,越素越好搬。 */
+  const cusHead=["Transaction Date","Tracking Number","Order Number","Item","Description","Amount"]
+    .map(n=>({v:n,t:"s",s:{bold:true,align:"left",border:true}}));
   for(const [code,list] of byCusItems){
     const sorted=list.filter(it=>it.amt>0.004).sort((a,b)=>a.trk.localeCompare(b.trk)||b.total-a.total);
     if(!sorted.length) continue;
-    const build=zh=>{
-      const nm=zh?zhName:(n=>n); const rows=[]; let sum=0;
-      for(const it of sorted){
-        rows.push([dcell(it.invDate), it.trk, it.order, nm(it.charge), it.desc||"", dm(it.amt)]); sum=cents(sum+it.amt);
-        if(it.fuel>0.004){ rows.push([dcell(it.invDate), it.trk, it.order, nm("Fuel Surcharge"), nm(it.charge)+" @ "+it.fuelPct+"%", dm(it.fuel)]); sum=cents(sum+it.fuel); }
-      }
-      rows.push(["","","",{v:zh?"合計":"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:MONEY,bold:true}}]);
-      return rows;
-    };
-    const cw=[12,22,20,40,44,14].map(w=>({w}));
-    cusSheets.push({name:sheetName(code), rows:[cusHead(CUS_HEAD_EN),...build(false)], cols:cw, ignoreTextNumbers:true});
-    cusSheets.push({name:sheetName(code+" 中文"), rows:[cusHead(CUS_HEAD_ZH),...build(true)], cols:cw, ignoreTextNumbers:true});
+    const rows=[]; let sum=0;
+    for(const it of sorted){
+      rows.push([dcell(it.invDate), it.trk, it.order, it.charge, it.desc||"", dm(it.amt)]); sum=cents(sum+it.amt);
+      if(it.fuel>0.004){ rows.push([dcell(it.invDate), it.trk, it.order, "Fuel Surcharge", it.charge+" @ "+it.fuelPct+"%", dm(it.fuel)]); sum=cents(sum+it.fuel); }
+    }
+    rows.push(["","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:MONEY,bold:true}}]);
+    cusSheets.push({name:sheetName(code), rows:[cusHead,...rows], cols:[12,22,20,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
   }
-  const cusN=cusSheets.length/2;
 
-  /* ---- 帳單上有、WMS / TMS 檔上沒有的追蹤號:另外一頁,照 Consolidated 列識別欄
-          和 UPS 收的每一項,讓人知道那些件是誰的、UPS 收了什麼。 ---- */
-  const covered=new Set();
-  for(const o of r.orders) for(const t of (o.trks||[])) covered.add(reconTrk(t));
-  const missing=(SHIPS||[]).filter(sh=>!covered.has(reconTrk(sh.tracking)));
+  /* ---- WMS / TMS 有、這期帳單上沒有的追蹤號:另外一頁,照模板的綠色欄
+          (客戶、單號、追蹤號、渠道、Zone、計費重、每一項向客戶收的、合計),
+          讓人知道哪些件還沒對到帳單、向客戶收了多少。 ---- */
+  const offInv=r.notOnInv||[];
   const notSheets=[];
-  if(missing.length){
-    const mCols=consColsOf(missing);
-    const nHead=AUD_BASE.map(n=>dh(n,"EFE3CB")).concat([dh("Invoice Number","EFE3CB")],
-      mCols.map(n=>dh(n+" - UPS",UPSH)), [dh("Total Amount - UPS",UPSH)]);
-    const nRows=missing.map(sh=>{
-      const ls=sh.allLines||sh.lines||[];
-      const id=consIdentityOf(ls), fees=consFeesOf(ls).fees;
-      const inv=String((ls.find(l=>l.invoice)||{}).invoice||"").trim();
-      return [dcell(id.date), id.ref1, id.ref2, String(sh.tracking||""), dimTxt(id.dimsC), dimTxt(id.dimsA),
-              {v:toNum(id.entered),t:"n"}, {v:toNum(id.billed),t:"n"}, zoneCell(id.zone), id.chan, inv]
-        .concat(mCols.map(c=>dm(fees[c])), [dm(sh.upsTotal)]);
-    });
-    notSheets.push({name:"Not in "+src, rows:[nHead,...nRows], ignoreTextNumbers:true,
-      cols:[12,22,22,22,16,16,10,10,7,26,18].concat(mCols.map(n=>Math.min(30,Math.max(14,n.length+8))),[18]).map(w=>({w}))});
+  if(offInv.length){
+    const fcols=[], seen=new Set();
+    for(const o of offInv) for(const k of Object.keys(o.billedFees||{})) if(!seen.has(k)){ seen.add(k); fcols.push(k); }
+    const ord=n=>{ const i=AUD_FEES.indexOf(n); return i<0?1e6:i; };
+    fcols.sort((a,b)=>ord(a)-ord(b)||a.localeCompare(b));
+    const GRN="92D050";
+    const nHead=["Customer Code","Customer Name","Order Number","Tracking Number","Transaction Date",
+                 "Channel - "+src,"Zone - "+src,"Billed Weight - "+src].map(n=>dh(n,GRN))
+      .concat(fcols.map(n=>dh(n+" - "+src,GRN)), [dh("Total Amount - "+src,GRN)]);
+    const nRows=offInv.map(o=>[String(o.cus||""), String(o.name||""), String(o.order||""), (o.trks||[]).join(", "), dcell(o.date),
+                               String(o.chan||""), zoneCell(o.zone), o.wt===""||o.wt==null?"":{v:toNum(o.wt),t:"n"}]
+      .concat(fcols.map(c=>dm((o.billedFees||{})[c])), [dm(o.amt)]));
+    notSheets.push({name:"Not on Invoice", rows:[nHead,...nRows], ignoreTextNumbers:true,
+      cols:[16,22,20,22,12,22,8,12].concat(fcols.map(n=>Math.min(30,Math.max(14,n.length+8))),[18]).map(w=>({w}))});
   }
 
   /* Summary / Orders / Charges 先不用 —— 留著,要開回來只改這一個開關。 */
@@ -14609,8 +14678,8 @@ async function reconExport(){
        sheetOf("Charges", chgCols, chgRows, [14,42,14,22,17,17,14,19,18], 2)]
     : [detailSheet, rebillSheet, ...notSheets, ...cusSheets];
   await xlWrite(sheets, src+"_Reconciliation_Detail.xlsx");
-  reconMsg(L("已匯出:Detail "+r.orders.length+" 筆、補收清單 "+rb.items.length+" 項"+(missing.length?"、帳單上有但 "+src+" 沒有的 "+missing.length+" 件另一頁":"")+"、客戶對帳單 "+cusN+" 家(英文、中文各一頁)。",
-             "Exported: Detail "+r.orders.length+" row(s), To re-bill "+rb.items.length+" item(s)"+(missing.length?", "+missing.length+" tracking(s) not in "+src+" on their own sheet":"")+", "+cusN+" customer statement(s), an English and a Chinese sheet each."), true);
+  reconMsg(L("已匯出:Detail "+r.orders.length+" 筆、補收清單 "+rb.items.length+" 項"+(offInv.length?"、"+src+" 有但帳單沒有的 "+offInv.length+" 筆另一頁":"")+"、客戶對帳單 "+cusSheets.length+" 頁。",
+             "Exported: Detail "+r.orders.length+" row(s), To re-bill "+rb.items.length+" item(s)"+(offInv.length?", "+offInv.length+" row(s) in "+src+" but not on the invoice on their own sheet":"")+", "+cusSheets.length+" customer sheet(s)."), true);
 }
 
 /* 讀檔+解析,不寫入。回 {err} 或 {p, fname} —— 匯入與預覽共用同一條讀取路。 */
@@ -14643,8 +14712,8 @@ function reconAccept(p, fname){
     RECON={issues:[], res:null, list:p.rows, sumWarn:p.sumWarn||[], fname:fname||"", pending:true};
     const kept=reconRowsSave(p.rows);
     reconRerunBtn(); renderRecon();
-    const m=L("已收下 "+p.rows.length+" 筆"+skipNote+"。這一期的 UPS 帳單還沒匯入,到「06 UPS 帳單匯入」匯入後會自動比對。",
-              "Accepted "+p.rows.length+" row(s)"+skipNote+". This period's UPS invoice is not loaded yet — import it under 06 UPS Invoice Import and the comparison runs by itself.");
+    const m=L("已收下 "+p.rows.length+" 筆"+skipNote+"。這一期的 UPS 帳單還沒匯入,到「1. UPS 帳單匯入」匯入後會自動比對。",
+              "Accepted "+p.rows.length+" row(s)"+skipNote+". This period's UPS invoice is not loaded yet — import it under step 1, UPS Invoice Import, and the comparison runs by itself.");
     reconMsg(m,true); toast(m,true);
     if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
     return true;
@@ -15166,6 +15235,7 @@ const DASH_LABEL={
   "Additional Handling Surcharge - Packaging":["額外處理·包裝","AHS · Packaging"],
   "DAS Residential":["住宅 DAS","DAS Resi"],"DAS Commercial":["商業 DAS","DAS Comm"],
   "__das__":["DAS／RAS","DAS / RAS"],
+  "__wmsrest__":["未逐項列示","Not itemised"],
   "Missing PLD Fee":["PLD 未傳送費","Missing PLD Fee"],
   "Shipping Correction Fee":["運費更正費","Shipping Correction Fee"],
   "Third Party Billing":["第三方付費","Third Party Billing"],
@@ -15206,7 +15276,27 @@ const MISSCOL="#d03b3b";
 const pieDark=()=>false;
 const pieCols=()=>pieDark()?PIE_DARK:PIE_LIGHT;
 const reclCol=()=>pieDark()?"#8fa3b8":"#3f4a58";
-const DASH_RECLASS="__reclass__", DASH_UNKNOWN="__unknown__";
+const DASH_RECLASS="__reclass__", DASH_UNKNOWN="__unknown__", DASH_WMS_REST="__wmsrest__";
+/* 第三張餅:對帳匯進來的、向客戶收的。名字對回系統名稱,和重算、UPS 那兩張同一套
+   分類與顏色;對不回唯一系統名稱的(偏遠地區的商/住兩欄)照 Consolidated 的名字。
+   逐項沒填的只有總額,加起來和總額差的那一份自成「未逐項列示」一塊 —— 不替它猜
+   是哪一項。帳單上沒有的那幾筆(Not on Invoice)不在 orders 裡,也就不在這裡。 */
+function dashWmsAgg(){
+  const r=(typeof RECON!=="undefined")&&RECON&&RECON.res;
+  if(!r||!(r.orders||[]).length) return null;
+  const buckets={}; let total=0, itemised=0;
+  const keyOf=n=>{ const sy=sysNamesOfAud(n); return sy.length===1?sy[0]:n; };
+  for(const o of r.orders){
+    total+=toNum(o.amt);
+    for(const [k,v] of Object.entries(o.billedFees||{})){
+      const x=toNum(v); if(Math.abs(x)<0.005) continue;
+      const kk=keyOf(k); buckets[kk]=(buckets[kk]||0)+x; itemised+=x;
+    }
+  }
+  const rest=cents(total-itemised);
+  if(Math.abs(rest)>=0.005) buckets[DASH_WMS_REST]=rest;
+  return {src:RECON_SRC, buckets, total:cents(total), n:r.orders.length};
+}
 const RECLASS_RE=/AHS\/Large Package|AHS\/大包裹/;
 /* 同一種附加費被 UPS 拆成多個變體收費的,在圓餅上合成一塊來排名。
    分開畫的話每一條都是細絲,幾條就佔掉前幾名的位置、其餘掉進「其他」
@@ -16519,9 +16609,11 @@ function renderDashboard(){
         "Centre: base freight, return legs and fuel as a share of this column's total. The remainder is surcharges.")}</div>`
       +`</div>`;
   };
+  const wmsAgg=dashWmsAgg();
   const compHTML=`<div class="pie2">`
     +oneP(d.buckets,uAmt,L("重算","REPRICED"),d.repriced,d.unknownBy)
     +oneP(d.upsBuckets||{},0,L("UPS 帳單","UPS BILLED"),d.billed,d.upsUnknownBy)
+    +(wmsAgg?oneP(wmsAgg.buckets,0,L(wmsAgg.src+" 實收",wmsAgg.src+" BILLED"),wmsAgg.total,{}):"")
     +`</div>`;
   const chItems=Object.entries(d.chanAgg||{}).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))
     /* 取模,不然渠道超過十條的人會拿到 undefined 當顏色,那一塊就不見了。 */
@@ -19279,11 +19371,14 @@ const I18N={
   "tab.admin":["使用者管理","User Administration"],
   "tab.wmsdata":["WMS / TMS 資料","WMS / TMS Data"],
   "nav.cfg":["設定","Configuration"],
-  "nav.data":["資料作業","Data Operations"],
+  "tab.reconflow":["對帳作業","Reconciliation"],
+  "rs.inv":["1. UPS 帳單匯入","1. UPS Invoice Import"],
+  "rs.wms":["2. WMS / TMS 匯入","2. WMS / TMS Import"],
+  "rs.res":["3. 對帳分析","3. Reconciliation Analysis"],
   "nav.recon":["對帳","Reconciliation"],
   "nav.adm":["管理","Administration"],
   "hd.reconempty":["還沒有對帳結果","No comparison yet"],
-  "hint.reconempty":["先到「06 帳單匯入」載入這一期的 UPS 帳單,再到「05 WMS / TMS 資料」匯入填好的模板 —— 檔案一收下,結果就出現在這裡。","Import this period's UPS invoice under Batch Invoice Import, then bring in the filled WMS/TMS template under WMS/TMS Data. The comparison appears here the moment the file is accepted."],
+  "hint.reconempty":["先在「1. UPS 帳單匯入」載入這一期的 UPS 帳單,再到「2. WMS / TMS 匯入」匯入填好的模板 —— 檔案一收下,結果就出現在這裡。","Import this period's UPS invoice under step 1, UPS Invoice Import, then bring in the filled WMS / TMS template under step 2, WMS / TMS Import. The comparison appears here the moment the file is accepted."],
   "hd.loginhistory":["登入紀錄","Login History"],
   "hint.loginhistory":["由 Supabase 記錄成功登入，只有管理員可以查看。失敗登入與 IP 請至 Supabase Auth Logs 查看。",
     "Successful sign-ins recorded by Supabase. Only administrators can view this page. See Supabase Auth Logs for failed attempts and IP addresses."],
@@ -19498,7 +19593,7 @@ const I18N={
   "st.imp":["匯入檔案","Import the file"],
   "st.imp2":["先預覽,確認才寫入","Preview before commit"],
   "st.res":["讀取結果","Read the results"],
-  "st.res2":["07 對帳分析","07 Reconciliation Analysis"],
+  "st.res2":["3. 對帳分析","3. Reconciliation Analysis"],
   "btn.recontplw":["WMS 模板","WMS template"],
   "btn.recontplt":["TMS 模板","TMS template"],
   "btn.reconimp":["導入填好的","Import filled"],
@@ -19733,7 +19828,9 @@ const I18N={
   "t.lines":["帳單筆數","Invoice Lines"], "t.inv":["發票","Invoices"],
   "t.tot":["UPS 收取總額","UPS Total"],
 };
-let LANG=1;   /* 英文介面(全英文,無切換)。中文字串留在字典裡不影響。 */
+let LANG=1;   /* 0=中文 1=English。預設英文;切過的記在這台瀏覽器。 */
+const LANG_KEY="ups_lang";
+try{ const l=localStorage.getItem(LANG_KEY); if(l==="0"||l==="1") LANG=+l; }catch(e){}
 function T(k){ const v=I18N[k]; return v?v[LANG]:k; }
 function applyLang(){
   document.querySelectorAll("[data-i18n]").forEach(el=>{
@@ -19752,6 +19849,7 @@ function applyLang(){
   if(typeof renderRecon==="function" && typeof RECON!=="undefined" && RECON){
     try{ renderRecon(); }catch(e){}
   }
+  if(typeof renderAnalysis==="function"){ try{ renderAnalysis(); }catch(e){} }
   /* 三個帳號視窗的抬頭是算出來的(改的是誰、打了幾個字),開著切語言
      會停在原本那一種。只有開著的那個要重寫。 */
   if($("#uPwBg") && $("#uPwBg").classList.contains("on") && UPW){
@@ -21108,6 +21206,8 @@ function fillCodeFilter(){
 }
 function fillSelects(){
   fillCodeFilter(); fillWxSel();
+  $("#langSel") && ($("#langSel").innerHTML=["English","中文"].map((v,i)=>
+    `<option value="${i}"${i===(LANG?0:1)?" selected":""}>${v}</option>`).join(""));
   $("#brandSel") && ($("#brandSel").innerHTML=BRANDS.map(b=>
     `<option value="${b}"${b===BRAND?" selected":""}>${b}</option>`).join(""));
   /* 只剩一套場景時選單沒有東西可選,收起來。 */
@@ -21124,6 +21224,7 @@ function fillThemeSel(){ fillSelects(); }
 
 $("#langSel") && ($("#langSel").onchange=e=>{
   LANG = e.target.value==="0" ? 1 : 0;
+  try{ localStorage.setItem(LANG_KEY,String(LANG)); }catch(e){}
   applyLang(); drawClock(); drawDateCard(); fillSelects(); applyRole();
   if(CFG) renderConfigTabs();
   if(ROWS) renderCode();
@@ -21253,7 +21354,7 @@ step("tab", ()=>{
   }
   /* wmsdata 是入口不是頁面 —— 它落在 p-cus,別被「舊分頁名稱」誤殺。 */
   if(want!=="wmsdata" && !document.getElementById("p-"+want)) return;
-  if(HIDDEN_TABS.includes(want)) return;            /* 收起來的就回匯入頁 */
+  if(HIDDEN_TABS.includes(want) && !RECON_STEPS.includes(want)) return;   /* 收起來的就回匯入頁 */
   showTab(want);
 });
 
