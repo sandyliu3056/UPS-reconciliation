@@ -18991,7 +18991,8 @@ const THEMES={
 /* 品牌:兩套場景,同一支工具的兩張臉。
    Recon 是戶外的卸貨月台,Boop 是室內的掃描稽核區 —— 貨進來、掃過、對完帳。
    Colour 選單照舊,兩者互不影響。 */
-const BRANDS=["Recon","Boop"];
+/* Boop 那一套先收起來(場景的程式還在,要開回來把名字加回這個清單)。 */
+const BRANDS=["Recon"];
 const BRAND_KEY="ups_reprice_brand";
 let BRAND="Recon";
 function applyBrand(name){
@@ -20532,6 +20533,40 @@ function blendHex(a,b,t){
    後面立著一座天秤,左盤放包裹、右盤放帳單,慢慢搖;兩邊對平的那一刻
    秤頂亮出金勾:帳對上了。招牌掛在天秤後面的門型架上。
    戶外場景,所以天空、太陽月亮、天氣都是整片畫,不是關在窗格裡。 */
+/* 招牌:深色木牌配金邊、金字拉開字距,兩根短柱立在橫樑上;天暗時牌頂一盞小燈
+   打下來 —— 夜班的月台也看得見招牌。顏色全部跟主題走。 */
+function drawSign(g,cx,beamY,paper,line,gold){
+  const w=136,h=32, x=cx-w/2, y=beamY-h-6;
+  const dark=pal("--sidebar",pal("--ink","#3a2418"));
+  const rrect=(x,y,w,h,r)=>{ g.beginPath(); if(g.roundRect) g.roundRect(x,y,w,h,r); else g.rect(x,y,w,h); };
+  g.save();
+  /* 短柱 */
+  g.strokeStyle=INK; g.lineWidth=2;
+  g.beginPath(); g.moveTo(x+16,y+h); g.lineTo(x+16,beamY); g.moveTo(x+w-16,y+h); g.lineTo(x+w-16,beamY); g.stroke();
+  /* 燈與光暈 */
+  if(darkSky()){
+    const lg=g.createRadialGradient(cx,y-6,3,cx,y+h/2,w*0.72);
+    lg.addColorStop(0,"rgba(255,214,120,.50)"); lg.addColorStop(1,"rgba(255,214,120,0)");
+    g.fillStyle=lg; g.beginPath(); g.ellipse(cx,y+h/2,w*0.78,h*1.25,0,0,7); g.fill();
+  }
+  g.strokeStyle=INK; g.lineWidth=1.6;
+  g.beginPath(); g.moveTo(cx,y-2); g.lineTo(cx,y-9); g.stroke();
+  g.fillStyle=darkSky()?gold:paper; g.strokeStyle=INK; g.lineWidth=1.4;
+  g.beginPath(); g.arc(cx,y-11,3.4,0,7); g.fill(); g.stroke();
+  /* 牌 */
+  g.fillStyle=dark; g.strokeStyle=gold; g.lineWidth=2.2; g.lineJoin="round";
+  rrect(x,y,w,h,7); g.fill(); g.stroke();
+  g.strokeStyle=blendHex(paper,gold,.55); g.lineWidth=1;
+  rrect(x+4,y+4,w-8,h-8,5); g.stroke();
+  /* 字 */
+  const fam=(getComputedStyle(document.documentElement).getPropertyValue("--dispfam")||"").trim();
+  g.fillStyle=gold; g.textAlign="center"; g.textBaseline="middle";
+  g.font='700 15px '+(fam&&fam!=="inherit"?fam+",":"")+'"Microsoft JhengHei UI",system-ui';
+  if("letterSpacing" in g) g.letterSpacing="3px";
+  g.fillText("RECON",cx+1.5,y+h/2+1);
+  g.restore();
+  g.strokeStyle=INK; g.lineWidth=2; g.textAlign="left"; g.textBaseline="alphabetic";
+}
 function drawDock(g,W,H,t){
   const FLR=H-14, paper=pal("--panel","#fffdf7"), line=pal("--line","#caa356"),
         gold=pal("--tab","#ffb500"), sInk=skyInk();
@@ -20561,34 +20596,39 @@ function drawDock(g,W,H,t){
   for(let k=1;k<8;k++) skLine(g,fx0+k*fw/8,fy+3,fx0+k*fw/8,FLR-2,91+k);
   g.lineWidth=2;
 
-  /* ---- 貨車:車廂在左、車頭在右,倒車靠著月台。
-         車廂要明顯高過人(工人連安全帽約 65px),所以車廂給 78。 ---- */
-  g.strokeStyle=INK; g.lineWidth=2;
+  /* ---- 貨車:車廂在左、車頭在右,倒車靠著月台。封閉的箱型車廂,尾門關著,
+         裡面的貨看不見;車廂要明顯高過人(工人連安全帽約 65px),所以給 78。 ---- */
   const tx=16, tw=210, th=78, ty=FLR-24-th;
-  skRect(g,tx,ty,tw,th,20,paper);                       /* 車廂 */
-  g.lineWidth=1.2;
-  for(let k=1;k<6;k++) skLine(g,tx+k*tw/6,ty+6,tx+k*tw/6,ty+th-6,22+k); /* 側板直紋 */
+  const rrect=(x,y,w,h,r)=>{ g.beginPath(); if(g.roundRect) g.roundRect(x,y,w,h,r); else g.rect(x,y,w,h); };
+  g.strokeStyle=INK; g.lineWidth=2; g.lineJoin="round";
+  g.fillStyle=paper; rrect(tx,ty,tw,th,8); g.fill(); g.stroke();          /* 車廂 */
+  g.fillStyle=gold; rrect(tx+34,ty+24,tw-44,20,4); g.fill(); g.stroke();  /* 車身色帶 */
+  g.lineWidth=1.2; skLine(g,tx+34,ty+th-12,tx+tw-10,ty+th-12,23);          /* 下緣線 */
+  /* 車尾門(左):兩扇關著 —— 門縫、三個鉸鏈、一支把手 */
+  g.lineWidth=1.6; skLine(g,tx+28,ty+5,tx+28,ty+th-5,24);
+  g.lineWidth=1.2; for(const hy of [ty+12,ty+th/2,ty+th-12]) skLine(g,tx+3,hy,tx+9,hy,25);
+  g.fillStyle=INK; rrect(tx+31,ty+th/2-6,4,12,2); g.fill();
+  /* 車頭:圓頂駕駛室,斜擋風玻璃、側窗、門線、後視鏡、車燈、保險桿 */
+  const cbx=tx+tw, cbw=58, cbh=54, cy0=FLR-24-cbh;
+  g.lineWidth=2; g.fillStyle=gold;
+  g.beginPath(); g.moveTo(cbx,FLR-24); g.lineTo(cbx,cy0+10); g.quadraticCurveTo(cbx,cy0,cbx+10,cy0);
+  g.lineTo(cbx+cbw-20,cy0); g.quadraticCurveTo(cbx+cbw-2,cy0+2,cbx+cbw,cy0+24); g.lineTo(cbx+cbw,FLR-24);
+  g.closePath(); g.fill(); g.stroke();
+  g.fillStyle=blendHex(paper,"#8fc2e6",.45);
+  g.beginPath(); g.moveTo(cbx+cbw-22,cy0+6); g.lineTo(cbx+cbw-4,cy0+24); g.lineTo(cbx+cbw-4,cy0+30);
+  g.lineTo(cbx+cbw-22,cy0+30); g.closePath(); g.fill(); g.stroke();
+  rrect(cbx+7,cy0+8,cbw-32,22,3); g.fill(); g.stroke();
+  g.lineWidth=1.4; skLine(g,cbx+cbw-24,cy0+33,cbx+cbw-24,FLR-27,44);
+  g.fillStyle=INK; rrect(cbx+cbw-1,cy0+15,4,7,1.5); g.fill();
+  g.fillStyle="#ffe9a8"; g.beginPath(); g.arc(cbx+cbw-5,FLR-35,3.6,0,7); g.fill(); g.stroke();
+  g.fillStyle=blendHex(paper,INK,.25); rrect(cbx+cbw-3,FLR-28,10,4,1.5); g.fill(); g.stroke();
+  /* 輪子:輪胎 + 輪圈 */
   g.lineWidth=2;
-  skRect(g,tx+8,ty+14,tw-16,26,28,gold);                /* 車身色帶 */
-  /* 車尾在左邊 —— 車頭朝右,所以車是倒著靠上月台的。
-     尾門開著一扇,露出裡面兩排箱子。 */
-  skRect(g,tx+6,ty+8,50,th-16,30,blendHex(paper,INK,.12));
-  for(let r=0;r<2;r++) for(let c=0;c<2;c++)
-    skRect(g,tx+11+c*22,ty+14+r*26,19,22,32+r*2+c,BOX);
-  /* 車頭:駕駛室比車廂矮一截,加擋風玻璃 */
-  const cbx=tx+tw, cbw=54, cbh=52;
-  skRect(g,cbx,FLR-24-cbh,cbw,cbh,40,gold);
-  skRect(g,cbx+8,FLR-24-cbh+7,cbw-16,20,42,blendHex(paper,"#8fc2e6",.45));
-  g.lineWidth=1.4;
-  skLine(g,cbx+cbw,FLR-40,cbx+cbw+7,FLR-30,44);         /* 保險桿 */
-  g.lineWidth=2;
-  /* 輪子:車廂兩顆、車頭一顆 */
-  g.fillStyle=INK;
-  for(const wx of [tx+42,tx+tw-46,cbx+34]){
-    g.beginPath(); g.arc(wx,FLR-16,9,0,7); g.fill();
-    g.fillStyle=paper; g.beginPath(); g.arc(wx,FLR-16,3.4,0,7); g.fill();
-    g.fillStyle=INK;
+  for(const wx of [tx+44,tx+tw-46,cbx+38]){
+    g.fillStyle=INK; g.beginPath(); g.arc(wx,FLR-16,9.5,0,7); g.fill();
+    g.fillStyle=blendHex(paper,gold,.35); g.beginPath(); g.arc(wx,FLR-16,4.2,0,7); g.fill();
   }
+  g.fillStyle=INK; g.strokeStyle=INK; g.lineWidth=2;
   /* 月台檯面與斜坡:貨車就停在這一階旁邊 */
   g.strokeStyle=INK; g.lineWidth=2;
   skRect(g,4,FLR-24,cbx+cbw+16,10,46,blendHex(paper,line,.28));
@@ -20652,10 +20692,7 @@ function drawDock(g,W,H,t){
   g.lineWidth=2.4;
   skLine(g,gx0,FLR-10,gx0,gy,80); skLine(g,gx1,FLR-10,gx1,gy,81);
   skLine(g,gx0,gy,gx1,gy,82);
-  skRect(g,(gx0+gx1)/2-62,gy-26,124,26,84,paper);
-  g.fillStyle=INK; g.textAlign="center";
-  g.font='700 16px "Microsoft JhengHei UI",system-ui';
-  g.fillText("RECON",(gx0+gx1)/2,gy-8); g.textAlign="left";
+  drawSign(g,(gx0+gx1)/2,gy,paper,line,gold);
 
   /* 地平線 */
   g.strokeStyle=INK; g.lineWidth=1.8;
@@ -20979,6 +21016,8 @@ function fillSelects(){
   fillCodeFilter(); fillWxSel();
   $("#brandSel") && ($("#brandSel").innerHTML=BRANDS.map(b=>
     `<option value="${b}"${b===BRAND?" selected":""}>${b}</option>`).join(""));
+  /* 只剩一套場景時選單沒有東西可選,收起來。 */
+  $("#brandSel") && ($("#brandSel").hidden=BRANDS.length<2);
   $("#themeSel").innerHTML=Object.keys(THEMES).map(k=>
     `<option value="${k}"${k===THEME?" selected":""}>${LANG?k:THEMES[k].zh}</option>`).join("");
   $("#tzSel").innerHTML=TZ.map((z,i)=>
