@@ -1182,39 +1182,42 @@ T = {
  "app": "倉儲計費", "sub": "建層級 · 設費率 · 填數量 · 看合計",
  "clients": "客戶", "add": "＋ 新增客戶", "del": "刪除客戶",
  "code": "代碼", "name": "名稱", "colour": "配色",
- "pages": ("① 層級", "② 客戶", "③ 費率", "④ 計算", "⑤ 帳單"),
+ "pages": ("① 層級與客戶", "② 費率", "③ 計算", "④ 帳單"),
  "client": "客戶", "contact": "聯絡人", "note": "備註",
  "cl_new": "新增客戶", "cl_edit": "修改選定客戶", "cl_list": "客戶清單",
  "money": "${v}",
  "levels": "費率層級", "level": "費率層級", "editing": "正在編輯",
  "find_client": "搜尋客戶", "find_level": "搜尋層級",
- "find_hint": "輸入代碼、名稱、聯絡人或層級過濾，點一列就帶進這一頁",
+ "lv_new_title": "新增層級", "lv_copy_title": "複製層級", "lv_rename_title": "層級改名",
+ "lv_next": "層級 {n}", "lv_copy_name": "{name} 複本",
+ "ok_btn": "確定", "cancel_btn": "取消",
+ "find_hint_rate": "打代碼或名稱過濾，點一列就切到它的層級來編",
+ "find_hint": "打代碼、名稱、聯絡人或層級過濾，點一列帶入",
  "pick_cols": ("代碼", "名稱", "費率層級"),
- "p1_title": "費率層級", "p2_title": "客戶", "p3_title": "費率",
- "p4_title": "本期計算", "p5_title": "帳單",
+ "p1_title": "層級與客戶", "p2_title": "費率", "p3_title": "本期計算",
+ "p4_title": "帳單",
  "lv_name": "層級名稱", "lv_new": "＋ 新增層級", "lv_copy": "複製選定層級",
  "lv_rename": "改名", "lv_del": "刪除層級", "lv_list": "層級清單",
  "lv_cols": ("層級", "客戶數", "已設單價", "狀態"),
  "lv_default": "預設", "join": "、",
  "lv_blank": "層級要有名稱。", "lv_dup": "已經有一層叫這個名字。",
  "lv_last": "至少要留一層。",
- "lv_none": "還沒有費率層級。到「① 層級」建一層。",
- "lv_inuse": "「{name}」還有 {n} 個客戶在用，不能刪。先到「② 客戶」把他們改派到別的層級：{who}",
+ "lv_none": "還沒有費率層級。到「① 層級與客戶」建一層。",
+ "lv_inuse": "「{name}」還有 {n} 個客戶在用，不能刪。先到「① 層級與客戶」把他們改派到別的層級：{who}",
  "lv_del_ask": "刪除「{name}」？那一層的整份單價會一起消失，沒有復原。",
- "lv_added": "已新增「{name}」，單價從報價表預設值起頭。到「③ 費率」改。",
+ "lv_added": "已新增「{name}」，單價從報價表預設值起頭。到「② 費率」改。",
  "lv_copied": "已複製成「{name}」，現在編的是新的那一層。",
  "lv_users": "{n} 個客戶用這一層", "lv_nobody": "還沒有客戶指到這一層",
  "rate_for": "正在編輯：{name}", "lv_of": "費率層級：{name}",
  "unset": "未指定", "gone": "{id}（層級已刪除）",
- "no_level": "這個客戶還沒指定費率層級，算不出金額。到「② 客戶」指定一層。",
- "lost_level": "這個客戶指到的層級「{id}」已經不在了。到「② 客戶」重新指定。",
- "need_level": "先到「② 客戶」替這個客戶指定費率層級。",
- "p1_help": "先建費率層級。一層是一整份獨立的單價表，好幾個客戶可以共用同一層；點一列就切成正在編輯的那一層。",
- "p2_help": "再建客戶，並指定它用哪一層費率。代碼是唯一的，每期的數量掛在代碼下；單價則跟著層級走。",
- "p3_help": "設定正在編輯那一層的單價。上方選分類，只顯示那一類的項目。改一次，指到這一層的客戶全部跟著變。",
- "p4_help": "把這期做的量一項一項加進來：選項目、填數量、按「加入」。單價從這個客戶的層級帶入。",
- "p5_help": "只列出有數量的項目，可以匯出成帳單。",
- "need_client": "還沒有客戶。到「② 客戶」新增一個。",
+ "no_level": "這個客戶還沒指定費率層級，算不出金額。到「① 層級與客戶」指定一層。",
+ "lost_level": "這個客戶指到的層級「{id}」已經不在了。到「① 層級與客戶」重新指定。",
+ "need_level": "先到「① 層級與客戶」替這個客戶指定費率層級。",
+ "p1_help": "左邊先建費率層級，右邊再建客戶並指定它用哪一層。一層是一整份獨立的單價表，好幾個客戶可以共用；點層級那一列就切成正在編輯的那一層。",
+ "p2_help": "設定正在編輯那一層的單價。上方選分類，只顯示那一類的項目。改一次，指到這一層的客戶全部跟著變。",
+ "p3_help": "把這期做的量一項一項加進來：選項目、填數量、按「加入」。單價從這個客戶的層級帶入。",
+ "p4_help": "只列出有數量的項目，可以匯出成帳單。",
+ "need_client": "還沒有客戶。到「① 層級與客戶」新增一個。",
  "group": "分類", "all": "全部",
  "item": "項目", "qty": "數量", "unit": "單位", "price": "單價",
  "amount": "金額", "add": "加入", "rm": "刪除選定",
@@ -1225,15 +1228,15 @@ T = {
  "work_date": "作業日期", "weight_each": "單件重量（lb）", "container_qty": "櫃數", "sku_count": "SKU 數",
  "add_pick": "加入作業費", "edit_selected": "修改選定", "save_edit": "儲存修改", "cancel_edit": "取消修改", "pick_hint": "先選入庫或出庫，再選下一層計費方式。入庫可另外填櫃數與 SKU 數，逐件作業會依單件重量自動帶入費率級距。",
  "need_order": "請輸入單號。", "need_weight": "重量要填大於 0 的數字。",
- "need_pick_rate": "此揀貨方式尚未設定單價，請先到「③ 費率」頁設定。",
- "storage_card": "倉儲費快速計算", "storage_hint": "選擇計費期間並輸入平均占用 CBM，系統會自動計算天數與 CBM-day。單價可在「③ 費率」頁的倉租分類修改。",
+ "need_pick_rate": "此揀貨方式尚未設定單價，請先到「② 費率」頁設定。",
+ "storage_card": "倉儲費快速計算", "storage_hint": "選擇計費期間並輸入平均占用 CBM，系統會自動計算天數與 CBM-day。單價可在「② 費率」頁的倉租分類修改。",
  "storage_start": "起始日期", "storage_end": "結束日期", "storage_cbm": "平均占用（CBM）", "storage_days": "計費天數", "storage_rate": "單價 / CBM-day", "storage_amount": "預估金額", "add_storage": "加入倉儲費", "need_storage_date": "請輸入有效的倉儲起訖日期。", "need_storage_cbm": "平均占用 CBM 必須大於 0。",
  "pick_item": "請先選一個項目。", "need_qty": "數量要填大於 0 的數字。",
  "need_amt": "這個項目報價未定，請直接填金額。",
  "cl_cols": ("代碼", "名稱", "費率層級", "聯絡人", "備註"),
  "bill_title": "帳單", "bill_sub": "只列出有數量的項目。",
  "bill_cols": ("單號", "項目", "數量", "單位", "單價", "金額"),
- "bill_empty": "本期還沒有填任何數量。到「④ 計算」填數量。",
+ "bill_empty": "本期還沒有填任何數量。到「③ 計算」填數量。",
  "exp_bill": "匯出帳單", "bill_tpl": "帳單模板",
  "grp": {"inbound": "進倉", "outbound": "出貨",
          "storage": "倉租", "return": "退貨"},
@@ -1241,11 +1244,11 @@ T = {
  "period": "本期合計", "clear": "清空本期",
  "clear_ask": "本期填的數量會全部清掉，確定嗎？",
  "save": "存檔", "saved": "已存檔", "imp": "匯入報價表", "exp": "匯出報價表模板",
- "warn": "請檢查", "ok": "完成", "export_ok": "匯出完成\n\n檔案已儲存到：\n{path}", "no_bill_data": "目前沒有任何可匯出的帳單明細。請先在「④ 計算」頁加入入庫、出庫或其他收費項目。",
+ "warn": "請檢查", "ok": "完成", "export_ok": "匯出完成\n\n檔案已儲存到：\n{path}", "no_bill_data": "目前沒有任何可匯出的帳單明細。請先在「③ 計算」頁加入入庫、出庫或其他收費項目。",
  "empty": "還沒有客戶。",
  "b_title": "先建一層費率，再新增客戶",
- "b_body": "「① 層級」建一層，例如  A 級；「② 客戶」填代碼和名稱，例如  GEN  和  Geniqua Client，\n"
-           "並指到那一層。之後：③ 設那一層的單價　④ 填數量算錢　⑤ 匯出帳單。\n"
+ "b_body": "「① 層級與客戶」左邊建一層，例如  A 級；右邊填代碼和名稱，例如  GEN  和  Geniqua Client，\n"
+           "並指到那一層。之後：② 設那一層的單價　③ 填數量算錢　④ 匯出帳單。\n"
            "也可以按右上角「匯入報價表」直接把 Excel 讀進正在編輯的層級。",
  "blank": "代碼和名稱都要填。", "dup": "代碼重複。",
  "imp_ok": "已從報價表更新「{lv}」的 {n} 個項目。",
@@ -1256,39 +1259,42 @@ T = {
  "app": "Warehouse Billing", "sub": "levels · rates · quantities · total",
  "clients": "Clients", "add": "+ New client", "del": "Delete client",
  "code": "Code", "name": "Name", "colour": "Colour",
- "pages": ("1  Levels", "2  Clients", "3  Rates", "4  Calculate", "5  Invoice"),
+ "pages": ("1  Levels & Clients", "2  Rates", "3  Calculate", "4  Invoice"),
  "client": "Client", "contact": "Contact", "note": "Note",
  "cl_new": "Add client", "cl_edit": "Update selected", "cl_list": "Client list",
  "money": "${v}",
  "levels": "Rate levels", "level": "Rate level", "editing": "Editing",
  "find_client": "Find client", "find_level": "Find level",
- "find_hint": "Type a code, name, contact or level to filter; click a row to bring it into this page",
+ "lv_new_title": "Add a rate level", "lv_copy_title": "Duplicate level", "lv_rename_title": "Rename level",
+ "lv_next": "Level {n}", "lv_copy_name": "{name} copy",
+ "ok_btn": "OK", "cancel_btn": "Cancel",
+ "find_hint_rate": "Type to filter; click a row to edit its level",
+ "find_hint": "Type to filter, click a row to pick",
  "pick_cols": ("Code", "Name", "Rate level"),
- "p1_title": "Rate levels", "p2_title": "Clients", "p3_title": "Rates",
- "p4_title": "This period", "p5_title": "Invoice",
+ "p1_title": "Levels & Clients", "p2_title": "Rates", "p3_title": "This period",
+ "p4_title": "Invoice",
  "lv_name": "Level name", "lv_new": "+ New level", "lv_copy": "Duplicate selected",
  "lv_rename": "Rename", "lv_del": "Delete level", "lv_list": "Level list",
  "lv_cols": ("Level", "Clients", "Rates set", "State"),
  "lv_default": "Default", "join": ", ",
  "lv_blank": "Give the level a name.", "lv_dup": "There is already a level with that name.",
  "lv_last": "Keep at least one level.",
- "lv_none": "No rate levels yet. Add one on the Levels page.",
- "lv_inuse": "\"{name}\" is still assigned to {n} client(s) and cannot be deleted. Reassign them on the Clients page first: {who}",
+ "lv_none": "No rate levels yet. Add one on the Levels & Clients page.",
+ "lv_inuse": "\"{name}\" is still assigned to {n} client(s) and cannot be deleted. Reassign them on the Levels & Clients page first: {who}",
  "lv_del_ask": "Delete \"{name}\"? That level's entire rate set goes with it, and there is no undo.",
  "lv_added": "Added \"{name}\" with the price-sheet defaults. Change them on the Rates page.",
  "lv_copied": "Copied to \"{name}\" — you are now editing the copy.",
  "lv_users": "{n} client(s) on this level", "lv_nobody": "No client is on this level yet",
  "rate_for": "Editing: {name}", "lv_of": "Rate level: {name}",
  "unset": "Not set", "gone": "{id} (level deleted)",
- "no_level": "This client has no rate level, so nothing can be priced. Assign one on the Clients page.",
- "lost_level": "This client's level \"{id}\" no longer exists. Reassign one on the Clients page.",
- "need_level": "Assign this client a rate level on the Clients page first.",
- "p1_help": "Create rate levels first. A level is one complete, independent set of rates; any number of clients can share it. Click a row to make it the level being edited.",
- "p2_help": "Then add clients and assign each one a level. The code is unique; each period's quantities hang off it, while the rates follow the level.",
- "p3_help": "Set the rates of the level being edited. Choose a group above to show just those lines. Change a rate once and every client on this level follows.",
- "p4_help": "Add this period's work one line at a time: pick an item, enter a quantity, press Add. Rates come from this client's level.",
- "p5_help": "Only lines with a quantity. Export the invoice when you are done.",
- "need_client": "No clients yet. Add one on the Clients page.",
+ "no_level": "This client has no rate level, so nothing can be priced. Assign one on the Levels & Clients page.",
+ "lost_level": "This client's level \"{id}\" no longer exists. Reassign one on the Levels & Clients page.",
+ "need_level": "Assign this client a rate level on the Levels & Clients page first.",
+ "p1_help": "Levels on the left, clients on the right. A level is one complete, independent set of rates that any number of clients share; each client points at one. Click a level row to make it the level being edited.",
+ "p2_help": "Set the rates of the level being edited. Choose a group above to show just those lines. Change a rate once and every client on this level follows.",
+ "p3_help": "Add this period's work one line at a time: pick an item, enter a quantity, press Add. Rates come from this client's level.",
+ "p4_help": "Only lines with a quantity. Export the invoice when you are done.",
+ "need_client": "No clients yet. Add one on the Levels & Clients page.",
  "group": "Group", "all": "All",
  "item": "Item", "qty": "Qty", "unit": "Unit", "price": "Rate",
  "amount": "Amount", "add": "Add", "rm": "Remove selected",
@@ -1319,9 +1325,9 @@ T = {
  "warn": "Check this", "ok": "Done", "export_ok": "Export complete\n\nThe file was saved to:\n{path}", "no_bill_data": "There are no invoice details to export. Add inbound, outbound, or other charge lines on the Calculate page first.",
  "empty": "No clients yet.",
  "b_title": "Start with a rate level, then a client",
- "b_body": "Add a level on 1 Levels, for example  Level A.  Add a client on 2 Clients, for example\n"
-           "GEN  and  Geniqua Client, and point it at that level. Then: 3 set the level's rates,\n"
-           "4 enter quantities, 5 export the invoice. Import price sheet at the top right reads\n"
+ "b_body": "On 1 Levels & Clients add a level on the left, for example  Level A,  and a client on the\n"
+           "right, for example  GEN  and  Geniqua Client, pointed at that level. Then: 2 set the level's\n"
+           "rates, 3 enter quantities, 4 export the invoice. Import price sheet at the top right reads\n"
            "your Excel straight into the level being edited.",
  "blank": "Code and name are both required.", "dup": "That code is taken.",
  "imp_ok": "Updated {n} lines of \"{lv}\" from the price sheet.",
@@ -1793,8 +1799,6 @@ class App:
         self.sketch.append(("pet", self.head_pet))
         self.t_app = tk.Label(self.head, font=title_font(20, "bold"))
         self.t_app.pack(side="left")
-        self.t_sub = tk.Label(self.head, font=ui_font(10))
-        self.t_sub.pack(side="left", padx=(px(10), 0), pady=(px(9), 0))
         self.lang_box = SketchCombo(self.head, values=["中文", "English"],
                                     width=8)
         self.lang_box.set("English")
@@ -1813,33 +1817,29 @@ class App:
         self.sketch.append(("rule", self.rule))
         for key, cmd in (("save", self.save), ("exp", self.on_export_price_template), ("imp", self.on_import)):
             self.small(self.tools, key, cmd).pack(side="right", padx=(px(6), 0))
+        # 正在編輯哪一層,就擺在匯入/匯出報價表旁邊 —— 那兩顆按鈕動的就是
+        # 這一層。跟 UPS 對帳工具右上角那顆 Editing 一樣,每一頁都看得到。
+        self.lv_box = self.combo(self.tools, width=18)
+        self.lv_box.pack(side="right", padx=(px(6), px(12)))
+        self.lv_box.bind("<<ComboboxSelected>>", self.on_pick_level)
+        self.lab(self.tools, "l_editing", size=10, text_key="editing").pack(
+            side="right")
 
         self.body = tk.Frame(root)
         self.body.pack(fill="both", expand=True, padx=px(18))
 
-        bar = tk.Frame(self.body)
-        bar.pack(fill="x", pady=(0, px(6)))
-        self.plain.append(bar)
-        # 客戶不在這條列上:② ④ ⑤ 各自有搜尋框和清單,打字過濾、點一列
-        # 就把客戶帶進那一頁。這裡只剩「正在編輯哪一層」—— 跟 UPS 對帳工具
-        # 右上角那顆 Editing 一樣,每一頁都看得到,③ 費率頁改的就是它。
-        self.lv_box = self.combo(bar, width=18)
-        self.lv_box.pack(side="right")
-        self.lv_box.bind("<<ComboboxSelected>>", self.on_pick_level)
-        self.lab(bar, "l_editing", size=10, text_key="editing").pack(
-            side="right", padx=(0, px(6)))
-
+        # 客戶不在任何一條共用的列上:① ② ③ ④ 各自有搜尋框和清單,
+        # 打字過濾、點一列就把客戶帶進那一頁。
         self.nb = ttk.Notebook(self.body)
         self.nb.pack(fill="both", expand=True)
-        self.pages = [tk.Frame(self.nb) for _ in range(5)]
+        self.pages = [tk.Frame(self.nb) for _ in range(4)]
         self.plain += self.pages
         for p in self.pages:
             self.nb.add(p, text="")
-        self.build_levels(self.pages[0])
-        self.build_clients(self.pages[1])
-        self.build_rates(self.pages[2])
-        self.build_calc(self.pages[3])
-        self.build_bill(self.pages[4])
+        self.build_levels_clients(self.pages[0])
+        self.build_rates(self.pages[1])
+        self.build_calc(self.pages[2])
+        self.build_bill(self.pages[3])
 
         self.foot = tk.Frame(root)
         self.foot.pack(fill="x", side="bottom", before=self.body)
@@ -1860,26 +1860,65 @@ class App:
         self.apply_palette()
         self.retext()
         self.select(self.cur)
-        # 設定做過一次就不會再改;每個月打開來要做的事在 ④。
+        # 設定做過一次就不會再改;每個月打開來要做的事在 ③。
         if self.b.clients:
-            self.nb.select(self.pages[3])
-        self.maximize()
+            self.nb.select(self.pages[2])
 
-    def maximize(self):
-        """開到最大。Windows 吃 zoomed,X11 吃 -zoomed;沒有視窗管理員
-        (或兩個都不理)就直接填滿螢幕。minsize 留著,縮回去版面不會壞。"""
-        root = self.root
-        sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
-        for attempt in (lambda: root.state("zoomed"),
-                        lambda: root.attributes("-zoomed", True)):
-            try:
-                attempt()
-            except tk.TclError:
-                continue
-            root.update_idletasks()
-            if root.winfo_width() >= sw - px(40):
-                return
-        root.geometry(f"{sw}x{sh}+0+0")
+    def ask_text(self, title, label, initial="", ok=None):
+        """One small window with one box. Returns the text, or None when
+        cancelled. The name is asked for when the button is pressed, not
+        kept in a box that sits on the page all day."""
+        t = UI_THEMES[self.palette]
+        win = tk.Toplevel(self.root, bg=C["bg"])
+        win.title(title)
+        win.transient(self.root)
+        win.resizable(False, False)
+        pad = tk.Frame(win, bg=C["bg"], padx=px(20), pady=px(16))
+        pad.pack(fill="both", expand=True)
+        tk.Label(pad, text=title, font=title_font(13, "bold"), bg=C["bg"],
+                 fg=C["accent"], anchor="w").pack(anchor="w")
+        tk.Label(pad, text=label, font=ui_font(10), bg=C["bg"], fg=C["dim"],
+                 anchor="w").pack(anchor="w", pady=(px(10), px(4)))
+        var = tk.StringVar(value=initial)
+        ent = SketchEntry(pad, textvariable=var, width=32)
+        ent.retheme(page=t["BG"], panel=t["PANEL"], ink=t["TEXT"],
+                    line=t["LINE"])
+        ent.pack(fill="x")
+        row = tk.Frame(pad, bg=C["bg"])
+        row.pack(fill="x", pady=(px(14), 0))
+        out = {"v": None}
+
+        def done(_e=None):
+            out["v"] = var.get()
+            win.destroy()
+
+        def cancel(_e=None):
+            win.destroy()
+        edge = t["LINE"] if _is_dark(t["RUN"]) else t["TITLE"]
+        SketchButton(row, text=ok or self.tr("ok_btn"), command=done,
+                     font=title_font(10, "bold"), padx=14, pady=5,
+                     tone="solid", page=t["BG"], fill=t["RUN"], outline=edge,
+                     hover=t["RUN_HOVER"]).pack(side="right")
+        SketchButton(row, text=self.tr("cancel_btn"), command=cancel,
+                     font=title_font(10, "bold"), padx=14, pady=5,
+                     tone="soft", page=t["BG"], fill=t["BG"], outline=t["LINE"],
+                     hover=t["SELECT"], fg=t["TEXT"]).pack(side="right",
+                                                          padx=(0, px(6)))
+        win.bind("<Return>", done)
+        win.bind("<Escape>", cancel)
+        win.update_idletasks()
+        x = self.root.winfo_rootx() + (self.root.winfo_width() - win.winfo_width()) // 2
+        y = self.root.winfo_rooty() + (self.root.winfo_height() - win.winfo_height()) // 3
+        win.geometry(f"+{max(0, x)}+{max(0, y)}")
+        ent.focus_set()
+        ent.select_range(0, "end")
+        self._ask = {"win": win, "var": var, "ok": done, "cancel": cancel}
+        try:
+            win.grab_set()
+            self.root.wait_window(win)
+        finally:
+            self._ask = None
+        return out["v"]
 
     def small(self, parent, key, cmd, primary=False, text_key=None,
               pop=None):
@@ -1964,7 +2003,8 @@ class App:
 
     # ---- client pickers ---------------------------------------------------
 
-    def client_picker(self, parent, full=False, current=True, height=4):
+    def client_picker(self, parent, full=False, current=True, height=4,
+                      follow=False):
         """A search box and a short list. Type to filter, click a row to
         bring that client into this page. One per page that works on a
         client -- there is no client box up top to go looking for."""
@@ -1978,8 +2018,9 @@ class App:
         self.lab(row, f"pk_l{n}", "plain", 10, text_key="find_client").pack(
             side="left", padx=(0, px(6)))
         var = tk.StringVar()
-        self.entry(row, textvariable=var, width=26).pack(side="left")
-        self.lab(row, f"pk_h{n}", "dim", 9, text_key="find_hint").pack(
+        self.entry(row, textvariable=var, width=20).pack(side="left")
+        self.lab(row, f"pk_h{n}", "dim", 9,
+                 text_key="find_hint_rate" if follow else "find_hint").pack(
             side="left", padx=(px(10), 0))
         cur = None
         if current:
@@ -1987,16 +2028,23 @@ class App:
             cur.pack(side="right")
             self.themed.append(("title", cur))
         if full:
-            tv = self.table(box, (90, 200, 140, 130, 200), ("w",) * 5, height)
+            tv = self.table(box, (70, 150, 110, 100, 150), ("w",) * 5, height)
         else:
             tv = self.table(box, (90, 260, 160), ("w", "w", "w"), height,
                             expand=False)
         # 代碼欄固定寬,開到最大時多出來的寬度給名稱和備註,不是給代碼。
         tv.column("c0", stretch=False)
-        pk = {"var": var, "tv": tv, "full": full, "cur": cur}
+        pk = {"var": var, "tv": tv, "full": full, "cur": cur, "follow": follow}
         self.pickers.append(pk)
         var.trace_add("write", lambda *a, pk=pk: self.fill_picker(pk))
         tv.bind("<<TreeviewSelect>>", lambda e, pk=pk: self.on_pick_row(pk))
+        if follow:
+            # 只有真的點了那一列(或按 Enter)才切層級。<<TreeviewSelect>> 在
+            # sync_pickers() 重選現用那一列時也會發,那不算人的動作。
+            tv.bind("<ButtonRelease-1>", lambda e, pk=pk: self.on_pick_click(
+                pk, pk["tv"].identify_row(e.y)))
+            tv.bind("<Return>", lambda e, pk=pk: self.on_pick_click(
+                pk, (pk["tv"].selection() or ("",))[0]))
         return pk
 
     def client_matches(self, code, q):
@@ -2121,81 +2169,96 @@ class App:
         self.trees.append(tv)
         return tv
 
-    def build_levels(self, page):
-        """One row per level. Pick a row and that is the level ③ edits;
-        the top bar says so on every page."""
+    def build_levels_clients(self, page):
+        """One page, two panels: levels on the left, clients on the right.
+        A client points at a level, so they are read together."""
         pad = self.page_head(page, 1)
-        form = tk.Frame(pad)
-        form.pack(fill="x")
-        self.plain.append(form)
-        self.lv_name = tk.StringVar()
-        cell = tk.Frame(form)
-        cell.pack(side="left", padx=(0, 16))
-        self.plain.append(cell)
-        self.lab(cell, "f_lv_name", "dim", 9, text_key="lv_name").pack(anchor="w")
-        self.entry(cell, textvariable=self.lv_name, width=24).pack()
+        duo = tk.Frame(pad)
+        duo.pack(fill="both", expand=True)
+        self.plain.append(duo)
+        duo.columnconfigure(0, weight=2, uniform="lc")
+        duo.columnconfigure(1, weight=3, uniform="lc")
+        duo.rowconfigure(0, weight=1)
+        left = tk.Frame(duo)
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, px(20)))
+        right = tk.Frame(duo)
+        right.grid(row=0, column=1, sticky="nsew")
+        self.plain += [left, right]
+        self.build_levels(left)
+        self.build_clients(right)
 
-        row = tk.Frame(pad)
-        row.pack(fill="x", pady=(10, 12))
+    def build_levels(self, host):
+        """Pick a row and that is the level ② edits; the tools row says so
+        on every page. Names are asked for in a small window when a button
+        is pressed, not kept in a box that sits on the page all day."""
+        self.lab(host, "levels", "title", 11).pack(anchor="w", pady=(0, px(6)))
+        row = tk.Frame(host)
+        row.pack(fill="x", pady=(0, px(6)))
         self.plain.append(row)
         self.small(row, "lv_new", self.on_add_level, True).pack(side="left")
-        self.small(row, "lv_copy", self.on_copy_level).pack(side="left", padx=px(6))
+        self.small(row, "lv_copy", self.on_copy_level).pack(side="left",
+                                                            padx=(px(6), 0))
+        row = tk.Frame(host)
+        row.pack(fill="x", pady=(0, px(10)))
+        self.plain.append(row)
         self.small(row, "lv_rename", self.on_rename_level).pack(side="left")
         self.small(row, "lv_del", self.on_del_level, pop=POP["coral"]).pack(
-            side="left", padx=px(6))
+            side="left", padx=(px(6), 0))
 
-        row2 = tk.Frame(pad)
-        row2.pack(fill="x", pady=(0, px(6)))
-        self.plain.append(row2)
-        self.lab(row2, "lv_list", "title", 10).pack(side="left")
+        row = tk.Frame(host)
+        row.pack(fill="x", pady=(0, px(6)))
+        self.plain.append(row)
+        self.lab(row, "f_lv_find", "plain", 10, text_key="find_level").pack(
+            side="left", padx=(0, px(6)))
         self.lv_q = tk.StringVar()
-        self.entry(row2, textvariable=self.lv_q, width=22).pack(side="right")
-        self.lab(row2, "f_lv_find", "plain", 10, text_key="find_level").pack(
-            side="right", padx=(0, px(6)))
-        self.lv_tv = self.table(pad, (260, 90, 110, 130),
-                                ("w", "e", "e", "w"), 11)
+        self.entry(row, textvariable=self.lv_q, width=20).pack(side="left")
+        self.lv_tv = self.table(host, (150, 60, 90, 90),
+                                ("w", "e", "e", "w"), 8)
         self.lv_tv.bind("<<TreeviewSelect>>", self.on_pick_level_row)
         self.lv_q.trace_add("write", lambda *a: self.fill_levels())
 
-    def build_clients(self, page):
-        pad = self.page_head(page, 2)
-        form = tk.Frame(pad)
+    def build_clients(self, host):
+        self.lab(host, "clients", "title", 11).pack(anchor="w", pady=(0, px(6)))
+        form = tk.Frame(host)
         form.pack(fill="x")
         self.plain.append(form)
         self.c_code, self.c_name = tk.StringVar(), tk.StringVar()
         self.c_contact, self.c_note = tk.StringVar(), tk.StringVar()
-        for col, (key, var, w) in enumerate((("code", self.c_code, 10),
-                                             ("name", self.c_name, 22),
-                                             ("contact", self.c_contact, 14),
-                                             ("note", self.c_note, 22))):
+        # 兩列:代碼、名稱、層級一列,聯絡人、備註一列。層級跟代碼、名稱一起填,
+        # 不是背後偷偷指定;新增時預設是正在編輯的那一層,而且看得見。
+        cells = ((0, 0, "code", self.c_code, 10),
+                 (0, 1, "name", self.c_name, 24),
+                 (1, 0, "contact", self.c_contact, 10),
+                 (1, 1, "note", self.c_note, 24))
+        for r, c, key, var, w in cells:
             cell = tk.Frame(form)
-            cell.grid(row=0, column=col, sticky="w", padx=(0, 16))
+            cell.grid(row=r, column=c, sticky="w", padx=(0, px(14)),
+                      pady=(0, px(6)))
             self.plain.append(cell)
             self.lab(cell, "f_" + key, "dim", 9, text_key=key).pack(anchor="w")
             self.entry(cell, textvariable=var, width=w).pack()
-        # 層級跟代碼、名稱一起填,不是背後偷偷指定。新增時預設是正在編輯的
-        # 那一層 —— 多半就是要指的那一層,而且它是看得見的。
         cell = tk.Frame(form)
-        cell.grid(row=0, column=4, sticky="w")
+        cell.grid(row=0, column=2, sticky="w", pady=(0, px(6)))
         self.plain.append(cell)
         self.lab(cell, "f_level", "dim", 9, text_key="level").pack(anchor="w")
         self.c_level_box = self.combo(cell, width=14)
         self.c_level_box.pack()
 
-        row = tk.Frame(pad)
-        row.pack(fill="x", pady=(10, 12))
+        row = tk.Frame(host)
+        row.pack(fill="x", pady=(px(4), px(10)))
         self.plain.append(row)
         self.small(row, "cl_new", self.on_add, True).pack(side="left")
         self.small(row, "cl_edit", self.on_update).pack(side="left", padx=px(6))
         self.small(row, "del", self.on_del, pop=POP["coral"]).pack(side="left")
 
-        self.lab(pad, "cl_list", "title", 10).pack(anchor="w", pady=(0, px(6)))
-        self.pick_cus = self.client_picker(pad, full=True, current=False,
-                                           height=11)
-        self.cl_tv = self.pick_cus["tv"]
+        self.picker_cus = self.client_picker(host, full=True, current=False,
+                                           height=8)
+        self.cl_tv = self.picker_cus["tv"]
 
     def build_rates(self, page):
-        pad = self.page_head(page, 3)
+        pad = self.page_head(page, 2)
+        # 找客戶 → 切到它的層級來編。單價掛在層級上,但人記得的是客戶。
+        self.picker_rate = self.client_picker(pad, height=3, follow=True)
         # 這一頁改的是哪一層,以及有幾個客戶會跟著變。
         head = tk.Frame(pad)
         head.pack(fill="x", pady=(0, px(6)))
@@ -2270,8 +2333,8 @@ class App:
             n += 1
 
     def build_calc(self, page):
-        pad = self.page_head(page, 4, scroll=True)
-        self.pick_calc = self.client_picker(pad)
+        pad = self.page_head(page, 3, scroll=True)
+        self.picker_calc = self.client_picker(pad, height=3)
         # 這個客戶用哪一層的單價 —— 或者為什麼算不出來。
         self.calc_lv = tk.Label(pad, font=ui_font(10, "bold"), anchor="w",
                                 justify="left", wraplength=px(940))
@@ -2475,8 +2538,8 @@ class App:
         return KEYS[i] if 0 <= i < len(KEYS) else None
 
     def build_bill(self, page):
-        pad = self.page_head(page, 5)
-        self.pick_bill = self.client_picker(pad, current=False)
+        pad = self.page_head(page, 4)
+        self.picker_bill = self.client_picker(pad, current=False)
         head = tk.Frame(pad)
         head.pack(fill="x")
         self.plain.append(head)
@@ -2520,7 +2583,6 @@ class App:
         for w in (self.foot, self.foot_in, *self.cards):
             w.configure(bg=C["side"])
         self.t_app.configure(bg=C["bg"], fg=C["accent"])
-        self.t_sub.configure(bg=C["bg"], fg=C["dim"])
         self.t_period.configure(bg=C["side"], fg=C["dim"])
         self.total_val.configure(bg=C["side"], fg=C["accent"])
         self.status.configure(bg=C["side"], fg=C["dim"])
@@ -2643,8 +2705,12 @@ class App:
     # ---- handlers: levels ------------------------------------------------
 
     def on_add_level(self):
+        name = self.ask_text(self.tr("lv_new_title"), self.tr("lv_name"),
+                             self.tr("lv_next").format(n=len(self.b.levels) + 1))
+        if name is None:
+            return
         try:
-            lid = self.b.add_level(self.lv_name.get())
+            lid = self.b.add_level(name)
         except ValueError as e:
             return messagebox.showwarning(self.tr("warn"), self.tr(str(e)))
         self.select_level(lid)
@@ -2653,8 +2719,13 @@ class App:
     def on_copy_level(self):
         if not self.edit_lv:
             return messagebox.showwarning(self.tr("warn"), self.tr("lv_none"))
+        name = self.ask_text(self.tr("lv_copy_title"), self.tr("lv_name"),
+                             self.tr("lv_copy_name").format(
+                                 name=self.b.level_name(self.edit_lv)))
+        if name is None:
+            return
         try:
-            lid = self.b.copy_level(self.edit_lv, self.lv_name.get())
+            lid = self.b.copy_level(self.edit_lv, name)
         except ValueError as e:
             return messagebox.showwarning(self.tr("warn"), self.tr(str(e)))
         self.select_level(lid)
@@ -2663,8 +2734,12 @@ class App:
     def on_rename_level(self):
         if not self.edit_lv:
             return messagebox.showwarning(self.tr("warn"), self.tr("lv_none"))
+        name = self.ask_text(self.tr("lv_rename_title"), self.tr("lv_name"),
+                             self.b.level_name(self.edit_lv))
+        if name is None:
+            return
         try:
-            self.b.rename_level(self.edit_lv, self.lv_name.get())
+            self.b.rename_level(self.edit_lv, name)
         except ValueError as e:
             return messagebox.showwarning(self.tr("warn"), self.tr(str(e)))
         self.select_level(self.edit_lv)
@@ -2717,6 +2792,27 @@ class App:
         sel = pk["tv"].selection()
         if sel and sel[0] in self.b.clients and sel[0] != self.cur:
             self.select(sel[0])
+
+    def on_pick_click(self, pk, code):
+        """A real click (or Enter) on a row of ②'s picker: bring the client
+        in and edit its level. The selection event alone is not enough --
+        every repaint re-selects the current row, and that must not drag
+        the editing level around."""
+        if code not in self.b.clients:
+            return
+        if code != self.cur:
+            self.select(code)
+        self.follow_client_level(code)
+
+    def follow_client_level(self, code):
+        """Switch ② to the client's level. No usable level: say why and
+        leave the editing level alone."""
+        lid, status = self.b.resolve(code)
+        if status != "ok":
+            self.say(self.level_note(code))
+        elif lid != self.edit_lv:
+            self.select_level(lid)
+            self.say(self.tr("rate_for").format(name=self.b.level_name(lid)))
 
     def on_rate(self, key):
         """Every keystroke, on the level being edited. A half-typed number
@@ -3058,7 +3154,6 @@ class App:
         for k, w in self.L.items():
             w.configure(text=self.tr(self.tkey.get(k, k)))
         self.t_app.configure(text=self.tr("app"))
-        self.t_sub.configure(text=self.tr("sub"))
         self.root.title(self.tr("app"))
         self.t_period.configure(text=self.tr("period"))
         for i, name in enumerate(self.tr("pages")):
@@ -3184,8 +3279,6 @@ class App:
         shows a level name or a price."""
         ids = self.b.level_ids()
         self.edit_lv = lid if lid in self.b.levels else (ids[0] if ids else None)
-        if self.edit_lv:
-            self.lv_name.set(self.b.level_name(self.edit_lv))
         self.fill_levels()
         self.fill_clients()
         self.paint()

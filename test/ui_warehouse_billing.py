@@ -39,6 +39,31 @@ def shot(name):
         os.system(f"xwd -root -silent | convert xwd:- {OUT}/{name}.png 2>/dev/null")
         print("   shot (fallback)", name, e.__class__.__name__)
 
+def answer(text):
+    """Drive the name dialog once it appears: type text and press OK, or
+    cancel when text is None. The dialog blocks in wait_window, so this
+    has to come from the event loop."""
+    def go():
+        ask = getattr(app, "_ask", None)
+        if not ask:
+            root.after(30, go); return
+        if text is None:
+            ask["cancel"]()
+        else:
+            ask["var"].set(text)
+            if not getattr(answer, "shot_done", False):
+                answer.shot_done = True
+                root.update(); shot("00_level_dialog")
+            ask["ok"]()
+    root.after(30, go)
+
+def click(pk, code):
+    """A real click on a picker row (the selection event alone is not a click)."""
+    tv = pk["tv"]; tv.see(code); root.update()
+    x, y, w, h = tv.bbox(code)
+    tv.selection_set(code)
+    app.on_pick_click(pk, tv.identify_row(y + h // 2))
+
 def tab(i):
     app.nb.select(app.pages[i]); root.update()
 
@@ -50,28 +75,40 @@ root = tk.Tk()
 app = wb.App(root)
 root.update()
 print("== boot (empty)")
-check(len(app.pages) == 5, "five pages")
+check(len(app.pages) == 4, "four pages: levels and clients share the first")
 check([app.nb.tab(p, "text").strip() for p in app.pages] == list(app.tr("pages")), "tab titles from T")
 check(app.edit_lv == "L1" and app.lv_box.get() == "Default", "a Default level exists and is the editing level")
 check(app.c_level_box.get() == "Default", "blank client form defaults to the editing level")
 check(app.rate_w["c20"][0].get() == "380", "rates page shows the level's rates")
 check(app.rate_who.cget("text") == "Editing: Default", "rates page names the level being edited")
 check(not hasattr(app, "cl_box"), "no client box in the top bar")
-check(root.winfo_width() >= root.winfo_screenwidth() - 60, "window opens maximised")
-check([app.L[f"p{i}_title"].cget("text") for i in range(1, 6)] == ["Rate levels", "Clients", "Rates", "This period", "Invoice"], "every page has a title")
+check(not hasattr(app, "t_sub"), "no subtitle next to the app name")
+check(not hasattr(app, "lv_name"), "no name box sitting on the levels page")
+check(app.lv_box.master is app.tools, "the editing-level box sits in the tools row")
+check(root.winfo_width() < root.winfo_screenwidth() - 100, "window opens at its normal size, not maximised")
+check([app.L[f"p{i}_title"].cget("text") for i in range(1, 5)] == ["Levels & Clients", "Rates", "This period", "Invoice"], "every page has a title")
+def page_of(w):
+    while w is not None and w not in app.pages:
+        w = w.master
+    return w
+check(page_of(app.lv_tv) is app.pages[0] and page_of(app.cl_tv) is app.pages[0], "levels and clients share the first page")
+check(page_of(app.rate_w["c20"][3]) is app.pages[1] and page_of(app.calc_tv) is app.pages[2] and page_of(app.bill_tv) is app.pages[3], "rates, calculate and invoice follow")
 tab(0); shot("01_levels_empty_en")
 
 # ---- levels page ---------------------------------------------------------
 print("== levels")
-app.lv_name.set("Level A"); app.on_add_level(); root.update()
-check(app.edit_lv == "L2" and app.lv_box.get() == "Level A", "new level becomes the editing level, top bar follows")
+answer("Level A"); app.on_add_level(); root.update()
+check(app.edit_lv == "L2" and app.lv_box.get() == "Level A", "New level asks for a name in a dialog; it becomes the editing level and the tools row follows")
+check(app._ask is None and not [w for w in root.winfo_children() if isinstance(w, tk.Toplevel)], "dialog closed after OK")
+answer(None); app.on_add_level(); root.update()
+check(len(app.b.levels) == 2, "cancelling the dialog adds nothing")
 check([r[0] for r in rows(app.lv_tv)] == ["Default", "Level A"], "level table lists both")
 check(rows(app.lv_tv)[1][3] == "Editing" and rows(app.lv_tv)[0][3] == "", "state column marks the editing level")
-app.lv_name.set("Level A"); app.on_add_level()
+answer("Level A"); app.on_add_level()
 check(msgs[-1][2] == app.tr("lv_dup"), "duplicate name warned")
-app.lv_name.set("Level B"); app.on_copy_level(); root.update()
+answer("Level B"); app.on_copy_level(); root.update()
 check(app.edit_lv == "L3" and app.b.level_rate("L3", "c20") == 380.0, "copy makes L3 with A's rates")
-app.lv_name.set("Level B (big)"); app.on_rename_level(); root.update()
+answer("Level B (big)"); app.on_rename_level(); root.update()
 check(app.lv_box.get() == "Level B (big)" and rows(app.lv_tv)[2][0] == "Level B (big)", "rename shows everywhere")
 # pick a row in the table -> editing level switches
 app.lv_tv.selection_set("L2"); root.update()
@@ -84,7 +121,7 @@ shot("02_levels_en")
 
 # ---- rates page edits the editing level ----------------------------------
 print("== rates")
-tab(2)
+tab(1)
 app.rate_w["c20"][0].set("400")   # trace -> on_rate
 root.update()
 check(app.b.level_rate("L2", "c20") == 400.0 and app.b.level_rate("L1", "c20") == 380.0, "typing a rate writes to the editing level only")
@@ -96,7 +133,7 @@ shot("03_rates_en")
 
 # ---- clients page --------------------------------------------------------
 print("== clients")
-tab(1)
+tab(0)
 app.c_code.set("gen"); app.c_name.set("Geniqua Client"); app.c_contact.set("Amy"); app.c_note.set("test")
 check(app.c_level_box.get() == "Level A", "form level box defaults to the editing level (Level A)")
 app.on_add(); root.update()
@@ -119,26 +156,40 @@ shot("04_clients_en")
 
 # ---- pickers: search + select on every page that works on a client -------
 print("== pickers")
-tab(3); root.update()
-check([r[0] for r in rows(app.pick_calc["tv"])] == ["GEN", "NOL"] and app.pick_calc["tv"].selection() == ("GEN",), "④ picker lists every client with the current one selected")
-check(app.pick_calc["cur"].cget("text") == "GEN  Geniqua Client", "④ picker says who is current")
-app.pick_calc["var"].set("nol"); root.update()
-check([r[0] for r in rows(app.pick_calc["tv"])] == ["NOL"], "④ picker filters by code")
-app.pick_calc["tv"].selection_set("NOL"); root.update()
-check(app.cur == "NOL" and app.pick_calc["cur"].cget("text") == "NOL  No Level Yet", "clicking a row in ④ brings that client in")
+tab(2); root.update()
+check([r[0] for r in rows(app.picker_calc["tv"])] == ["GEN", "NOL"] and app.picker_calc["tv"].selection() == ("GEN",), "④ picker lists every client with the current one selected")
+check(app.picker_calc["cur"].cget("text") == "GEN  Geniqua Client", "④ picker says who is current")
+app.picker_calc["var"].set("nol"); root.update()
+check([r[0] for r in rows(app.picker_calc["tv"])] == ["NOL"], "④ picker filters by code")
+app.picker_calc["tv"].selection_set("NOL"); root.update()
+check(app.cur == "NOL" and app.picker_calc["cur"].cget("text") == "NOL  No Level Yet", "clicking a row in ④ brings that client in")
 check(app.calc_lv.cget("text") == app.tr("lost_level").format(id="L9"), "④ repaints for the picked client")
-app.pick_calc["var"].set(""); root.update()
-check(len(rows(app.pick_calc["tv"])) == 2 and app.pick_calc["tv"].selection() == ("NOL",), "clearing the filter lists all, current stays selected")
-check(app.pick_bill["tv"].selection() == ("NOL",) and app.cl_tv.selection() == ("NOL",), "the other pickers follow")
-app.pick_cus["var"].set("level"); root.update()
+app.picker_calc["var"].set(""); root.update()
+check(len(rows(app.picker_calc["tv"])) == 2 and app.picker_calc["tv"].selection() == ("NOL",), "clearing the filter lists all, current stays selected")
+check(app.picker_bill["tv"].selection() == ("NOL",) and app.cl_tv.selection() == ("NOL",), "the other pickers follow")
+app.picker_cus["var"].set("level"); root.update()
 check([r[0] for r in rows(app.cl_tv)] == ["GEN", "NOL"], "② search matches the level name (and the lost-level label)")
-app.pick_cus["var"].set("level a geniqua"); root.update()
+app.picker_cus["var"].set("level a geniqua"); root.update()
 check([r[0] for r in rows(app.cl_tv)] == ["GEN"], "② search: every word must match")
-app.pick_cus["var"].set("deleted"); root.update()
+app.picker_cus["var"].set("deleted"); root.update()
 check([r[0] for r in rows(app.cl_tv)] == ["NOL"], "② search finds the lost-level label")
-app.pick_cus["var"].set(""); root.update()
-tab(4); app.pick_bill["tv"].selection_set("GEN"); root.update()
+app.picker_cus["var"].set(""); root.update()
+tab(3); app.picker_bill["tv"].selection_set("GEN"); root.update()
 check(app.cur == "GEN" and app.bill_who.cget("text").startswith("GEN"), "clicking a row in ⑤ brings the client into the invoice")
+# ③ finds a client and switches to its level
+app.select_level("L1"); tab(1); root.update(); root.update()
+check(app.edit_lv == "L1" and app.picker_rate["tv"].selection() == ("GEN",), "② has a picker; switching to Default sticks even though the picker re-selects GEN")
+app.picker_rate["tv"].selection_set("NOL"); root.update()
+check(app.cur == "NOL" and app.edit_lv == "L1", "keyboard/selection alone brings the client in but leaves the editing level")
+click(app.picker_rate, "NOL"); root.update()
+check(app.cur == "NOL" and app.edit_lv == "L1", "clicking a client without a usable level leaves the editing level alone")
+check(app.status.cget("text") == app.tr("lost_level").format(id="L9"), "and the status bar says why")
+click(app.picker_rate, "GEN"); root.update()
+check(app.cur == "GEN" and app.edit_lv == "L2" and app.rate_who.cget("text") == "Editing: Level A", "clicking a client on ② switches to that client's level")
+check(app.rate_w["c20"][0].get() == "400", "② shows that level's rates")
+app.lv_box.current(0); app.on_pick_level(); root.update(); root.update()
+check(app.edit_lv == "L1", "the tools-row box can still switch away afterwards")
+shot("03b_rates_picker_en")
 tab(0); app.lv_q.set("default"); root.update()
 check([r[0] for r in rows(app.lv_tv)] == ["Default"], "① level search filters the list")
 app.lv_q.set(""); root.update()
@@ -156,7 +207,7 @@ check("L3" not in app.b.levels and app.edit_lv == "L1", "unused level deleted, e
 
 # ---- calc page -----------------------------------------------------------
 print("== calc")
-app.select("GEN"); tab(3)
+app.select("GEN"); tab(2)
 check(app.calc_lv.cget("text") == "Rate level: Level A", "calc page names the client's level")
 app.it_box.current(wb.KEYS.index("c20")); app.q_var.set("2"); app.on_add_line(); root.update()
 check(app.total_val.cget("text") == "$800.00", "2 x 400 on Level A")
@@ -181,7 +232,7 @@ shot("06_calc_lost_level_en")
 
 # ---- bill page -----------------------------------------------------------
 print("== bill")
-app.select("GEN"); tab(4); root.update()
+app.select("GEN"); tab(3); root.update()
 check(app.bill_lv.cget("text") == "Rate level: Level A", "bill page names the level")
 check(rows(app.bill_tv)[-1][5] == "$827.24", "bill total matches calc")
 shot("07_bill_en")
@@ -193,13 +244,13 @@ check(msgs[-1][2] == app.tr("need_level"), "invoice export refused without a lev
 # ---- chinese -------------------------------------------------------------
 print("== 中文")
 app.lang_box.set("中文"); app.on_lang(); root.update()
-check([app.nb.tab(p, "text").strip() for p in app.pages] == ["① 層級", "② 客戶", "③ 費率", "④ 計算", "⑤ 帳單"], "中文分頁")
+check([app.nb.tab(p, "text").strip() for p in app.pages] == ["① 層級與客戶", "② 費率", "③ 計算", "④ 帳單"], "中文分頁")
 check(app.L["l_editing"].cget("text") == "正在編輯" and rows(app.lv_tv)[1][3] == "正在編輯", "中文 editing label")
 check(rows(app.cl_tv)[1][2] == "L9（層級已刪除）", "中文 lost-level label")
 check(app.rate_who.cget("text") == "正在編輯：Level A", "中文 rates header")
-app.select("GEN"); tab(3); root.update()
+app.select("GEN"); tab(2); root.update()
 check(app.calc_lv.cget("text") == "費率層級：Level A", "中文 calc note")
-tab(0); shot("08_levels_zh"); tab(1); shot("09_clients_zh"); tab(2); shot("10_rates_zh"); tab(3); shot("11_calc_zh"); tab(4); shot("12_bill_zh")
+tab(0); shot("08_levels_clients_zh"); tab(1); shot("10_rates_zh"); tab(2); shot("11_calc_zh"); tab(3); shot("12_bill_zh")
 
 # ---- export price sheet for the editing level + save/reload ---------------
 print("== export / save / reload")
@@ -232,7 +283,7 @@ root.destroy()
 print("== reboot")
 root = tk.Tk(); app = wb.App(root); root.update()
 check(app.edit_lv == "L1" and [r[0] for r in rows(app.lv_tv)] == ["Default", "Level A"], "levels reload")
-check(app.nb.index(app.nb.select()) == 3, "opens on ④ when clients exist")
+check(app.nb.index(app.nb.select()) == 2, "opens on ③ when clients exist")
 check(app.total_val.cget("text") == "$827.24", "GEN re-prices identically after reload")
 root.destroy()
 old = {"clients": {"OLD": {"name": "Old Client", "contact": "", "note": "",
