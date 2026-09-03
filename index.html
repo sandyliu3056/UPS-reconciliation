@@ -1610,6 +1610,11 @@ label:has(#newChanOn){display:none !important}
   .lf:hover .mz .mz-head{transform:none}
 }
 /*!ui-pack:mascot.css:end*/
+
+/* 動畫先隱藏(卡片上的貓狗、流程圖的貓狗卡車與虛線流動)。要開回來刪這一段就好,
+   東西都還在頁上。 */
+.mzwrap,#fmCat,#fmDog,#fmTruck{display:none !important}
+.fm-dash{animation:none !important}
 </style>
 </head>
 <body>
@@ -13186,10 +13191,19 @@ const RECON_OTHER="Other Fees (non-carrier)";
 /* 補收清單用的「家族」:客戶端和 UPS 端可能用不同的細項收同一件事 —— 出貨時收
    AHS、UPS 量過改收 LPS;WMS 收商業 DAS、UPS 改判住宅 DAS。同一家族先抵,只補
    UPS 比客戶多收的部分。 */
-/* 舊 SOP 的兩條規則:每一筆運費更正向客戶收一筆稽核費(SCC audit fee);
-   Not Previously Billed 那兩種手續費(NPF / SCF)不向客戶收。 */
+/* 舊 SOP 的規則:每一筆運費更正向客戶收一筆稽核費(SCC audit fee)。
+   Not Previously Billed 的手續費(NPF / SCF)照收:有合約費率照費率,沒有照 UPS 實收。 */
 const REBILL_SCC_AUDIT_FEE=1.65;
-const REBILL_NEVER=/not previously billed/i;
+/* 費率表裡 0 = 沒設,不是「收 0」—— 引擎自己也把 0 記成問題。沒設的照 UPS 原價轉嫁
+   (Intercept、Reroute、Future Day Pickup、Residential Pickup 這些 flat fee 都是這樣收);
+   真的不收要在帳號層級停用(accessorial_disabled),那才算合約無此項。 */
+function rebillDisabled(name){
+  const dis=(CFG&&CFG.raw&&CFG.raw.accessorial_disabled)||[];
+  if(!dis.length) return false;
+  const BUCKET_OF={}; for(const [b,c] of Object.entries(REPORT_COL_OF)) BUCKET_OF[c]=b;
+  const sys=sysNamesOfAud(name);
+  return sys.length>0 && sys.every(sn=>dis.includes(BUCKET_OF[sn]||sn));
+}
 const REBILL_FAMILIES=[
   {name:"Additional Handling / Large Package",
    fees:["Additional Handling Surcharge - Weight","Additional Handling Surcharge - Dimension",
@@ -13782,7 +13796,9 @@ function reconRun(list){
     const b=o.billedFees;
     if(!b){ if(Object.keys(upsF).length) skipped++; continue; }
     const billedOf=c=>{ let w=b[c]; if(w==null && heads.has(c)) w=b[heads.get(c)]; return w==null?null:cents(w); };
-    const rateOf=c=>(!o.block && known.has(c))?cents(rep[c]||0):null;
+    /* 客戶費率:重算算過、而且算出來大於 0 才算數;0 是沒設費率,照 UPS 原價轉嫁。
+       帳號層級停用的才是真的不收(列出來、金額 0)。 */
+    const rateOf=c=>rebillDisabled(c)?0:((!o.block && known.has(c) && cents(rep[c]||0)>0.004)?cents(rep[c]):null);
     const buckets=new Map();
     for(const c of new Set([...Object.keys(upsF), ...Object.keys(b)])){
       if(c===RECON_OTHER) continue;
@@ -13813,7 +13829,6 @@ function reconRun(list){
     }
     for(const [k,cols] of buckets){
       if(k===SCC) continue;
-      if(k[0]!=="f" && REBILL_NEVER.test(k)) continue;   /* NPF / SCF:不向客戶收 */
       const upsCols=cols.filter(c=>upsF[c]>0.004);
       if(!upsCols.length) continue;
       const wCols=cols.filter(c=>{ const w=billedOf(c); return w!=null && Math.abs(w)>0.004; });
@@ -14369,7 +14384,9 @@ async function reconExport(){
   const dm=v=>({v:cents(v||0),t:"n",s:{fmt:MONEY}});
   /* 應收:重算有算這一項就用重算;沒有(合約沒費率、UPS 才有的項目)照 UPS 實收。 */
   const shouldOf=(o,c)=>{ const F=o.fees||{}; const known=F.known||new Set();
-    if(!o.block && known.has(c)) return cents((F.rep||{})[c]||0);
+    const rp=cents((F.rep||{})[c]||0);
+    if(!o.block && known.has(c) && rp>0.004) return rp;
+    if(rebillDisabled(c)) return 0;
     return cents((F.ups||{})[c]||0); };
   const idNames=["Invoice Date","Transaction Date","Customer Code","Customer Level","Order Number","Tracking Number",
     "Shipment Reference Number 1","Shipment Reference Number 2","Package Dimensions","Detail Keyed Dim",
@@ -14446,17 +14463,42 @@ async function reconExport(){
   const rebillSheet={name:"To re-bill", rows:[rbHead,...rbRows],
     cols:[16,24,20,22,12,40,44,16,36,16,16,14,14,10,12,18].map(w=>({w}))};
 
+  /* ---- 每個客戶一頁:給客戶看的對帳單,照舊 SOP 的 Item / Amount 兩欄 ----
+     一個追蹤號底下一項一列,燃油自己一列(Item 寫 Fuel Surcharge),最後一列合計。
+     只有有東西要補收的客戶才有頁;頁名用客戶代碼。 */
+  const cusSheets=[];
+  const byCusItems=new Map();
+  for(const it of rb.items){ (byCusItems.get(it.cus)||byCusItems.set(it.cus,[]).get(it.cus)).push(it); }
+  const usedNames=new Set(["Detail","To re-bill"]);
+  const sheetName=code=>{
+    let n=String(code||"Customer").replace(/[\\\/\?\*\[\]:]/g," ").trim().slice(0,31)||"Customer";
+    let k=n, i=2; while(usedNames.has(k)) k=(n.slice(0,28)+" "+(i++)); usedNames.add(k); return k;
+  };
+  const cHead=[["Tracking Number","EFE3CB"],["Order Number","EFE3CB"],["Transaction Date","EFE3CB"],
+    ["Item","EFE3CB"],["Description","EFE3CB"],["Amount",DIFH]].map(([n,f])=>dh(n,f));
+  for(const [code,list] of byCusItems){
+    const rows=[];
+    const sorted=list.slice().sort((a,b)=>a.trk.localeCompare(b.trk)||b.total-a.total);
+    let sum=0;
+    for(const it of sorted){
+      rows.push([it.trk, it.order, it.invDate||"", it.charge, it.desc||"", dm(it.amt)]); sum=cents(sum+it.amt);
+      if(it.fuel>0.004){ rows.push([it.trk, it.order, it.invDate||"", "Fuel Surcharge", it.charge+" @ "+it.fuelPct+"%", dm(it.fuel)]); sum=cents(sum+it.fuel); }
+    }
+    rows.push(["","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:MONEY,bold:true}}]);
+    cusSheets.push({name:sheetName(code), rows:[cHead,...rows], cols:[22,20,12,40,44,14].map(w=>({w}))});
+  }
+
   /* Summary / Orders / Charges 先不用 —— 留著,要開回來只改這一個開關。 */
   const RECON_XLS_EXTRA=false;
   const sheets=RECON_XLS_EXTRA
     ? [sheetOf("Summary", sumCols, sumRows, [16,26,16,30,9,12,11,17,17,14,19,19,19], 2),
-       detailSheet, rebillSheet,
+       detailSheet, rebillSheet, ...cusSheets,
        sheetOf("Orders", ordCols, ordRows, [20,12,16,16,30,22,22,22,10,12,22, 18,8,12,16, 20,10,12,16, 14, 15,12,17,19,19], 1),
        sheetOf("Charges", chgCols, chgRows, [14,42,14,22,17,17,14,19,18], 2)]
-    : [detailSheet, rebillSheet];
+    : [detailSheet, rebillSheet, ...cusSheets];
   await xlWrite(sheets, src+"_Reconciliation_Detail.xlsx");
-  reconMsg(L("已匯出:Detail(每一項費用一個表頭,底下 Repriced / "+src+" / 差額)"+r.orders.length+" 筆,補收清單 "+rb.items.length+" 項。",
-             "Exported: Detail (one header per charge over Repriced / "+src+" / Difference) "+r.orders.length+" row(s), To re-bill "+rb.items.length+" item(s)."), true);
+  reconMsg(L("已匯出:Detail "+r.orders.length+" 筆、補收清單 "+rb.items.length+" 項、客戶對帳單 "+cusSheets.length+" 頁。",
+             "Exported: Detail "+r.orders.length+" row(s), To re-bill "+rb.items.length+" item(s), "+cusSheets.length+" customer sheet(s)."), true);
 }
 
 /* 讀檔+解析,不寫入。回 {err} 或 {p, fname} —— 匯入與預覽共用同一條讀取路。 */
