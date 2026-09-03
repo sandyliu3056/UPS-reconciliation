@@ -3789,6 +3789,9 @@ function readConfig(cfg){
        只有明確標成 false 的才不收。 */
     accFuelOff:new Set(Object.entries(cfg.accessorial_fuel_eligible||{})
       .filter(([,v])=>v===false).map(([k])=>k)),
+    /* 預設不收燃油的手續費(NPF / SCF)要明確寫 true 才收 —— 三態:沒設 = 不收。 */
+    accFuelOn:new Set(Object.entries(cfg.accessorial_fuel_eligible||{})
+      .filter(([,v])=>v===true).map(([k])=>k)),
     tableRowCount: tables.reduce((a,t)=>a+t.rows.length,0)
   };
 }
@@ -4356,7 +4359,7 @@ function accLookup(cfg, feeType, channel, zone, issues, residential, missOut){
 }
 
 /* 掃一筆貨的所有帳單行,分出每一項 UPS 收了什麼 */
-function scanCharges(lines, dynMap, fuelOff){
+function scanCharges(lines, dynMap, fuelOff, fuelOn){
   const seen={}, net={};
   let resCode=false, comCode=false, unknownNet=0;
   const unknownCodes=new Set();
@@ -4438,7 +4441,7 @@ function scanCharges(lines, dynMap, fuelOff){
          seen/net,計價那邊就會給它一欄。 */
       if(cm.skip) continue;
       bucket=cm.fee;
-      if(cm.nofuel&&bucket) nonFuel.add(bucket);
+      if(cm.nofuel&&bucket&&!(fuelOn&&fuelOn.has(bucket))) nonFuel.add(bucket);
       if(cm.res&&bucket) resBucket.add(bucket);
     }
     else if(AHS_DIM.has(c))  bucket="AHS Dimension";
@@ -4729,7 +4732,7 @@ const RESI_UNSURE_MSG=()=>L("跨期單:歷史裡查不到這個追蹤號,住宅/
    直接照指定的算 —— 拿來回答「換另一種判法,錢會不會不一樣」。 */
 function priceShipment(cfg, s, force){
   const issues=[];
-  const scan=scanCharges(s.lines, cfg.dynMap, cfg.accFuelOff);
+  const scan=scanCharges(s.lines, cfg.dynMap, cfg.accFuelOff, cfg.accFuelOn);
   /* 住/商判定來源(設定在帳單歷史頁):
        system(預設)= 工具自己的判定(帳單代碼、服務名稱;退件回程查帳單歷史)
        api          = 用 UPS 地址驗證分類送達地址(經後端代理,prefetch 先查好)
@@ -13197,12 +13200,29 @@ const REBILL_SCC_AUDIT_FEE=1.65;
 /* 費率表裡 0 = 沒設,不是「收 0」—— 引擎自己也把 0 記成問題。沒設的照 UPS 原價轉嫁
    (Intercept、Reroute、Future Day Pickup、Residential Pickup 這些 flat fee 都是這樣收);
    真的不收要在帳號層級停用(accessorial_disabled),那才算合約無此項。 */
+/* 一個 Consolidated 名稱對到引擎的哪幾個費率桶:先走系統名稱,走不到(NPF、SCF 這種
+   照帳單描述命名的)就走 UPS 代碼 → ACC_CODE_MAP。 */
+let REBILL_CODECOL={};
+function bucketsOf(name){
+  const BUCKET_OF={}; for(const [b,c] of Object.entries(REPORT_COL_OF)) BUCKET_OF[c]=b;
+  const sys=sysNamesOfAud(name);
+  if(sys.length) return sys.map(sn=>BUCKET_OF[sn]||sn);
+  const out=[];
+  for(const [code,col] of Object.entries(REBILL_CODECOL)) if(col===name){ const m=ACC_CODE_MAP[code]; if(m&&m.fee&&!out.includes(m.fee)) out.push(m.fee); }
+  return out;
+}
 function rebillDisabled(name){
   const dis=(CFG&&CFG.raw&&CFG.raw.accessorial_disabled)||[];
   if(!dis.length) return false;
-  const BUCKET_OF={}; for(const [b,c] of Object.entries(REPORT_COL_OF)) BUCKET_OF[c]=b;
-  const sys=sysNamesOfAud(name);
-  return sys.length>0 && sys.every(sn=>dis.includes(BUCKET_OF[sn]||sn));
+  const bk=bucketsOf(name);
+  return bk.length>0 && bk.every(b=>dis.includes(b));
+}
+/* 費率表裡有位置、而且不是「照 UPS 轉嫁」那一類(ups_fallback / skip)的費用:要自己設。 */
+function rebillConfigurable(name){
+  const bk=bucketsOf(name);
+  if(!bk.length) return false;
+  const fb=new Set(Object.values(ACC_CODE_MAP).filter(m=>m&&m.fee&&(m.ups_fallback||m.skip)).map(m=>m.fee));
+  return bk.every(b=>!fb.has(b));
 }
 const REBILL_FAMILIES=[
   {name:"Additional Handling / Large Package",
@@ -13647,6 +13667,7 @@ function reconRun(list){
      要用整批帳單上「代碼落在哪一欄」的紀錄,所以先跑一遍收齊 codeCol,再回頭
      把重算那一側入桶。 */
   const codeCol={};
+  REBILL_CODECOL=codeCol;
   const repPend=[];
   for(const e of list){
     const c=byCode.get(e.cus)||{};
@@ -13796,9 +13817,11 @@ function reconRun(list){
     const b=o.billedFees;
     if(!b){ if(Object.keys(upsF).length) skipped++; continue; }
     const billedOf=c=>{ let w=b[c]; if(w==null && heads.has(c)) w=b[heads.get(c)]; return w==null?null:cents(w); };
-    /* 客戶費率:重算算過、而且算出來大於 0 才算數;0 是沒設費率,照 UPS 原價轉嫁。
-       帳號層級停用的才是真的不收(列出來、金額 0)。 */
-    const rateOf=c=>rebillDisabled(c)?0:((!o.block && known.has(c) && cents(rep[c]||0)>0.004)?cents(rep[c]):null);
+    /* 客戶費率:重算算過、而且算出來大於 0 才算數。0 是沒設費率 —— 費率表裡有位置
+       的費用(flat fee、DAS、AHS…)要自己設,沒設就標「費率未設定」、金額 0,不替人
+       猜;只有費率表裡沒有位置、或本來就照 UPS 轉嫁的(NPF、超大件、稽核費、認不得
+       的代碼)才照 UPS 實收。帳號層級停用的是真的不收(列出來、金額 0)。 */
+    const rateOf=c=>rebillDisabled(c)?0:((!o.block && known.has(c) && cents(rep[c]||0)>0.004)?cents(rep[c]):(rebillConfigurable(c)?"unset":null));
     const buckets=new Map();
     for(const c of new Set([...Object.keys(upsF), ...Object.keys(b)])){
       if(c===RECON_OTHER) continue;
@@ -13814,7 +13837,7 @@ function reconRun(list){
       const wS=billedOf(SCC);
       if(!(wS!=null && Math.abs(wS)>0.004)){
         /* 先照費率表的重量差(舊 SOP);查不到才用最後運費 − 已收運費。 */
-        const wB=billedOf("Base Rate")||0, rB=rateOf("Base Rate");
+        const wB=billedOf("Base Rate")||0, rB0=rateOf("Base Rate"), rB=(rB0==="unset")?null:rB0;
         const rate=F.sccRate!=null?cents(F.sccRate):(rB==null?null:cents(rB-wB));
         const amt=rate!=null?rate:cents(upsF[SCC]);
         if(amt>0.004){
@@ -13835,9 +13858,10 @@ function reconRun(list){
       const missCols=upsCols.filter(c=>!wCols.includes(c));
       if(!missCols.length) continue;
       const rows=missCols.map(c=>{
-        const u=cents(upsF[c]), rate=rateOf(c);
-        return Object.assign({kind:"miss", charge:c, desc:(desc[c]||[]).join(" / "), ups:u, billed:0, rate,
-                              amt:rate!=null?rate:u, credit:0, creditFrom:[]}, base);
+        const u=cents(upsF[c]), r0=rateOf(c);
+        const unset=r0==="unset", rate=unset?0:r0;
+        return Object.assign({kind:"miss", charge:c, desc:(desc[c]||[]).join(" / "), ups:u, billed:0, rate, unset,
+                              amt:unset?0:(rate!=null?rate:u), credit:0, creditFrom:[]}, base);
       }).sort((x,y)=>y.amt-x.amt);
       if(k[0]==="f"){
         const extra=wCols.filter(c=>!(upsF[c]>0.004));
@@ -13856,16 +13880,13 @@ function reconRun(list){
      (運費、更正、AHS/LPS、DAS/偏遠、住宅…);費率設定裡標成不加燃油的、UPS 才有的
      手續費都不算。改收的算在抵扣後的淨額上。沒有層級的客戶拿不到燃油表,用這一件
      帳單上 UPS 自己的燃油比例。 */
-  const fuelOff=new Set(Object.entries((CFG&&CFG.raw&&CFG.raw.accessorial_fuel_eligible)||{})
-    .filter(([,v])=>v===false).map(([k])=>k));
   const dynMap=(CFG&&CFG.raw&&CFG.raw.dynamic_surcharge_mapping)||{};
-  const BUCKET_OF={}; for(const [b,c] of Object.entries(REPORT_COL_OF)) BUCKET_OF[c]=b;
   const fuelOn=name=>{
     if(name==="Base Rate"||name==="Shipping Charge Correction") return true;
     for(const d of Object.values(dynMap)) if(String(d.name||"").trim()===name) return d.fuel_eligible!==false;
-    const sys=sysNamesOfAud(name);
-    if(!sys.length) return false;
-    return sys.every(sn=>!fuelOff.has(BUCKET_OF[sn]||sn));
+    /* 其餘照「附加費燃油適用範圍」那一頁:NPF / SCF 這種預設不收的,勾了才收。 */
+    const bk=bucketsOf(name);
+    return bk.length>0 && bk.every(fuelOnFor);
   };
   const orderOf=new Map(orders.map(o=>[o.ln,o]));
   for(const it of items){
@@ -14217,7 +14238,7 @@ function renderRebill(){
   const dash=`<span class="empty">—</span>`;
   const tb=$("#tRebill")&&$("#tRebill").tBodies[0];
   /* 改收的那一列在費用名稱底下寫清楚:客戶端收的是哪幾項、UPS 收的是哪幾項。 */
-  const tagOf=it=>it.kind==="swap"?L("改收","Substituted"):it.kind==="audit"?L("稽核費","Audit fee"):(it.rate===0?L("合約無此項","No contract rate"):L("未收","Not billed"));
+  const tagOf=it=>it.kind==="swap"?L("改收","Substituted"):it.kind==="audit"?L("稽核費","Audit fee"):it.unset?L("費率未設定","Rate not set"):(it.rate===0?L("合約無此項","No contract rate"):L("未收","Not billed"));
   const chgCell=it=>`${esc(it.charge)} <span class="chggrp">${esc(tagOf(it))}</span>`
       +((it.desc||it.credit)?`<div class="chgcodes">${esc((it.desc?L("UPS 名目:","UPS: ")+it.desc:"")
           +(it.credit?(it.desc?"  ":"")+L("抵已收 ","less billed ")+(it.creditFrom||[]).join(" · ")+" "+money(it.credit):""))}</div>`:"");
@@ -14243,9 +14264,12 @@ function renderRebill(){
   if(sum){
     const cusN=new Set(items.map(it=>it.cus)).size;
     const skip=rb&&rb.skipped?rb.skipped:0;
+    const unset=items.filter(it=>it.unset).length;
     sum.textContent=(rb&&rb.noItem)?"":L(
-      "應補收 "+money(tot)+" · 燃油 "+money(totFuel)+" · 合計 "+money(grand)+" · "+items.length+" 項 · "+cusN+" 個客戶"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":""),
-      money(tot)+" to re-bill · fuel "+money(totFuel)+" · "+money(grand)+" in all · "+items.length+" item(s) · "+cusN+" customer(s)"+(skip?" · "+skip+" row(s) without itemised charges not listed":""));
+      "應補收 "+money(tot)+" · 燃油 "+money(totFuel)+" · 合計 "+money(grand)+" · "+items.length+" 項 · "+cusN+" 個客戶"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":"")
+        +(unset?" · "+unset+" 項費率未設定(到 04 渠道與附加費費率設好再匯一次)":""),
+      money(tot)+" to re-bill · fuel "+money(totFuel)+" · "+money(grand)+" in all · "+items.length+" item(s) · "+cusN+" customer(s)"+(skip?" · "+skip+" row(s) without itemised charges not listed":"")
+        +(unset?" · "+unset+" item(s) with no rate set (set them under 04 Channel & Surcharge Rates and import again)":""));
   }
   const tc=$("#tRebillCus")&&$("#tRebillCus").tBodies[0];
   if(tc) tc.innerHTML=((rb&&rb.byCus)||[]).map(a=>`<tr><td class="mono">${esc(a.code)}</td><td>${esc(a.name)}</td>
@@ -14386,7 +14410,7 @@ async function reconExport(){
   const shouldOf=(o,c)=>{ const F=o.fees||{}; const known=F.known||new Set();
     const rp=cents((F.rep||{})[c]||0);
     if(!o.block && known.has(c) && rp>0.004) return rp;
-    if(rebillDisabled(c)) return 0;
+    if(rebillDisabled(c) || rebillConfigurable(c)) return 0;   /* 沒設費率就是 0,不替人猜 */
     return cents((F.ups||{})[c]||0); };
   const idNames=["Invoice Date","Transaction Date","Customer Code","Customer Level","Order Number","Tracking Number",
     "Shipment Reference Number 1","Shipment Reference Number 2","Package Dimensions","Detail Keyed Dim",
@@ -14450,7 +14474,7 @@ async function reconExport(){
 
   /* ---- To re-bill:補收清單,和畫面上同一份 —— 一個追蹤號一項費用一列。 ---- */
   const rb=r.rebill||{items:[]};
-  const typeOf=it=>it.kind==="swap"?"Substituted":it.kind==="audit"?"Audit fee":(it.rate===0?"No contract rate":"Not billed");
+  const typeOf=it=>it.kind==="swap"?"Substituted":it.kind==="audit"?"Audit fee":it.unset?"Rate not set":(it.rate===0?"No contract rate":"Not billed");
   const rbHead=[["Customer Code","EFE3CB"],["Customer Name","EFE3CB"],["Order Number","EFE3CB"],
     ["Tracking Number","EFE3CB"],["Invoice Date","EFE3CB"],["Charge","EFE3CB"],["UPS Description","EFE3CB"],
     ["Type","EFE3CB"],["Less Billed As","EFE3CB"],
@@ -17272,6 +17296,13 @@ const BULK_LAB={dim_factor:["DIM 除數","DIM factor"],
 /* 畫面上要列哪些項目:費率表已經有的、內建代碼對照裡的、加上自訂註冊表
    的。只看費率表的話,還沒填過費率的項目就不會出現在清單上,但它其實
    收得到錢也吃得到燃油。 */
+/* 預設不收燃油的費用(ACC_CODE_MAP 標 nofuel 或 skip 的:NPF、SCF):畫面上要明確勾
+   起來才收,勾起來寫 true;其他費用沒設就是收。 */
+const FUEL_DEFAULT_OFF=new Set(Object.values(ACC_CODE_MAP).filter(m=>m&&m.fee&&(m.nofuel||m.skip)).map(m=>m.fee));
+function fuelOnFor(fee){
+  const m=(CFG&&CFG.raw&&CFG.raw.accessorial_fuel_eligible)||{};
+  return FUEL_DEFAULT_OFF.has(fee) ? m[fee]===true : m[fee]!==false;
+}
 function allFeeTypes(){
   const out=new Set();
   for(const k of Object.keys((CFG&&CFG.raw.accessorial_rate_table)||{}))
@@ -17317,7 +17348,7 @@ function renderAccFuel(){
   const fees=allFeeTypes();
   const box=$("#afList");
   const item=fee=>{
-    const on=!off.has(fee);
+    const on=fuelOnFor(fee);
     return `<label class="afitem${on?" on":" off"}">`
       +`<input type="checkbox" class="accfuel" data-fee="${esc(fee)}"${on?" checked":""}>`
       +`<span>${esc(fee)}</span></label>`;
@@ -17339,7 +17370,7 @@ function renderAccFuel(){
       +`<span class="afsecn">${nOn} / ${list.length} ${L("收燃油","charge fuel")}</span>`
       +`</div><div class="afgrid">${list.map(item).join("")}</div></div>`;
   }).join("")||`<div class="empty">—</div>`;
-  const nOff=fees.filter(f=>off.has(f)).length;
+  const nOff=fees.filter(f=>!fuelOnFor(f)).length;
   if($("#afCount")) $("#afCount").textContent = nOff
     ? (LANG?`${fees.length-nOff} of ${fees.length} charge fuel`
            :`${fees.length} 項裡有 ${fees.length-nOff} 項收燃油`)
@@ -17402,6 +17433,7 @@ function setAllAccFuel(on){
   const m=CFG.raw.accessorial_fuel_eligible||(CFG.raw.accessorial_fuel_eligible={});
   for(const k of Object.keys(m)) delete m[k];
   if(!on) for(const fee of allFeeTypes()) m[fee]=false;
+  else for(const fee of allFeeTypes()) if(FUEL_DEFAULT_OFF.has(fee)) m[fee]=true;
   CFG=readConfig(CFG.raw);
   DIRTY=true;
   renderAccFuel();
@@ -17415,7 +17447,8 @@ function setAllAccFuel(on){
    這樣沒動過的設定檔匯出去仍然是空的 {},桌面版讀了也不會有差。 */
 function setAccFuel(fee,on){
   const m=CFG.raw.accessorial_fuel_eligible||(CFG.raw.accessorial_fuel_eligible={});
-  if(on) delete m[fee]; else m[fee]=false;
+  if(FUEL_DEFAULT_OFF.has(fee)){ if(on) m[fee]=true; else delete m[fee]; }
+  else { if(on) delete m[fee]; else m[fee]=false; }
   CFG=readConfig(CFG.raw);
   DIRTY=true;
   renderAccFuel();
