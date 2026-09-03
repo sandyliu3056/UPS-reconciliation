@@ -16,9 +16,9 @@ await new Promise(r=>{ if(D.readyState!=='loading') return r();
 
 console.log('\n[1] \u6bcf\u4e00\u9801\u90fd\u6709\u4e00\u96bb');
 const all=[...D.querySelectorAll('.mzwrap')];
-ok(all.length===13, '\u5171 '+all.length+' \u96bb\uff0813 \u500b\u4f4d\u7f6e\uff09');
+ok(all.length===12, '\u5171 '+all.length+' \u96bb\uff0812 \u500b\u4f4d\u7f6e\uff09');
 const want={'p-setting':'cat','p-code':'cat','p-chan':'cat','p-demand':'cat','p-files':'cat',
-  'p-analysis':'cat','p-admin':'cat','p-rules':'dog','p-ratefill':'dog','p-hist':'dog','p-home':'dog'};
+  'p-analysis':'cat','p-admin':'cat','p-rules':'dog','p-ratefill':'dog','p-hist':'dog'};
 Object.entries(want).forEach(([id,kind])=>{
   const s=D.querySelector('#'+id+' .mzwrap svg');
   ok(!!s&&s.classList.contains('mz-'+kind), id+' \u2192 '+kind);
@@ -37,7 +37,7 @@ ok(/prefers-reduced-motion:reduce\)\{\s*\.mz \.mz-eyes/.test(css.replace(/\n/g,'
 
 console.log('\n[3] \u756b\u51fa\u4f86\u7684\u662f\u5408\u6cd5\u7684 SVG');
 Object.keys(W.PAGE_MASCOT||{}).length; 
-const keys=['p-setting','p-code','p-cus','p-chan','p-rules','p-demand','p-ratefill','p-files','recon','p-analysis','p-hist','p-admin','p-home'];
+const keys=['p-setting','p-code','p-cus','p-chan','p-rules','p-demand','p-ratefill','p-files','recon','p-analysis','p-hist','p-admin'];
 let xmlOk=0;
 keys.forEach(k=>{
   const svg=W.mascot?W.mascot(k):null; if(!svg) return;
@@ -55,7 +55,7 @@ ok([...D.querySelectorAll('.mz-dog')].every(d=>d.querySelector('.mz-flop')&&d.qu
 console.log('\n[4] \u91cd\u8dd1\u4e0d\u758a');
 W.eval(fs.readFileSync(path.join(ROOT,'src/mascot.js'),'utf8'));
 await new Promise(r=>W.setTimeout(r,20));
-ok(D.querySelectorAll('.mzwrap').length===13, '\u9084\u662f 13 \u96bb');
+ok(D.querySelectorAll('.mzwrap').length===12, '\u9084\u662f 12 \u96bb');
 
 console.log(`\n\u2500\u2500 ${pass} pass / ${fail} fail \u2500\u2500`);
 process.exit(fail?1:0);

@@ -58,7 +58,7 @@ setTimeout(()=>{
   ['1. Rate Levels','2. Charge Code Mapping','3. System Settings','1. Customer Directory','2. Surcharge Catalog','3. Demand Periods',
    '1. Base Rates','2. Surcharge Rates','3. Dimensional Rules','4. Demand Rates']
     .forEach(n=>ok(sub.indexOf(n)>=0, '\u5b50\u9801\uff1a'+n));
-  ok(D.querySelectorAll('.mzwrap').length===13, '13 \u96bb\u90fd\u5728\u9801\u4e0a');
+  ok(D.querySelectorAll('.mzwrap').length===12, '12 \u96bb\u90fd\u5728\u9801\u4e0a');
 
   console.log(`\n\u2500\u2500 ${pass} pass / ${fail} fail \u2500\u2500`);
   process.exit(fail?1:0);

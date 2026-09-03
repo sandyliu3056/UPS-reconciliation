@@ -25,6 +25,20 @@
 
 **Netlify / Cloudflare Pages**：拖曳整個資料夾即可，`_headers` 會生效。
 
+## UPS 貨況查詢(追蹤查詢分頁)
+
+「追蹤查詢」分頁的「查 UPS 貨況」走 `api/track.js`,這是 Vercel 的無伺服器函式,由它拿憑證去問 UPS Tracking API,網頁本身不碰憑證。只在 Vercel 上有效;GitHub Pages、Netlify 靜態站沒有這一支,按鈕會說「尚未設定」。
+
+在 Vercel → 專案 → Settings → Environment Variables 設三個值,存檔後重新部署:
+
+| 變數 | 內容 |
+| --- | --- |
+| `UPS_CLIENT_ID` | UPS Developer Portal 應用程式的 Client ID |
+| `UPS_CLIENT_SECRET` | 同一個應用程式的 Client Secret |
+| `UPS_ACCOUNT` | 出貨帳號(x-merchant-id),選填 |
+
+憑證只放在 Vercel,不放進 repo、不寫進任何檔案。
+
 ## 部署後檢查
 
 1. 開站台首頁，確認左上角圖示是柯基與布偶貓

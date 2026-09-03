@@ -1558,6 +1558,7 @@ label:has(#newChanOn){display:none !important}
   <button role="tab" aria-selected="true" data-p="recon" class="display" id="navRecon"><span class="nico">⚖️</span><span data-i18n="tab.reconflow">Reconciliation</span></button>
   <button role="tab" aria-selected="false" data-p="analysis" class="display"><span class="nico">📈</span><span data-i18n="tab.analysis">Analytics Dashboard</span></button>
   <button role="tab" aria-selected="false" data-p="hist" class="display"><span class="nico">🗂️</span><span data-i18n="tab.hist">Invoice History</span></button>
+  <button role="tab" aria-selected="false" data-p="track" class="display"><span class="nico">🔎</span><span data-i18n="tab.track">Tracking</span></button>
   <div class="navgrp" data-i18n="nav.adm">Administration</div>
   <button role="tab" aria-selected="false" data-p="admin" class="display"><span class="nico">🛡️</span><span data-i18n="tab.admin">User Administration</span></button>
   <!-- 底下這幾顆收起來(HIDDEN_TABS),各自由上面的入口進去。按鈕留著是因為
@@ -1660,35 +1661,6 @@ label:has(#newChanOn){display:none !important}
 
 <!-- ==================== Import Files ==================== -->
 <section class="page" id="p-home">
-  <!-- 查單號狀態:一次一個或多個追蹤號(逗號、空白、換行分開)。系統這邊能答的是
-       「在哪幾期帳單、UPS 收多少、對帳過沒有、向客戶收多少、還要補收多少」;
-       貨到哪裡了要問 UPS —— 那顆按鈕直接開 UPS 的追蹤頁,這裡沒有 UPS 的 API 憑證。 -->
-  <div class="lf sketch" id="trackCard">
-    <h3 class="display"><span class="em">🔎</span><span data-i18n="hd.track">Tracking status</span></h3>
-    <p class="hint" style="margin:0 0 10px;max-width:84ch" data-i18n="hint.track">Paste one or more tracking numbers. Each one answers where it stands in the system: which invoices it is on, what UPS charged, whether it was reconciled, what the client was billed and what is still to re-bill. Delivery status lives at UPS — the UPS button opens the official tracking page.</p>
-    <div class="row" style="margin-bottom:9px">
-      <!-- textarea 不是 input:貼一整欄追蹤號進來,換行要留著當分隔。 -->
-      <textarea id="trackQ" class="cell" rows="2" style="width:min(560px,100%);text-align:left;resize:vertical;line-height:1.5" placeholder="1Z… , 1Z…"></textarea>
-      <button class="act" id="bTrack" data-i18n="btn.track">Look up</button>
-      <!-- 一整份清單直接上傳:CSV / TXT / Excel 都可以,只認裡面的追蹤號,其他欄不看。 -->
-      <button class="act ghost" id="bTrackFile" data-i18n="btn.trackfile">Upload a list</button>
-      <input type="file" id="fTrackFile" accept=".csv,.txt,.xlsx,.xls" hidden>
-      <button class="act ghost" id="bTrackUps" data-i18n="btn.trackups">UPS tracking ↗</button>
-      <button class="act ghost" id="bTrackXls" data-i18n="btn.trackxls" hidden>Export Excel</button>
-      <span id="trackNote" class="affsum"></span>
-    </div>
-    <div class="tablewrap" id="trackWrap" hidden style="max-height:44vh"><table id="tTrack"><thead><tr>
-      <th data-i18n="th.trk">Tracking</th>
-      <th data-i18n="th.trackstate">Status</th>
-      <th data-i18n="th.trackinv">Invoice(s)</th>
-      <th data-i18n="th.cuscode">Code</th>
-      <th data-i18n="th.trackorder">Order</th>
-      <th class="num" data-i18n="th.reconups">Charged by UPS</th>
-      <th class="num" data-i18n="th.reconbilled">Billed to customer</th>
-      <th class="num" data-i18n="th.runrebill">To re-bill</th>
-      <th></th>
-    </tr></thead><tbody></tbody></table></div>
-  </div>
   <!-- 碼頭那一幕(卡車、月台、同仁、貓狗)沉在頁面底部。原本的系統流程圖拿掉了。 -->
   <div class="sceneBox" id="sceneBox"><canvas id="scene"></canvas></div>
 </section>
@@ -2639,6 +2611,46 @@ label:has(#newChanOn){display:none !important}
       <th data-i18n="th.meaning2">Surcharge / Meaning</th>
       <th data-i18n="th.ininv">In Invoice</th>
       <th class="num" data-i18n="th.count">Count</th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<!-- ==================== Tracking ====================
+     查單號:系統裡的狀態自己答,貨到哪裡了透過站台的 /api/track 問 UPS。 -->
+<section class="page" id="p-track">
+  <!-- 查單號狀態:一次一個或多個追蹤號(逗號、空白、換行分開)。系統這邊能答的是
+       「在哪幾期帳單、UPS 收多少、對帳過沒有、向客戶收多少、還要補收多少」;
+       貨到哪裡了要問 UPS —— 那顆按鈕直接開 UPS 的追蹤頁,這裡沒有 UPS 的 API 憑證。 -->
+  <div class="lf sketch" id="trackCard">
+    <h3 class="display"><span class="em">🔎</span><span data-i18n="hd.track">Tracking status</span></h3>
+    <p class="hint" style="margin:0 0 10px;max-width:86ch" data-i18n="hint.track">Paste tracking numbers or upload a list. Look up answers where each number stands in the system: invoices, what UPS charged, whether it was reconciled, what the client was billed and what is still to re-bill. Check UPS status asks UPS for the delivery status through this site's own service, so the UPS credentials stay on the server.</p>
+    <div class="row" style="margin-bottom:9px">
+      <!-- textarea 不是 input:貼一整欄追蹤號進來,換行要留著當分隔。 -->
+      <textarea id="trackQ" class="cell" rows="2" style="width:min(560px,100%);text-align:left;resize:vertical;line-height:1.5" placeholder="1Z… , 1Z…"></textarea>
+      <button class="act" id="bTrack" data-i18n="btn.track">Look up</button>
+      <!-- 真的去問 UPS 貨到哪裡:走站台自己的 /api/track,憑證在 Vercel 的環境變數裡。 -->
+      <button class="act" id="bTrackUpsApi" data-i18n="btn.trackapi">Check UPS status</button>
+      <!-- 一整份清單直接上傳:CSV / TXT / Excel 都可以,只認裡面的追蹤號,其他欄不看。 -->
+      <button class="act ghost" id="bTrackFile" data-i18n="btn.trackfile">Upload a list</button>
+      <input type="file" id="fTrackFile" accept=".csv,.txt,.xlsx,.xls" hidden>
+      <button class="act ghost" id="bTrackTpl" data-i18n="btn.tracktpl">Excel template</button>
+      <button class="act ghost" id="bTrackUps" data-i18n="btn.trackups">UPS tracking ↗</button>
+      <button class="act ghost" id="bTrackXls" data-i18n="btn.trackxls" hidden>Export Excel</button>
+      <span id="trackNote" class="affsum"></span>
+    </div>
+    <div class="tablewrap" id="trackWrap" hidden style="max-height:44vh"><table id="tTrack"><thead><tr>
+      <th data-i18n="th.trk">Tracking</th>
+      <th data-i18n="th.trackups">UPS status</th>
+      <th data-i18n="th.trackact">Last activity</th>
+      <th data-i18n="th.trackdlv">Delivered</th>
+      <th data-i18n="th.trackstate">Reconciliation</th>
+      <th data-i18n="th.trackinv">Invoice(s)</th>
+      <th data-i18n="th.cuscode">Code</th>
+      <th data-i18n="th.trackorder">Order</th>
+      <th class="num" data-i18n="th.reconups">Charged by UPS</th>
+      <th class="num" data-i18n="th.reconbilled">Billed to customer</th>
+      <th class="num" data-i18n="th.runrebill">To re-bill</th>
+      <th></th>
     </tr></thead><tbody></tbody></table></div>
   </div>
 </section>
@@ -10392,53 +10404,50 @@ function openBreakdown(){
   H.push(`<div class="bkdtrk"><div><div class="lbl">${L("追蹤號","Tracking")}</div>`
     +`<div class="no">${esc2(t)}</div></div>`
     +`<button class="bkdxls" id="bkdXls">${L("⬇ 匯出 Excel","⬇ Export to Excel")}</button></div>`);
+  /* 對帳那一列掛在本期(載入中的帳單)第一張卡上;同一個追蹤號跨兩期(原件
+     一期、更正一期)只掛一次,免得同一筆錢看起來收了兩次。總覽和卡片用同一個判定。 */
+  const loaded=new Set((ROWS||[]).map(r=>r.invoice||"(current)"));
+  let wmsUsed=false;
+  for(const o of pk){
+    o.wms=null;
+    if(!wmsUsed && o.r && loaded.has(o.inv||"(current)")){ o.wms=bkdWmsOf(t); if(o.wms) wmsUsed=true; }
+  }
+  const wsrc=(typeof RECON_SRC!=="undefined"&&RECON_SRC)||"WMS";
+  /* 總覽:重算、UPS 實收、向客戶實收三個數並排;毛利與毛利率不在這裡算 —— 那是整期的事。 */
   H.push(`<div class="bkdov"><div class="bkdov-hd">${L("各期總覽","Invoice overview")}</div>`);
   H.push(`<div class="tablewrap" style="margin:0"><table style="width:100%">`);
   H.push(`<thead><tr><th>Invoice</th><th>${L("帳單日期","Invoice date")}</th>`
     +`<th class="num">Reprice</th>`
     +`<th class="num">${L("UPS 實收","UPS billed")}</th>`
-    +`<th class="num">${L("毛利","Profit")}</th>`
-    +`<th class="num">${L("毛利率","Margin")}</th></tr></thead><tbody>`);
-  let tRe=0,tUp=0,allPriced=true,bi=0;
+    +`<th class="num">${L(wsrc+" 實收",wsrc+" billed")}</th></tr></thead><tbody>`);
+  let tRe=0,tUp=0,tWm=0,anyWm=false,allPriced=true,bi=0;
   if(!pk.length)
-    H.push(`<tr><td colspan="6" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
+    H.push(`<tr><td colspan="5" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
       "No package lines for this tracking number, only account-level charges. See below.")}</td></tr>`);
   for(const o of pk){
     const rp=(o.r&&o.r.total!=null)?o.r.total:null;
     const up=o.r?o.r.s.upsTotal:o.ups;
-    const d=rp==null?null:rp-up;
-    const p=(rp!=null&&Math.abs(rp)>1e-9)?(d/Math.abs(rp)*100):null;
     if(rp!=null) tRe+=cents(rp); else allPriced=false;
     tUp+=up;
+    if(o.wms){ tWm+=o.wms.amt; anyWm=true; }
     H.push(`<tr class="bkdjump" data-bi="${bi++}" title="${
         L("點一下跳到該期明細","Click to jump to this invoice's detail")}">`
       +`<td class="mono">${esc2(o.inv)}</td><td>${esc2(nd(o.invDate)||o.invDate)}</td>`
       +`<td class="num">${rp==null?"—":money2(rp)}</td>`
       +`<td class="num">${money2(up)}</td>`
-      +`<td class="num" style="font-weight:600${d==null?"":d<0
-          ?";color:var(--neg)":";color:var(--pos)"}">${d==null?"—":money2(d)}</td>`
-      +`<td class="num"${p!=null&&p<0?' style="color:var(--neg)"':""}>${p==null?"—":p.toFixed(2)+"%"}</td></tr>`);
+      +`<td class="num">${o.wms?money2(o.wms.amt):"—"}</td></tr>`);
   }
   H.push(`</tbody>`);
   if(pk.length>1){
-    const td=allPriced?tRe-tUp:null;
-    const tp=(allPriced&&Math.abs(tRe)>1e-9)?(td/Math.abs(tRe)*100):null;
     const TF="border-top:2px solid var(--accent);background:var(--select);font-weight:700";
     H.push(`<tfoot><tr><td style="${TF}">${L("合計","Total")}</td>`
       +`<td style="${TF}"></td>`
       +`<td class="num" style="${TF}">${allPriced?money2(tRe):"—"}</td>`
       +`<td class="num" style="${TF}">${money2(tUp)}</td>`
-      +`<td class="num" style="${TF}${td==null?"":td<0?";color:var(--neg)":";color:var(--pos)"}">${td==null?"—":money2(td)}</td>`
-      +`<td class="num" style="${TF}${tp!=null&&tp<0?";color:var(--neg)":""}">${tp==null?"—":tp.toFixed(2)+"%"}</td></tr></tfoot>`);
+      +`<td class="num" style="${TF}">${anyWm?money2(tWm):"—"}</td></tr></tfoot>`);
   }
   H.push(`</table></div></div>`);
-  /* 對帳那一列掛在本期(載入中的帳單)第一張卡上;同一個追蹤號跨兩期(原件
-     一期、更正一期)只掛一次,免得同一筆錢看起來收了兩次。 */
-  const loaded=new Set((ROWS||[]).map(r=>r.invoice||"(current)"));
-  let wmsUsed=false;
   pk.forEach((o,ci)=>{
-    o.wms=null;
-    if(!wmsUsed && o.r && loaded.has(o.inv||"(current)")){ o.wms=bkdWmsOf(t); if(o.wms) wmsUsed=true; }
     H.push(`<div class="bkdinv" id="bkdInv${ci}"><span class="no">${esc2(o.inv)}</span>`
       +`<span class="dt">${esc2(nd(o.invDate)||o.invDate)}</span></div>`);
     if(o.r) H.push(`<div class="bkdchap">`+bkdSection(o.r,o.wms)+`</div>`);
@@ -10481,14 +10490,18 @@ function bkdWmsOf(trk){
   if(!o) return null;
   const rows=[]; let sum=0;
   const fees=o.billedFees||{};
-  const ord=n=>{ const i=AUD_FEES.indexOf(n); return i<0?1e6:i; };
-  for(const k2 of Object.keys(fees).sort((a,b)=>ord(a)-ord(b)||a.localeCompare(b))){
+  /* 順序:運費在前、附加費照 Consolidated 的次序,燃油倒數第二,非承運費用壓底;
+     沒逐項列示的那一份放在燃油前面。 */
+  const REST=L("未逐項列示","Not itemised");
+  const rank=n=> n==="Fuel Surcharge"?1e6+1 : n===RECON_OTHER?1e6+2 : n===REST?1e6 : (AUD_FEES.indexOf(n)<0?1e5:AUD_FEES.indexOf(n));
+  for(const k2 of Object.keys(fees)){
     const v=cents(toNum(fees[k2])); if(Math.abs(v)<0.005) continue;
     rows.push([k2, v]); sum=cents(sum+v);
   }
   const amt=cents(toNum(o.amt));
   const rest=cents(amt-sum);
-  if(rows.length && Math.abs(rest)>=0.005) rows.push([L("未逐項列示","Not itemised"), rest]);
+  if(rows.length && Math.abs(rest)>=0.005) rows.push([REST, rest]);
+  rows.sort((x,y)=>rank(x[0])-rank(y[0])||String(x[0]).localeCompare(String(y[0])));
   if(!rows.length) rows.push([L("總額(未逐項)","Total amount (not itemised)"), amt]);
   return {src:RECON_SRC, rows, amt, order:o.order, cus:o.cus, name:o.name, pieces:(o.trks||[]).length};
 }
@@ -13110,6 +13123,7 @@ async function trackLookup(){
   for(const run of runs){ if(run.key===RECON_RUN_KEY) continue; addRows(run.rows,run.src,run.invoices,false); }
   const rb=new Map();
   for(const it of ((cur&&cur.rebill&&cur.rebill.items)||[])){ const t=reconTrk(it.trk); if(want.has(t)) rb.set(t,cents((rb.get(t)||0)+toNum(it.total))); }
+  const prev=new Map((TRACK_LAST||[]).map(r=>[r.t,r.ups2]));  /* 查過的 UPS 貨況留著,重查系統狀態不用再問 UPS */
   const rows=q.map(t=>{
     const m=inv.get(t), w=wms.get(t);
     const per=m?[...m.values()].sort((a,b)=>String(a.invDate).localeCompare(String(b.invDate))):[];
@@ -13119,10 +13133,29 @@ async function trackLookup(){
     else if(m){ state=L("帳單上有,WMS / TMS 未匯入","On invoice, not in WMS / TMS"); cls="warn"; }
     else if(w){ state=L(w.src+" 有,帳單上沒有",w.src+" has it, not on any invoice"); cls="warn"; }
     else { state=L("系統裡沒有","Not in the system"); cls=""; }
-    return {t, state, cls, per, ups:cents(ups), w, rebill:rb.get(t)||0};
+    return {t, state, cls, per, ups:cents(ups), w, rebill:rb.get(t)||0, ups2:prev.get(t)||null};
   });
+  TRACK_LAST=rows;
+  trackRender();
+  const found=rows.filter(r=>r.per.length||r.w).length;
+  if(note) note.textContent=L(q.length+" 個追蹤號,系統裡有 "+found+" 個。", q.length+" tracking number(s), "+found+" in the system.");
+}
+/* UPS 的日期 20260901 / 時間 141500 → 2026-09-01 14:15 */
+const upsDate=d=>{ const m=/^(\d{4})(\d{2})(\d{2})$/.exec(String(d||"")); return m?m[1]+"-"+m[2]+"-"+m[3]:String(d||""); };
+const upsTime=t=>{ const m=/^(\d{2})(\d{2})/.exec(String(t||"")); return m?m[1]+":"+m[2]:""; };
+function trackRender(){
+  const rows=TRACK_LAST||[], tb=$("#tTrack")&&$("#tTrack").tBodies[0], wrap=$("#trackWrap");
+  const upsCell=u=>!u?`<span class="empty">—</span>`
+    : u.error?`<span class="pill warn" title="${esc(u.error)}">${esc(L("查不到","Not found"))}</span>`
+    : `<b>${esc(u.status||"—")}</b>`;
+  const actCell=u=>(!u||u.error||(!u.date&&!u.location))?`<span class="empty">—</span>`
+    : esc([upsDate(u.date)+(u.time?" "+upsTime(u.time):""), u.location].filter(Boolean).join(" · "));
+  const dlvCell=u=>(!u||!u.delivered)?`<span class="empty">—</span>`:esc(upsDate(u.delivered));
   if(tb) tb.innerHTML=rows.map(r=>`<tr>
     <td class="mono">${esc(r.t)}</td>
+    <td>${upsCell(r.ups2)}</td>
+    <td>${actCell(r.ups2)}</td>
+    <td>${dlvCell(r.ups2)}</td>
     <td><span class="pill${r.cls?" "+r.cls:""}">${esc(r.state)}</span></td>
     <td>${r.per.length?r.per.map(e=>`<span class="mono">${esc(e.invoice||"(current)")}</span>${e.invDate?` <span class="empty">${esc(e.invDate)}</span>`:""}`).join("<br>"):`<span class="empty">—</span>`}</td>
     <td>${r.w?`<span class="mono">${esc(r.w.cus)}</span>${r.w.name&&r.w.name!==r.w.cus?" "+esc(r.w.name):""}`:`<span class="empty">—</span>`}</td>
@@ -13131,12 +13164,44 @@ async function trackLookup(){
     <td class="num">${r.w?money(r.w.amt):`<span class="empty">—</span>`}</td>
     <td class="num">${r.rebill?money(r.rebill):`<span class="empty">—</span>`}</td>
     <td style="white-space:nowrap"><a class="act ghost" target="_blank" rel="noopener" href="${esc(UPS_TRACK_URL(r.t))}">UPS ↗</a>${r.per.length?` <button class="act ghost" data-bkd="${esc(r.t)}">${esc(L("明細","Detail"))}</button>`:""}</td></tr>`).join("");
-  if(wrap) wrap.hidden=false;
-  TRACK_LAST=rows;
-  $("#bTrackXls") && ($("#bTrackXls").hidden=false);
-  const found=rows.filter(r=>r.per.length||r.w).length;
-  if(note) note.textContent=L(q.length+" 個追蹤號,系統裡有 "+found+" 個。", q.length+" tracking number(s), "+found+" in the system.");
+  if(wrap) wrap.hidden=!rows.length;
+  $("#bTrackXls") && ($("#bTrackXls").hidden=!rows.length);
 }
+/* 問 UPS 貨況:號碼送到站台自己的 /api/track,那一支拿憑證去問 UPS。
+   沒有這一支(靜態站)或憑證沒設,就把話講清楚,不裝作查過。 */
+async function trackUps(){
+  const note=$("#trackNote"), btn=$("#bTrackUpsApi");
+  let rows=TRACK_LAST||[];
+  if(!rows.length){ await trackLookup(); rows=TRACK_LAST||[]; }
+  if(!rows.length) return;
+  if(btn) btn.disabled=true;
+  if(note) note.textContent=L("向 UPS 查詢 "+rows.length+" 個追蹤號…","Asking UPS about "+rows.length+" tracking number(s)…");
+  try{
+    const r=await fetch("/api/track",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({numbers:rows.map(x=>x.t)})});
+    let j=null; try{ j=await r.json(); }catch(e){}
+    if(r.status===503||(r.status===404&&!j)){
+      if(note) note.textContent=L("UPS 貨況查詢尚未啟用:這要部署在 Vercel,並在專案的 Environment Variables 設 UPS_CLIENT_ID、UPS_CLIENT_SECRET、UPS_ACCOUNT。",
+                                  "UPS status lookup is not enabled: it needs the Vercel deployment with UPS_CLIENT_ID, UPS_CLIENT_SECRET and UPS_ACCOUNT set in the project's Environment Variables.");
+      return;
+    }
+    if(!r.ok||!j||!Array.isArray(j.results)){
+      if(note) note.textContent=L("UPS 沒有回應:","UPS did not answer: ")+String((j&&j.error)||("HTTP "+r.status)); return; }
+    const by=new Map(j.results.map(x=>[reconTrk(x.tracking),x]));
+    for(const row of rows) row.ups2=by.get(row.t)||{error:L("沒有回應","no answer")};
+    trackRender();
+    const okN=j.results.filter(x=>!x.error).length;
+    if(note) note.textContent=L("UPS 回覆 "+okN+" 個,查不到 "+(rows.length-okN)+" 個。","UPS answered "+okN+", "+(rows.length-okN)+" not found.");
+  }catch(e){
+    if(note) note.textContent=L("UPS 貨況查詢失敗:","UPS status lookup failed: ")+String((e&&e.message)||e);
+  }finally{ if(btn) btn.disabled=false; }
+}
+/* 給人填的範本:一欄 Tracking Number,一列範例。 */
+async function trackTemplate(){
+  await xlWrite([{name:"Tracking", rows:[[{v:"Tracking Number",t:"s",s:{bold:true,align:"left",border:true}}],["1Z"+"XXXXXXXXXXXXXXXX"]],
+    cols:[{w:26}], ignoreTextNumbers:true}], "UPS_Tracking_Template.xlsx");
+}
+$("#bTrackUpsApi") && ($("#bTrackUpsApi").onclick=()=>{ trackUps().catch(e=>toast(String((e&&e.message)||e),false)); });
+$("#bTrackTpl") && ($("#bTrackTpl").onclick=()=>{ trackTemplate().catch(e=>toast(String((e&&e.message)||e),false)); });
 let TRACK_LAST=null;
 /* 從檔案挑追蹤號:任何一格長得像 UPS 單號(1Z + 16 碼)的都收;表頭寫 Tracking /
    追蹤號的那一欄,底下的值也收(給不是 1Z 開頭的)。其他欄一律不看。 */
@@ -13173,13 +13238,15 @@ async function trackXlsx(){
   const rows=TRACK_LAST||[]; if(!rows.length) return;
   const H=n=>({v:n,t:"s",s:{bold:true,align:"left",border:true}});
   const M=v=>({v:cents(v||0),t:"n",s:{fmt:"#,##0.00"}});
-  const head=["Tracking Number","Status","Invoice","Invoice Date","Customer Code","Customer Name","Order Number",
+  const head=["Tracking Number","UPS Status","Last Activity","Location","Delivered","Reconciliation","Invoice","Invoice Date","Customer Code","Customer Name","Order Number",
               "Charged by UPS","Billed to Customer","To re-bill","Source","UPS Tracking"].map(H);
-  const body=rows.map(r=>[r.t, r.state, r.per.map(e=>e.invoice||"(current)").join(", "), r.per.map(e=>e.invDate).filter(Boolean).join(", "),
+  const u=r=>r.ups2||{};
+  const body=rows.map(r=>[r.t, u(r).error?("("+u(r).error+")"):(u(r).status||""), u(r).date?upsDate(u(r).date)+(u(r).time?" "+upsTime(u(r).time):""):"", u(r).location||"", u(r).delivered?upsDate(u(r).delivered):"",
+    r.state, r.per.map(e=>e.invoice||"(current)").join(", "), r.per.map(e=>e.invDate).filter(Boolean).join(", "),
     r.w?r.w.cus:"", r.w?(r.w.name||""):"", r.w?(r.w.order||""):"",
     r.per.length?M(r.ups):"", r.w?M(r.w.amt):"", r.rebill?M(r.rebill):"", r.w?r.w.src:"", UPS_TRACK_URL(r.t)]);
   await xlWrite([{name:"Tracking status", rows:[head,...body], ignoreTextNumbers:true,
-    cols:[22,30,18,12,14,22,24,14,16,12,8,60].map(w=>({w}))}], "Tracking_Status.xlsx");
+    cols:[22,22,18,22,12,30,18,12,14,22,24,14,16,12,8,60].map(w=>({w}))}], "Tracking_Status.xlsx");
 }
 $("#bTrackFile") && ($("#bTrackFile").onclick=()=>$("#fTrackFile")&&$("#fTrackFile").click());
 $("#fTrackFile") && ($("#fTrackFile").onchange=e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=""; if(f) trackFromFile(f); });
@@ -19210,13 +19277,19 @@ const I18N={
   "tab.wmsdata":["WMS / TMS 資料","WMS / TMS Data"],
   "nav.cfg":["設定","Configuration"],
   "tab.reconflow":["對帳作業","Reconciliation"],
+  "tab.track":["追蹤查詢","Tracking"],
   "hd.track":["查單號狀態","Tracking status"],
-  "hint.track":["貼上一個或多個追蹤號。每一個都回答它在系統裡的狀態:在哪幾期帳單、UPS 收多少、對帳過沒有、向客戶收多少、還要補收多少。貨到哪裡了要問 UPS —— 「UPS 追蹤」直接開 UPS 的追蹤頁。","Paste one or more tracking numbers. Each one answers where it stands in the system: which invoices it is on, what UPS charged, whether it was reconciled, what the client was billed and what is still to re-bill. Delivery status lives at UPS — the UPS button opens the official tracking page."],
+  "btn.trackapi":["查 UPS 貨況","Check UPS status"],
+  "btn.tracktpl":["Excel 範本","Excel template"],
+  "th.trackups":["UPS 貨況","UPS status"],
+  "th.trackact":["最後動態","Last activity"],
+  "th.trackdlv":["送達","Delivered"],
+  "hint.track":["貼上追蹤號或上傳清單。「查詢」回答每一個號碼在系統裡的狀態:在哪幾期帳單、UPS 收多少、對帳過沒有、向客戶收多少、還要補收多少。「查 UPS 貨況」透過站台自己的服務向 UPS 查貨況,UPS 憑證留在伺服器上。","Paste tracking numbers or upload a list. Look up answers where each number stands in the system: invoices, what UPS charged, whether it was reconciled, what the client was billed and what is still to re-bill. Check UPS status asks UPS for the delivery status through this site's own service, so the UPS credentials stay on the server."],
   "btn.track":["查詢","Look up"],
   "btn.trackups":["UPS 追蹤 ↗","UPS tracking ↗"],
   "btn.trackfile":["上傳清單","Upload a list"],
   "btn.trackxls":["匯出 Excel","Export Excel"],
-  "th.trackstate":["狀態","Status"],
+  "th.trackstate":["對帳狀態","Reconciliation"],
   "th.trackinv":["帳單期別","Invoice(s)"],
   "th.trackorder":["單號","Order"],
   "hd.reconruns":["已存的對帳","Stored reconciliations"],
