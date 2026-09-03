@@ -13948,32 +13948,11 @@ async function reconTemplate(src){
       [HQ(mineCols[0])], mineCols.slice(1).map(HM));
   for(const c of feeCols){ hd.push(HU(c+" - UPS")); hd.push(HM(c+" - "+src)); }
   hd.push(HU("Total Amount - UPS")); hd.push(HQ("Total Amount - "+src));
-  const D="m/d/yyyy", MONEY="#,##0.00";
-  const serial=v=>{
-    const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(normYmd(String(v||""))||"");
-    return m?Math.floor((Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/86400000):null;
-  };
-  /* 只有表頭上色;資料格不上色。UPS 那一側沒收的寫 0,不留空 —— 空格會被讀成「沒填」。 */
-  const uc=v=>({v:cents(v||0),t:"n",s:{fmt:MONEY}});
-  const mc=()=>"";
-  const num=v=>({v:toNum(v),t:"n"});
-  /* 沒有尺寸就留白,不寫 0;Zone 是數字就寫成數字 —— 都是為了 Excel 不畫綠三角。 */
-  const dimTxt=v=>(v==null||String(v).trim()==="0")?"":String(v);
-  const zoneCell=z=>/^\d+$/.test(String(z||""))?{v:+z,t:"n"}:String(z||"");
+  const MONEY="#,##0.00";
+  /* 模板是空白的:只有表頭,一列資料都不帶。以前它把手上那批帳單整個倒進去
+     ——一次匯入三十九期就是十六萬列、混著三十九個期號的一份檔,沒辦法拿給
+     同事填。要對照帳單上的數字,看「1. UPS 帳單匯入」跑完的報表就好。 */
   const rows=[hd];
-  for(const s of ships){
-    const ls=s.allLines||s.lines||[];
-    const id=consIdentityOf(ls);
-    const {fees}=consFeesOf(ls);
-    const inv=String((ls.find(l=>l.invoice)||{}).invoice||"").trim();
-    const d=serial(id.date);
-    const r=[d==null?String(id.date||""):{v:d,t:"n",s:{fmt:D,align:"right"}},
-             id.ref1, id.ref2, String(s.tracking||""), dimTxt(id.dimsC), dimTxt(id.dimsA), num(id.entered), num(id.billed),
-             zoneCell(id.zone), id.chan, inv, mc(), mc(), mc(), mc(), mc()];
-    for(const c of feeCols){ r.push(uc(fees[c])); r.push(mc()); }
-    r.push(uc(s.upsTotal)); r.push(mc());
-    rows.push(r);
-  }
   const reg=cusReg();
   const fams=reconChanFamilies();
   /* 填寫說明放在活頁簿裡自己一頁:拿到檔的人不必另外找文件。 */
@@ -13987,7 +13966,7 @@ async function reconTemplate(src){
     gRow("Channel - "+src,"計價用的渠道 Channel used for pricing","選填;系統的渠道名稱,對照 Channels 分頁;Ground 不分商業／住宅;匯入後與系統判的渠道核對 Optional; a system channel name, see the Channels sheet; Ground has no com/res split; checked against the system's channel"),
     gRow("Zone - "+src,"計價用的 UPS Zone Zone used for pricing","選填;匯入後與帳單上的 Zone(左邊那一欄)核對 Optional; checked against the invoice Zone column"),
     gRow("Billed Weight - "+src,"向客戶計價的計費重量(lb)Billable weight the client was charged on, lb","選填;只記錄不核對,合約計費重量本來就不必相同 Optional; recorded only, the contract billed weight need not match"),
-    gRow("<費用> - UPS  <charge> - UPS","帳單收的,先填好 Charged by UPS, pre-filled","不用改;0 = 這一件 UPS 沒收這一項 Leave as is; 0 = UPS did not bill it on this package"),
+    gRow("<費用> - UPS  <charge> - UPS","帳單收的 Charged by UPS","不必填;要對照的話看系統跑完的報表 Not needed; the system's own report has the invoice figures"),
     gRow("<費用> - "+src+"  <charge> - "+src,"向客戶收的 Billed to the client","按件填;空白 = 未填,0 = 實收零 Per package; blank = not filled, 0 = billed zero"),
     gRow("Total Amount - UPS","帳單這一件的合計 UPS total for the package","不用改 Leave as is"),
     gRow("Total Amount - "+src,"這一件向客戶收的總額 Whole amount billed to the client for the package","必填;應等於各「- "+src+"」費用欄合計 Required; should equal the "+src+" charge columns"),
@@ -14030,11 +14009,12 @@ async function reconTemplate(src){
        .concat(reg.map(c=>[c.code, c.name||c.code]))}
   ];
   await xlWrite(sheets, src+"_Reconciliation_Template.xlsx");
-  reconMsg(ships.length
-    ? L(src+" 模板已下載:"+ships.length+" 個追蹤號、"+feeCols.length+" 項費用(帳單上有收的都在),同仁填綠色欄;填寫說明在 Guide 分頁。",
-        src+" template downloaded: "+ships.length+" tracking number(s), "+feeCols.length+" charge(s) — every one UPS billed. Fill the green columns; notes are on the Guide sheet.")
-    : L(src+" 模板已下載(還沒載入帳單,列的是全部固定費用欄);先在「1. UPS 帳單匯入」載入帳單再下載,追蹤號與 UPS 金額會先填好。",
-        src+" template downloaded with the full fixed charge set — no invoice is loaded. Load the invoice under step 1, UPS Invoice Import, first and the tracking numbers and UPS amounts come pre-filled."), true);
+  reconMsg(L(src+" 空白模板已下載:"+feeCols.length+" 項費用欄"
+             +(ships.length?"(這一批帳單上有收的都在)":"(全部固定費用欄)")
+             +",一件一列自己填;填寫說明在 Guide 分頁,客戶代碼與渠道名稱分別在 Customers、Channels 分頁。",
+             "Blank "+src+" template downloaded: "+feeCols.length+" charge column(s)"
+             +(ships.length?" — every charge this batch of invoices billed":" — the full fixed set")
+             +". One package per row, filled in by hand; the Guide sheet has the column rules and the Customers and Channels sheets have the codes to use."), true);
 }
 
 /* --------------------------------------------------------------------
@@ -20126,7 +20106,7 @@ const I18N={
   "hd.recon":["WMS / TMS 資料","WMS / TMS data"],
   "hint.invmulti":["可一次選多個帳單檔:每一期各自存入歷史,整批一起計價與對帳。同一期出現在兩個檔裡以後面的檔為準。",
     "Select several invoice files at once to import them in one go; each period is filed to history and the batch is reconciled together. If the same invoice is in two files, the later file is used."],
-  "hint.recon":["以手上的帳單為基準:模板照稽核中心的 Consolidated Invoice,一個追蹤號一列,帳單上有收的每一項費用都有一欄,UPS 的數字先填好,同仁在旁邊填向客戶收的。檔案受理後逐項三方比對;欄位規範詳見填寫說明(PDF)。","Built from the invoice in hand: the template follows the Audit Center's Consolidated Invoice, one tracking number per row, with a column for every charge UPS billed — the UPS figure pre-filled and the amount billed to the client beside it. Every charge is compared three ways on acceptance; column rules are in the guide."],
+  "hint.recon":["模板是空白的,只有欄位:版式照稽核中心的 Consolidated Invoice,一個追蹤號一列,帳單上有收的每一項費用都有一欄。同仁填綠色欄(客戶代碼、單號、向客戶收的金額)。檔案受理後逐項三方比對;欄位規範詳見填寫說明(PDF)。","The template is blank — columns only. The layout follows the Audit Center's Consolidated Invoice, one tracking number per row, with a column for every charge UPS billed on this batch. Fill the green columns: client code, order number and what was billed to the client. Every charge is compared three ways on acceptance; column rules are in the guide."],
   "lb.tpl":["模板","Template"],
   "btn.tplpdf":["填寫說明(PDF)","Guide (PDF)"],
   "lb.datasrc":["資料來源","Data source"],
