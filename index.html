@@ -2959,7 +2959,7 @@ label:has(#newChanOn){display:none !important}
       <button class="mx" id="cusEditX">✕</button>
     </div>
     <div class="modalbody">
-      <label class="inlab" style="margin-left:0" data-i18n="th.cuscode">Code</label>
+      <label class="inlab" style="margin-left:0" data-i18n="lb.cecode">Customer code</label>
       <input id="ceCode" class="cell" style="width:100%;text-align:left;margin:4px 0 2px">
       <p class="hint" style="margin:0 0 12px" data-i18n="hint.cecode" id="ceCodeHint">Letters, digits, . _ - only. Change it and every rule and assignment pointing at this customer follows.</p>
 
@@ -7679,8 +7679,8 @@ function bindCustomers(){
   $("#cusEditX")      && ($("#cusEditX").onclick=closeCusEdit);
   $("#cusEditCancel") && ($("#cusEditCancel").onclick=closeCusEdit);
   $("#cusEditSave")   && ($("#cusEditSave").onclick=saveCusEdit);
-  $("#cusEditBg")     && ($("#cusEditBg").onclick=e=>{
-    if(e.target.id==="cusEditBg") closeCusEdit(); });
+  /* 點到底不關:填一半、滑鼠拖出視窗放開,或按到旁邊,視窗不該就這樣不見。
+     關掉靠 ✕、取消、儲存,或 Esc。 */
   $("#tCus") && ($("#tCus").onclick=async e=>{
     const ed=e.target.closest("button[data-cusedit]");
     if(ed){ openCusEdit(ed.dataset.cusedit); return; }
@@ -19516,6 +19516,7 @@ const I18N={
     "Your own list. Assign a rate level and this customer's shipments are repriced at that level. The list is shared across the whole account and does not change when you switch levels."],
   "hd.cusedit":["編輯客戶","Edit customer"],
   "hd.cusnew":["新增客戶","New customer"],
+  "lb.cecode":["客戶代碼","Customer code"],
   "hint.cecodenew":["只能用英數字和 . _ -,至少兩個字。WMS / TMS 模板的 Customer Code 填的就是這個代碼。",
     "Letters, digits, . _ - only, at least two characters. This is the code the WMS / TMS template's Customer Code column takes."],
   "btn.cusimp":["匯入名單","Import list"],
