@@ -185,104 +185,6 @@ table,table *,input,select,.tablewrap{filter:none !important}
 }
 .setnav-lvl select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .setnav-lvl[hidden]{display:none}
-/* ===== 首頁流程圖(鄉間小路版) ===== */
-/* 佈景跟著主題走;站點的圖與文字用固定墨色(--fm-*),換主題也不變。 */
-.fm-wrap{overflow-x:auto;
-  --fm-ink:#3a2418;--fm-gold:#ffb500;--fm-line:#caa356;--fm-select:#ffdd8f;
-  --fm-panel:#fffdf7;--fm-stripe:#f7f1e4;--fm-run2:#8a6104;--fm-muted:#8a755a}
-.fm-wrap svg{width:100%;min-width:920px;height:auto;display:block}
-#navHome .nnum{font-size:12px;opacity:.9}
-.fm-grph text{font-size:10px;font-weight:700;letter-spacing:.16em;fill:var(--muted)}
-.fm-rail{stroke:var(--line);stroke-width:2.6;fill:none;stroke-linecap:round}
-.fm-dash{stroke:var(--accent);stroke-width:2.2;fill:none;stroke-dasharray:1 11;
-  stroke-linecap:round;animation:fmflow 1.3s linear infinite;opacity:.8}
-@keyframes fmflow{to{stroke-dashoffset:-12}}
-.fm-st{cursor:pointer}
-.fm-card{transition:transform .22s ease}
-.fm-st.on .fm-card,.fm-st:hover .fm-card{transform:translateY(-4px)}
-.fm-hit{fill:transparent;stroke:none}
-.fm-halo{fill:var(--select);opacity:0;transition:opacity .25s}
-.fm-st.on .fm-halo,.fm-st:hover .fm-halo{opacity:.55}
-.fm-gnd{fill:var(--line);opacity:.35}
-.fm-chip{fill:var(--fm-stripe);stroke:var(--fm-line);stroke-width:1}
-.fm-no{font-size:8.5px;font-weight:700;fill:var(--fm-muted);font-family:Consolas,"Cascadia Mono",monospace}
-.fm-tick{font-size:10px;fill:var(--fm-run2);opacity:0;transition:opacity .3s}
-.fm-st.done .fm-tick{opacity:1}
-.fm-lb{font-size:11px;font-weight:700;fill:var(--fm-ink);letter-spacing:.02em}
-.fm-lb2{font-size:8.4px;font-weight:600;fill:var(--fm-muted);letter-spacing:.05em}
-.fm-st.nolink{cursor:default}
-.fm-st text{user-select:none}
-.fm-gate{stroke:var(--fm-ink);stroke-width:2;fill:var(--fm-stripe)}
-.fm-gatearch{stroke:var(--fm-ink);stroke-width:5;fill:none;stroke-linecap:round}
-.fm-pkg .bx,.fm-truck .tpk .bx{fill:var(--fm-gold);stroke:var(--fm-ink);stroke-width:2.2}
-.fm-pkg .tape,.fm-truck .tpk .tape{fill:var(--fm-select);stroke:var(--fm-ink);stroke-width:1}
-.fm-pkg .fold,.fm-truck .tpk .fold{fill:none;stroke:var(--fm-ink);stroke-width:1.1;opacity:.65}
-.fm-pkg .lbl{fill:var(--fm-panel);stroke:var(--fm-ink);stroke-width:1}
-.fm-pkg .lbl-ln{stroke:var(--fm-ink);stroke-width:.9;opacity:.7;fill:none}
-.fm-pkg{filter:drop-shadow(1.5px 2px 0 rgba(0,0,0,.16))}
-.fm-pkg.zap .bx{fill:var(--fm-select)}
-.fm-truck .bedback{fill:#6f4e03;stroke:var(--fm-ink);stroke-width:2.2;filter:brightness(.88)}
-.fm-truck .bedfront{fill:var(--fm-run2);stroke:var(--fm-ink);stroke-width:2.2}
-.fm-truck .tpk{opacity:0;transition:opacity .2s}
-.fm-truck.laden .tpk{opacity:1}
-.fm-truck .cb{fill:var(--fm-panel);stroke:var(--fm-ink);stroke-width:2.2}
-.fm-truck .win{fill:var(--fm-select);stroke:var(--fm-ink);stroke-width:1.3}
-.fm-truck .lamp{fill:var(--fm-gold);stroke:var(--fm-ink);stroke-width:1.2}
-.fm-truck .bump{fill:var(--fm-stripe);stroke:var(--fm-ink);stroke-width:1.6}
-.fm-truck .arc{fill:none;stroke:var(--fm-ink);stroke-width:1.6}
-.fm-truck .wh circle{fill:var(--fm-stripe);stroke:var(--fm-ink);stroke-width:2}
-.fm-truck .hub{fill:var(--fm-panel);stroke-width:1.4}
-.fm-truck .sp{stroke:var(--fm-ink);stroke-width:1.3;transform-origin:center;transform-box:fill-box}
-.fm-truck.go .sp{animation:fmspin .45s linear infinite}
-.fm-truck .logo{fill:var(--fm-gold);stroke:var(--fm-ink);stroke-width:1.3}
-.fm-truck .ln{stroke:var(--fm-ink);fill:none}
-.fm-truck .jig{transform-origin:center;transform-box:fill-box}
-.fm-truck.go .jig{animation:fmjig .32s ease-in-out infinite alternate}
-@keyframes fmjig{to{transform:translateY(-1.4px)}}
-.fm-truck .puff{fill:var(--fm-muted);opacity:0}
-.fm-truck.go .puff{animation:fmpuff 1.1s ease-out infinite}
-.fm-truck.go .puff.p2{animation-delay:.55s}
-@keyframes fmpuff{0%{opacity:.5;transform:translate(0,0) scale(.6)}
-  100%{opacity:0;transform:translate(-13px,-10px) scale(1.5)}}
-@keyframes fmspin{to{transform:rotate(360deg)}}
-.fm-mat{fill:var(--stripe);stroke:var(--line);stroke-width:1.4}
-.fm-mat2{stroke:var(--line);stroke-width:2;stroke-linecap:round;stroke-dasharray:2 6}
-/* 貓狗是吉祥物,不跟主題換裝:奶油貓、橘金狗,墨線固定深棕 */
-.fm-cat .fur{fill:#f6e8cf;stroke:#4a3226;stroke-width:2}
-.fm-cat .innr{fill:#f2b8ad;stroke:none;opacity:.9}
-.fm-cat .ln{stroke:#4a3226;fill:none}
-.fm-cat .tail{transform-origin:var(--tox) var(--toy);animation:fmtail 3s ease-in-out infinite alternate}
-@keyframes fmtail{to{transform:rotate(-9deg)}}
-.fm-cat .bod{transform-origin:80px 232px;animation:fmbreath 2.8s ease-in-out infinite alternate}
-@keyframes fmbreath{to{transform:scale(1.03,1.06)}}
-.fm-cat .hd{transform-origin:69px 220px;transition:transform .3s}
-.fm-cat .eyeO{opacity:0;transition:opacity .15s}
-.fm-cat.wake .hd{transform:rotate(-10deg) translate(-1px,-3px)}
-.fm-cat.wake .eyeC{opacity:0}
-.fm-cat.wake .eyeO{opacity:1}
-.fm-cat.wake .fm-zz{animation:none;opacity:0}
-.fm-zz{font-size:10px;fill:var(--muted);opacity:0;animation:fmzz 3.4s ease-in-out infinite}
-.fm-zz.z2{animation-delay:1.1s}
-@keyframes fmzz{0%,55%{opacity:0;transform:translate(0,0)}70%{opacity:.9}100%{opacity:0;transform:translate(7px,-12px)}}
-.fm-dog .fur{fill:#f2bd7a;stroke:#4a3226;stroke-width:2}
-.fm-dog .flop{fill:#d99050;stroke:#4a3226;stroke-width:1.6}
-.fm-dog .snout{fill:#fdf3e3;stroke:#4a3226;stroke-width:1.6}
-.fm-dog .collar{stroke:#c74a3a;fill:none}
-.fm-dog .ln{stroke:#4a3226;fill:none}
-.fm-dog circle[fill="var(--fm-ink)"]{fill:#4a3226}
-.fm-dog{animation:fmhop 3.2s ease-in-out infinite}
-@keyframes fmhop{0%,86%,100%{transform:translateY(0)}90%{transform:translateY(-6px)}94%{transform:translateY(0)}97%{transform:translateY(-3px)}}
-.fm-dog .wag{transform-origin:var(--wox) var(--woy);animation:fmwag .55s ease-in-out infinite alternate}
-.fm-dog.woof .wag{animation-duration:.22s}
-@keyframes fmwag{from{transform:rotate(-14deg)}to{transform:rotate(20deg)}}
-.fm-dog .brk{font-size:10px;font-weight:700;fill:#4a3226;opacity:0;transition:opacity .15s}
-.fm-dog.woof .brk{opacity:1}
-@media (prefers-reduced-motion:reduce){
-  .fm-dash,.fm-cat .tail,.fm-cat .bod,.fm-zz,.fm-dog,.fm-dog .wag,
-  .fm-truck .sp,.fm-truck .jig,.fm-truck .puff{animation:none}
-  .fm-card{transition:none}
-}
-
 main{min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 14px 0}
 
 /* 窄螢幕:導覽躺平成一條橫的,格線改成三列。 */
@@ -881,6 +783,7 @@ tr.blocked{opacity:.72}
 .subtabs[hidden]{display:none}
 /* 對帳作業三步的分頁列:站在頁面最上面,底線就是和下面卡片的分界。 */
 .subtabs.reconsteps{margin:0 0 12px}
+#tReconRuns tr.cur td{font-weight:600;background:var(--select)}
 .subtabs button{font:inherit;font-size:13px;cursor:pointer;padding:7px 16px 6px;
   border:2px solid var(--accent);border-bottom:none;border-radius:8px 8px 0 0;
   background:transparent;color:var(--accent);margin-bottom:-2px;opacity:.62}
@@ -1229,6 +1132,13 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
    這裡就自然被壓在最底、狀態列之上。 */
 .sceneBox{padding:0;overflow:hidden;border:none;filter:none;
   background:transparent;flex:0 0 auto;line-height:0}
+/* 首頁:那一幕放大、貼在頁面底部。main 只有停在首頁時才變成直向 flex,
+   首頁那一節撐滿高度,場景用 margin-top:auto 沉到底。 */
+main.home{display:flex;flex-direction:column}
+main.home #app{flex:1 0 auto;display:flex;flex-direction:column;min-height:0}
+main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
+#p-home .sceneBox{margin-top:auto}
+#p-home #scene{height:clamp(320px,48vh,520px)}
 .clockcard{position:absolute;top:12px;right:22px;padding:0;z-index:5;
   background:transparent;border:none;pointer-events:none}
 /* 第一塊面板要讓出時鐘的位置,不然輸入框會壓到日曆 */
@@ -1553,31 +1463,6 @@ html.ink main{
   html.ink button.act:active{transform:none}
 }
 /*!ui-pack:ink.css:end*/
-/*!ui-pack:fm.css:start*/
-/* ── 首頁流程圖 —— 精修用的樣式 ────────────────────────────────────
-   接在 ink.css 後面。fm.js 沒有載入的話,這幾條沒有東西套得上。 */
-
-/* 每個站自己畫的影子,寬度跟著圖示走。內建那顆一律 rx=24 的關掉。 */
-.fm-gnd{display:none}
-.fm-sh{fill:var(--line);opacity:.3}
-
-/* 路肩。墊在路面底下,細線就變成路。 */
-.fm-shoulder{stroke:var(--line);stroke-width:6.5;fill:none;stroke-linecap:round;opacity:.2}
-.fm-rail{stroke-width:2.4}
-.fm-dash{opacity:.75}
-
-/* 打勾徽章。原本是一個浮在半空的 ✓,落在別站的插畫旁邊分不清是誰的;
-   有底之後就有邊界。開關仍然是 .fm-st.done。 */
-.fm-tick circle{fill:var(--panel);stroke:var(--run2);stroke-width:1.7}
-.fm-tick path{fill:none;stroke:var(--run2);stroke-width:2;
-  stroke-linecap:round;stroke-linejoin:round}
-
-/* 分組標題的細線 */
-.fm-grph text{fill:var(--muted)}
-
-/* 游標移過去的光暈原本是一塊硬邊的橢圓,收斂成一層淡的。 */
-.fm-st.on .fm-halo,.fm-st:hover .fm-halo{opacity:.38}
-/*!ui-pack:fm.css:end*/
 /*!ui-pack:trim.css:start*/
 /* 收起「🔌 Enable / Disable」那張卡與 03 表單上的「Enable this channel」。
    showSetCards 會把 hidden 拿掉,所以用 display 蓋,不用 hidden。 */
@@ -1620,10 +1505,8 @@ label:has(#newChanOn){display:none !important}
 }
 /*!ui-pack:mascot.css:end*/
 
-/* 動畫先隱藏(卡片上的貓狗、流程圖的貓狗卡車與虛線流動)。要開回來刪這一段就好,
-   東西都還在頁上。 */
-.mzwrap,#fmCat,#fmDog,#fmTruck{display:none !important}
-.fm-dash{animation:none !important}
+/* 卡片上的貓狗動畫先隱藏。要開回來刪這一行就好,東西都還在頁上。 */
+.mzwrap{display:none !important}
 </style>
 </head>
 <body>
@@ -1778,12 +1661,33 @@ label:has(#newChanOn){display:none !important}
 
 <!-- ==================== Import Files ==================== -->
 <section class="page" id="p-home">
-  <div class="lf sketch">
-    <h3 class="display"><span class="em">🗺️</span><span data-i18n="hd.flow">System flow — a parcel's journey</span></h3>
-    <p class="hint" style="margin:4px 0 6px;max-width:82ch" data-i18n="hint.flow">The whole system on one map. Every station is a button — click it to go straight there. The parcel walks the pipeline; the truck brings it home.</p>
-    <div class="fm-wrap"><svg id="fmMap" viewBox="0 0 1140 328"></svg></div>
+  <!-- 查單號狀態:一次一個或多個追蹤號(逗號、空白、換行分開)。系統這邊能答的是
+       「在哪幾期帳單、UPS 收多少、對帳過沒有、向客戶收多少、還要補收多少」;
+       貨到哪裡了要問 UPS —— 那顆按鈕直接開 UPS 的追蹤頁,這裡沒有 UPS 的 API 憑證。 -->
+  <div class="lf sketch" id="trackCard">
+    <h3 class="display"><span class="em">🔎</span><span data-i18n="hd.track">Tracking status</span></h3>
+    <p class="hint" style="margin:0 0 10px;max-width:84ch" data-i18n="hint.track">Paste one or more tracking numbers. Each one answers where it stands in the system: which invoices it is on, what UPS charged, whether it was reconciled, what the client was billed and what is still to re-bill. Delivery status lives at UPS — the UPS button opens the official tracking page.</p>
+    <div class="row" style="margin-bottom:9px">
+      <!-- textarea 不是 input:貼一整欄追蹤號進來,換行要留著當分隔。 -->
+      <textarea id="trackQ" class="cell" rows="2" style="width:min(560px,100%);text-align:left;resize:vertical;line-height:1.5" placeholder="1Z… , 1Z…"></textarea>
+      <button class="act" id="bTrack" data-i18n="btn.track">Look up</button>
+      <button class="act ghost" id="bTrackUps" data-i18n="btn.trackups">UPS tracking ↗</button>
+      <span id="trackNote" class="affsum"></span>
+    </div>
+    <div class="tablewrap" id="trackWrap" hidden style="max-height:44vh"><table id="tTrack"><thead><tr>
+      <th data-i18n="th.trk">Tracking</th>
+      <th data-i18n="th.trackstate">Status</th>
+      <th data-i18n="th.trackinv">Invoice(s)</th>
+      <th data-i18n="th.cuscode">Code</th>
+      <th data-i18n="th.trackorder">Order</th>
+      <th class="num" data-i18n="th.reconups">Charged by UPS</th>
+      <th class="num" data-i18n="th.reconbilled">Billed to customer</th>
+      <th class="num" data-i18n="th.runrebill">To re-bill</th>
+      <th></th>
+    </tr></thead><tbody></tbody></table></div>
   </div>
-
+  <!-- 碼頭那一幕(卡車、月台、同仁、貓狗)沉在頁面底部。原本的系統流程圖拿掉了。 -->
+  <div class="sceneBox" id="sceneBox"><canvas id="scene"></canvas></div>
 </section>
 
 <section class="page on" id="p-files">
@@ -2001,6 +1905,7 @@ label:has(#newChanOn){display:none !important}
   <div class="lf sketch" id="reconEmpty" hidden>
     <h3 class="display"><span class="em">⚖️</span><span data-i18n="hd.reconempty">No comparison yet</span></h3>
     <p class="hint" style="margin:0;max-width:70ch" data-i18n="hint.reconempty">Import this period's UPS invoice under Batch Invoice Import, then bring in the filled WMS/TMS template under WMS/TMS Data. The comparison appears here the moment the file is accepted.</p>
+    <div id="reconRunsMini"></div>
   </div>
 
   <div class="lf sketch" id="reconIssueCard" hidden>
@@ -2743,6 +2648,26 @@ label:has(#newChanOn){display:none !important}
        #p-dash 底下,所以容器沿用那個 id。 -->
   <div id="p-dash"><div class="dwrap" id="dashBody"></div></div>
 
+  <!-- 存過的對帳:每匯入一次就存一份(WMS / TMS 的列 + 摘要),回來還看得到;
+       「開啟」把那幾期的帳單從歷史載回來、照今天的費率重新比對。 -->
+  <div class="lf sketch" id="reconRunsCard" hidden>
+    <h3 class="display"><span class="em">🗂️</span><span data-i18n="hd.reconruns">Stored reconciliations</span></h3>
+    <p class="hint" style="margin:0 0 11px;max-width:78ch" data-i18n="hint.reconruns">Every imported WMS / TMS file is kept together with its result. Open one to load that period's invoice from history and compare it again at today's rates; the figures here are from the last run.</p>
+    <div class="tablewrap" style="max-height:40vh"><table id="tReconRuns"><thead><tr>
+      <th data-i18n="th.runinvdate">Invoice date</th>
+      <th data-i18n="th.runinv">Invoice</th>
+      <th data-i18n="th.runsrc">Source</th>
+      <th class="num" data-i18n="th.reconorders">Orders</th>
+      <th class="num" data-i18n="th.reconbilled">Billed to customer</th>
+      <th class="num" data-i18n="th.reconups">Charged by UPS</th>
+      <th class="num" data-i18n="th.reconprofit">Profit</th>
+      <th class="num" data-i18n="th.reconmargin">Margin</th>
+      <th class="num" data-i18n="th.runrebill">To re-bill</th>
+      <th data-i18n="th.runwhen">Reconciled</th>
+      <th></th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+
   <div class="lf sketch" id="anaEmpty">
     <h3 class="display"><span class="em">📈</span><span data-i18n="hd.analysis">Profit analysis</span></h3>
     <p class="hint" style="margin:0 0 11px;max-width:70ch" data-i18n="hint.anaempty">Nothing to analyse yet. This page reads the reconciliation — once the filled template is imported, the numbers land here and the whole analysis can be exported.</p>
@@ -2801,9 +2726,6 @@ label:has(#newChanOn){display:none !important}
 
 
 </div>
-  <!-- 場景放進捲動區的最後面。原本它在 main 外面、固定佔住視窗底部,
-       所以內容捲到底時最後幾列會被它蓋掉。 -->
-  <div class="sceneBox" id="sceneBox"><canvas id="scene"></canvas></div>
 </main>
 
 <div id="modalBg" class="modalbg">
@@ -5742,7 +5664,7 @@ const HIST_RULE="v2-marker-not-a-signal";
 const HISTINV_KEY="ups_recon_histinv_v1";
 /* 明細列放 IndexedDB,不是 localStorage —— 五十萬列是幾十 MB,
    localStorage 只有 5 MB。一期一筆,重開瀏覽器再讀回來。 */
-const IDB_NAME="ups_recon_hist", IDB_STORE="invoices";
+const IDB_NAME="ups_recon_hist", IDB_STORE="invoices", IDB_RUNS="recon_runs";
 /* 帳單歷史也是一個帳號一份。localStorage 的 key 和 IndexedDB 的資料庫名稱
    都綁 user id —— 同一台機器換人登入,不該看到前一個人的帳單明細。
    舊版共用的那一份留在原地不動,由本人在歷史頁自己認領或刪掉。 */
@@ -5759,11 +5681,14 @@ function idb(){
   const name=IDB_FOR;
   IDB=new Promise((res,rej)=>{
     if(!window.indexedDB) return rej(new Error("no indexedDB"));
-    const rq=indexedDB.open(name,1);
+    /* v2 多一個 store:存過的對帳(WMS / TMS 的列 + 摘要)。舊庫開起來就補上,明細不動。 */
+    const rq=indexedDB.open(name,2);
     rq.onupgradeneeded=()=>{
       const db=rq.result;
       if(!db.objectStoreNames.contains(IDB_STORE))
         db.createObjectStore(IDB_STORE,{keyPath:"invoice"});
+      if(!db.objectStoreNames.contains(IDB_RUNS))
+        db.createObjectStore(IDB_RUNS,{keyPath:"key"});
     };
     rq.onsuccess=()=>{ IDB_DB=rq.result; res(rq.result); };
     rq.onerror=()=>rej(rq.error||new Error("indexedDB open failed"));
@@ -5772,6 +5697,26 @@ function idb(){
 }
 function idbTx(mode){
   return idb().then(db=>db.transaction(IDB_STORE,mode).objectStore(IDB_STORE));
+}
+/* 存過的對帳。一份 = 一個來源 × 一組帳單期別;同一組再對一次就整份取代。 */
+function idbRunsTx(mode){
+  return idb().then(db=>db.transaction(IDB_RUNS,mode).objectStore(IDB_RUNS));
+}
+function idbRunPut(run){
+  return idbRunsTx("readwrite").then(st=>new Promise((res,rej)=>{
+    const rq=st.put(run); rq.onsuccess=()=>res(true); rq.onerror=()=>rej(rq.error); }));
+}
+function idbRunAll(){
+  return idbRunsTx("readonly").then(st=>new Promise((res,rej)=>{
+    const rq=st.getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error); })).catch(()=>[]);
+}
+function idbRunGet(key){
+  return idbRunsTx("readonly").then(st=>new Promise((res,rej)=>{
+    const rq=st.get(String(key)); rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>rej(rq.error); })).catch(()=>null);
+}
+function idbRunDel(key){
+  return idbRunsTx("readwrite").then(st=>new Promise((res,rej)=>{
+    const rq=st.delete(String(key)); rq.onsuccess=()=>res(true); rq.onerror=()=>rej(rq.error); }));
 }
 /* 一期一筆寫進去。同期再寫就覆蓋,跟 localStorage 那份索引同一條規則。 */
 /* =====================================================================
@@ -8290,6 +8235,7 @@ function setMe(m){
      擋在這裡的話,登入後馬上匯入的檔案會被晚一步的還原蓋掉。 */
   if(m) restoreHistoryDetail();
   /* 對帳的那幾列也跟著人走 —— key 帶帳號,換人就是換一份。 */
+  if(changed){ RECON_RUNS=null; RECON_RUN_KEY=""; }
   if(m) reconRestore();
 }
 function applyRole(){
@@ -8302,7 +8248,7 @@ function applyRole(){
   const gate=$("#gate"), app=$("#app");
   if(gate) gate.style.display = ME?"none":"";
   if(app)  app.style.display  = ME?"":"none";
-  sceneShow(!!ME && currentTab()==="files");
+  sceneShow(!!ME && currentTab()==="home");
   const who=$("#who");
   const roleWord = admin?(LANG?"Administrator":"管理者"):(LANG?"User":"使用者");
   if(who) who.textContent = ME? (ME.name+" · "+roleWord) : "";
@@ -8444,7 +8390,6 @@ function showTab(p){
   if(typeof showSetCards==="function") showSetCards(inSet?SET_TAB:"");
   /* 記的是「回來要停在哪」。在設定裡就記設定的分頁,才不會回到頁面卻停錯子頁。 */
   try{ localStorage.setItem(TAB_KEY, inSet?("set:"+SET_TAB):lit); }catch(e){}
-  if(p==="home" && typeof fmStart==="function") fmStart();
   /* 入口那兩顆自己不亮,交給 rateSideSync 決定亮哪一顆 —— 它才知道現在
      停的是哪一組。在設定裡面的時候,底下的頁面按鈕一律不亮。 */
   if(!inSet && RECON_STEPS.includes(lit)) RECON_LAST=lit;
@@ -8456,7 +8401,8 @@ function showTab(p){
   reconStepsSync(inSet?"":lit);
   document.querySelectorAll(".page").forEach(s=>
     s.classList.toggle("on", s.id==="p-"+p));
-  sceneShow(p==="files");
+  const mainEl=document.querySelector("main"); if(mainEl) mainEl.classList.toggle("home", p==="home");
+  sceneShow(p==="home");
   if(p==="admin"&&ME&&ME.role==="admin"){ loadLoginHistory(); loadUsers(); }
   if(p==="cus"&&typeof renderCustomers==="function") renderCustomers();
   if(p==="analysis"&&typeof renderAnalysis==="function") renderAnalysis();
@@ -8724,6 +8670,7 @@ function applyConfig(text,name,remember){
   $("#cfgNote").innerHTML="";
   renderConfigTabs();
   ready();
+  if(typeof reconOpenPending==="function") reconOpenPending();
   return true;
 }
 
@@ -12470,374 +12417,6 @@ function fillLvlSync(){
   if(e) e.textContent=rlName((rlStore()||{}).active)||"";
 }
 
-/* ===== 首頁:系統流程小動畫(鄉間小路版) =====
-   一條起伏的小路:站牌沿路高低錯落、各自微傾,包裹沿路面行走並隨坡度傾斜;
-   06 上方的 PROCESS 門架掃描;右側繞下來搭上小貨車,沿下方小路開回起點
-   (經過 10),包裹在貓咪旁下車,空車再開回去待命。每張站牌都是按鈕。 */
-const FM_NS="http://www.w3.org/2000/svg";
-const FM_LB={order:["客人下單","Order placed"], erp:["ERP 接單","ERP"],
-  wms:["WMS 出貨","Warehouse ships"], tms:["TMS 派送","TMS dispatch"],
-  tender:["交運 UPS","Tender to UPS"], transit:["運送中","In transit"],
-  dlv:["送達收件人","Delivered"], bill:["UPS 帳單","UPS invoice"],
-  recon:["系統對帳","Reconcile"], fin:["財務請款","Finance bills"]};
-/* 點了去哪裡:對得上系統分頁的才可點,外部階段只有說明。 */
-const FM_GO={order:"rate", wms:"wmsdata", tms:"wmsdata",
-  bill:"files", recon:"cus", fin:"analysis"};
-const FM_TIP={order:["客戶成立訂單 —— 名單與層級在 02","The client places an order — directory under 02"],
-  erp:["公司 ERP 接單、開出貨指示(外部系統)","Your ERP takes the order (external)"],
-  wms:["倉庫揀貨出庫,出貨明細之後在 05 的第 2 步匯入","Warehouse picks & ships; details go into 05, step 2"],
-  tms:["TMS 安排派送與費用(外部系統)","TMS plans the delivery (external)"],
-  tender:["包裹交給 UPS(外部)","Handed to UPS (external)"],
-  transit:["UPS 運送中(外部)","UPS linehaul (external)"],
-  dlv:["送達 Consignee(外部)","Delivered to the consignee (external)"],
-  bill:["UPS 出當期帳單 —— 到 05 的第 1 步匯入","UPS bills the period — import under 05, step 1"],
-  recon:["本系統逐筆重算、三方比對 —— 05 的第 3 步","This system reprices & compares — 05, step 3"],
-  fin:["財務依報告向客戶請款 —— 06 看毛利","Finance bills the client — margins under 06"]};
-/* 站點:x、路面 y(高低錯落)、傾角 */
-const FM_ST=[
- ["order",  96,112,-2.4,"01"],
- ["erp",   222,132, 1.8,"02"],
- ["wms",   348,110,-1.6,"03"],
- ["tms",   474,130, 2.2,"04"],
- ["tender",600,112,-2.0,"05"],
- ["transit",726,124, 1.4,"06"],
- ["dlv",   852,108,-2.2,"07"],
- ["bill",  978,130, 2.0,"08"],
- ["recon",1104,112,-1.8,"09"],
- ["fin",   600,258, 1.6,"10"],
-];
-let FM_BUILT=false, FM_T0=null, FM_RAF=0;
-let FM_PT=null, FM_PB=null, FM_PD=null, FM_STOP=[], FM_LT=0, FM_LB2=0, FM_LD=0;
-function fmPathPoint(path,len){ return path.getPointAtLength(Math.max(0,Math.min(len,path.getTotalLength()))); }
-function fmAngle(path,len){
-  const a=fmPathPoint(path,len-2), b=fmPathPoint(path,len+2);
-  return Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
-}
-/* 每一站自己畫:同一套 2.2px 線條,主題色上彩。中心點在路面上方 (x, y)。 */
-function fmArt(k,x,y){
-  const A=`stroke="var(--fm-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"`;
-  switch(k){
-  case "order": return `
-    <rect x="${x-13}" y="${y-28}" width="22" height="28" rx="2.5" fill="var(--fm-panel)" ${A}/>
-    <rect x="${x-8}" y="${y-31}" width="12" height="6" rx="2" fill="var(--fm-select)" ${A} stroke-width="1.6"/>
-    <path d="M${x-8} ${y-19} h12 M${x-8} ${y-14} h12 M${x-8} ${y-9} h7" ${A} stroke-width="1.4"/>
-    <path d="M${x+8} ${y-6} l3 3 l6 -7" fill="none" stroke="var(--fm-run2)" stroke-width="2.4"
-          stroke-linecap="round" stroke-linejoin="round"/>`;
-  case "erp": return `
-    <rect x="${x-14}" y="${y-30}" width="28" height="30" rx="2" fill="var(--fm-stripe)" ${A}/>
-    <path d="M${x-14} ${y-30} l14 -6 l14 6 z" fill="var(--fm-gold)" ${A} stroke-width="1.8"/>
-    ${[-8,0,8].map(dx=>`<rect x="${x+dx-2.6}" y="${y-25}" width="5.2" height="5.2" rx="1"
-        fill="var(--fm-select)" ${A} stroke-width="1.3"/>`).join("")}
-    ${[-8,0,8].map(dx=>`<rect x="${x+dx-2.6}" y="${y-16}" width="5.2" height="5.2" rx="1"
-        fill="var(--fm-select)" ${A} stroke-width="1.3"/>`).join("")}
-    <rect x="${x-3.4}" y="${y-7}" width="6.8" height="7" fill="var(--fm-run2)" ${A} stroke-width="1.5"/>`;
-  case "wms": return `
-    <path d="M${x-17} ${y} v-17 l17 -9 l17 9 v17 z" fill="var(--fm-stripe)" ${A}/>
-    <path d="M${x-17} ${y-17} l17 -9 l17 9" fill="none" ${A}/>
-    <rect x="${x-6}" y="${y-11}" width="12" height="11" fill="var(--fm-select)" ${A} stroke-width="1.6"/>
-    <path d="M${x-6} ${y-5.5} h12 M${x} ${y-11} v11" stroke="var(--fm-ink)" stroke-width="1.1" opacity=".65"/>
-    <rect x="${x-14.5}" y="${y-7}" width="6.5" height="7" fill="var(--fm-gold)" ${A} stroke-width="1.4"/>
-    <rect x="${x+8.5}" y="${y-7}" width="6.5" height="7" fill="var(--fm-gold)" ${A} stroke-width="1.4"/>`;
-  case "tms": return `
-    <path d="M${x-15} ${y-3} q-4 -12 8 -14 q13 -2 10 -12" fill="none"
-          stroke="var(--fm-run2)" stroke-width="2" stroke-dasharray="3 4" stroke-linecap="round"/>
-    <path d="M${x+3} ${y-36} q7 0 7 7 q0 5 -7 13 q-7 -8 -7 -13 q0 -7 7 -7 z" fill="var(--fm-gold)" ${A}/>
-    <circle cx="${x+3}" cy="${y-28.6}" r="2.6" fill="var(--fm-panel)" ${A} stroke-width="1.4"/>
-    <circle cx="${x-15}" cy="${y-2}" r="3" fill="var(--fm-run2)" ${A} stroke-width="1.6"/>`;
-  case "tender": return `
-    <path d="M${x-18} ${y} h36 l-4 -7 h-28 z" fill="var(--fm-stripe)" ${A}/>
-    <rect x="${x-9}" y="${y-21}" width="18" height="14" rx="2" fill="var(--fm-gold)" ${A}/>
-    <line x1="${x}" y1="${y-21}" x2="${x}" y2="${y-7}" stroke="var(--fm-ink)" stroke-width="1.1" opacity=".7"/>
-    <path d="M${x-4} ${y-25} q4 -6 8 0" fill="none" ${A} stroke-width="1.6"/>
-    <rect x="${x+11}" y="${y-30}" width="9" height="6" rx="1.4" fill="var(--fm-select)" ${A} stroke-width="1.4"/>`;
-  case "transit": return `
-    <path d="M${x-16} ${y-10} h18 l7 -7 h6 q3 0 1.6 2.8 l-4.6 8 l4.6 8 q1.4 2.8 -1.6 2.8 h-6 l-7 -7 h-18 l-4 4 h-4 l2.6 -7.6 l-2.6 -7.6 h4 z"
-          fill="var(--fm-panel)" ${A} stroke-width="2"/>
-    <circle cx="${x+7}" cy="${y-13.8}" r="1.5" fill="var(--fm-ink)"/>
-    <path d="M${x-24} ${y-2} h7 M${x-27} ${y+2} h8" stroke="var(--fm-line)" stroke-width="1.6" stroke-linecap="round"/>`;
-  case "dlv": return `
-    <path d="M${x-15} ${y} v-14 l15 -11 l15 11 v14 z" fill="var(--fm-panel)" ${A}/>
-    <path d="M${x-18} ${y-13} l18 -13 l18 13" fill="none" ${A}/>
-    <rect x="${x-5}" y="${y-9}" width="10" height="9" fill="var(--fm-run2)" ${A} stroke-width="1.6"/>
-    <rect x="${x+5.5}" y="${y-20}" width="7" height="6" fill="var(--fm-select)" ${A} stroke-width="1.3"/>
-    <circle cx="${x+16}" cy="${y-24}" r="6" fill="var(--fm-select)" ${A} stroke-width="1.6"/>
-    <path d="M${x+13.4} ${y-24} l2 2.2 l3.4 -4" fill="none" stroke="var(--fm-run2)" stroke-width="1.8"
-          stroke-linecap="round" stroke-linejoin="round"/>`;
-  case "bill": return `
-    <path d="M${x-12} ${y-30} h16 l8 8 v22 h-24 z" fill="var(--fm-panel)" ${A}/>
-    <path d="M${x+4} ${y-30} v8 h8" fill="var(--fm-stripe)" ${A}/>
-    <text x="${x-1}" y="${y-8}" text-anchor="middle" font-size="13" font-weight="800"
-          fill="var(--fm-run2)">$</text>
-    <path d="M${x-7} ${y-18} h6 M${x+3} ${y-18} h5" stroke="var(--fm-ink)" stroke-width="1.3" opacity=".7"/>`;
-  case "recon": return `
-    <line x1="${x}" y1="${y-34}" x2="${x}" y2="${y-4}" ${A}/>
-    <line x1="${x-16}" y1="${y-28}" x2="${x+16}" y2="${y-28}" ${A}/>
-    <path d="M${x-16} ${y-28} l-5 9 a7 7 0 0 0 10 0 z" fill="var(--fm-select)" ${A} stroke-width="1.8"/>
-    <path d="M${x+16} ${y-28} l-5 9 a7 7 0 0 0 10 0 z" fill="var(--fm-select)" ${A} stroke-width="1.8"/>
-    <path d="M${x-7} ${y-4} h14 l3 4 h-20 z" fill="var(--fm-stripe)" ${A}/>`;
-  case "fin": return `
-    ${[0,1,2].map(i=>`<ellipse cx="${x-9}" cy="${y-4-4.6*i}" rx="8" ry="3.4"
-        fill="var(--fm-gold)" ${A} stroke-width="1.5"/>`).join("")}
-    <rect x="${x+2}" y="${y-26}" width="16" height="22" rx="2" fill="var(--fm-panel)" ${A} stroke-width="1.9"/>
-    <path d="M${x+5.5} ${y-20} h9 M${x+5.5} ${y-15.5} h9 M${x+5.5} ${y-11} h5" stroke="var(--fm-ink)"
-          stroke-width="1.2" opacity=".7"/>
-    <path d="M${x+5.5} ${y-6.8} h4 l1.6 -2.4 l2 3.6 l1.6 -1.2" fill="none" stroke="var(--fm-run2)" stroke-width="1.6"
-          stroke-linecap="round" stroke-linejoin="round"/>`;
-  }
-  return "";
-}
-function fmGrpHeader(x,label){
-  return `<g class="fm-grph"><text x="${x}" y="45" text-anchor="middle">${esc(label)}</text></g>`;
-}
-function fmBuild(){
-  const svg=$("#fmMap"); if(!svg) return;
-  FM_BUILT=true;
-  svg.setAttribute("viewBox","0 0 1200 330");
-  const tops=FM_ST.filter(o=>o[2]<200);
-  /* 上方小路:過每一站的波浪 */
-  let dTop=`M46 118`;
-  let prev=[46,118];
-  for(const [,x,y] of tops){
-    const mx=(prev[0]+x)/2;
-    dTop+=` C ${mx} ${prev[1]}, ${mx} ${y}, ${x} ${y}`;
-    prev=[x,y];
-  }
-  dTop+=` C 1130 112, 1146 112, 1152 118`;
-  /* 右側下坡連接道 */
-  const dDown=`M1152 118 C 1178 126, 1182 150, 1178 176 C 1174 204, 1166 228, 1148 244`;
-  /* 下方小路(卡車道):右到左,過 10 號站 */
-  const dBot=`M1148 244 C 1000 258, 880 246, 760 252 C 700 255, 660 258, 600 258
-              C 480 258, 380 246, 280 250 C 220 252, 170 248, 128 244`;
-  svg.innerHTML=`
-    ${fmGrpHeader(285,"ORDER & FULFILLMENT")}
-    ${fmGrpHeader(726,"CARRIER DELIVERY")}
-    ${fmGrpHeader(1041,"BILLING & SETTLEMENT")}
-    <path class="fm-rail" d="${dTop}"/><path class="fm-dash" d="${dTop}" id="fmLaneT"/>
-    <path class="fm-rail" d="${dDown}"/><path class="fm-dash" d="${dDown}" id="fmLaneD"/>
-    <path class="fm-rail" d="${dBot}"/><path class="fm-dash" d="${dBot}" id="fmLaneB"/>
-    <g class="fm-gategrp">
-      <path class="fm-gatearch" d="M1050 118 V74 Q1050 62 1062 62 H1146 Q1158 62 1158 74 V118"/>
-      <rect class="fm-gate" x="1072" y="51" width="64" height="15" rx="7.5"/>
-      <text x="1104" y="62" text-anchor="middle" font-size="8.6" font-weight="700"
-            fill="var(--fm-ink)" letter-spacing=".1em">PROCESS</text>
-    </g>
-
-    <!-- 貓:蜷成一團睡在起點的小墊子上 -->
-    <g class="fm-cat" id="fmCat" style="--tox:96px;--toy:225px">
-      <ellipse class="fm-mat" cx="88" cy="242" rx="30" ry="7"/>
-      <g class="bod">
-        <path class="fur" d="M64 236 q-4 -14 8 -20 q10 -5 22 -2 q14 3 16 14 q2 10 -8 13 q-16 5 -30 0 q-7 -2 -8 -5 z"/>
-        <g class="tail"><path class="fur" d="M96 225 q16 -2 18 8 q1 7 -8 7 q-6 0 -8 -4" stroke-width="1.8"/></g>
-        <g class="hd">
-        <circle class="fur" cx="69" cy="214" r="10"/>
-        <path class="fur" d="M61.5 208 l-3.4 -8.6 7 3.6 z" stroke-width="1.6"/>
-        <path class="fur" d="M73.5 206 l1.4 -9 5.4 6.6 z" stroke-width="1.6"/>
-        <path class="innr" d="M61 205.6 l-1.6 -4.2 3.4 1.8 z M74.4 204 l.7 -4.5 2.7 3.3 z"/>
-        <path class="eyeC ln" d="M64.5 214 q2 1.7 4 0 M71.5 214 q2 1.7 4 0" stroke-width="1.3"/>
-        <g class="eyeO"><circle cx="66.5" cy="213.4" r="1.5" fill="#3b2a1d"/>
-          <circle cx="73.5" cy="213.4" r="1.5" fill="#3b2a1d"/></g>
-        <path class="ln" d="M68 217.6 q1.7 1.5 3.6 0" stroke-width="1.1"/>
-        <path class="ln" d="M59 216 h-7 M59.5 219 h-6" stroke-width="1" opacity=".7"/>
-        <path class="ln" d="M79 216 h7 M78.5 219 h6" stroke-width="1" opacity=".7"/>
-        </g>
-      </g>
-      <text class="fm-zz" x="86" y="206">z</text><text class="fm-zz z2" x="93" y="200">Z</text>
-    </g>
-
-    <!-- 狗:坐在門架旁,一耳立一耳垂,尾巴搖 -->
-    <g class="fm-dog" id="fmDog" transform="translate(200,0)" style="--wox:806px;--woy:172px">
-      <path class="fm-mat2" d="M770 190 h64" />
-      <g class="wag"><path class="fur" d="M806 172 q13 -3 15 -14 q-8 0 -12 6" stroke-width="1.8"/></g>
-      <path class="fur" d="M782 190 q-4 -16 8 -22 q11 -5 18 3 q6 8 3 19 z"/>
-      <path class="fur" d="M779 190 q-1 -8 4 -9 q4 1 4 9 z M797 190 q-1 -8 4 -9 q4 1 4 9 z" stroke-width="1.6"/>
-      <circle class="fur" cx="785" cy="160" r="10"/>
-      <path class="fur" d="M777 153 q-6 -7 -3 -12 q6 1 8 8 z"/>
-      <path class="flop" d="M792 150 q7 -6 10 -2 q1 5 -7 8 q-3 1 -3 -6 z"/>
-      <path class="snout" d="M779 163 q-6 4 -1 8 q5 3 9 -1 q3 -4 -2 -7 z"/>
-      <circle cx="781" cy="159" r="1.3" fill="#4a3226"/>
-      <circle cx="789" cy="158" r="1.3" fill="#4a3226"/>
-      <circle cx="780" cy="165" r="1.7" fill="#4a3226"/>
-      <path class="ln" d="M781.5 168 q2.6 2 5.2 0" stroke-width="1.2"/>
-      <path class="collar" d="M776 171 q9 5 17 -1" stroke-width="2.6"/>
-      <text class="brk" x="766" y="146">!</text>
-    </g>
-
-    <!-- 小貨車:圓潤車身、車窗、車燈、輪拱 -->
-    <g class="fm-truck" id="fmTruck"><g class="rig" id="fmTruckRig">
-      <circle class="puff p1" cx="-40" cy="-9" r="3"/>
-      <circle class="puff p2" cx="-40" cy="-9" r="2.4"/>
-      <g class="jig">
-      <path class="bedback" d="M-34 -6 v-14 q0 -2.6 2.6 -2.6 h28 q2.6 0 2.6 2.6 v14 z"/>
-      <g class="tpk">
-        <rect class="bx" x="-28" y="-20" width="20" height="16" rx="2.2"/>
-        <rect class="tape" x="-19.8" y="-20" width="3.8" height="16"/>
-        <path class="fold" d="M-28 -14.5 H-8 M-28 -14.5 L-25.2 -20 M-8 -14.5 L-10.8 -20"/>
-      </g>
-      <path class="bedfront" d="M-34 -6 v-9 q0 -2.4 2.4 -2.4 h28.2 q2.4 0 2.4 2.4 v9 z"/>
-      <path class="cb" d="M0 -6 v-14 q0 -2 2 -2 h9 q3 0 5 3 l6 8 q1 2 1 3 v2 z"/>
-      <path class="win" d="M3 -18 h7 l5 7 h-12 q-1 0 -1 -1 z"/>
-      <circle class="lamp" cx="21.5" cy="-8" r="1.8"/>
-      <rect class="bump" x="-36" y="-7" width="60" height="3.4" rx="1.7"/>
-      <path class="arc" d="M-24 -4 a7 7 0 0 1 14 0 M8 -4 a7 7 0 0 1 14 0"/>
-      <rect class="logo" x="-30" y="-15.5" width="9" height="7" rx="2"/>
-      <path class="ln" d="M-27.8 -12 l1.8 1.8 l3 -3.2" stroke-width="1.3"/>
-      </g>
-      <g class="wh"><circle cx="-17" cy="0" r="6"/><circle class="hub" cx="-17" cy="0" r="2.4"/><line class="sp" x1="-17" y1="-6" x2="-17" y2="6"/></g>
-      <g class="wh"><circle cx="15" cy="0" r="6"/><circle class="hub" cx="15" cy="0" r="2.4"/><line class="sp" x1="15" y1="-6" x2="15" y2="6"/></g>
-    </g></g>
-
-    <!-- 包裹 -->
-    <g class="fm-pkg" id="fmPkg"><g class="rig" id="fmPkgRig">
-      <rect class="bx" x="-12" y="-20" width="24" height="20" rx="2.5"/>
-      <rect class="tape" x="-2.3" y="-20" width="4.6" height="20"/>
-      <path class="fold" d="M-12 -13.5 H12 M-12 -13.5 L-8.5 -20 M12 -13.5 L8.5 -20"/>
-      <rect class="lbl" x="3.5" y="-9.5" width="6.5" height="5"/>
-      <path class="lbl-ln" d="M4.8 -7.9 h4 M4.8 -6.2 h2.6"/>
-    </g></g>`;
-  for(const [k,x,y,tilt,no] of FM_ST){
-    const g=document.createElementNS(FM_NS,"g");
-    const go=FM_GO[k];
-    g.setAttribute("class","fm-st"+(go?"":" nolink")); g.dataset.nav=k;
-    g.innerHTML=`
-      <g class="fm-card" transform="rotate(${tilt} ${x} ${y})">
-        <ellipse class="fm-halo" cx="${x}" cy="${y-12}" rx="34" ry="28"/>
-        <ellipse class="fm-gnd" cx="${x}" cy="${y+2}" rx="24" ry="4"/>
-        ${fmArt(k,x,y)}
-        <text class="fm-tick" x="${x+30}" y="${y-32}" text-anchor="middle">✓</text>
-        <text class="fm-lb" x="${x}" y="${y+17}" text-anchor="middle">${esc(FM_LB[k][1])}</text>
-        <rect class="fm-hit" x="${x-38}" y="${y-44}" width="76" height="76"/>
-      </g>
-      <title>${esc(FM_TIP[k][1])}</title>`;
-    svg.appendChild(g);
-    if(go) g.addEventListener("click",()=>{
-      const b=document.querySelector('#tabs button[data-p="'+go+'"]');
-      if(b) b.click();
-    });
-  }
-  for(const id of ["fmCat","fmDog","fmTruck","fmPkg"]) svg.appendChild($("#"+id));
-  /* 路徑量測:每一站對應到路徑上的長度(取 x 最接近的一點) */
-  FM_PT=$("#fmLaneT"); FM_PD=$("#fmLaneD"); FM_PB=$("#fmLaneB");
-  FM_LT=FM_PT.getTotalLength(); FM_LD=FM_PD.getTotalLength(); FM_LB2=FM_PB.getTotalLength();
-  FM_STOP=tops.map(([,x])=>{
-    let best=0,bd=1e9;
-    for(let l=0;l<=FM_LT;l+=4){
-      const p=FM_PT.getPointAtLength(l);
-      const d=Math.abs(p.x-x);
-      if(d<bd){ bd=d; best=l; }
-    }
-    return best;
-  });
-  fmTimeline();
-}
-let FM_SEG=[], FM_DUR=20;
-function fmTimeline(){
-  let t=0; FM_SEG=[];
-  const seg=o=>{ FM_SEG.push(o); t+=o.dur; };
-  seg({m:"dwell",len:0,dur:.4});
-  for(let i=0;i<FM_STOP.length;i++){
-    const from=i?FM_STOP[i-1]:0;
-    seg({m:"walk",l0:from,l1:FM_STOP[i],dur:Math.max(.55,(FM_STOP[i]-from)/150)});
-    seg({m:"dwell",len:FM_STOP[i],st:FM_ST[i][0],dur:.7});
-  }
-  seg({m:"walk",l0:FM_STOP[FM_STOP.length-1],l1:FM_LT,dur:.5});
-  seg({m:"down",dur:1.0});
-  seg({m:"ride",l0:0,l1:FM_LB2,dur:4.8});
-  seg({m:"drop",dur:.9});
-  seg({m:"rest",dur:.5});
-  seg({m:"back",l0:FM_LB2,l1:0,dur:2.6});
-  FM_DUR=t+.01;
-}
-const fmEase=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
-function fmFrame(now){
-  const svg=$("#fmMap");
-  if(!svg||!$("#p-home")||!$("#p-home").classList.contains("on")){ FM_RAF=0; return; }
-  if(FM_T0==null) FM_T0=now;
-  const tt=((now-FM_T0)/1000)%FM_DUR;
-  const pkg=$("#fmPkg"), rigP=$("#fmPkgRig"), trk=$("#fmTruck"), rigT=$("#fmTruckRig"),
-        dog=$("#fmDog");
-  let px=46,py=118,pa=0, tl=0, riding=false, moving=false, pkgVis=1, flip=false;
-  const seenDone=new Set();
-  let acc=0;
-  for(const sg of FM_SEG){
-    const local=tt-acc;
-    if(sg.m==="dwell" && sg.st && tt>=acc+sg.dur) seenDone.add(sg.st);
-    if(local>=0 && local<sg.dur){
-      const p=fmEase(Math.min(1,local/sg.dur));
-      if(sg.m==="dwell"){
-        /* 停站:包裹輕輕跳上站牌頂,離站前再落回路面 —— 亮起的站牌是
-           同色系,留在路面上會整顆融進去。 */
-        const pt=fmPathPoint(FM_PT,sg.len);
-        const up=Math.min(1,local/.18), down=Math.min(1,(sg.dur-local)/.18);
-        const lift=Math.min(up,down);
-        px=pt.x; py=pt.y-40*fmEase(lift); pa=0;
-      }else if(sg.m==="walk"){
-        const l=sg.l0+(sg.l1-sg.l0)*p;
-        const pt=fmPathPoint(FM_PT,l);
-        px=pt.x; py=pt.y-Math.abs(Math.sin(local*10))*3;
-        pa=Math.max(-10,Math.min(10,fmAngle(FM_PT,l)*.6));
-      }else if(sg.m==="down"){
-        const l=FM_LD*p;
-        const pt=fmPathPoint(FM_PD,l);
-        px=pt.x; py=pt.y; pa=Math.max(-14,Math.min(14,fmAngle(FM_PD,l)*.4));
-      }else if(sg.m==="ride"){
-        const l=sg.l0+(sg.l1-sg.l0)*p;
-        tl=l; riding=true; moving=true;
-        pkgVis=0;                       /* 真身收進貨斗裡那一顆 */
-        const pt=fmPathPoint(FM_PB,l);
-        px=pt.x-18; py=pt.y-24; pa=0;
-      }else if(sg.m==="drop"){
-        tl=FM_LB2; const pt=fmPathPoint(FM_PB,FM_LB2);
-        px=pt.x-9-30*p; py=pt.y-22-Math.sin(p*Math.PI)*16+p*14; pa=0;
-      }else if(sg.m==="rest"){
-        tl=FM_LB2; const pt=fmPathPoint(FM_PB,FM_LB2);
-        px=pt.x-39; py=pt.y-6; pkgVis=1-p;
-      }else if(sg.m==="back"){
-        tl=sg.l0+(sg.l1-sg.l0)*p; moving=true; flip=true;
-        pkgVis=Math.min(1,p*3);
-        const st=fmPathPoint(FM_PT,0); px=st.x; py=st.y; pa=0;
-      }
-      break;
-    }
-    acc+=sg.dur;
-  }
-  pkg.setAttribute("transform",`translate(${px},${py})`);
-  pkg.style.opacity=pkgVis;
-  rigP.setAttribute("transform",`rotate(${pa})`);
-  const tp=fmPathPoint(FM_PB,tl);
-  let ta=fmAngle(FM_PB,tl);
-  const leftward=Math.abs(ta)>90;
-  if(leftward) ta=ta>0?ta-180:ta+180;
-  trk.setAttribute("transform",`translate(${tp.x},${tp.y-3})`);
-  rigT.setAttribute("transform",`scale(${leftward&&riding?-1:1},1) rotate(${leftward&&riding?-ta:ta})`);
-  trk.classList.toggle("go",moving);
-  trk.classList.toggle("laden",riding);
-  const nearHome=px<220 && py>200;
-  $("#fmCat").classList.toggle("wake",nearHome);
-  const inGate=py<160 && px>1050 && px<1158;
-  pkg.classList.toggle("zap",inGate);
-  dog.classList.toggle("woof",inGate);
-  document.querySelectorAll("#fmMap .fm-st").forEach(g=>{
-    const st=FM_ST.find(o=>o[0]===g.dataset.nav);
-    const near=Math.abs(px-st[1])<30 && Math.abs(py-st[2])<52;
-    const nearT=st[2]>200 && Math.abs(tp.x-st[1])<36 && moving;
-    g.classList.toggle("on",near||nearT);
-    g.classList.toggle("done", seenDone.has(g.dataset.nav)&&!near);
-  });
-  FM_RAF=requestAnimationFrame(fmFrame);
-}
-function fmStart(){
-  fmBuild();
-  FM_T0=null;
-  if(matchMedia("(prefers-reduced-motion: reduce)").matches){
-    const pt=fmPathPoint(FM_PT,FM_STOP[5]||0);
-    $("#fmPkg").setAttribute("transform",`translate(${pt.x},${pt.y})`);
-    const tp=fmPathPoint(FM_PB,FM_LB2);
-    $("#fmTruck").setAttribute("transform",`translate(${tp.x},${tp.y-3})`);
-    return;
-  }
-  if(!FM_RAF) FM_RAF=requestAnimationFrame(fmFrame);
-}
-
 /* 日期挑選器。桌面版是自己畫的月曆,不是系統控制項 ——
    瀏覽器原生的 date input 每個系統長得都不一樣,對不上這套外觀。 */
 let DP_TARGET=null, DP_Y=0, DP_M=0;
@@ -13380,8 +12959,210 @@ function reconRowsLoad(){
     return null;
   }catch(e){ return null; }
 }
-/* 帳單在就重算,不在就把列留著等。兩種情況都要讓人看見狀態。 */
+/* ---- 存過的對帳 -------------------------------------------------------
+   每對一次就存一份:來源、帳單期別、WMS / TMS 的列、摘要數字。回來的時候先開上一份
+   (帳單從歷史載回來、照今天的費率重新比對),08 上列出全部,點哪一份就開哪一份。 */
+const RECON_LAST_KEY="ups_recon_last";
+function reconLastKey(){ return RECON_LAST_KEY+"::"+whoKey(); }
+let RECON_RUNS=null;    /* 這個帳號存過的對帳,畫面用的快取;存、刪、換人就清掉 */
+let RECON_RUN_KEY="";   /* 現在畫面上這一份 */
+function reconInvKeys(){ return [...new Set((ROWS||[]).map(r=>String(r.invoice||"").trim()).filter(Boolean))].sort(); }
+function reconRunKey(src,invs){ return (src==="TMS"?"TMS":"WMS")+"|"+invs.join("+"); }
+function reconRunSave(rows,res,fname){
+  const invs=reconInvKeys();
+  if(!invs.length||!res||!rows||!rows.length) return;
+  const key=reconRunKey(RECON_SRC,invs);
+  const dates=[...new Set((ROWS||[]).map(r=>normYmd(r.invDate)||"").filter(Boolean))].sort();
+  const t=res.tot||{};
+  const run={key, src:RECON_SRC==="TMS"?"TMS":"WMS", invoices:invs, invDate:dates[dates.length-1]||"",
+    when:Date.now(), fname:fname||"", n:rows.length, rows,
+    sum:{orders:t.orders||0, amt:t.amt||0, cost:t.cost||0, profit:t.profit||0,
+         margin:t.margin==null?null:t.margin, cus:(res.cus||[]).length,
+         rebill:(res.rebill&&res.rebill.grand)||0, offInv:(res.notOnInv||[]).length}};
+  RECON_RUN_KEY=key;
+  try{ localStorage.setItem(reconLastKey(), key); }catch(e){}
+  idbRunPut(run).then(()=>{ RECON_RUNS=null; renderReconRuns(); }).catch(()=>{});
+}
+function reconSrcSet(src){
+  RECON_SRC=src==="TMS"?"TMS":"WMS";
+  document.querySelectorAll("#reconSrcSeg button").forEach(x=>
+    x.setAttribute("aria-pressed", String(x.dataset.src===RECON_SRC)));
+}
+/* 開一份存過的對帳:那幾期的帳單從歷史載回來(已經載著同一組就不重載),
+   來源切過去,用存著的列重新比對。quiet = 開機自動開,不吵。 */
+async function reconOpenRun(key, quiet){
+  const run=await idbRunGet(key);
+  if(!run) return false;
+  if(!CFG){ if(!quiet) reconMsg(L("請先載入費率設定。","Load a rate configuration first."),false); return false; }
+  const invs=run.invoices||[];
+  const same=!!(SHIPS&&SHIPS.length&&reconInvKeys().join("+")===invs.join("+"));
+  if(!same){
+    let rows=[];
+    for(const k of invs) rows=rows.concat(await idbRowsFor(k));
+    if(!rows.length){
+      if(!quiet) reconMsg(L("這份對帳的帳單明細不在歷史裡了,請重新匯入那一期的帳單。",
+                            "The invoice detail behind this reconciliation is no longer in history — import that period's invoice again."),false);
+      return false;
+    }
+    ROWS=rows; INV_NAME=""; SHIPS=shipmentsOf(rows);
+    await ensureHistoryMap();
+    await prefetchOriginals(SHIPS);
+    await prefetchAddressClass(SHIPS).catch(()=>0);
+    RATED=SHIPS.map(x=>priceShipment(CFG,x));
+    renderSummary(); renderRate(); renderCode(); renderHist();
+  }
+  reconSrcSet(run.src);
+  reconRerunFrom(run.rows, true);
+  if(RECON) RECON.fname=run.fname||"";
+  RECON_RUN_KEY=key;
+  try{ localStorage.setItem(reconLastKey(), key); }catch(e){}
+  renderRecon();
+  if(typeof renderAnalysis==="function") renderAnalysis();
+  renderDashboard();
+  renderReconRuns();
+  if(!quiet) toast(L("已開啟 "+invs.join(", ")+" 的對帳("+run.src+")。","Opened the "+run.src+" reconciliation for "+invs.join(", ")+"."),true);
+  else setStatus(L("上次的對帳已載回:"+invs.join(", ")+"("+run.src+")",
+                   "Last reconciliation restored: "+invs.join(", ")+" ("+run.src+")"));
+  return true;
+}
+/* 兩個地方列同一份清單:08 一張卡(有數字、能開能刪),07 還沒有結果時的空狀態(只有開)。 */
+function renderReconRuns(){
+  const card=$("#reconRunsCard"), mini=$("#reconRunsMini");
+  if(!card&&!mini) return;
+  const fmtWhen=ms=>{ if(!ms) return "—"; const d=new Date(ms), p=n=>String(n).padStart(2,"0");
+    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes()); };
+  const paint=list=>{
+    RECON_RUNS=list;
+    const runs=list.slice().sort((a,b)=>String(b.invDate||"").localeCompare(String(a.invDate||""))||(b.when||0)-(a.when||0));
+    if(card){
+      card.hidden=!runs.length;
+      const tb=$("#tReconRuns")&&$("#tReconRuns").tBodies[0];
+      if(tb) tb.innerHTML=runs.map(r=>{ const s=r.sum||{}, cur=r.key===RECON_RUN_KEY;
+        return `<tr${cur?' class="cur"':""}><td>${esc(r.invDate||"—")}</td><td class="mono">${esc((r.invoices||[]).join(", "))}</td>
+          <td>${esc(r.src)}</td><td class="num">${r.n||0}</td>
+          <td class="num">${money(s.amt||0)}</td><td class="num">${money(s.cost||0)}</td>
+          <td class="num"><span class="mny ${(s.profit||0)<0?"neg":(s.profit>0?"pos":"")}">${money(s.profit||0)}</span></td>
+          <td class="num">${s.margin==null?"—":anaPct(s.margin)}</td><td class="num">${money(s.rebill||0)}</td>
+          <td>${esc(fmtWhen(r.when))}</td>
+          <td style="white-space:nowrap"><button class="act ghost" data-open="${esc(r.key)}"${cur?" disabled":""}>${esc(cur?L("目前","Current"):L("開啟","Open"))}</button>
+          <button class="act ghost" data-del="${esc(r.key)}" title="${esc(L("刪除這份對帳","Delete this reconciliation"))}">✕</button></td></tr>`; }).join("");
+    }
+    if(mini) mini.innerHTML=runs.length
+      ? `<div class="subhd" style="margin-top:12px">${esc(L("已存的對帳","Stored reconciliations"))}</div>`
+        +runs.map(r=>`<button class="act ghost" data-open="${esc(r.key)}" style="margin:6px 6px 0 0">${esc((r.invDate||"—")+" · "+(r.invoices||[]).join(", ")+" · "+r.src+" · "+(r.n||0)+" "+L("筆","row(s)"))}</button>`).join("")
+      : "";
+  };
+  if(RECON_RUNS) paint(RECON_RUNS); else idbRunAll().then(paint).catch(()=>paint([]));
+}
+document.addEventListener("click", e=>{
+  const o=e.target.closest("#reconRunsCard [data-open],#reconRunsMini [data-open]");
+  if(o){ reconOpenRun(o.dataset.open,false).catch(err=>reconMsg(String((err&&err.message)||err),false)); return; }
+  const d=e.target.closest("#reconRunsCard [data-del]");
+  if(!d) return;
+  const key=d.dataset.del;
+  uiConfirm({title:L("刪除對帳紀錄","Delete stored reconciliation"),
+    body:L("只刪這一份對帳的 WMS / TMS 列與摘要;帳單歷史不動。","Removes this reconciliation's WMS / TMS rows and summary only; invoice history is untouched."),
+    okText:L("刪除","Delete")}).then(ok=>{
+      if(!ok) return;
+      idbRunDel(key).then(()=>{
+        RECON_RUNS=null;
+        if(RECON_RUN_KEY===key){ RECON_RUN_KEY=""; try{ localStorage.removeItem(reconLastKey()); }catch(e){} }
+        renderReconRuns();
+      }).catch(()=>{});
+    });
+});
+/* 回來的時候:先開上一份存過的對帳(帳單從歷史載回來);沒有、或帳單不在了,
+   才退回「留著的列等帳單」那條老路。 */
+/* ---- 查單號狀態 -------------------------------------------------------
+   帳單那一側看已存的帳單 + 本期(同一期不重複);對帳那一側看現在畫面上這一份,
+   再看存過的每一份;補收看現在這一份的補收清單。貨況本身在 UPS,開它的追蹤頁。 */
+const UPS_TRACK_URL=t=>"https://www.ups.com/track?loc="+(LANG?"en_US":"zh_TW")+"&tracknum="+encodeURIComponent(t)+"&requester=ST/trackdetails";
+function trackParse(v){
+  return [...new Set(String(v||"").toUpperCase().split(/[\s,;]+/).map(x=>x.replace(/[^A-Z0-9]/g,"")).filter(x=>x.length>=8))];
+}
+async function trackLookup(){
+  const q=trackParse(($("#trackQ")||{}).value);
+  const wrap=$("#trackWrap"), tb=$("#tTrack")&&$("#tTrack").tBodies[0], note=$("#trackNote");
+  if(!q.length){ if(note) note.textContent=L("先輸入追蹤號。","Enter a tracking number first."); if(wrap) wrap.hidden=true; return; }
+  const want=new Set(q);
+  /* 帳單:一個追蹤號在哪幾期、每一期 UPS 收多少(帳戶層的行不算) */
+  const inv=new Map();
+  const put=r=>{ const t=reconTrk(r.tracking); if(!t||!want.has(t)||isAccountLevelLine(r)) return;
+    const k=r.invoice||"(current)"; let m=inv.get(t); if(!m) inv.set(t,m=new Map());
+    let e=m.get(k); if(!e) m.set(k,e={invoice:r.invoice||"", invDate:normYmd(r.invDate)||String(r.invDate||""), ups:0});
+    e.ups=cents(e.ups+toNum(r.net)); };
+  for(const r of (HISTROWS||[])) put(r);
+  const histInvs=new Set((HISTROWS||[]).map(r=>r.invoice||"(current)"));
+  for(const r of (ROWS||[])){ if(!histInvs.has(r.invoice||"(current)")) put(r); }
+  /* 對帳:現在這一份優先,再看存過的(新的在前) */
+  const wms=new Map();
+  const addRows=(rows,src,invs,isCur)=>{ for(const o of rows||[]) for(const t0 of (o.trks||[])){ const t=reconTrk(t0);
+    if(!want.has(t)||wms.has(t)) continue;
+    wms.set(t,{cus:o.cus, name:o.name||cusNameOf(o.cus), order:o.order, amt:toNum(o.amt), src, invs:invs||[], cur:isCur}); } };
+  const cur=RECON&&RECON.res;
+  if(cur){ addRows(cur.orders,RECON_SRC,reconInvKeys(),true); addRows(cur.notOnInv,RECON_SRC,reconInvKeys(),true); }
+  const runs=(await idbRunAll().catch(()=>[])).sort((a,b)=>(b.when||0)-(a.when||0));
+  for(const run of runs){ if(run.key===RECON_RUN_KEY) continue; addRows(run.rows,run.src,run.invoices,false); }
+  const rb=new Map();
+  for(const it of ((cur&&cur.rebill&&cur.rebill.items)||[])){ const t=reconTrk(it.trk); if(want.has(t)) rb.set(t,cents((rb.get(t)||0)+toNum(it.total))); }
+  const rows=q.map(t=>{
+    const m=inv.get(t), w=wms.get(t);
+    const per=m?[...m.values()].sort((a,b)=>String(a.invDate).localeCompare(String(b.invDate))):[];
+    const ups=per.reduce((a,e)=>a+e.ups,0);
+    let state, cls;
+    if(m&&w){ state=w.cur?L("已對帳","Reconciled"):L("已對帳(存過的 "+w.src+" 對帳)","Reconciled (stored "+w.src+" run)"); cls="ok"; }
+    else if(m){ state=L("帳單上有,WMS / TMS 未匯入","On invoice, not in WMS / TMS"); cls="warn"; }
+    else if(w){ state=L(w.src+" 有,帳單上沒有",w.src+" has it, not on any invoice"); cls="warn"; }
+    else { state=L("系統裡沒有","Not in the system"); cls=""; }
+    return {t, state, cls, per, ups:cents(ups), w, rebill:rb.get(t)||0};
+  });
+  if(tb) tb.innerHTML=rows.map(r=>`<tr>
+    <td class="mono">${esc(r.t)}</td>
+    <td><span class="pill${r.cls?" "+r.cls:""}">${esc(r.state)}</span></td>
+    <td>${r.per.length?r.per.map(e=>`<span class="mono">${esc(e.invoice||"(current)")}</span>${e.invDate?` <span class="empty">${esc(e.invDate)}</span>`:""}`).join("<br>"):`<span class="empty">—</span>`}</td>
+    <td>${r.w?`<span class="mono">${esc(r.w.cus)}</span>${r.w.name&&r.w.name!==r.w.cus?" "+esc(r.w.name):""}`:`<span class="empty">—</span>`}</td>
+    <td class="mono">${r.w?esc(r.w.order||""):`<span class="empty">—</span>`}</td>
+    <td class="num">${r.per.length?money(r.ups):`<span class="empty">—</span>`}</td>
+    <td class="num">${r.w?money(r.w.amt):`<span class="empty">—</span>`}</td>
+    <td class="num">${r.rebill?money(r.rebill):`<span class="empty">—</span>`}</td>
+    <td style="white-space:nowrap"><a class="act ghost" target="_blank" rel="noopener" href="${esc(UPS_TRACK_URL(r.t))}">UPS ↗</a>${r.per.length?` <button class="act ghost" data-bkd="${esc(r.t)}">${esc(L("明細","Detail"))}</button>`:""}</td></tr>`).join("");
+  if(wrap) wrap.hidden=false;
+  const found=rows.filter(r=>r.per.length||r.w).length;
+  if(note) note.textContent=L(q.length+" 個追蹤號,系統裡有 "+found+" 個。", q.length+" tracking number(s), "+found+" in the system.");
+}
+$("#bTrack") && ($("#bTrack").onclick=()=>{ trackLookup().catch(e=>toast(String((e&&e.message)||e),false)); });
+/* Enter 就查;Shift+Enter 才換行(貼進來的換行本來就留著)。 */
+$("#trackQ") && ($("#trackQ").onkeydown=e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); trackLookup().catch(()=>{}); } });
+$("#bTrackUps") && ($("#bTrackUps").onclick=()=>{
+  const q=trackParse(($("#trackQ")||{}).value);
+  if(!q.length){ const n=$("#trackNote"); if(n) n.textContent=L("先輸入追蹤號。","Enter a tracking number first."); return; }
+  window.open(UPS_TRACK_URL(q.join("\n")),"_blank","noopener");
+});
+$("#tTrack") && ($("#tTrack").onclick=e=>{
+  const b=e.target.closest("button[data-bkd]"); if(!b) return;
+  const inp=$("#trkSearch"); if(inp) inp.value=b.dataset.bkd;
+  if(typeof openBreakdown==="function") openBreakdown();
+});
+let RECON_OPEN_LATER="";   /* 費率還沒載回來時先記著,設定一到就開 */
 function reconRestore(){
+  let last=""; try{ last=localStorage.getItem(reconLastKey())||""; }catch(e){}
+  if(last && CFG){
+    reconOpenRun(last,true).then(ok=>{ if(!ok) reconRestoreRows(); renderReconRuns(); })
+      .catch(()=>reconRestoreRows());
+    return;
+  }
+  RECON_OPEN_LATER=last;
+  reconRestoreRows();
+  renderReconRuns();
+}
+/* applyConfig 收尾時叫:剛才因為沒有費率而沒開的那一份,現在開。 */
+function reconOpenPending(){
+  const key=RECON_OPEN_LATER; if(!key||!CFG) return;
+  RECON_OPEN_LATER="";
+  reconOpenRun(key,true).then(()=>renderReconRuns()).catch(()=>{});
+}
+/* 帳單在就重算,不在就把列留著等。兩種情況都要讓人看見狀態。 */
+function reconRestoreRows(){
   const keep=reconRowsLoad();
   if(!keep) return;
   const rows=keep.rows;
@@ -13421,6 +13202,7 @@ function reconRerunFrom(rows, quiet){
     return false; }
   const pf=reconPreflight(rows.map(r=>r.cus));
   const res=reconRun(rows);
+  const fname=(RECON&&RECON.fname)||"";
   /* 各項合計的檢查直接從列重建 —— 靠上一輪留下的話,重新整理回來就沒了。 */
   const sw=[];
   for(const r2 of rows){
@@ -13429,7 +13211,8 @@ function reconRerunFrom(rows, quiet){
     const diff=cents(r2.amt-sum);
     if(Math.abs(diff)>0.004) sw.push({ln:r2.ln, order:r2.order, sum, amt:r2.amt, diff});
   }
-  RECON={issues:[], res, list:rows, sumWarn:sw};
+  RECON={issues:[], res, list:rows, sumWarn:sw, fname};
+  reconRunSave(rows,res,fname);
   renderRecon(); reconRerunBtn();
   const head=quiet?L("已用留著的 "+rows.length+" 筆重新比對。",
                      "Re-compared the "+rows.length+" row(s) kept from last time.")
@@ -14150,6 +13933,7 @@ function renderRecon(){
   const onRes=RECON_VIEW==="res";
   const empty=$("#reconEmpty");
   if(empty) empty.hidden=!(onRes && !(RECON&&RECON.res));
+  if(empty && !empty.hidden) renderReconRuns();
   /* 03 的訂單資料小卡:進來了什麼、算過了沒,四行講完。 */
   const rows=(RECON&&RECON.list)||[];
   $("#rdFile")   && ($("#rdFile").textContent=(RECON&&RECON.fname)||"—");
@@ -14501,7 +14285,7 @@ async function reconExport(){
   /* ---- Detail:模板一列一列(一個追蹤號一列),識別欄照 Consolidated Invoice,
           每一項費用三欄並排 —— 「費用 - Repriced」(琥珀)是客戶自己的費率算出來
           應收的(重算沒有數字的項目照 UPS 實收),「費用 - WMS」(綠)是向客戶收的,
-          「費用 - Difference」(藍)是應收減實收,正數就是還沒收到的。運費和 UPS
+          「費用 - Difference」(藍)是實收減應收,負數就是還沒收到的。運費和 UPS
           的更正併成一組比(重算算的是最後的運費),旁邊另列更正的 UPS 金額與補收
           金額給人看。沒有值的寫 0;只有表頭上色;不凍結、不加篩選。
           費用照 Consolidated 的順序;模板填了合併欄的檔照組列。 ---- */
@@ -14550,7 +14334,7 @@ async function reconExport(){
     "Shipment Reference Number 1","Shipment Reference Number 2","Package Dimensions","Detail Keyed Dim",
     "Entered Weight","Billed Weight","Zone","Shipping Channel"];
   /* 表頭兩列:第一列一項費用一格(合併),第二列是那一項底下的 Repriced / WMS /
-     Difference 三欄(Difference = Repriced − WMS);UPS 原始金額不列,那是稽核的事。
+     Difference 三欄(Difference = WMS − Repriced,實收減應收);UPS 原始金額不列,那是稽核的事。
      識別欄上下合併成一格。 */
   const ID="EFE3CB";
   const blank=fill=>({v:"",t:"s",s:{fill}});
@@ -14597,9 +14381,9 @@ async function reconExport(){
         else w=cents(mem.reduce((a,f)=>a+(billed[f]||0),0));
       }
       tS=cents(tS+should); tW=cents(tW+w);
-      row.push(dm(should)); row.push(dm(w)); row.push(dm(should-w));
+      row.push(dm(should)); row.push(dm(w)); row.push(dm(w-should));
     }
-    row.push(dm(tS)); row.push(dm(tW)); row.push(dm(tS-tW));
+    row.push(dm(tS)); row.push(dm(tW)); row.push(dm(tW-tS));
     return row;
   });
   const dWidths=[12,12,16,16,20,22,22,22,16,16,10,10,7,26]
@@ -14723,6 +14507,7 @@ function reconAccept(p, fname){
   const res=reconRun(p.rows);
   RECON={issues:[], res, list:p.rows, sumWarn:p.sumWarn||[], fname:fname||""};
   const kept=reconRowsSave(p.rows);
+  reconRunSave(p.rows,res,fname);
   reconRerunBtn();
   /* 檔一收下就把人帶到結果那一側 —— 匯入在 03,答案在 05,不讓人自己找。 */
   if(RECON_VIEW==="data" && typeof showTab==="function") showTab("cus");
@@ -14839,6 +14624,7 @@ function anaLvlName(id){
 }
 function anaPct(v){ return v==null?"—":(v<0?"-":"")+Math.abs(v).toFixed(1)+"%"; }
 function renderAnalysis(){
+  renderReconRuns();
   const r=RECON&&RECON.res;
   const has=!!(r&&r.cus&&r.cus.length);
   const show=(id,on)=>{ const e=$("#"+id); if(e) e.hidden=!on; };
@@ -19272,8 +19058,6 @@ const I18N={
     "Created in every rate level at once — each level prices it under 04. The reprice defaults (Ground, SurePost, the Air and Worldwide services) ship with their zones preloaded. A name that says Commercial or Residential itself stays on that one side; anything else appears on both."],
   "btn.exprate":["匯出基本運費表模板","Export base rate template"],
   "tab.home":["首頁","Home"],
-  "hd.flow":["系統流程 — 包裹的旅程","System flow — a parcel's journey"],
-  "hint.flow":["整個系統畫成一張地圖:每一站都是按鈕,點了直達該分頁。包裹沿流程走,卡車把它送回起點。","The whole system on one map. Every station is a button — click it to go straight there. The parcel walks the pipeline; the truck brings it home."],
   "btn.cancel":["取消","Cancel"],
   "btn.process":["處理帳單","Process Invoice"],
   "btn.imprate":["匯入已完成的基本運費表","Import completed base rates"],
@@ -19372,6 +19156,20 @@ const I18N={
   "tab.wmsdata":["WMS / TMS 資料","WMS / TMS Data"],
   "nav.cfg":["設定","Configuration"],
   "tab.reconflow":["對帳作業","Reconciliation"],
+  "hd.track":["查單號狀態","Tracking status"],
+  "hint.track":["貼上一個或多個追蹤號。每一個都回答它在系統裡的狀態:在哪幾期帳單、UPS 收多少、對帳過沒有、向客戶收多少、還要補收多少。貨到哪裡了要問 UPS —— 「UPS 追蹤」直接開 UPS 的追蹤頁。","Paste one or more tracking numbers. Each one answers where it stands in the system: which invoices it is on, what UPS charged, whether it was reconciled, what the client was billed and what is still to re-bill. Delivery status lives at UPS — the UPS button opens the official tracking page."],
+  "btn.track":["查詢","Look up"],
+  "btn.trackups":["UPS 追蹤 ↗","UPS tracking ↗"],
+  "th.trackstate":["狀態","Status"],
+  "th.trackinv":["帳單期別","Invoice(s)"],
+  "th.trackorder":["單號","Order"],
+  "hd.reconruns":["已存的對帳","Stored reconciliations"],
+  "hint.reconruns":["每一份匯入的 WMS / TMS 檔都連同結果存著。「開啟」把那一期的帳單從歷史載回來,照今天的費率再比對一次;這裡的數字是上次對帳的結果。","Every imported WMS / TMS file is kept together with its result. Open one to load that period's invoice from history and compare it again at today's rates; the figures here are from the last run."],
+  "th.runinvdate":["帳單日期","Invoice date"],
+  "th.runinv":["帳單","Invoice"],
+  "th.runsrc":["來源","Source"],
+  "th.runrebill":["應補收","To re-bill"],
+  "th.runwhen":["對帳時間","Reconciled"],
   "rs.inv":["1. UPS 帳單匯入","1. UPS Invoice Import"],
   "rs.wms":["2. WMS / TMS 匯入","2. WMS / TMS Import"],
   "rs.res":["3. 對帳分析","3. Reconciliation Analysis"],
@@ -19842,7 +19640,6 @@ function applyLang(){
      兩張卡片會停在另一種語言。 */
   if($("#prInvWhat") && typeof prPaint==="function"){ try{ prPaint(); }catch(e){} }
   if(typeof paintManualAlt==="function") paintManualAlt();
-  if(typeof fmStart==="function" && $("#p-home") && $("#p-home").classList.contains("on")) fmStart();
   if(typeof renderCustomers==="function" && typeof CFG!=="undefined" && CFG) renderCustomers();
   /* 對帳那一頁的警語、合計列和「不能收的原因」都是算出來的字。不重畫的話,
      介面切成中文了、表格上方那句還停在英文。 */
@@ -20389,8 +20186,11 @@ function sceneResize(){
   const r=cv.getBoundingClientRect();
   SCENE.dpr=window.devicePixelRatio||1;
   cv.width=r.width*SCENE.dpr; cv.height=r.height*SCENE.dpr;
-  SCENE.W=r.width; SCENE.H=r.height;
-  SCENE.ctx.setTransform(SCENE.dpr,0,0,SCENE.dpr,0,0);
+  /* 畫的座標固定 200 高。畫布比 200 高就整張等比放大 —— 卡車、月台、人、招牌
+     一起變大,而不是多出一片空天。 */
+  SCENE.S=Math.max(1, r.height/200);
+  SCENE.W=r.width/SCENE.S; SCENE.H=r.height/SCENE.S;
+  SCENE.ctx.setTransform(SCENE.dpr*SCENE.S,0,0,SCENE.dpr*SCENE.S,0,0);
 }
 function sceneInit(){
   SCENE.cv=$("#scene"); if(!SCENE.cv) return;
@@ -20416,8 +20216,8 @@ function sceneInit(){
   SCENE.cv.style.cursor="pointer";
   SCENE.cv.title = LANG?"Click an animal":"點一下摸摸";
   SCENE.cv.addEventListener("click",e=>{
-    const r=SCENE.cv.getBoundingClientRect();
-    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    const r=SCENE.cv.getBoundingClientRect(), S=SCENE.S||1;
+    const mx=(e.clientX-r.left)/S, my=(e.clientY-r.top)/S;
     let best=null,bd=1e9;
     for(const a of SCENE.actors){
       const d=Math.hypot(a.x-mx,(a.y-20)-my);
@@ -21643,227 +21443,6 @@ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded"
 else boot();
 })();
 /*!ui-pack:ink.js:end*/
-/*!ui-pack:fm.js:start*/
-/* ══════════════════════════════════════════════════════════════════════
-   首頁流程圖 —— 精修
-   整段貼在 index.html 最後那個 script 結束標籤之前(接在 ink.js 後面)。
-
-   四件事:
-
-   一、十個站的插畫重畫。原本每個站各用各的線寬 —— 1.1 / 1.2 / 1.3 /
-       1.4 / 1.5 / 1.6 / 1.8 / 2 / 2.2 / 2.4,十個圖擺在一起像十套圖示。
-       收成三階:外輪廓 2.2、內部結構 1.5、細節 1.05。全部給同一個光源,
-       右下一律同濃度的陰影面。「運送中」原本那個形狀認不出來是什麼,
-       改成側面的飛機。
-
-   二、分組標題加涵蓋範圍的細線,兩端各一個小豎槓 —— 哪幾站屬於哪一段
-       用看的就知道,不必數。
-
-   三、打勾從浮在半空的 ✓ 改成有底的圓形徽章。原本那個勾沒有邊界,
-       落在別站的插畫旁邊會分不清是誰的。
-
-   四、路面加一條淺色路肩,細線變成路。
-
-   一、二是換掉 fmArt / fmGrpHeader 兩支函式;三、四是等 fmBuild 畫完之後
-   就地改 DOM —— 不複製她那一百行 markup,她之後改了那邊也不會打架。
-   ══════════════════════════════════════════════════════════════════════ */
-(function(){
-"use strict";
-if(typeof window.fmArt!=="function") return;   /* 沒有流程圖就什麼都不做 */
-
-var NS="http://www.w3.org/2000/svg";
-var ESC=(typeof esc==="function")?esc:function(s){
-  return String(s).replace(/[&<>"]/g,function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
-
-/* ── 一、站點插畫 ────────────────────────────────────────────────── */
-window.fmArt=function(k,x,y){
-  var S1='stroke="var(--fm-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"';
-  var S2='stroke="var(--fm-ink)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"';
-  var S3='stroke="var(--fm-ink)" stroke-width="1.05" stroke-linecap="round" opacity=".62" fill="none"';
-  /* 右下的陰影面。同一個濃度、同一個方向,十個站才像同一隻手畫的。 */
-  var SH='fill="var(--fm-ink)" opacity=".12" stroke="none"';
-  var ok=function(w){ return 'fill="none" stroke="var(--fm-run2)" stroke-width="'+w+
-    '" stroke-linecap="round" stroke-linejoin="round"'; };
-  var OK=ok(2.1);
-  /* 地上的影子。寬度跟著圖示走 —— 倉庫和圖釘本來就不一樣寬。 */
-  var gnd=function(w,dx){ return '<ellipse class="fm-sh" cx="'+(x+(dx||0))+'" cy="'+(y+2.5)+
-    '" rx="'+w+'" ry="3.4"/>'; };
-
-  switch(k){
-
-  /* 01 下單:寫字板。夾子、三行字、勾。 */
-  case "order": return gnd(18)+`
-    <rect x="${x-14}" y="${y-32}" width="26" height="32" rx="3.2" fill="var(--fm-panel)" ${S1}/>
-    <path d="M${x+5} ${y-32} h7 a3.2 3.2 0 0 1 3.2 3.2 v28.8 h-10.2 z" ${SH}/>
-    <rect x="${x-6.5}" y="${y-35.6}" width="11" height="7" rx="2.4" fill="var(--fm-select)" ${S2}/>
-    <path d="M${x-9.5} ${y-22.5} h15 M${x-9.5} ${y-17} h15 M${x-9.5} ${y-11.5} h8.5" ${S3}/>
-    <path d="M${x+1.5} ${y-8.5} l2.8 3 l5.8 -7" ${OK}/>`;
-
-  /* 02 ERP:辦公樓。兩排窗、門、屋簷。 */
-  case "erp": return gnd(17)+`
-    <path d="M${x-14} ${y} v-29 h28 v29 z" fill="var(--fm-stripe)" ${S1}/>
-    <path d="M${x+6} ${y-29} h8 v29 h-8 z" ${SH}/>
-    <path d="M${x-16.5} ${y-29} h33 l-3.5 -6 h-26 z" fill="var(--fm-gold)" ${S1}/>
-    ${[-8,0,8].map(function(dx){ return `<rect x="${x+dx-3}" y="${y-24}" width="6" height="6"
-        rx="1.2" fill="var(--fm-select)" ${S2}/>`; }).join("")}
-    ${[-8,8].map(function(dx){ return `<rect x="${x+dx-3}" y="${y-15}" width="6" height="6"
-        rx="1.2" fill="var(--fm-select)" ${S2}/>`; }).join("")}
-    <path d="M${x-4} ${y} v-9 a4 4 0 0 1 8 0 v9 z" fill="var(--fm-run2)" ${S2}/>`;
-
-  /* 03 倉庫:山形屋頂、捲門(有橫板)、兩箱貨。 */
-  case "wms": return gnd(20)+`
-    <path d="M${x-17} ${y} v-16 l17 -10 l17 10 v16 z" fill="var(--fm-stripe)" ${S1}/>
-    <path d="M${x+4} ${y-23.5} l13 7.5 v16 h-13 z" ${SH}/>
-    <path d="M${x-19.5} ${y-15.5} l19.5 -11.5 l19.5 11.5" fill="none" ${S1}/>
-    <path d="M${x-7} ${y} v-12 h14 v12 z" fill="var(--fm-select)" ${S2}/>
-    <path d="M${x-7} ${y-8} h14 M${x-7} ${y-4} h14" ${S3}/>
-    <rect x="${x-15}" y="${y-7}" width="7" height="7" rx="1" fill="var(--fm-gold)" ${S2}/>
-    <rect x="${x+8}" y="${y-7}" width="7" height="7" rx="1" fill="var(--fm-gold)" ${S2}/>
-    <path d="M${x-11.5} ${y-7} v7 M${x+11.5} ${y-7} v7" ${S3}/>`;
-
-  /* 04 TMS 派送:路線虛線走進圖釘。起點一個小圓,終點是釘。 */
-  case "tms": return gnd(12,3)+`
-    <path d="M${x-15} ${y-2} q-3 -13 9 -15 q12 -2 9 -13" fill="none"
-          stroke="var(--fm-run2)" stroke-width="2.1" stroke-dasharray="2.6 4.2" stroke-linecap="round"/>
-    <path d="M${x+3} ${y-37} a8 8 0 0 1 8 8 q0 5.5 -8 14.5 q-8 -9 -8 -14.5 a8 8 0 0 1 8 -8 z"
-          fill="var(--fm-gold)" ${S1}/>
-    <path d="M${x+3} ${y-37} a8 8 0 0 1 8 8 q0 5.5 -8 14.5 z" ${SH}/>
-    <circle cx="${x+3}" cy="${y-29}" r="3" fill="var(--fm-panel)" ${S2}/>
-    <circle cx="${x-15}" cy="${y-2}" r="3.2" fill="var(--fm-run2)" ${S2}/>`;
-
-  /* 05 交運:手推車推一箱。車架、輪子、箱上膠帶。 */
-  case "tender": return gnd(17)+`
-    <path d="M${x+9} ${y-2} v-30" fill="none" ${S1}/>
-    <path d="M${x+9} ${y-2} h-17" fill="none" ${S1}/>
-    <path d="M${x+9} ${y-32} q4.5 0 4.5 4" fill="none" ${S2}/>
-    <rect x="${x-11}" y="${y-25}" width="19" height="17" rx="2" fill="var(--fm-gold)" ${S1}/>
-    <path d="M${x+2} ${y-25} h6 v17 h-6 z" ${SH}/>
-    <path d="M${x-1.5} ${y-25} v17" stroke="var(--fm-stripe)" stroke-width="3.4"/>
-    <path d="M${x-1.5} ${y-25} v17" ${S3}/>
-    <circle cx="${x-3}" cy="${y-1}" r="4.6" fill="var(--fm-panel)" ${S1}/>
-    <circle cx="${x-3}" cy="${y-1}" r="1.5" fill="var(--fm-ink)" stroke="none"/>`;
-
-  /* 06 運送中:側面的飛機。原本那個形狀誰都認不出來。 */
-  case "transit": return gnd(19)+`
-    <path d="M${x-19} ${y-16} h22 q7 0 12 5 q3.5 3.5 3.5 5.5 q0 2 -3.5 2 h-34
-             q-3.5 0 -3.5 -5 z" fill="var(--fm-panel)" ${S1}/>
-    <path d="M${x+3} ${y-16} q7 0 12 5 q3.5 3.5 3.5 5.5 q0 2 -3.5 2 h-9 z" ${SH}/>
-    <path d="M${x-8} ${y-16} l-3 -13 h6.5 l9 13 z" fill="var(--fm-select)" ${S2}/>
-    <path d="M${x-14.5} ${y-3.5} l-3.5 8 h6 l7.5 -8 z" fill="var(--fm-select)" ${S2}/>
-    ${[-14,-9.5,-5,-0.5].map(function(dx){ return `<circle cx="${x+dx}" cy="${y-11}" r="1.35"
-        fill="var(--fm-ink)" opacity=".55" stroke="none"/>`; }).join("")}
-    <path d="M${x-30} ${y-14} h7 M${x-33} ${y-9} h9 M${x-29} ${y-4} h6"
-          stroke="var(--fm-line)" stroke-width="1.5" stroke-linecap="round" fill="none"/>`;
-
-  /* 07 送達:房子加一枚打勾徽章。 */
-  case "dlv": return gnd(18)+`
-    <path d="M${x-15} ${y} v-13 l15 -11 l15 11 v13 z" fill="var(--fm-panel)" ${S1}/>
-    <path d="M${x+3} ${y-22.7} l12 8.7 v14 h-12 z" ${SH}/>
-    <path d="M${x-18} ${y-13} l18 -13 l18 13" fill="none" ${S1}/>
-    <path d="M${x-5} ${y} v-9 a5 5 0 0 1 10 0 v9 z" fill="var(--fm-run2)" ${S2}/>
-    <rect x="${x+6.5}" y="${y-10.5}" width="6" height="6" rx="1" fill="var(--fm-select)" ${S2}/>
-    <circle cx="${x+15}" cy="${y-25}" r="6.6" fill="var(--fm-select)" ${S1}/>
-    <path d="M${x+12} ${y-25.2} l2.2 2.4 l3.8 -4.4" ${OK}/>`;
-
-  /* 08 UPS 帳單:單據。摺角、$、明細行,下緣鋸齒 —— 一眼看得出是帳單。 */
-  case "bill": return gnd(17)+`
-    <path d="M${x-13.5} ${y-34} h17 l10 10 v20
-             l-3.4 2.2 l-3.4 -2.2 l-3.4 2.2 l-3.4 -2.2 l-3.4 2.2 l-3.4 -2.2 l-3.4 2.2 l-3.4 -2.2 z"
-          fill="var(--fm-panel)" ${S1}/>
-    <path d="M${x+3.5} ${y-34} l10 10 v20 l-3.4 2.2 l-3.4 -2.2 l-3.4 2.2 z" ${SH}/>
-    <path d="M${x+3.5} ${y-34} v10 h10" fill="var(--fm-stripe)" ${S2}/>
-    <path d="M${x-9} ${y-21} h9 M${x-9} ${y-16.5} h14.5 M${x-9} ${y-12} h5.5" ${S3}/>
-    <text x="${x+6}" y="${y-8.5}" text-anchor="middle" font-size="14" font-weight="800"
-          fill="var(--fm-run2)">$</text>`;
-
-  /* 09 對帳:天平。橫樑、兩個秤盤、底座。 */
-  case "recon": return gnd(18)+`
-    <path d="M${x-5} ${y} h10 l2.5 -4 h-15 z" fill="var(--fm-stripe)" ${S1}/>
-    <path d="M${x} ${y-4} v-30" fill="none" ${S1}/>
-    <path d="M${x-16} ${y-30} h32" fill="none" ${S1}/>
-    <path d="M${x-16} ${y-30} v4 M${x+16} ${y-30} v4" ${S3}/>
-    <circle cx="${x}" cy="${y-33}" r="2.6" fill="var(--fm-gold)" ${S2}/>
-    <path d="M${x-16} ${y-26} l-5.5 8.5 a7.5 7.5 0 0 0 11 0 z" fill="var(--fm-select)" ${S2}/>
-    <path d="M${x+16} ${y-26} l-5.5 8.5 a7.5 7.5 0 0 0 11 0 z" fill="var(--fm-select)" ${S2}/>
-    <path d="M${x+16} ${y-26} l5.5 8.5 a7.5 7.5 0 0 1 -5.5 2.4 z" ${SH}/>`;
-
-  /* 10 財務請款:硬幣疊加對帳單。硬幣側面有刻痕。 */
-  case "fin": return gnd(19)+`
-    <rect x="${x+2}" y="${y-27}" width="17" height="24" rx="2" fill="var(--fm-panel)" ${S1}/>
-    <path d="M${x+13} ${y-27} h6 v24 h-6 z" ${SH}/>
-    <path d="M${x+5.5} ${y-21} h10 M${x+5.5} ${y-16.5} h10 M${x+5.5} ${y-12} h6" ${S3}/>
-    <path d="M${x+5.5} ${y-7} l2.2 2.4 l4 -4.6" ${OK}/>
-    ${[0,1,2].map(function(i){ return `<ellipse cx="${x-9}" cy="${y-4-4.8*i}" rx="8.5" ry="3.6"
-        fill="var(--fm-gold)" ${S2}/>`; }).join("")}
-    <path d="M${x-13} ${y-13.2} v-1.6 M${x-9} ${y-12.4} v-1.6 M${x-5} ${y-13.2} v-1.6" ${S3}/>`;
-  }
-  return "";
-};
-
-/* ── 二、分組標題加涵蓋範圍 ──────────────────────────────────────
-   細線兩端各一個小豎槓,標題兩側留白。x0/x1 是那一段第一站與最後一站
-   往外各留半格,對照 FM_ST 的座標。 */
-var EXT={"ORDER & FULFILLMENT":[70,510],"CARRIER DELIVERY":[556,900],
-         "BILLING & SETTLEMENT":[930,1152],
-         "訂單與出貨":[70,510],"承運":[556,900],"帳務":[930,1152]};
-window.fmGrpHeader=function(x,label){
-  var e=EXT[label], pad=String(label).length*3.6+9;
-  var rule=e ? `<path d="M${e[0]} 41 v7 M${e[1]} 41 v7 M${e[0]} 44.5 H${x-pad}
-      M${x+pad} 44.5 H${e[1]}" fill="none" stroke="var(--fm-line)" stroke-width="1.1"
-      opacity=".55" stroke-linecap="round"/>` : "";
-  return `<g class="fm-grph">${rule}<text x="${x}" y="48" text-anchor="middle">${
-    ESC(label)}</text></g>`;
-};
-
-/* ── 三、四、畫完之後就地改 DOM ─────────────────────────────────
-   不複製 fmBuild 那一百行 markup —— 她之後改了那邊,這裡也不會打架。 */
-function polish(svg){
-  if(!svg) return;
-
-  /* 打勾:浮在半空的 ✓ 換成有底的圓徽章。位置照原本那個 text 的座標,
-     所以 .fm-st.done .fm-tick 那條開關照樣管得到。 */
-  Array.prototype.slice.call(svg.querySelectorAll("text.fm-tick")).forEach(function(t){
-    var x=+t.getAttribute("x"), y=+t.getAttribute("y");
-    var g=document.createElementNS(NS,"g");
-    g.setAttribute("class","fm-tick");
-    var c=document.createElementNS(NS,"circle");
-    c.setAttribute("cx",x-3); c.setAttribute("cy",y+1); c.setAttribute("r","7.4");
-    var p=document.createElementNS(NS,"path");
-    p.setAttribute("d","M"+(x-6.4)+" "+(y+0.8)+" l2.4 2.6 l4.2 -4.8");
-    g.appendChild(c); g.appendChild(p);
-    t.parentNode.replaceChild(g,t);
-  });
-
-  /* 路肩:每一條路面底下墊一條更寬更淡的線,細線就變成路。
-     用 cloneNode,線形永遠跟著原本那條走,不會有第二份 d 要維護。 */
-  Array.prototype.slice.call(svg.querySelectorAll("path.fm-rail")).forEach(function(r){
-    if(r.previousSibling&&r.previousSibling.getAttribute&&
-       r.previousSibling.getAttribute("class")==="fm-shoulder") return;
-    var s=r.cloneNode(false);
-    s.setAttribute("class","fm-shoulder"); s.removeAttribute("id");
-    r.parentNode.insertBefore(s,r);
-  });
-}
-
-var _build=window.fmBuild;
-if(typeof _build==="function"){
-  window.fmBuild=function(){
-    var out=_build.apply(this,arguments);
-    try{ polish(document.getElementById("fmMap")); }catch(e){}
-    return out;
-  };
-}
-/* 補強掛上來的時候圖可能已經畫好了 —— 那就重畫一次。 */
-function boot(){
-  if(typeof FM_BUILT!=="undefined"&&FM_BUILT&&typeof window.fmBuild==="function"){
-    try{ window.fmBuild(); }catch(e){}
-  }
-}
-if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot);
-else boot();
-})();
-/*!ui-pack:fm.js:end*/
 /*!ui-pack:tabs.js:start*/
 /* ══════════════════════════════════════════════════════════════════════
    04 渠道與附加費費率 —— 分層
