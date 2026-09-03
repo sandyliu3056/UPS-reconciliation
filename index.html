@@ -14678,17 +14678,19 @@ function bindRecon(){
   $("#bReconPrev") && ($("#bReconPrev").onclick=()=>{
     const rows=(RECON&&RECON.list)||[];
     if(rows.length){
-      const sample=rows.slice(0,8).map(o=>`<tr>
-        <td class="mono">${esc(o.order)}</td><td class="mono">${esc(o.cus)}</td>
+      /* 全部列出,不抽樣 —— 預覽就是要看進來了什麼;視窗自己捲。 */
+      const sample=rows.map(o=>`<tr>
+        <td class="mono">${esc(o.order)}</td><td class="mono">${esc(o.trks.join(", "))}</td>
+        <td class="mono">${esc(o.cus)}</td>
         <td class="num">${o.trks.length}</td>
         <td class="num">${o.chg?Object.keys(o.chg).length:0}</td>
         <td class="num">${money(o.amt)}</td></tr>`).join("");
       uiPreview(L("目前留著的訂單資料","Order data on hand"),
         `<div class="pvsum"><span><b>${esc((RECON&&RECON.fname)||"—")}</b></span>
            <span>${rows.length} ${esc(L("筆","rows"))}</span>
-           <span>${rows.filter(o=>o.chg).length} ${esc(L("張含逐項費用","with itemized charges"))}</span></div>
-         <div class="tablewrap" style="max-height:44vh;margin-top:8px"><table>
-           <thead><tr><th>${esc(L("訂單","Order"))}</th><th>${esc(L("客戶","Customer"))}</th>
+           <span>${rows.filter(o=>o.chg).length} ${esc(L("筆含逐項費用","with itemized charges"))}</span></div>
+         <div class="tablewrap" style="max-height:60vh;margin-top:8px"><table>
+           <thead><tr><th>${esc(L("單號","Order"))}</th><th>${esc(L("追蹤號","Tracking Number"))}</th><th>${esc(L("客戶","Customer"))}</th>
            <th class="num">${esc(L("件數","Pkgs"))}</th><th class="num">${esc(L("逐項欄","Charges"))}</th>
            <th class="num">${esc(L("總額","Total"))}</th></tr></thead><tbody>${sample}</tbody></table></div>`);
     }else{
@@ -17535,14 +17537,14 @@ async function runReport(ing, ships){
     reconAutoRun();
       ready();
     logAdd("reprice report", ROWS.length+" rows / "+SHIPS.length+" tracking");
+    /* 狀態列一行講完:幾列、幾個追蹤號、幾期進了歷史。期號一個個列出來會塞滿
+       半個畫面,而且沒有人會去讀;讀檔有沒有標題列是程式自己的事。 */
+    const nHist=(filed.replaced||[]).length+(filed.added||[]).length;
     setStatus(L("完成:","Done: ")+ROWS.length.toLocaleString()
       +L(" 列 / "," lines / ")+SHIPS.length.toLocaleString()
       +L(" 個追蹤號"," tracking numbers")
-      +(filed.count?"  ·  "+(filed.replaced.length
-          ? L("已更新歷史:","history updated: ")+filed.replaced.join(", ")
-          : L("已存入歷史:","filed to history: ")+filed.added.join(", ")):"")
-      +(ing.hasHdr?L("(有標題列)"," (header row found)")
-                  :L("(無標題列,用固定欄位序號)"," (no header row; fixed column positions)")));
+      +(filed.count&&nHist?"  ·  "+L(nHist+" 期"+((filed.replaced||[]).length?"已更新歷史":"已存入歷史"),
+                                     nHist+" invoice(s) "+((filed.replaced||[]).length?"updated in history":"filed to history")):""));
     }).catch(e=>{
       $("#cfgNote").innerHTML=`<div class="note warn"><b>`
         +L("讀不動這張帳單。","Could not read that invoice.")+`</b> ${esc(e.message)}</div>`;
