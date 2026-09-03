@@ -14299,13 +14299,12 @@ function renderRebill(){
   const items=all.filter(it=>!REBILL_SCOPE||it.cus===REBILL_SCOPE);
   const dash=`<span class="empty">—</span>`;
   const tb=$("#tRebill")&&$("#tRebill").tBodies[0];
-  /* 改收的那一列在費用名稱底下寫清楚:客戶端收的是哪幾項、UPS 收的是哪幾項。 */
+  /* 畫面上只放費用名稱和一個標籤;帳單原文和「抵已收」的細節滑上去看,匯出的 To re-bill 也都有。 */
   const tagOf=it=>it.kind==="swap"?L("改收","Substituted"):it.kind==="audit"?L("稽核費","Audit fee"):it.unset?L("費率未設定","Rate not set"):(it.rate===0?L("合約無此項","No contract rate"):L("未收","Not billed"));
-  const chgCell=it=>`${esc(it.charge)} <span class="chggrp">${esc(tagOf(it))}</span>`
-      +((it.desc||it.credit)?`<div class="chgcodes">${esc((it.desc?L("UPS 名目:","UPS: ")+it.desc:"")
-          +(it.credit?(it.desc?"  ":"")+L("抵已收 ","less billed ")+(it.creditFrom||[]).join(" · ")+" "+money(it.credit):""))}</div>`:"");
+  const chgCell=it=>`${esc(it.charge)} <span class="chggrp">${esc(tagOf(it))}</span>`;
+  const chgTip=it=>esc([it.desc?L("UPS 名目:","UPS: ")+it.desc:"", it.credit?L("抵已收 ","less billed ")+(it.creditFrom||[]).join(" · ")+" "+money(it.credit):""].filter(Boolean).join("\n"));
   if(tb) tb.innerHTML=items.map(it=>`<tr><td class="mono">${esc(it.cus)}</td><td>${esc(cusNameOf(it.cus))}</td>
-      <td class="mono">${esc(it.order)}</td><td class="mono">${esc(it.trk)}</td><td>${chgCell(it)}</td>
+      <td class="mono">${esc(it.order)}</td><td class="mono">${esc(it.trk)}</td><td title="${chgTip(it)}">${chgCell(it)}</td>
       <td class="num">${money(it.ups)}</td><td class="num">${money(it.billed)}</td>
       <td class="num">${it.rate==null?dash:money(it.rate)}</td><td class="num"><b>${money(it.amt)}</b></td>
       <td class="num">${it.fuel?money(it.fuel):dash}</td><td class="num"><b>${money(it.total)}</b></td></tr>`).join("")
