@@ -5384,32 +5384,52 @@ function ingest(text){
     const i=idx[name];
     return (i===undefined||i>=r.length)?"":String(r[i]).trim();
   };
+  /* 一張帳單三萬列,期號、帳號、帳單日、費用代碼、費用名稱這幾格每一列都
+     一樣,而 parseCSV 是一格生一個新字串 —— 三萬份一模一樣的字串。同樣的
+     內容只留一份,其餘丟掉:一次匯入二十張帳單時,差別是幾百 MB。 */
+  const pool=new Map();
+  const S=v=>{
+    const t=String(v==null?"":v).trim();
+    if(t.length>60) return t;
+    const hit=pool.get(t);
+    if(hit!==undefined) return hit;
+    pool.set(t,t); return t;
+  };
+  const gS=(r,name)=>S(g(r,name));
   /* 申報金額那一欄可以在設定裡換位置,所以不放進固定對照表就好,
      這裡每次讀帳單時解析一次。有標題列時仍以標題為準。 */
   if(idx["Declared Value"]===undefined || !hasHdr) idx["Declared Value"]=declaredValueColIndex();
   const rows=body.map((r,ri)=>{
-    const cls=g(r,"Charge Classification Code").toUpperCase();
-    const cat=g(r,"Charge Category Code").toUpperCase();
+    const cls=S(g(r,"Charge Classification Code").toUpperCase());
+    const cat=S(g(r,"Charge Category Code").toUpperCase());
     let layer=cat||cls;
     /* 桌面版 :17369:AI 不是 SHP/RTN/ADJ 就當 SHP —— 但 MIS(雜項)與
        MSC(帳號層級週結調整)例外,那兩種整行不屬於任何包裹,
        在 shipmentsOf 會被移到 Account Charges。 */
     if(!["SHP","ADJ","RTN"].includes(layer))
       layer=(cat==="MIS"||cls==="MSC")?"MIS":"SHP";
+    layer=S(layer);
+    /* 收件地址整組空白的列不建那個物件 —— 有地址的只有主運費行,
+       其餘九成的列擺著一個七格全空的物件。用到它的地方本來就先問有沒有。 */
+    const to={ name:gS(r,"Ship To Name"),
+               a1:gS(r,"Ship To Address 1"), a2:gS(r,"Ship To Address 2"),
+               city:gS(r,"Ship To City"), state:gS(r,"Ship To State"),
+               zip:gS(r,"Ship To Zip"), country:gS(r,"Ship To Country") };
+    const hasTo=!!(to.name||to.a1||to.a2||to.city||to.state||to.zip||to.country);
     return {
       ai:cat, idx:ri+(hasHdr?2:1),
-      invoice:g(r,"Invoice Number"), invDate:g(r,"Invoice Date"),
-      account:g(r,"Account Number"),
-      shipDate:g(r,"Transaction Date"),
+      invoice:gS(r,"Invoice Number"), invDate:gS(r,"Invoice Date"),
+      account:gS(r,"Account Number"),
+      shipDate:gS(r,"Transaction Date"),
       tracking:g(r,"Tracking Number"), lead:g(r,"Lead Shipment Number"),
-      layer, cls, code:g(r,"Charge Description Code").toUpperCase(),
-      detail:g(r,"Charge Category Detail Code").toUpperCase(),
-      desc:g(r,"Charge Description"),
-      zone:normZone(g(r,"Zone")),
+      layer, cls, code:S(g(r,"Charge Description Code").toUpperCase()),
+      detail:S(g(r,"Charge Category Detail Code").toUpperCase()),
+      desc:gS(r,"Charge Description"),
+      zone:S(normZone(g(r,"Zone"))),
       entered:toNum(g(r,"Entered Weight")),
       billed:toNum(g(r,"Billed Weight")),
       declaredValue:toNum(g(r,"Declared Value")),
-      bwt:g(r,"Billed Weight Type"),
+      bwt:gS(r,"Billed Weight Type"),
       dimsC:g(r,"Package Dimensions"), dimsA:g(r,"Detail Keyed Dimensions"),
       ref1:g(r,"Shipment Reference Number 1")||g(r,"Shipment Reference Number 1 Alt"),
       ref2:g(r,"Shipment Reference Number 2")||g(r,"Shipment Reference Number 2 Alt"),
@@ -5419,10 +5439,7 @@ function ingest(text){
         .join(" "),
       /* 收件人(送達地址),只給 API 住/商判定用。多數行是空的,
          主運費行才有值,shipment 層再取第一個非空的。 */
-      to:{ name:g(r,"Ship To Name"),
-           a1:g(r,"Ship To Address 1"), a2:g(r,"Ship To Address 2"),
-           city:g(r,"Ship To City"), state:g(r,"Ship To State"),
-           zip:g(r,"Ship To Zip"), country:g(r,"Ship To Country") },
+      to:hasTo?to:null,
       net:toNum(g(r,"Net Amount"))
     };
   }).filter(r=>r.tracking||r.net);
@@ -8630,29 +8647,69 @@ function invBatchLabel(){
   return INV_BATCH.length+(LANG?" files":" 個檔案")+"  ("+fmtSize(size)+")  "
     +INV_BATCH.map(x=>x.name).join(", ");
 }
-function invBatchIngest(){
+/* 讓瀏覽器有機會把畫面畫出來。一個檔一個檔之間停一下,狀態列的進度才看得
+   到,分頁也還按得動 —— 二十張帳單解析起來是幾十秒,整段卡住的話看起來就
+   是當掉了。 */
+function paintTick(){
+  return new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
+}
+/* 一個檔一個檔讀:讀進來、解析完、就把那份字串放掉,再讀下一個。
+   以前是選檔的時候把二十一個檔全部讀成字串留在記憶體裡(391 MB 的 CSV 在
+   JS 裡是七八百 MB),而且為了驗格式先整份解析一次、按下處理再解析第二次
+   —— 分頁撐不住,就是這麼當掉的。現在留的是檔案本身(在磁碟上),內容一次
+   只留一份。 */
+async function invBatchIngest(onStep){
   const byInv=new Map(), dup=[], loose=[];
   let hasHdr=false;
-  for(const x of INV_BATCH){
-    const ing=ingest(x.text);
+  for(let i=0;i<INV_BATCH.length;i++){
+    const x=INV_BATCH[i];
+    if(onStep){ onStep(i,x.name); await paintTick(); }
+    let r=await readInvoiceFile(x.file);
+    let ing=ingest(r.text);
+    r=null;                       /* 這份字串到這裡就沒有人要了 */
     if(!looksLikeInvoice(ing.rows))
       throw new Error(x.name+": "+L("不是 UPS 帳單檔","not a UPS invoice file"));
     hasHdr=hasHdr||!!ing.hasHdr;
-    /* 每一列記下它從哪個檔案來 —— 歷史與匯出的 Source File 靠它。 */
-    for(const r of ing.rows) r.src=x.name;
     const groups=new Map();
-    for(const r of ing.rows){
-      const k=(r.invoice||"").trim();
-      if(!k){ loose.push(r); continue; }
-      (groups.get(k)||groups.set(k,[]).get(k)).push(r);
+    /* 每一列記下它從哪個檔案來 —— 歷史與匯出的 Source File 靠它。 */
+    for(const row of ing.rows){
+      row.src=x.name;
+      const k=(row.invoice||"").trim();
+      if(!k){ loose.push(row); continue; }
+      (groups.get(k)||groups.set(k,[]).get(k)).push(row);
     }
     for(const [k,rs] of groups){
       if(byInv.has(k)) dup.push(k+" ("+byInv.get(k).file+" → "+x.name+")");
       byInv.set(k,{file:x.name, rows:rs});
     }
+    ing=null;
   }
-  const rows=[].concat(...[...byInv.values()].map(v=>v.rows), loose);
-  return {ing:{rows, hasHdr}, dup, invoices:[...byInv.keys()]};
+  const rows=[];
+  for(const v of byInv.values()) for(const row of v.rows) rows.push(row);
+  for(const row of loose) rows.push(row);
+  const invoices=[...byInv.keys()];
+  byInv.clear();
+  return {ing:{rows, hasHdr}, dup, invoices};
+}
+/* 選檔時只是要知道「這是不是 UPS 帳單檔」,不必整份解析。CSV / TXT 先看開頭
+   幾 MB,看得出追蹤號、期號、帳單日就算過;看不出來才整份讀一次,寧可慢也
+   不要把好檔子擋掉。Excel 沒辦法只讀一段,照舊整份讀,讀完就放掉。 */
+function sniffInvoiceFile(f){
+  const kind=fileKind(f.name);
+  const ok=text=>{ try{ return looksLikeInvoice(ingest(text).rows); }catch(e){ return false; } };
+  if(isExcelKind(kind))
+    return readInvoiceFile(f).then(r=>ok(r.text)).catch(()=>false);
+  const head=()=>new Promise(res=>{
+    const rd=new FileReader();
+    rd.onload=()=>res(String(rd.result));
+    rd.onerror=()=>res("");
+    rd.readAsText(f.slice(0, 4*1024*1024), "utf-8");
+  });
+  return head().then(t=>{
+    if(t && ok(t.slice(0, t.lastIndexOf("\n")+1 || t.length))) return true;
+    if(f.size<=4*1024*1024) return false;
+    return readInvoiceFile(f).then(r=>ok(r.text)).catch(()=>false);
+  });
 }
 
 /* 載入的是哪一份設定檔。輸入框在「設定」分頁,附加費設定分頁留一份唯讀的 ——
@@ -9044,27 +9101,39 @@ $("#fInv") && ($("#fInv").onchange=e=>{
     }).then(()=>{ inp.value=""; ready(); });
     return;
   }
-  /* 多檔:各自讀、各自驗。壞的記下來,不讓一個檔把整批拖掉。 */
-  setStatus((LANG?"Reading ":"讀取 ")+fs.length+(LANG?" files…":" 個檔案…"));
-  const bad=[];
-  Promise.all(fs.map(f=>readInvoiceFile(f)
-      .then(r=>({name:f.name,size:f.size,text:r.text,kind:r.kind,sheet:r.sheet}))
-      .catch(err=>{ bad.push(f.name+" — "+((err&&err.message)||err)); return null; })
-  )).then(list=>{
-    const good=[];
-    for(const x of list.filter(Boolean)){
-      let ok=false; try{ ok=looksLikeInvoice(ingest(x.text).rows); }catch(e){}
-      if(ok) good.push(x);
-      else bad.push(x.name+" — "+L("不是 UPS 帳單格式,未匯入","not a UPS invoice — not imported"));
+  /* 多檔:一個一個驗,壞的記下來,不讓一個檔把整批拖掉。
+     驗完留的是檔案本身,內容等按下「處理帳單」再一個一個讀。 */
+  (async()=>{
+    const bad=[], good=[];
+    for(let i=0;i<fs.length;i++){
+      const f=fs[i];
+      setStatus((LANG?"Checking ":"檢查 ")+(i+1)+"/"+fs.length+" · "+f.name+"…");
+      await paintTick();
+      let ok=false;
+      try{ ok=await sniffInvoiceFile(f); }
+      catch(err){ bad.push(f.name+" — "+((err&&err.message)||err)); continue; }
+      if(ok) good.push({name:f.name, size:f.size, file:f});
+      else bad.push(f.name+" — "+L("不是 UPS 帳單格式,未匯入","not a UPS invoice — not imported"));
     }
     INV_BATCH=good;
-    if(bad.length && $("#invNote")) $("#invNote").innerHTML=`<div class="note warn"><b>`
-      +esc(L("跳過 "+bad.length+" 個檔案。","Skipped "+bad.length+" file(s)."))+`</b> `+esc(bad.join(" / "))+`</div>`;
+    const big=good.reduce((a,x)=>a+(x.size||0),0);
+    const notes=[];
+    if(bad.length) notes.push(`<div class="note warn"><b>`
+      +esc(L("跳過 "+bad.length+" 個檔案。","Skipped "+bad.length+" file(s)."))+`</b> `+esc(bad.join(" / "))+`</div>`);
+    /* 一次幾百 MB:瀏覽器一個分頁能用的記憶體是有上限的,超過就是整頁掛掉。
+       先講,而且講清楚分批不會漏掉什麼 —— 每一期都各自進歷史,上一期沒在
+       帳單上的單子下一期會自動帶進來。 */
+    if(big>200*1024*1024) notes.push(`<div class="note warn"><b>`
+      +esc(L("這一批很大("+fmtSize(big)+","+good.length+" 個檔)。",
+             "That is a large batch ("+fmtSize(big)+", "+good.length+" files)."))+`</b> `
+      +esc(L("瀏覽器一個分頁能用的記憶體有上限,一次吃這麼多可能中途掛掉。建議分批處理(例如一次 5 個檔)—— 每一期都會各自存進歷史,分批不影響對帳。",
+             "A browser tab has a memory ceiling and this much at once may crash it. Process in smaller batches (five files, say) — each period is filed to history on its own, so batching does not affect the reconciliation."))+`</div>`);
+    if($("#invNote")) $("#invNote").innerHTML=notes.join("");
     $("#pathInv") && ($("#pathInv").value=invBatchLabel());
     setStatus(good.length
       ? (LANG?good.length+" invoice files loaded — press Process Invoice":"已載入 "+good.length+" 個帳單檔,按「處理帳單」")
       : (LANG?"No valid UPS invoice file":"沒有可用的帳單檔"));
-  }).then(()=>{ inp.value=""; ready(); });
+  })().then(()=>{ inp.value=""; ready(); });
 });
 /* 過去各期帳單 -> 跨期對照 */
 $("#fHist").onchange=e=>{
@@ -17912,31 +17981,31 @@ function codeKnown(code, cls, dyn){
 /* ---- 產生報表 ---- */
 $("#bRun").onclick=async ()=>{
   setStatus(L("讀取中…","Reading…"));
+  /* 跑的時候按鈕先關掉:一批二十張帳單要跑幾十秒,這期間再按一次就是兩份
+     同時在解析,記憶體加倍。 */
+  const btn=$("#bRun");
+  if(btn) btn.disabled=true;
   try{
     let ing, dup=[];
     if(INV_BATCH.length){
-      const b=invBatchIngest(); ing=b.ing; dup=b.dup;
+      const n=INV_BATCH.length;
+      const b=await invBatchIngest((i,name)=>setStatus(
+        (LANG?"Reading ":"讀取 ")+(i+1)+"/"+n+" · "+name+"…"));
+      ing=b.ing; dup=b.dup;
       INV_NAME="";   /* 每一列已經記了自己的來源檔,不要再整批蓋成同一個名字 */
+      setStatus(L("計價中("+ing.rows.length.toLocaleString()+" 列)…",
+                  "Pricing ("+ing.rows.length.toLocaleString()+" lines)…"));
+      await paintTick();
     } else {
       ing=ingest(INV);
       if(!looksLikeInvoice(ing.rows))
         throw new Error(L("格式不正確:這不是 UPS 帳單檔,沒有匯入。",
                           "Not a UPS invoice file — nothing was imported."));
     }
-    /* 這一期以前處理過:先講,問過才整期取代。歷史索引記得期號、帳單日、列數、
-       處理時間,直接拿來說。 */
+    /* 這一期以前處理過:不擋,跑完在便條上講。以前這裡跳一個視窗要人確認,
+       而一批二十一期的清單擠成一整面字,每一次匯入都得先讀完再按一次。
+       重新處理本來就是整期取代,那是這顆按鈕的意思,不必再問一遍。 */
     const done=alreadyFiled(ing.rows);
-    if(done.length){
-      const inv=histInv();
-      const lines=done.map(k=>{ const h=inv[k]||{};
-        return k+(h.date?"("+(normYmd(h.date)||h.date)+")":"")+L("  已於 "+String(h.at||"").replace("T"," ")+" 處理,"+(h.rows||0)+" 列",
-                 "  processed "+String(h.at||"").replace("T"," ")+", "+(h.rows||0)+" line(s)"); });
-      const go=await uiConfirm({title:L("這一期已經處理過","This period was already processed"),
-        body:L("下列期別已在歷史裡:\n"+lines.join("\n")+"\n\n再處理一次會整期取代歷史裡的明細,對帳也會重跑。要繼續嗎?",
-               "These periods are already in history:\n"+lines.join("\n")+"\n\nProcessing again replaces the stored detail for the whole period and the reconciliation reruns. Continue?"),
-        okText:L("重新處理","Process again")});
-      if(!go){ setStatus(L("已取消,這一期沒有重新處理。","Cancelled — the period was not processed again.")); return; }
-    }
     const ships=shipmentsOf(ing.rows);
     await runReport(ing, ships);
     if(done.length && $("#invNote")) $("#invNote").innerHTML=`<div class="note"><b>`
@@ -17949,7 +18018,7 @@ $("#bRun").onclick=async ()=>{
     $("#cfgNote").innerHTML=`<div class="note warn"><b>`
       +L("讀不動這張帳單。","Could not read that invoice.")+`</b> ${esc(e.message)}</div>`;
     setStatus(L("失敗","Failed"));
-  }
+  }finally{ ready(); }
 };
 
 /* 真正的產生報表。 */
