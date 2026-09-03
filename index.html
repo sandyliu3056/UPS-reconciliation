@@ -1914,6 +1914,7 @@ label:has(#newChanOn){display:none !important}
       <th class="num" data-i18n="th.rbups">UPS</th>
       <th class="num" data-i18n="th.rbrep">Reprice</th>
       <th class="num" data-i18n="th.rebillamt">Difference</th>
+      <th class="num" data-i18n="th.rbover">Over-collected</th>
       <th class="num" data-i18n="th.rebillfuel">Fuel surcharge</th>
       <th class="num" data-i18n="th.rebillgrand">Total</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
@@ -14039,13 +14040,26 @@ function reconRun(list){
                               amt:unset?0:(rate!=null?rate:u), credit:0, creditFrom:[]}, base);
       }).sort((x,y)=>y.amt-x.amt);
       if(k[0]==="f"){
+        /* UPS 把 A 費改收成 B 費(退掉 A、加收 B),而客戶端還是照 A 收的。
+           已收的 A 拿來抵應收的 B:抵得掉就不必補收。 */
         const extra=wCols.filter(c=>!(upsF[c]>0.004));
-        let credit=cents(extra.reduce((a,c)=>a+billedOf(c),0));
+        const extraTotal=cents(extra.reduce((a,c)=>a+billedOf(c),0));
+        let credit=extraTotal, first=null, others=0;
         for(const it of rows){
           if(credit<=0.004) break;
           const use=Math.min(credit, it.amt);
           if(use>0.004){ it.kind="swap"; it.credit=cents(use); it.billed=cents(use);
-                         it.amt=cents(it.amt-use); it.creditFrom=extra.slice(); credit=cents(credit-use); }
+                         it.amt=cents(it.amt-use); it.creditFrom=extra.slice(); credit=cents(credit-use);
+                         if(first) others=cents(others+use); else first=it; }
+        }
+        /* 抵完還有剩:那是客戶被多收的錢。以前這個餘額就在這裡消失 ——
+           畫面上只剩「不必補收」,而多收的部分不見了,兩張表於是對不起來:
+           Rating Breakdown 那邊寫著向客戶收 95.55,補收表寫著差額 0。
+           第一列照實掛上客戶端實收的金額(扣掉後面幾列已經抵掉的),
+           差額就是「應收 − 實收」,負數就是多收。 */
+        if(first){
+          first.wms=cents(extraTotal-others);
+          first.over=credit>0.004?cents(credit):0;
         }
       }
       items.push(...rows);
@@ -14075,6 +14089,12 @@ function reconRun(list){
     it.fuelPct=Math.round(pct*100)/100;
     it.fuel=fuelOn(it.charge)?cents(it.amt*pct/100):0;
     it.total=cents(it.amt+it.fuel);
+    /* 表上那一欄「客戶端實收」:一般的漏收就是 0,改收的那一列是實際收的金額。
+       差額一律是「應收 − 實收」,所以改收多收的時候是負數,而「要補收多少」
+       (amt)照舊是不含負數的那個數 —— 兩件事不要混成一欄。 */
+    if(it.wms==null) it.wms=it.billed;
+    it.diff=it.rate==null?it.amt:cents(it.rate-it.wms);
+    if(it.over==null) it.over=0;
   }
   items.sort((a,b)=>b.total-a.total||a.cus.localeCompare(b.cus)||a.order.localeCompare(b.order));
   const byCusR=new Map(), byChgR=new Map();
@@ -14084,6 +14104,9 @@ function reconRun(list){
   }
   const rebill={items, total:cents(items.reduce((a,i)=>a+i.amt,0)), fuel:cents(items.reduce((a,i)=>a+i.fuel,0)),
     grand:cents(items.reduce((a,i)=>a+i.total,0)), skipped, noItem:!hasBilled,
+    /* 補收與多收分開算:一邊是還要向客戶收的,一邊是收多了該退的,
+       加在一起會互相抵銷,看起來就像兩邊都沒事。 */
+    over:cents(items.reduce((a,i)=>a+(i.over||0),0)),
     byCus:cus.map(a=>{ const r=byCusR.get(a.code)||{}; return {code:a.code, name:a.name, rows:a.orders,
                        items:r.items||0, amt:r.amt||0, fuel:r.fuel||0, total:r.total||0}; })
           .sort((x,y)=>y.total-x.total||y.rows-x.rows),
@@ -14437,23 +14460,32 @@ function renderRebill(){
   /* 畫面上只放費用名稱和一個標籤;帳單原文和「抵已收」的細節滑上去看,匯出的 To re-bill 也都有。 */
   const tagOf=it=>it.kind==="swap"?L("改收","Substituted"):it.kind==="audit"?L("稽核費","Audit fee"):it.unset?L("費率未設定","Rate not set"):(it.rate===0?L("合約無此項","No contract rate"):L("未收","Not billed"));
   const chgCell=it=>`${esc(it.charge)} <span class="chggrp">${esc(tagOf(it))}</span>`;
-  const chgTip=it=>esc([it.desc?L("UPS 名目:","UPS: ")+it.desc:"", it.credit?L("抵已收 ","less billed ")+(it.creditFrom||[]).join(" · ")+" "+money(it.credit):""].filter(Boolean).join("\n"));
+  const chgTip=it=>esc([it.desc?L("UPS 名目:","UPS: ")+it.desc:"",
+    it.credit?L("客戶端是照「","billed to the client as \"")+(it.creditFrom||[]).join(" · ")
+      +L("」收的,實收 ","\", ")+money(it.wms):"",
+    it.over>0.004?L("其中多收 "+money(it.over)+",應退客戶","of which "+money(it.over)+" was over-collected and is owed back"):""]
+    .filter(Boolean).join("\n"));
   if(tb) tb.innerHTML=items.map(it=>`<tr><td class="mono">${esc(it.cus)}</td><td>${esc(cusNameOf(it.cus))}</td>
       <td class="mono">${esc(it.order)}</td><td class="mono">${esc(it.trk)}</td><td title="${chgTip(it)}">${chgCell(it)}</td>
-      <td class="num">${money(it.billed)}</td><td class="num">${money(it.ups)}</td>
-      <td class="num">${it.rate==null?dash:money(it.rate)}</td><td class="num"><b>${money(it.amt)}</b></td>
+      <td class="num">${money(it.wms)}</td><td class="num">${money(it.ups)}</td>
+      <td class="num">${it.rate==null?dash:money(it.rate)}</td>
+      <td class="num"><b${it.diff<-0.004?' style="color:var(--neg)"':""}>${money(it.diff)}</b></td>
+      <td class="num">${it.over>0.004?`<b style="color:var(--neg)">${money(it.over)}</b>`:dash}</td>
       <td class="num">${it.fuel?money(it.fuel)+` <span class="empty">${esc(String(it.fuelPct))}%</span>`:dash}</td><td class="num"><b>${money(it.total)}</b></td></tr>`).join("")
-    ||`<tr><td colspan="11" class="empty">${esc(rb&&rb.noItem
+    ||`<tr><td colspan="12" class="empty">${esc(rb&&rb.noItem
         ? L("模板沒有逐項費用欄,列不出漏收的項目。","The file has no itemised charge columns, so missed charges cannot be listed.")
         : L("沒有漏收的項目。","Nothing to re-bill."))}</td></tr>`;
   const tot=items.reduce((a,it)=>cents(a+it.amt),0);
   const totFuel=items.reduce((a,it)=>cents(a+(it.fuel||0)),0), grand=cents(tot+totFuel);
+  const totOver=items.reduce((a,it)=>cents(a+(it.over||0)),0);
+  const totDiff=items.reduce((a,it)=>cents(a+(it.diff||0)),0);
   const tf=$("#tRebill")&&$("#tRebill").tFoot;
   if(tf) tf.innerHTML=items.length?`<tr><td colspan="5"><b>${esc(L("合計","Total"))}</b></td>
-      <td class="num"><b>${money(items.reduce((a,it)=>cents(a+it.billed),0))}</b></td>
+      <td class="num"><b>${money(items.reduce((a,it)=>cents(a+it.wms),0))}</b></td>
       <td class="num"><b>${money(items.reduce((a,it)=>cents(a+it.ups),0))}</b></td>
       <td class="num"></td>
-      <td class="num"><b>${money(tot)}</b></td>
+      <td class="num"><b${totDiff<-0.004?' style="color:var(--neg)"':""}>${money(totDiff)}</b></td>
+      <td class="num"><b${totOver>0.004?' style="color:var(--neg)"':""}>${money(totOver)}</b></td>
       <td class="num"><b>${money(totFuel)}</b></td>
       <td class="num"><b>${money(grand)}</b></td></tr>`:"";
   const sum=$("#rebillSum");
@@ -14462,9 +14494,11 @@ function renderRebill(){
     const skip=rb&&rb.skipped?rb.skipped:0;
     const unset=items.filter(it=>it.unset).length;
     sum.textContent=(rb&&rb.noItem)?"":L(
-      "差額 "+money(tot)+" · 燃油附加費 "+money(totFuel)+" · 合計 "+money(grand)+" · "+items.length+" 項 · "+cusN+" 個客戶"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":"")
+      "補收 "+money(tot)+" · 燃油附加費 "+money(totFuel)+" · 合計 "+money(grand)
+        +(totOver>0.004?" · 多收(應退客戶)"+money(totOver):"")+" · "+items.length+" 項 · "+cusN+" 個客戶"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":"")
         +(unset?" · "+unset+" 項費率未設定(到 04 渠道與附加費費率設好再匯一次)":""),
-      "Difference "+money(tot)+" · fuel surcharge "+money(totFuel)+" · total "+money(grand)+" · "+items.length+" item(s) · "+cusN+" customer(s)"+(skip?" · "+skip+" row(s) without itemised charges not listed":"")
+      "To re-bill "+money(tot)+" · fuel surcharge "+money(totFuel)+" · total "+money(grand)
+        +(totOver>0.004?" · over-collected (owed back) "+money(totOver):"")+" · "+items.length+" item(s) · "+cusN+" customer(s)"+(skip?" · "+skip+" row(s) without itemised charges not listed":"")
         +(unset?" · "+unset+" item(s) with no rate set (set them under 04 Channel & Surcharge Rates and import again)":""));
   }
   const tc=$("#tRebillCus")&&$("#tRebillCus").tBodies[0];
@@ -14689,13 +14723,18 @@ async function reconExport(){
     ["Tracking Number","EFE3CB"],["Invoice Date","EFE3CB"],["Charge","EFE3CB"],["UPS Description","EFE3CB"],
     ["Type","EFE3CB"],["Less Billed As","EFE3CB"],
     ["UPS",UPSH],["WMS / TMS",WMSH],["Reprice",REPH],["Difference",DIFH],
+    ["Over-collected",DIFH],["To re-bill",DIFH],
     ["Fuel %",REPH],["Fuel",DIFH],["Total incl. Fuel",DIFH]].map(([n,f])=>dh(n,f));
+  /* WMS / TMS 那一欄是客戶端實收的金額,Difference 是「應收 − 實收」——
+     UPS 改收別的費用而客戶端照舊收的那一列於是是負數,多收多少寫在
+     Over-collected;要向客戶補收多少是 To re-bill 那一欄,不含負數。 */
   const rbRows=rb.items.map(it=>[it.cus, cusNameOf(it.cus), it.order, it.trk, dcell(it.invDate), it.charge, it.desc||"",
      typeOf(it), (it.creditFrom||[]).join(", "),
-     dm(it.ups), dm(it.billed), it.rate==null?"":dm(it.rate), dm(it.amt),
+     dm(it.ups), dm(it.wms), it.rate==null?"":dm(it.rate), dm(it.diff),
+     it.over>0.004?dm(it.over):"", dm(it.amt),
      it.fuel?{v:it.fuelPct,t:"n",s:{fmt:"0.00"}}:"", dm(it.fuel), dm(it.total)]);
   const rebillSheet={name:"To re-bill", rows:[rbHead,...rbRows], ignoreTextNumbers:true,
-    cols:[16,24,20,22,12,40,44,16,36,16,16,14,14,10,12,18].map(w=>({w}))};
+    cols:[16,24,20,22,12,40,44,16,36,16,16,14,14,15,14,10,12,18].map(w=>({w}))};
 
   /* ---- 每個客戶一頁:給客戶看的對帳單,照舊 SOP 的 Item / Amount 兩欄 ----
      一個追蹤號底下一項一列,燃油自己一列(Item 寫 Fuel Surcharge),最後一列合計。
@@ -19644,6 +19683,7 @@ const I18N={
   "th.rebillorder":["單號","Order Number"],
   "th.rebilltrk":["追蹤號","Tracking Number"],
   "th.rebillrate":["重算","Reprice"],
+  "th.rbover":["多收 / 應退","Over-collected"],
   "th.rebillamt":["差額","Difference"],
   "th.rbwms":["WMS / TMS","WMS / TMS"],
   "th.rbups":["UPS","UPS"],
