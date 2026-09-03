@@ -1671,7 +1671,11 @@ label:has(#newChanOn){display:none !important}
       <!-- textarea 不是 input:貼一整欄追蹤號進來,換行要留著當分隔。 -->
       <textarea id="trackQ" class="cell" rows="2" style="width:min(560px,100%);text-align:left;resize:vertical;line-height:1.5" placeholder="1Z… , 1Z…"></textarea>
       <button class="act" id="bTrack" data-i18n="btn.track">Look up</button>
+      <!-- 一整份清單直接上傳:CSV / TXT / Excel 都可以,只認裡面的追蹤號,其他欄不看。 -->
+      <button class="act ghost" id="bTrackFile" data-i18n="btn.trackfile">Upload a list</button>
+      <input type="file" id="fTrackFile" accept=".csv,.txt,.xlsx,.xls" hidden>
       <button class="act ghost" id="bTrackUps" data-i18n="btn.trackups">UPS tracking ↗</button>
+      <button class="act ghost" id="bTrackXls" data-i18n="btn.trackxls" hidden>Export Excel</button>
       <span id="trackNote" class="affsum"></span>
     </div>
     <div class="tablewrap" id="trackWrap" hidden style="max-height:44vh"><table id="tTrack"><thead><tr>
@@ -13127,9 +13131,58 @@ async function trackLookup(){
     <td class="num">${r.rebill?money(r.rebill):`<span class="empty">—</span>`}</td>
     <td style="white-space:nowrap"><a class="act ghost" target="_blank" rel="noopener" href="${esc(UPS_TRACK_URL(r.t))}">UPS ↗</a>${r.per.length?` <button class="act ghost" data-bkd="${esc(r.t)}">${esc(L("明細","Detail"))}</button>`:""}</td></tr>`).join("");
   if(wrap) wrap.hidden=false;
+  TRACK_LAST=rows;
+  $("#bTrackXls") && ($("#bTrackXls").hidden=false);
   const found=rows.filter(r=>r.per.length||r.w).length;
   if(note) note.textContent=L(q.length+" 個追蹤號,系統裡有 "+found+" 個。", q.length+" tracking number(s), "+found+" in the system.");
 }
+let TRACK_LAST=null;
+/* 從檔案挑追蹤號:任何一格長得像 UPS 單號(1Z + 16 碼)的都收;表頭寫 Tracking /
+   追蹤號的那一欄,底下的值也收(給不是 1Z 開頭的)。其他欄一律不看。 */
+function trackNumbersOf(sheets){
+  const out=new Set();
+  for(const rows of Object.values(sheets||{})){
+    const hdr=(rows&&rows[0]||[]).map(c=>String(c==null?"":c).trim());
+    const cols=hdr.map((h,i)=>/tracking|追蹤|單號/i.test(h)?i:-1).filter(i=>i>=0);
+    rows.forEach((r,ri)=>{
+      (r||[]).forEach((c,ci)=>{
+        const v=String(c==null?"":c).toUpperCase().replace(/[\s-]+/g,"");
+        /* 一格裡夾著幾個都收:備註寫「見 1Z…」也算。 */
+        let hit=false;
+        for(const m of v.matchAll(/1Z[A-Z0-9]{16}/g)){ out.add(m[0]); hit=true; }
+        if(!hit && ri>0 && cols.includes(ci) && /^[A-Z0-9]{8,}$/.test(v)) out.add(v);
+      });
+    });
+  }
+  return [...out];
+}
+async function trackFromFile(file){
+  const note=$("#trackNote");
+  try{
+    const wb=await readWorkbookRows(file);
+    const list=trackNumbersOf(wb.sheets);
+    if(!list.length){ if(note) note.textContent=L("檔案裡找不到追蹤號。","No tracking numbers found in that file."); return; }
+    const box=$("#trackQ"); if(box) box.value=list.join("\n");
+    await trackLookup();
+    if(note) note.textContent=L("從 "+file.name+" 讀到 "+list.length+" 個追蹤號。","Read "+list.length+" tracking number(s) from "+file.name+".")+" "+(note.textContent||"");
+  }catch(e){ if(note) note.textContent=L("讀不了這個檔:","Could not read that file: ")+String((e&&e.message)||e); }
+}
+/* 查到的結果倒成 Excel:一列一個追蹤號,和畫面上同一份。 */
+async function trackXlsx(){
+  const rows=TRACK_LAST||[]; if(!rows.length) return;
+  const H=n=>({v:n,t:"s",s:{bold:true,align:"left",border:true}});
+  const M=v=>({v:cents(v||0),t:"n",s:{fmt:"#,##0.00"}});
+  const head=["Tracking Number","Status","Invoice","Invoice Date","Customer Code","Customer Name","Order Number",
+              "Charged by UPS","Billed to Customer","To re-bill","Source","UPS Tracking"].map(H);
+  const body=rows.map(r=>[r.t, r.state, r.per.map(e=>e.invoice||"(current)").join(", "), r.per.map(e=>e.invDate).filter(Boolean).join(", "),
+    r.w?r.w.cus:"", r.w?(r.w.name||""):"", r.w?(r.w.order||""):"",
+    r.per.length?M(r.ups):"", r.w?M(r.w.amt):"", r.rebill?M(r.rebill):"", r.w?r.w.src:"", UPS_TRACK_URL(r.t)]);
+  await xlWrite([{name:"Tracking status", rows:[head,...body], ignoreTextNumbers:true,
+    cols:[22,30,18,12,14,22,24,14,16,12,8,60].map(w=>({w}))}], "Tracking_Status.xlsx");
+}
+$("#bTrackFile") && ($("#bTrackFile").onclick=()=>$("#fTrackFile")&&$("#fTrackFile").click());
+$("#fTrackFile") && ($("#fTrackFile").onchange=e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=""; if(f) trackFromFile(f); });
+$("#bTrackXls") && ($("#bTrackXls").onclick=()=>{ trackXlsx().catch(e=>toast(String((e&&e.message)||e),false)); });
 $("#bTrack") && ($("#bTrack").onclick=()=>{ trackLookup().catch(e=>toast(String((e&&e.message)||e),false)); });
 /* Enter 就查;Shift+Enter 才換行(貼進來的換行本來就留著)。 */
 $("#trackQ") && ($("#trackQ").onkeydown=e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); trackLookup().catch(()=>{}); } });
@@ -19160,6 +19213,8 @@ const I18N={
   "hint.track":["貼上一個或多個追蹤號。每一個都回答它在系統裡的狀態:在哪幾期帳單、UPS 收多少、對帳過沒有、向客戶收多少、還要補收多少。貨到哪裡了要問 UPS —— 「UPS 追蹤」直接開 UPS 的追蹤頁。","Paste one or more tracking numbers. Each one answers where it stands in the system: which invoices it is on, what UPS charged, whether it was reconciled, what the client was billed and what is still to re-bill. Delivery status lives at UPS — the UPS button opens the official tracking page."],
   "btn.track":["查詢","Look up"],
   "btn.trackups":["UPS 追蹤 ↗","UPS tracking ↗"],
+  "btn.trackfile":["上傳清單","Upload a list"],
+  "btn.trackxls":["匯出 Excel","Export Excel"],
   "th.trackstate":["狀態","Status"],
   "th.trackinv":["帳單期別","Invoice(s)"],
   "th.trackorder":["單號","Order"],
