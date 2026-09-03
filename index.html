@@ -14332,8 +14332,9 @@ async function reconExport(){
   const add=n=>{ if(!charges.includes(n)) charges.push(n); };
   for(const n of AUD_FEES.filter(n=>seen.has(n)).concat([...seen].filter(n=>!AUD_FEES.includes(n)).sort()))
     add(headOf.has(n)?headOf.get(n):n);
-  /* 非承運費用固定最後 —— 只有向客戶收那一側有它。更正緊接在運費後面。 */
-  if(charges.includes(RECON_OTHER)){ charges.splice(charges.indexOf(RECON_OTHER),1); charges.push(RECON_OTHER); }
+  /* 非承運費用不列:只有向客戶收那一側有它,重算永遠是 0,列出來只是噪音。
+     更正緊接在運費後面。 */
+  if(charges.includes(RECON_OTHER)) charges.splice(charges.indexOf(RECON_OTHER),1);
   const SCC="Shipping Charge Correction";
   if(charges.includes(SCC)&&charges.includes("Base Rate")){
     charges.splice(charges.indexOf(SCC),1); charges.splice(charges.indexOf("Base Rate")+1,0,SCC); }
@@ -14384,10 +14385,9 @@ async function reconExport(){
     const baseKnown=!o.block&&kn.has("Base Rate");
     for(const nm of charges){
       const mem=membersOf(nm);
-      const ups=nm===RECON_OTHER?0:cents(mem.reduce((a,f)=>a+((F.ups||{})[f]||0),0));   /* 沒重算時的備援 */
+      const ups=cents(mem.reduce((a,f)=>a+((F.ups||{})[f]||0),0));   /* 沒重算時的備援 */
       let should;
-      if(nm===RECON_OTHER) should=0;
-      else if(nm==="Base Rate"&&hasCorr) should=baseKnown?wBase:ups;
+      if(nm==="Base Rate"&&hasCorr) should=baseKnown?wBase:ups;
       else if(nm===SCC) should=!hasCorr?0:(baseKnown?cents(((F.rep||{})["Base Rate"]||0)-wBase):ups);
       else should=cents(mem.reduce((a,f)=>a+shouldOf(o,f),0));
       let w=0;
