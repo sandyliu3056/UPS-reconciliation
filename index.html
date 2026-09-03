@@ -14387,17 +14387,17 @@ async function reconExport(){
   const idNames=["Invoice Date","Transaction Date","Customer Code","Customer Level","Order Number","Tracking Number",
     "Shipment Reference Number 1","Shipment Reference Number 2","Package Dimensions","Detail Keyed Dim",
     "Entered Weight","Billed Weight","Zone","Shipping Channel"];
-  /* 表頭兩列:第一列一項費用一格(合併),第二列是那一項底下的 Repriced / WMS /
-     Difference 三欄(Difference = WMS − Repriced,實收減應收);UPS 原始金額不列,那是稽核的事。
-     識別欄上下合併成一格。 */
-  const ID="EFE3CB";
-  const blank=fill=>({v:"",t:"s",s:{fill}});
+  /* 表頭兩列:第一列一項費用一格(合併),不上色、置中;第二列是那一項底下的
+     WMS / Repriced / Difference 三欄(Difference = WMS − Repriced,實收減應收),
+     只有這一列上色。UPS 原始金額不列,那是稽核的事。識別欄上下合併成一格。 */
+  const h1c=n=>({v:n,t:"s",s:{bold:true,align:"center",wrap:true,border:true}});
+  const blank=()=>({v:"",t:"s",s:{border:true}});
   const h1=[], h2=[], merges=[];
-  idNames.forEach((n,i)=>{ h1.push(dh(n,ID)); h2.push(blank(ID)); merges.push({s:{r:0,c:i},e:{r:1,c:i}}); });
-  const SUB=[["Repriced",REPH],[src,WMSH],["Difference",DIFH]];
+  idNames.forEach((n,i)=>{ h1.push(h1c(n)); h2.push(blank()); merges.push({s:{r:0,c:i},e:{r:1,c:i}}); });
+  const SUB=[[src,WMSH],["Repriced",REPH],["Difference",DIFH]];
   const block=(name,subs)=>{
     const c0=h1.length;
-    h1.push(dh(name,ID)); for(let i=1;i<subs.length;i++) h1.push(blank(ID));
+    h1.push(h1c(name)); for(let i=1;i<subs.length;i++) h1.push(blank());
     for(const [n,f] of subs) h2.push(dh(n,f));
     if(subs.length>1) merges.push({s:{r:0,c:c0},e:{r:0,c:c0+subs.length-1}});
   };
@@ -14435,9 +14435,9 @@ async function reconExport(){
         else w=cents(mem.reduce((a,f)=>a+(billed[f]||0),0));
       }
       tS=cents(tS+should); tW=cents(tW+w);
-      row.push(dm(should)); row.push(dm(w)); row.push(dm(w-should));
+      row.push(dm(w)); row.push(dm(should)); row.push(dm(w-should));
     }
-    row.push(dm(tS)); row.push(dm(tW)); row.push(dm(tW-tS));
+    row.push(dm(tW)); row.push(dm(tS)); row.push(dm(tW-tS));
     return row;
   });
   const dWidths=[12,12,16,16,20,22,22,22,16,16,10,10,7,26]
