@@ -2212,7 +2212,7 @@ class App:
             side="left", padx=(0, px(6)))
         self.lv_q = tk.StringVar()
         self.entry(row, textvariable=self.lv_q, width=20).pack(side="left")
-        self.lv_tv = self.table(host, (150, 60, 90, 90),
+        self.lv_tv = self.table(host, (140, 72, 90, 90),
                                 ("w", "e", "e", "w"), 8)
         self.lv_tv.bind("<<TreeviewSelect>>", self.on_pick_level_row)
         self.lv_q.trace_add("write", lambda *a: self.fill_levels())
