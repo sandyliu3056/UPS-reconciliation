@@ -505,6 +505,7 @@ button.act.danger:disabled{opacity:.45;cursor:default}
 
 .grid3{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
 .grid3 label{color:var(--accent);font-weight:600;font-size:13.5px;white-space:nowrap}
+.grid3 .btns{display:flex;gap:8px;align-items:center}
 .grid3 input[readonly]{font:inherit;font-size:12.5px;padding:6px 10px;
   border:1.5px solid var(--line);border-radius:6px;background:var(--panel);
   color:var(--muted);min-width:0}
@@ -783,6 +784,8 @@ tr.blocked{opacity:.72}
 .subtabs[hidden]{display:none}
 /* 對帳作業三步的分頁列:站在頁面最上面,底線就是和下面卡片的分界。 */
 .subtabs.reconsteps{margin:0 0 12px}
+/* 補收彙總與完整比對兩張卡收掉:數字都在匯出的 Detail 與 06 儀表板。 */
+#reconRebillByCard,#reconDetailCard{display:none !important}
 #tReconRuns tr.cur td{font-weight:600;background:var(--select)}
 .subtabs button{font:inherit;font-size:13px;cursor:pointer;padding:7px 16px 6px;
   border:2px solid var(--accent);border-bottom:none;border-radius:8px 8px 0 0;
@@ -1138,7 +1141,7 @@ main.home{display:flex;flex-direction:column}
 main.home #app{flex:1 0 auto;display:flex;flex-direction:column;min-height:0}
 main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
 #p-home .sceneBox{margin-top:auto}
-#p-home #scene{height:clamp(320px,48vh,520px)}
+#p-home #scene{height:clamp(200px,30vh,340px)}
 .clockcard{position:absolute;top:12px;right:22px;padding:0;z-index:5;
   background:transparent;border:none;pointer-events:none}
 /* 第一塊面板要讓出時鐘的位置,不然輸入框會壓到日曆 */
@@ -1683,18 +1686,15 @@ label:has(#newChanOn){display:none !important}
     <div class="grid3">
       <label data-i18n="lb.inv">UPS Billing File</label>
       <input id="pathInv" readonly>
-      <button class="act ghost" id="bInv" data-i18n="btn.browse">Browse</button>
+      <!-- 選檔、處理並排:選了就按,不用往下找按鈕。處理完這一期就歸檔進歷史。 -->
+      <span class="btns"><button class="act ghost" id="bInv" data-i18n="btn.browse">Browse</button>
+      <button class="act run" id="bRun" data-i18n="btn.process" disabled>Process Invoice</button></span>
       <input type="file" id="fInv" accept=".csv,.txt,.xlsx,.xls" multiple>
     </div>
     <div class="readyrow" id="filesReady"></div>
     <p class="hint" style="margin:6px 0 0" data-i18n="hint.invmulti">Select several invoice files at once to import them in one go; each period is filed to history and the batch is reconciled together.</p>
     <div id="invNote"></div>
     <div class="row" style="margin-top:14px">
-      <button class="act run" id="bRun" data-i18n="btn.process" disabled>Process Invoice</button>
-    </div>
-    <div class="row" style="margin-top:14px">
-      <button class="act ghost" id="bSaveTop" data-i18n="btn.save">Save Settings</button>
-      <span id="saveNoteTop" class="savenote"></span>
       <button class="act ghost" id="bBilling" data-i18n="btn.billing">UPS Billing Center</button>
     </div>
     <div id="apiNote"></div>
@@ -1882,6 +1882,8 @@ label:has(#newChanOn){display:none !important}
   <div class="lf sketch" id="reconEmpty" hidden>
     <h3 class="display"><span class="em">⚖️</span><span data-i18n="hd.reconempty">No comparison yet</span></h3>
     <p class="hint" style="margin:0;max-width:70ch" data-i18n="hint.reconempty">Import this period's UPS invoice under Batch Invoice Import, then bring in the filled WMS/TMS template under WMS/TMS Data. The comparison appears here the moment the file is accepted.</p>
+    <!-- 分析:拿匯入的 WMS / TMS 列和載入的帳單比。還沒匯入就說要先匯入。 -->
+    <div class="row" style="margin-top:10px"><button class="act" id="bReconRun2" data-i18n="btn.reconrerun">Analyse</button></div>
     <div id="reconRunsMini"></div>
   </div>
 
@@ -1896,9 +1898,9 @@ label:has(#newChanOn){display:none !important}
 
   <div class="lf sketch" id="reconResCard" hidden>
     <h3 class="display"><span class="em">📌</span><span data-i18n="hd.rebill">To re-bill</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:80ch" data-i18n="hint.rebill">Charges UPS billed that WMS / TMS did not bill the client, one item per row, largest first. To re-bill is the customer's own rate where the rate level gives one, otherwise the UPS amount. Profit is only accurate once these are re-billed; the full comparison is folded below.</p>
+    <p class="hint" style="margin:0 0 11px;max-width:80ch;display:none" data-i18n="hint.rebill">Charges UPS billed that WMS / TMS did not bill the client, one item per row, largest first. To re-bill is the customer's own rate where the rate level gives one, otherwise the UPS amount. Profit is only accurate once these are re-billed; the full comparison is folded below.</p>
     <div class="row" style="margin-bottom:9px">
-      <button class="act ghost sm" id="bReconRerun" hidden data-i18n="btn.reconrerun">Re-run comparison</button>
+      <button class="act sm" id="bReconRerun" data-i18n="btn.reconrerun">Analyse</button>
       <label class="inlab" style="margin-left:0" data-i18n="lb.reconscope">Showing</label>
       <span class="foldwrap"><select id="rebillScope" class="fold"></select></span>
       <span style="flex:1 1 auto"></span>
@@ -11658,7 +11660,6 @@ $("#cfgFileClose")&& ($("#cfgFileClose").onclick=closeCfgFile);
 $("#cfgFileX")    && ($("#cfgFileX").onclick=closeCfgFile);
 $("#cfgFileBg")   && ($("#cfgFileBg").onclick=e=>{ if(e.target.id==="cfgFileBg") closeCfgFile(); });
 $("#bSaveCfg") && ($("#bSaveCfg").onclick=()=>saveSettings());
-$("#bSaveTop") && ($("#bSaveTop").onclick=()=>saveSettings());
 $("#bInv").onclick=()=>$("#fInv").click();
 
 function ready(){
@@ -12990,16 +12991,42 @@ function reconRunSave(rows,res,fname){
   const invs=reconInvKeys();
   if(!invs.length||!res||!rows||!rows.length) return;
   const key=reconRunKey(RECON_SRC,invs);
+  /* 帳單上沒有的那幾列留著,下一期自動帶入再對一次;對到過的追蹤號記下來,以後不再帶。 */
+  const pendTrk=new Set(); for(const o of (res.notOnInv||[])) for(const t of (o.trks||[])) pendTrk.add(reconTrk(t));
+  const pending=rows.filter(r=>(r.trks||[]).length && (r.trks||[]).every(t=>pendTrk.has(reconTrk(t))));
+  const matched=[]; for(const o of (res.orders||[])) if(o.found>0) for(const t of (o.trks||[])) matched.push(reconTrk(t));
   const dates=[...new Set((ROWS||[]).map(r=>normYmd(r.invDate)||"").filter(Boolean))].sort();
   const t=res.tot||{};
   const run={key, src:RECON_SRC==="TMS"?"TMS":"WMS", invoices:invs, invDate:dates[dates.length-1]||"",
-    when:Date.now(), fname:fname||"", n:rows.length, rows,
+    when:Date.now(), fname:fname||"", n:rows.length, rows, pending, matched,
     sum:{orders:t.orders||0, amt:t.amt||0, cost:t.cost||0, profit:t.profit||0,
          margin:t.margin==null?null:t.margin, cus:(res.cus||[]).length,
          rebill:(res.rebill&&res.rebill.grand)||0, offInv:(res.notOnInv||[]).length}};
   RECON_RUN_KEY=key;
   try{ localStorage.setItem(reconLastKey(), key); }catch(e){}
   idbRunPut(run).then(()=>{ RECON_RUNS=null; renderReconRuns(); }).catch(()=>{});
+}
+/* 前期沒對到帳單的列自動帶進這一期:每一份存過的對帳都留了 pending;
+   這一期檔案裡已經有的、或在任何一期已經對到過的追蹤號不帶。帶進來的列標 carried。 */
+async function reconCarryIn(rows){
+  let runs=RECON_RUNS; if(!runs){ runs=await idbRunAll().catch(()=>[]); RECON_RUNS=runs; }
+  const have=new Set(); for(const r of rows||[]) for(const t of (r.trks||[])) have.add(reconTrk(t));
+  const matched=new Set(); for(const run of runs) for(const t of (run.matched||[])) matched.add(t);
+  const out=[], seen=new Set();
+  /* 同一期重新匯入不帶自己上一次的 pending(那些列本來就在這一份檔裡);別的期都帶。 */
+  const selfKey=reconRunKey(RECON_SRC, reconInvKeys());
+  for(const run of runs.slice().sort((a,b)=>(b.when||0)-(a.when||0))){
+    if(run.key===selfKey) continue;
+    for(const r of (run.pending||[])){
+      const ts=(r.trks||[]).map(reconTrk); if(!ts.length) continue;
+      if(ts.some(t=>have.has(t)||matched.has(t)||seen.has(t))) continue;
+      ts.forEach(t=>seen.add(t));
+      const c=Object.assign({}, r); delete c.carried;
+      c.carried={key:run.key, invDate:run.invDate||"", src:run.src||"", inv:(run.invoices||[]).join(", ")};
+      out.push(c);
+    }
+  }
+  return out;
 }
 function reconSrcSet(src){
   RECON_SRC=src==="TMS"?"TMS":"WMS";
@@ -13297,8 +13324,9 @@ function reconRestoreRows(){
   reconRerunFrom(rows, true);
 }
 function reconRerunBtn(){
+  /* 「分析」一直在;沒資料按下去會講原因,不必藏。 */
   const b=$("#bReconRerun");
-  if(b) b.hidden=!(RECON&&RECON.list&&RECON.list.length);
+  if(b) b.hidden=false;
 }
 /* 帳單匯入或切期之後:手上有 WMS / TMS 的單就自動重新比對,結果永遠對著
    現在載入的這一期。以前要人自己回 05 按「重新比對」。 */
@@ -13763,7 +13791,7 @@ function reconRun(list){
                      && ![...sysChans].some(c=>chanFamKey(c)===chanFamKey(chan)));
     /* 計費重量只記錄、不核對:帳單上的是合約計費重量,向客戶收的重量本來
        就不必一樣。兩個數字並排放在匯出的 Orders 分頁,給人參考。 */
-    const o={ln:e.ln, order:e.order, cus:e.cus, date:e.date||(upsId&&upsId.date)||"",
+    const o={ln:e.ln, order:e.order, cus:e.cus, date:e.date||(upsId&&upsId.date)||"", carried:e.carried||null,
              trks:e.trks.slice(), ref1:e.ref1||(upsId&&upsId.ref1)||"", ref2:e.ref2||(upsId&&upsId.ref2)||"",
              ups:upsId,
              zone:String(e.zone||""), upsZone, zoneMis,
@@ -14129,6 +14157,10 @@ function renderRecon(){
     +esc(L("改派到一個還在的層級之後再匯一次。","Reassign them to a level that still exists, then import again."))
     +chips(r.lostLevel.map(c=>cusNameOf(c))));
   const warn=[];
+  const cIn=(r.orders||[]).filter(o=>o.carried).length, cOff=(r.notOnInv||[]).filter(o=>o.carried).length;
+  if(cIn+cOff) warn.push(L(
+    "自動帶入前期未對到帳單的 "+(cIn+cOff)+" 筆:這一期對到 "+cIn+" 筆,"+cOff+" 筆仍不在帳單上(留到下一期再對)。",
+    (cIn+cOff)+" row(s) carried from earlier periods that were not on their invoice: "+cIn+" matched this invoice, "+cOff+" still not on it (kept for the next period)."));
   if(r.notOnInv && r.notOnInv.length){
     const offAmt=r.notOnInv.reduce((a,o)=>a+toNum(o.amt),0);
     warn.push(L(
@@ -14470,6 +14502,10 @@ async function reconExport(){
   };
   for(const nm of charges) block(chgName(nm), SUB);
   block("Total Amount", SUB);
+  /* 前期帶進來的列:最後多一欄說它來自哪一期。沒有就不長這一欄。 */
+  const anyCarried=(r.orders||[]).some(o=>o.carried);
+  const carriedTxt=o=>o.carried?((o.carried.invDate||"")+(o.carried.inv?" "+o.carried.inv:"")).trim():"";
+  if(anyCarried){ const c=h1.length; h1.push(h1c("Carried From")); h2.push(blank()); merges.push({s:{r:0,c},e:{r:1,c}}); }
   const dRows=r.orders.map(o=>{
     const fees=o.fees||{rep:{},ups:{}}, billed=o.billedFees||null, u=o.ups||{};
     const row=[dcell(o.invDate), dcell(o.date), o.cus, lvl(o), o.order, (o.trks||[]).join(", "),
@@ -14505,10 +14541,11 @@ async function reconExport(){
       row.push(dm(w)); row.push(dm(should)); row.push(dm(w-should));
     }
     row.push(dm(tW)); row.push(dm(tS)); row.push(dm(tW-tS));
+    if(anyCarried) row.push(carriedTxt(o));
     return row;
   });
   const dWidths=[12,12,16,16,20,22,22,22,16,16,10,10,7,26]
-    .concat(charges.flatMap(()=>[14,14,14]),[14,14,14]);
+    .concat(charges.flatMap(()=>[14,14,14]),[14,14,14],anyCarried?[26]:[]);
   const detailSheet={name:"Detail", rows:[h1,h2,...dRows], merges, cols:dWidths.map(w=>({w})), ignoreTextNumbers:true};
 
   /* ---- To re-bill:補收清單,和畫面上同一份 —— 一個追蹤號一項費用一列。 ---- */
@@ -14564,14 +14601,15 @@ async function reconExport(){
     const ord=n=>{ const i=AUD_FEES.indexOf(n); return i<0?1e6:i; };
     fcols.sort((a,b)=>ord(a)-ord(b)||a.localeCompare(b));
     const GRN="92D050";
+    const offCarried=offInv.some(o=>o.carried);
     const nHead=["Customer Code","Customer Name","Order Number","Tracking Number","Transaction Date",
                  "Channel - "+src,"Zone - "+src,"Billed Weight - "+src].map(n=>dh(n,GRN))
-      .concat(fcols.map(n=>dh(n+" - "+src,GRN)), [dh("Total Amount - "+src,GRN)]);
+      .concat(fcols.map(n=>dh(n+" - "+src,GRN)), [dh("Total Amount - "+src,GRN)], offCarried?[dh("Carried From",GRN)]:[]);
     const nRows=offInv.map(o=>[String(o.cus||""), String(o.name||""), String(o.order||""), (o.trks||[]).join(", "), dcell(o.date),
                                String(o.chan||""), zoneCell(o.zone), o.wt===""||o.wt==null?"":{v:toNum(o.wt),t:"n"}]
-      .concat(fcols.map(c=>dm((o.billedFees||{})[c])), [dm(o.amt)]));
+      .concat(fcols.map(c=>dm((o.billedFees||{})[c])), [dm(o.amt)], offCarried?[carriedTxt(o)]:[]));
     notSheets.push({name:"Not on Invoice", rows:[nHead,...nRows], ignoreTextNumbers:true,
-      cols:[16,22,20,22,12,22,8,12].concat(fcols.map(n=>Math.min(30,Math.max(14,n.length+8))),[18]).map(w=>({w}))});
+      cols:[16,22,20,22,12,22,8,12].concat(fcols.map(n=>Math.min(30,Math.max(14,n.length+8))),[18],offCarried?[26]:[]).map(w=>({w}))});
   }
 
   /* Summary / Orders / Charges 先不用 —— 留著,要開回來只改這一個開關。 */
@@ -14601,7 +14639,7 @@ async function reconRead(file){
   return {p:reconParse(rows), fname:(file&&file.name)||""};
 }
 /* 解析結果寫進系統。回傳 true 代表收下了。 */
-function reconAccept(p, fname){
+async function reconAccept(p, fname){
   if(p.err){ RECON=null; renderRecon(); reconRerunBtn(); reconMsg(p.err,false); return false; }
   if(p.issues.length){
     RECON={issues:p.issues, res:null, list:null};
@@ -14623,33 +14661,37 @@ function reconAccept(p, fname){
     if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
     return true;
   }
-  /* 跑之前先點名。等到跑完才說「這幾個沒算」,人已經在讀數字了。 */
-  const pf=reconPreflight(p.rows.map(r=>r.cus));
-  const res=reconRun(p.rows);
-  RECON={issues:[], res, list:p.rows, sumWarn:p.sumWarn||[], fname:fname||""};
-  const kept=reconRowsSave(p.rows);
-  reconRunSave(p.rows,res,fname);
+  /* 前期沒對到帳單的先帶進來,再跑之前點名。等到跑完才說「這幾個沒算」,人已經在讀數字了。 */
+  const carried=await reconCarryIn(p.rows);
+  const all=p.rows.concat(carried);
+  const pf=reconPreflight(all.map(r=>r.cus));
+  const res=reconRun(all);
+  RECON={issues:[], res, list:all, sumWarn:p.sumWarn||[], fname:fname||"", carried:carried.length};
+  const kept=reconRowsSave(all);
+  reconRunSave(all,res,fname);
   reconRerunBtn();
   /* 檔一收下就把人帶到結果那一側 —— 匯入在 03,答案在 05,不讓人自己找。 */
   if(RECON_VIEW==="data" && typeof showTab==="function") showTab("cus");
   else renderRecon();
   if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
+  const carryNote=carried.length?L("(另自動帶入前期未對到帳單的 "+carried.length+" 筆)",
+                                   " (plus "+carried.length+" row(s) carried from earlier periods that were not on their invoice)"):"";
   if(pf.blocked)
-    reconMsg(L("已對帳 "+p.rows.length+" 筆"+skipNote+",其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
-               "Reconciled "+p.rows.length+" row(s)"+skipNote+"; "+pf.blocked
+    reconMsg(L("已對帳 "+p.rows.length+" 筆"+skipNote+carryNote+",其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
+               "Reconciled "+p.rows.length+" row(s)"+skipNote+carryNote+"; "+pf.blocked
                +" customer(s) were not repriced — see the notice below."),false);
   else
     reconMsg(L("已對帳 "+p.rows.length+" 筆"
-               +(p.rows.some(r=>r.chg)?"(含逐項費用)":"")+skipNote+"。",
+               +(p.rows.some(r=>r.chg)?"(含逐項費用)":"")+skipNote+carryNote+"。",
                "Reconciled "+p.rows.length+" row(s)"
-               +(p.rows.some(r=>r.chg)?" with itemized charges":"")+skipNote+"."),true);
+               +(p.rows.some(r=>r.chg)?" with itemized charges":"")+skipNote+carryNote+"."),true);
   return true;
 }
 /* 直接匯入(測試與既有呼叫端用)。畫面上的匯入鈕走預覽那條路。 */
 async function reconImport(file){
   const r=await reconRead(file);
   if(r.err!==undefined && r.p===undefined){ if(r.err) reconMsg(r.err,false); return; }
-  reconAccept(r.p, r.fname);
+  await reconAccept(r.p, r.fname);
 }
 /* 規格書的 Preview-first:先看見,確認了才寫入。 */
 async function reconPreviewImport(file){
@@ -14942,8 +14984,15 @@ function bindRecon(){
        <div class="tablewrap" style="margin-top:12px">${strip(t3,"tRebillChg")}</div>`);
   });
   $("#bReconImp") && ($("#bReconImp").onclick=()=>$("#fRecon").click());
-  $("#bReconRerun") && ($("#bReconRerun").onclick=()=>{
-    reconRerunFrom(RECON&&RECON.list, false, RECON&&RECON.charges); });
+  /* 「分析」:拿匯入的列和載入的帳單比。兩邊缺哪一邊就講哪一邊。 */
+  const analyse=()=>{
+    const rows=RECON&&RECON.list;
+    if(!rows||!rows.length){ reconMsg(L("還沒有 WMS / TMS 資料,先到「2. WMS / TMS 匯入」導入模板。","No WMS / TMS rows yet — import the template under step 2, WMS / TMS Import, first."),false); return; }
+    if(!SHIPS||!SHIPS.length){ reconMsg(L("還沒載入這一期的 UPS 帳單,先到「1. UPS 帳單匯入」處理帳單。","This period's UPS invoice is not loaded — process it under step 1, UPS Invoice Import, first."),false); return; }
+    reconRerunFrom(rows, false, RECON&&RECON.charges);
+  };
+  $("#bReconRerun") && ($("#bReconRerun").onclick=analyse);
+  $("#bReconRun2") && ($("#bReconRun2").onclick=analyse);
   $("#fRecon") && ($("#fRecon").onchange=e=>{
     const f=e.target.files&&e.target.files[0];
     e.target.value="";
@@ -17756,8 +17805,25 @@ $("#bRun").onclick=async ()=>{
         throw new Error(L("格式不正確:這不是 UPS 帳單檔,沒有匯入。",
                           "Not a UPS invoice file — nothing was imported."));
     }
+    /* 這一期以前處理過:先講,問過才整期取代。歷史索引記得期號、帳單日、列數、
+       處理時間,直接拿來說。 */
+    const done=alreadyFiled(ing.rows);
+    if(done.length){
+      const inv=histInv();
+      const lines=done.map(k=>{ const h=inv[k]||{};
+        return k+(h.date?"("+(normYmd(h.date)||h.date)+")":"")+L("  已於 "+String(h.at||"").replace("T"," ")+" 處理,"+(h.rows||0)+" 列",
+                 "  processed "+String(h.at||"").replace("T"," ")+", "+(h.rows||0)+" line(s)"); });
+      const go=await uiConfirm({title:L("這一期已經處理過","This period was already processed"),
+        body:L("下列期別已在歷史裡:\n"+lines.join("\n")+"\n\n再處理一次會整期取代歷史裡的明細,對帳也會重跑。要繼續嗎?",
+               "These periods are already in history:\n"+lines.join("\n")+"\n\nProcessing again replaces the stored detail for the whole period and the reconciliation reruns. Continue?"),
+        okText:L("重新處理","Process again")});
+      if(!go){ setStatus(L("已取消,這一期沒有重新處理。","Cancelled — the period was not processed again.")); return; }
+    }
     const ships=shipmentsOf(ing.rows);
     await runReport(ing, ships);
+    if(done.length && $("#invNote")) $("#invNote").innerHTML=`<div class="note"><b>`
+      +esc(L("這一期先前已處理過,已整期取代。","This period had been processed before; the stored detail was replaced."))
+      +`</b> `+esc(done.join(", "))+`</div>`;
     if(dup.length && $("#invNote")) $("#invNote").innerHTML=`<div class="note"><b>`
       +esc(L("同一期出現在兩個檔裡,以後面的檔為準。","The same invoice was in two files; the later file was used."))
       +`</b> `+esc(dup.join(", "))+`</div>`;
@@ -19525,7 +19591,7 @@ const I18N={
   "btn.recontplt":["TMS 模板","TMS template"],
   "btn.reconimp":["導入模板","Import template"],
   "btn.reconxls":["匯出對帳結果","Export reconciliation"],
-  "btn.reconrerun":["重新比對","Re-run comparison"],
+  "btn.reconrerun":["分析","Analyse"],
   "hd.reconiss":["不能收的資料列","Rows that could not be accepted"],
   "th.reconline":["列","Line"],
   "th.reconwhy":["原因","Reason"],
@@ -20458,7 +20524,7 @@ function sceneStep(){
    天氣預設是手動選的,要即時天氣才會連網 —— 這個檔案其他地方
    一個網路請求都沒有,那一個要由使用者自己開。
    ===================================================================== */
-const TZ_COORD=[[25.03,121.57],[40.71,-74.01],[41.88,-87.63],
+const TZ_COORD=[[25.03,121.57],[25.03,121.57],[40.71,-74.01],[41.88,-87.63],
                 [39.74,-104.99],[34.05,-118.24],[51.48,-0.01]];
 const WX_KEY="ups_reprice_wx";
 let WX={mode:"clear", live:true, temp:null, at:0};
@@ -21004,7 +21070,12 @@ function sceneLoop(){
 
 /* 時鐘與日曆:指針錶面加撕頁日曆,兩個都用主題色自己畫。
    時區只影響顯示,計價完全不讀它。 */
-const TZ=[["台北","Taipei","Asia/Taipei"],["美東","US East","America/New_York"],
+/* 時鐘和日曆照這台電腦的時區走。清單第一項就是本機時區,預設選它;下拉還在,
+   要看別的時區才切。 */
+const LOCAL_TZ=(()=>{ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"; }catch(e){ return "UTC"; } })();
+const LOCAL_TZ_NAME=LOCAL_TZ.split("/").pop().replace(/_/g," ");
+const TZ=[["本機("+LOCAL_TZ_NAME+")","Local ("+LOCAL_TZ_NAME+")",LOCAL_TZ,LOCAL_TZ_NAME],
+          ["台北","Taipei","Asia/Taipei"],["美東","US East","America/New_York"],
           ["美中","US Cent","America/Chicago"],["美山","US Mtn","America/Denver"],
           ["美西","US West","America/Los_Angeles"],["UTC","UTC","UTC"]];
 const WD_ZH=["日","一","二","三","四","五","六"];
@@ -21055,7 +21126,7 @@ function drawClock(){
   const big=$("#clkBig");
   if(big) big.textContent=String(t.H).padStart(2,"0")+":"+String(t.m).padStart(2,"0");
   const sub=$("#clkSub");
-  if(sub) sub.textContent=t.mo+"/"+t.d+"/"+t.y+" "+TZ[TZI][1];
+  if(sub) sub.textContent=t.mo+"/"+t.d+"/"+t.y+" "+(TZ[TZI][3]||TZ[TZI][1]);
 }
 function drawDateCard(){
   const cv=$("#dateCv"); if(!cv) return;
