@@ -1883,7 +1883,7 @@ label:has(#newChanOn){display:none !important}
       <!-- 系統從檔案讀哪幾欄、拿去做什麼:一欄一句白話。沒有箭頭、沒有燈號,
            那些看起來像要設定什麼,其實沒有東西可設。 -->
       <div class="sketch-soft mini">
-        <div class="subhd" style="margin-top:0" data-i18n="hd.mapping">📋 What the system reads from the file</div>
+        <div class="subhd" style="margin-top:0" data-i18n="hd.mapping">📋 Import column reference</div>
         <div class="maprow"><span data-i18n="mp.trk">Tracking Number</span><b data-i18n="mp.trk2">Matched to the invoice. A number that is not on the invoice stays out of the comparison and goes on the Not on Invoice sheet when exported.</b></div>
         <div class="maprow"><span data-i18n="mp.cus">Customer Code</span><b data-i18n="mp.cus2">Required. Must be on the customer list; the shipment is repriced at the rate level assigned to that customer.</b></div>
         <div class="maprow"><span data-i18n="mp.chk">Channel · Zone · Billed Weight - WMS / TMS</span><b data-i18n="mp.chk2">Optional. Channel and Zone are checked against the invoice and any difference is flagged row by row; billed weight is recorded only.</b></div>
@@ -19424,22 +19424,22 @@ const I18N={
   "btn.datapv":["👁 預覽","👁 Preview"],
   "btn.respv":["👁 預覽報表","👁 Preview report"],
   "hd.orderdata":["📦 訂單資料","📦 Order data"],
-  "hd.mapping":["📋 系統從檔案讀哪幾欄","📋 What the system reads from the file"],
+  "hd.mapping":["📋 匯入欄位說明","📋 Import column reference"],
   "lb.lastfile":["檔案","File"],
   "lb.orders":["資料列","Rows"],
   "lb.itemized":["含逐項","Itemized"],
   "lb.state":["狀態","Status"],
   "mp.trk":["Tracking Number","Tracking Number"],
-  "mp.trk2":["對到帳單上的追蹤號。帳單上沒有的不進對帳,匯出時另放 Not on Invoice 一頁。","Matched to the invoice. A number that is not on the invoice stays out of the comparison and goes on the Not on Invoice sheet when exported."],
+  "mp.trk2":["與帳單追蹤號比對;帳單上不存在者不列入對帳,匯出時另列於 Not on Invoice 分頁。","Matched against the invoice tracking numbers; numbers absent from the invoice are excluded from the comparison and listed on the Not on Invoice sheet on export."],
   "mp.cus":["Customer Code","Customer Code"],
-  "mp.cus2":["必填。要在客戶管理的名單裡;這一件照該客戶指到的費率層級重算。","Required. Must be on the customer list; the shipment is repriced at the rate level assigned to that customer."],
+  "mp.cus2":["必填;須存在於客戶管理名單。該筆依客戶所屬費率層級重新計價。","Required; must exist in the customer directory. The shipment is repriced at the rate level assigned to the customer."],
   "mp.chk":["Channel · Zone · Billed Weight - WMS / TMS","Channel · Zone · Billed Weight - WMS / TMS"],
-  "mp.chk2":["選填。渠道和 Zone 會和帳單核對,不同的逐筆標出來;計費重量只記錄、不核對。","Optional. Channel and Zone are checked against the invoice and any difference is flagged row by row; billed weight is recorded only."],
+  "mp.chk2":["選填;渠道與 Zone 與帳單核對,不一致者逐筆標示。計費重量僅記錄,不核對。","Optional. Channel and Zone are verified against the invoice and discrepancies are flagged per row; billed weight is recorded only."],
   "mp.chg":["<費用> - WMS / TMS","<charge> - WMS / TMS"],
-  "mp.chg2":["向客戶收的每一項費用,和 UPS 實收、系統重算三方比對。空白是沒填,0 是收了零。","Each charge billed to the client, compared with what UPS billed and what the system recomputes. Blank means not filled; 0 means billed zero."],
+  "mp.chg2":["向客戶計收之各項費用,與 UPS 實收及系統重算三方比對。空白視為未填,0 視為實收為零。","Each charge billed to the client, compared three ways with the UPS charge and the system's recomputation. Blank denotes not filled; 0 denotes billed at zero."],
   "mp.amt":["Total Amount - WMS / TMS","Total Amount - WMS / TMS"],
-  "mp.amt2":["必填。這一件向客戶收的總額,應等於各費用欄的合計。","Required. The whole amount billed to the client for the package; it should equal the charge columns."],
-  "mp.note":["黃色與深棕色的欄是帳單資料,只供對照,系統不讀。","The yellow and dark-brown columns are invoice data for reference only; the system never reads them."],
+  "mp.amt2":["必填;該件向客戶計收之總額,應等於各費用欄合計。","Required; the total billed to the client for the package, which should equal the sum of the charge columns."],
+  "mp.note":["黃色與深棕色欄位為帳單資料,僅供對照,系統不讀取。","Yellow and dark-brown columns carry invoice data for reference only and are not read."],
   "st.src":["選擇來源","Choose source"],
   "st.src2":["WMS 或 TMS","WMS or TMS"],
   "st.dl":["下載模板","Download template"],
