@@ -616,12 +616,12 @@ td.cells{white-space:normal}
 .kv2{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:8px 0 0;font-size:12.5px}
 .kv2 dt{color:var(--muted)}
 .kv2 dd{margin:0;font-weight:600}
-.maprow{display:flex;align-items:center;gap:8px;font-size:12.5px;
+.maprow{display:grid;grid-template-columns:minmax(120px,max-content) 1fr;align-items:baseline;gap:4px 12px;font-size:12.5px;line-height:1.5;
   padding:5px 0;border-bottom:1px dashed var(--line)}
 .maprow:last-of-type{border-bottom:0}
 .maprow span{color:var(--muted);flex:0 0 auto;font-family:"Cascadia Mono",Consolas,monospace;font-size:11.5px}
 .maprow i{font-style:normal;color:var(--muted);flex:0 0 auto}
-.maprow b{font-weight:600;min-width:0}
+.maprow b{font-weight:500;min-width:0;white-space:normal}
 .okdot{width:8px;height:8px;border-radius:50%;background:#2f6b4f;
   margin-left:auto;flex:0 0 auto}
 .steps{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap;
@@ -1881,14 +1881,16 @@ label:has(#newChanOn){display:none !important}
           <dt data-i18n="lb.state">Status</dt><dd id="rdState"><span class="empty">—</span></dd>
         </dl>
       </div>
+      <!-- 系統從檔案讀哪幾欄、拿去做什麼:一欄一句白話。沒有箭頭、沒有燈號,
+           那些看起來像要設定什麼,其實沒有東西可設。 -->
       <div class="sketch-soft mini">
-        <div class="subhd" style="margin-top:0" data-i18n="hd.mapping">🔗 Column mapping</div>
-        <div class="maprow"><span data-i18n="mp.trk">Tracking Numbers</span><i>→</i><b data-i18n="mp.trk2">Invoice tracking match</b><em class="okdot"></em></div>
-        <div class="maprow"><span data-i18n="mp.cus">Customer Code</span><i>→</i><b data-i18n="mp.cus2">Client directory</b><em class="okdot"></em></div>
-        <div class="maprow"><span data-i18n="mp.chk">Channel · Zone</span><i>→</i><b data-i18n="mp.chk2">Checked against the invoice</b><em class="okdot"></em></div>
-        <div class="maprow"><span data-i18n="mp.chg">Charge columns</span><i>→</i><b data-i18n="mp.chg2">System charges, combined by group</b><em class="okdot"></em></div>
-        <div class="maprow"><span data-i18n="mp.amt">Total Amount</span><i>→</i><b data-i18n="mp.amt2">Whole-order total</b><em class="okdot"></em></div>
-        <p class="hint" style="margin:8px 0 0" data-i18n="mp.note">Fixed by the template — nothing to configure.</p>
+        <div class="subhd" style="margin-top:0" data-i18n="hd.mapping">📋 What the system reads from the file</div>
+        <div class="maprow"><span data-i18n="mp.trk">Tracking Number</span><b data-i18n="mp.trk2">Matched to the invoice. A number that is not on the invoice stays out of the comparison and goes on the Not on Invoice sheet when exported.</b></div>
+        <div class="maprow"><span data-i18n="mp.cus">Customer Code</span><b data-i18n="mp.cus2">Required. Must be on the customer list; the shipment is repriced at the rate level assigned to that customer.</b></div>
+        <div class="maprow"><span data-i18n="mp.chk">Channel · Zone · Billed Weight - WMS / TMS</span><b data-i18n="mp.chk2">Optional. Channel and Zone are checked against the invoice and any difference is flagged row by row; billed weight is recorded only.</b></div>
+        <div class="maprow"><span data-i18n="mp.chg">&lt;charge&gt; - WMS / TMS</span><b data-i18n="mp.chg2">Each charge billed to the client, compared with what UPS billed and what the system recomputes. Blank means not filled; 0 means billed zero.</b></div>
+        <div class="maprow"><span data-i18n="mp.amt">Total Amount - WMS / TMS</span><b data-i18n="mp.amt2">Required. The whole amount billed to the client for the package; it should equal the charge columns.</b></div>
+        <p class="hint" style="margin:8px 0 0" data-i18n="mp.note">The yellow and dark-brown columns are invoice data for reference only; the system never reads them.</p>
       </div>
     </div>
 
@@ -19423,22 +19425,22 @@ const I18N={
   "btn.datapv":["👁 預覽","👁 Preview"],
   "btn.respv":["👁 預覽報表","👁 Preview report"],
   "hd.orderdata":["📦 訂單資料","📦 Order data"],
-  "hd.mapping":["🔗 欄位對應","🔗 Column mapping"],
+  "hd.mapping":["📋 系統從檔案讀哪幾欄","📋 What the system reads from the file"],
   "lb.lastfile":["檔案","File"],
   "lb.orders":["資料列","Rows"],
   "lb.itemized":["含逐項","Itemized"],
   "lb.state":["狀態","Status"],
   "mp.trk":["Tracking Number","Tracking Number"],
-  "mp.trk2":["與帳單追蹤號比對","Invoice tracking match"],
+  "mp.trk2":["對到帳單上的追蹤號。帳單上沒有的不進對帳,匯出時另放 Not on Invoice 一頁。","Matched to the invoice. A number that is not on the invoice stays out of the comparison and goes on the Not on Invoice sheet when exported."],
   "mp.cus":["Customer Code","Customer Code"],
-  "mp.cus2":["客戶名單","Client directory"],
-  "mp.chk":["Channel · Zone - WMS / TMS","Channel · Zone - WMS / TMS"],
-  "mp.chk2":["與帳單核對","Checked against the invoice"],
-  "mp.chg":["費用欄(照 Consolidated)","Charge columns (Consolidated)"],
-  "mp.chg2":["帳單上有收的一欄不缺,三方比對","Every charge UPS billed, compared three ways"],
+  "mp.cus2":["必填。要在客戶管理的名單裡;這一件照該客戶指到的費率層級重算。","Required. Must be on the customer list; the shipment is repriced at the rate level assigned to that customer."],
+  "mp.chk":["Channel · Zone · Billed Weight - WMS / TMS","Channel · Zone · Billed Weight - WMS / TMS"],
+  "mp.chk2":["選填。渠道和 Zone 會和帳單核對,不同的逐筆標出來;計費重量只記錄、不核對。","Optional. Channel and Zone are checked against the invoice and any difference is flagged row by row; billed weight is recorded only."],
+  "mp.chg":["<費用> - WMS / TMS","<charge> - WMS / TMS"],
+  "mp.chg2":["向客戶收的每一項費用,和 UPS 實收、系統重算三方比對。空白是沒填,0 是收了零。","Each charge billed to the client, compared with what UPS billed and what the system recomputes. Blank means not filled; 0 means billed zero."],
   "mp.amt":["Total Amount - WMS / TMS","Total Amount - WMS / TMS"],
-  "mp.amt2":["這一件向客戶收的總額","Per-package total billed"],
-  "mp.note":["由模板固定,毋須設定。","Fixed by the template — nothing to configure."],
+  "mp.amt2":["必填。這一件向客戶收的總額,應等於各費用欄的合計。","Required. The whole amount billed to the client for the package; it should equal the charge columns."],
+  "mp.note":["黃色與深棕色的欄是帳單資料,只供對照,系統不讀。","The yellow and dark-brown columns are invoice data for reference only; the system never reads them."],
   "st.src":["選擇來源","Choose source"],
   "st.src2":["WMS 或 TMS","WMS or TMS"],
   "st.dl":["下載模板","Download template"],
@@ -19449,7 +19451,7 @@ const I18N={
   "st.res2":["3. 對帳分析","3. Reconciliation Analysis"],
   "btn.recontplw":["WMS 模板","WMS template"],
   "btn.recontplt":["TMS 模板","TMS template"],
-  "btn.reconimp":["導入填好的","Import filled"],
+  "btn.reconimp":["導入模板","Import template"],
   "btn.reconxls":["匯出對帳結果","Export reconciliation"],
   "btn.reconrerun":["重新比對","Re-run comparison"],
   "hd.reconiss":["不能收的資料列","Rows that could not be accepted"],
