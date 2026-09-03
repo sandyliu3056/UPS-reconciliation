@@ -14362,8 +14362,8 @@ async function reconExport(){
   const FILL={id:"351C15", cli:"1F5638", ups:"7A4B22", rep:"8A6104", chk:"5C5348"};
   const TINT={id:"EFE3CB", cli:"DCEFE3", ups:"F1E3D3", rep:"FBEBC8", chk:"E8E2D6"};
   const CELL={cli:"EEF7F1", ups:"F8F1EA", rep:"FDF6E7"};
-  const BAND={id:"識別 Identity", cli:"向客戶收 Billed to client", ups:"UPS 收 Charged by UPS",
-              rep:"重算 Recomputed", chk:"核對與差異 Checks & variance"};
+  const BAND={id:"識別 Identity", cli:"WMS / TMS", ups:"UPS",
+              rep:"重算 Reprice", chk:"核對與差異 Checks & variance"};
   const MONEY="#,##0.00";
   const H=(n,g)=>({v:n,t:"s",s:{bold:true,fill:TINT[g]||TINT.id,color:"351C15",align:"left",wrap:true,border:true}});
   /* 沒重算的欄位寫空白,不寫 0 —— 匯出去之後沒人分得出 0 是「算出來是零」
@@ -14396,7 +14396,7 @@ async function reconExport(){
   const sumCols=[["Customer Code","id"],["Customer Name","id"],["Rate Level","id"],["Repricing Status","id"],
     ["Rows","id"],["Packages Matched","id"],["Packages","id"],
     ["WMS / TMS","cli"],["UPS","ups"],["Reprice","rep"],
-    ["Profit (Billed − UPS)","chk"],["Billed vs Recomputed","chk"],["UPS vs Recomputed","chk"]].map(([name,g])=>({name,g}));
+    ["Profit (Billed − UPS)","chk"],["WMS / TMS vs Reprice","chk"],["UPS vs Reprice","chk"]].map(([name,g])=>({name,g}));
   const sumRows=r.cus.map(a=>[a.code, a.name, lvl(a), why(a.block), a.orders, a.found, a.pkgs,
      m(a.amt,"cli"), m(a.cost,"ups"), m(a.rep,"rep"), m(a.profit), m(a.pgap), m(a.gap)]);
 
@@ -14407,8 +14407,8 @@ async function reconExport(){
     ["Packages","id"],["Packages Matched","id"],["Not On Invoice","id"],
     ["Channel","cli"],["Zone","cli"],["Billed Weight","cli"],["WMS / TMS","cli"],
     ["Channel (UPS)","ups"],["Zone (UPS)","ups"],["Billed Weight (UPS)","ups"],["UPS","ups"],
-    ["Recomputed","rep"],
-    ["Channel Match","chk"],["Zone Match","chk"],["Profit (Billed − UPS)","chk"],["Billed vs Recomputed","chk"],["UPS vs Recomputed","chk"]]
+    ["Reprice","rep"],
+    ["Channel Match","chk"],["Zone Match","chk"],["Profit (Billed − UPS)","chk"],["WMS / TMS vs Reprice","chk"],["UPS vs Reprice","chk"]]
     .map(([name,g])=>({name,g}));
   const ordRows=r.orders.map(o=>[o.order, o.date, o.cus, lvl(o), why(o.block),
      (o.trks||[]).join(", "), o.ref1||"", o.ref2||"", o.pkgs, o.found, o.missTrk.join(", "),
@@ -14424,7 +14424,7 @@ async function reconExport(){
   const noCode=o=>o.name===RECON_UNKNOWN||o.name===RECON_OTHER;
   const chgCols=[["Scope","id"],["Charge","id"],["Your Code","id"],["System Code","id"],
     ["WMS / TMS","cli"],["UPS","ups"],["Reprice","rep"],
-    ["Billed vs Recomputed","chk"],["Recomputed vs UPS","chk"]].map(([name,g])=>({name,g}));
+    ["WMS / TMS vs Reprice","chk"],["Reprice vs UPS","chk"]].map(([name,g])=>({name,g}));
   const chgRows=[];
   const crow=(scope,o,pre)=>chgRows.push([scope, pre+chgName(o.name),
       noCode(o)?"":chgCodeMine(o), noCode(o)?"":chgUpsOf(o).join(" "),
@@ -14894,7 +14894,7 @@ async function anaExport(){
              :b===RL_GONE?"NOT PRICED — rate level deleted":"";
   const cusRows=[["Customer Code","Customer Name","Rate Level","Repricing Status","Orders",
     "Packages","WMS / TMS","UPS","Profit","Margin %","Reprice",
-    "Billed vs Recomputed","UPS vs Recomputed"].map(HD)]
+    "WMS / TMS vs Reprice","UPS vs Reprice"].map(HD)]
    .concat(r.cus.slice().sort((x,y)=>y.profit-x.profit).map(a=>[
      a.code, a.name, a.block?"":anaLvlName(a.level), why(a.block), a.orders, a.pkgs,
      m(a.amt), m(a.cost), m(a.profit), pc(a.margin), m(a.rep), m(a.pgap), m(a.gap)]))
@@ -18971,7 +18971,7 @@ $("#bCsv") && ($("#bCsv").onclick=async ()=>{
     if(ovRows.length>1){
       const SV=r2(ovRows.reduce((a,r)=>a+r[3],0)), CV=r2(ovRows.reduce((a,r)=>a+r[2],0));
       sumRows.push([{v:"",t:"s"},{v:"",t:"s"}]);
-      sumRows.push([ft(L("合計 向客戶收","Total · Charge customer")),ft(SV)]);
+      sumRows.push([ft(L("合計 重算","Total · Reprice")),ft(SV)]);
       sumRows.push([ft(L("合計 UPS","Total · UPS")),ft(CV)]);
       sumRows.push([ft(L("合計毛利","Total profit")),ft(r2(SV-CV))]);
       sumRows.push([ft(L("合計毛利率","Total margin")),ft(SV?r6((SV-CV)/Math.abs(SV)):0,PCT)]);
