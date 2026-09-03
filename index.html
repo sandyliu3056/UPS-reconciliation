@@ -1124,7 +1124,8 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
 .bkdtot .bt.d .v{color:#ffb3ad;font-weight:700}
 .bkdtot .chip{display:inline-block;padding:0 9px;border-radius:999px;line-height:1.5;
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25)}
-@media(max-width:640px){.bkdcols,.bkdcols.three,.bkdtot{grid-template-columns:1fr}}
+.bkdtot.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:640px){.bkdcols,.bkdcols.three,.bkdtot,.bkdtot.three{grid-template-columns:1fr}}
 @media(min-width:641px) and (max-width:980px){.bkdcols.three{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 
 /* 場景與時鐘 */
@@ -1919,12 +1920,12 @@ label:has(#newChanOn){display:none !important}
       <th data-i18n="th.rebillorder">Order Number</th>
       <th data-i18n="th.rebilltrk">Tracking Number</th>
       <th data-i18n="th.chgname">Charge</th>
-      <th class="num" data-i18n="th.reconups">Charged by UPS</th>
-      <th class="num" data-i18n="th.chgbilled">Billed to client</th>
-      <th class="num" data-i18n="th.rebillrate">Client rate</th>
-      <th class="num" data-i18n="th.rebillamt">To re-bill</th>
-      <th class="num" data-i18n="th.rebillfuel">Fuel</th>
-      <th class="num" data-i18n="th.rebillgrand">Incl. fuel</th>
+      <th class="num" data-i18n="th.rbwms">WMS / TMS</th>
+      <th class="num" data-i18n="th.rbups">UPS</th>
+      <th class="num" data-i18n="th.rbrep">Reprice</th>
+      <th class="num" data-i18n="th.rebillamt">Difference</th>
+      <th class="num" data-i18n="th.rebillfuel">Fuel surcharge</th>
+      <th class="num" data-i18n="th.rebillgrand">Total</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
   </div>
 
@@ -10727,21 +10728,14 @@ function bkdSection(r, wms){
      這一組是「真的收了多少」,兩個數字並排才看得出漏收。 */
   const wDiff=wms?cents(wms.amt-s.upsTotal):null;
   const wTone=wDiff==null?"":(wDiff<0?"d":"p");
-  H.push(`<div class="bkdtot">`
+  /* 三個數並排:UPS 實收、重算、向客戶實收。毛利與毛利率先不放。 */
+  H.push(`<div class="bkdtot${wms?" three":""}">`
     +`<div class="bt"><span class="l">${L("UPS 實收","UPS billed")}</span>`
     +`<span class="v">${money2(s.upsTotal)}</span></div>`
     +`<div class="bt"><span class="l">${L("重新計價","Reprice")}</span>`
     +`<span class="v">${money2(r.total||0)}</span></div>`
-    +`<div class="rule"></div>`
-    +`<div class="bt ${bkTone}"><span class="l">${L("毛利","Profit")}</span>`
-    +`<span class="v">${money2(bkDiff)}</span></div>`
-    +`<div class="bt ${bkTone}"><span class="l">${L("毛利率","Margin")}</span>`
-    +`<span class="v"><span class="chip">${bkPct==null?"—":bkPct.toFixed(2)+"%"}</span></span></div>`
-    +(wms?`<div class="rule"></div>`
-      +`<div class="bt"><span class="l">${esc2(wms.src)+L(" 實收"," billed")}</span>`
-      +`<span class="v">${money2(wms.amt)}</span></div>`
-      +`<div class="bt ${wTone}"><span class="l">${L("實收毛利","Profit on billed")}</span>`
-      +`<span class="v">${money2(wDiff)}</span></div>`:"")
+    +(wms?`<div class="bt"><span class="l">${esc2(wms.src)+L(" 實收"," billed")}</span>`
+      +`<span class="v">${money2(wms.amt)}</span></div>`:"")
     +`</div>`);
   return H.join("");
 }
@@ -13207,9 +13201,14 @@ async function trackUps(){
   try{
     const r=await fetch("/api/track",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({numbers:rows.map(x=>x.t)})});
     let j=null; try{ j=await r.json(); }catch(e){}
-    if(r.status===503||(r.status===404&&!j)){
-      if(note) note.textContent=L("UPS 貨況查詢尚未啟用:這要部署在 Vercel,並在專案的 Environment Variables 設 UPS_CLIENT_ID、UPS_CLIENT_SECRET、UPS_ACCOUNT。",
-                                  "UPS status lookup is not enabled: it needs the Vercel deployment with UPS_CLIENT_ID, UPS_CLIENT_SECRET and UPS_ACCOUNT set in the project's Environment Variables.");
+    if(r.status===503){
+      if(note) note.textContent=L("UPS API 憑證還沒設:到 Vercel 專案 Settings → Environment Variables 設 UPS_CLIENT_ID、UPS_CLIENT_SECRET、UPS_ACCOUNT,再 Redeploy。",
+                                  "UPS API credentials are not set: add UPS_CLIENT_ID, UPS_CLIENT_SECRET and UPS_ACCOUNT under the Vercel project's Settings → Environment Variables, then redeploy.");
+      return;
+    }
+    if(r.status===404&&!j){
+      if(note) note.textContent=L("這個站台沒有 /api/track:UPS 貨況查詢只在 Vercel 部署上有(api/track.js)。",
+                                  "This site has no /api/track: the UPS status lookup exists only on the Vercel deployment (api/track.js).");
       return;
     }
     if(!r.ok||!j||!Array.isArray(j.results)){
@@ -13267,7 +13266,7 @@ async function trackXlsx(){
   const H=n=>({v:n,t:"s",s:{bold:true,align:"left",border:true}});
   const M=v=>({v:cents(v||0),t:"n",s:{fmt:"#,##0.00"}});
   const head=["Tracking Number","UPS Status","Last Activity","Location","Delivered","Reconciliation","Invoice","Invoice Date","Customer Code","Customer Name","Order Number",
-              "Charged by UPS","Billed to Customer","To re-bill","Source","UPS Tracking"].map(H);
+              "UPS","WMS / TMS","Difference","Source","UPS Tracking"].map(H);
   const u=r=>r.ups2||{};
   const body=rows.map(r=>[r.t, u(r).error?("("+u(r).error+")"):(u(r).status||""), u(r).date?upsDate(u(r).date)+(u(r).time?" "+upsTime(u(r).time):""):"", u(r).location||"", u(r).delivered?upsDate(u(r).delivered):"",
     r.state, r.per.map(e=>e.invoice||"(current)").join(", "), r.per.map(e=>e.invDate).filter(Boolean).join(", "),
@@ -14306,9 +14305,9 @@ function renderRebill(){
   const chgTip=it=>esc([it.desc?L("UPS 名目:","UPS: ")+it.desc:"", it.credit?L("抵已收 ","less billed ")+(it.creditFrom||[]).join(" · ")+" "+money(it.credit):""].filter(Boolean).join("\n"));
   if(tb) tb.innerHTML=items.map(it=>`<tr><td class="mono">${esc(it.cus)}</td><td>${esc(cusNameOf(it.cus))}</td>
       <td class="mono">${esc(it.order)}</td><td class="mono">${esc(it.trk)}</td><td title="${chgTip(it)}">${chgCell(it)}</td>
-      <td class="num">${money(it.ups)}</td><td class="num">${money(it.billed)}</td>
+      <td class="num">${money(it.billed)}</td><td class="num">${money(it.ups)}</td>
       <td class="num">${it.rate==null?dash:money(it.rate)}</td><td class="num"><b>${money(it.amt)}</b></td>
-      <td class="num">${it.fuel?money(it.fuel):dash}</td><td class="num"><b>${money(it.total)}</b></td></tr>`).join("")
+      <td class="num">${it.fuel?money(it.fuel)+` <span class="empty">${esc(String(it.fuelPct))}%</span>`:dash}</td><td class="num"><b>${money(it.total)}</b></td></tr>`).join("")
     ||`<tr><td colspan="11" class="empty">${esc(rb&&rb.noItem
         ? L("模板沒有逐項費用欄,列不出漏收的項目。","The file has no itemised charge columns, so missed charges cannot be listed.")
         : L("沒有漏收的項目。","Nothing to re-bill."))}</td></tr>`;
@@ -14316,8 +14315,8 @@ function renderRebill(){
   const totFuel=items.reduce((a,it)=>cents(a+(it.fuel||0)),0), grand=cents(tot+totFuel);
   const tf=$("#tRebill")&&$("#tRebill").tFoot;
   if(tf) tf.innerHTML=items.length?`<tr><td colspan="5"><b>${esc(L("合計","Total"))}</b></td>
-      <td class="num"><b>${money(items.reduce((a,it)=>cents(a+it.ups),0))}</b></td>
       <td class="num"><b>${money(items.reduce((a,it)=>cents(a+it.billed),0))}</b></td>
+      <td class="num"><b>${money(items.reduce((a,it)=>cents(a+it.ups),0))}</b></td>
       <td class="num"></td>
       <td class="num"><b>${money(tot)}</b></td>
       <td class="num"><b>${money(totFuel)}</b></td>
@@ -14328,9 +14327,9 @@ function renderRebill(){
     const skip=rb&&rb.skipped?rb.skipped:0;
     const unset=items.filter(it=>it.unset).length;
     sum.textContent=(rb&&rb.noItem)?"":L(
-      "應補收 "+money(tot)+" · 燃油 "+money(totFuel)+" · 合計 "+money(grand)+" · "+items.length+" 項 · "+cusN+" 個客戶"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":"")
+      "差額 "+money(tot)+" · 燃油附加費 "+money(totFuel)+" · 合計 "+money(grand)+" · "+items.length+" 項 · "+cusN+" 個客戶"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":"")
         +(unset?" · "+unset+" 項費率未設定(到 04 渠道與附加費費率設好再匯一次)":""),
-      money(tot)+" to re-bill · fuel "+money(totFuel)+" · "+money(grand)+" in all · "+items.length+" item(s) · "+cusN+" customer(s)"+(skip?" · "+skip+" row(s) without itemised charges not listed":"")
+      "Difference "+money(tot)+" · fuel surcharge "+money(totFuel)+" · total "+money(grand)+" · "+items.length+" item(s) · "+cusN+" customer(s)"+(skip?" · "+skip+" row(s) without itemised charges not listed":"")
         +(unset?" · "+unset+" item(s) with no rate set (set them under 04 Channel & Surcharge Rates and import again)":""));
   }
   const tc=$("#tRebillCus")&&$("#tRebillCus").tBodies[0];
@@ -14396,7 +14395,7 @@ async function reconExport(){
   /* ---- Summary:一個客戶一列 ---- */
   const sumCols=[["Customer Code","id"],["Customer Name","id"],["Rate Level","id"],["Repricing Status","id"],
     ["Rows","id"],["Packages Matched","id"],["Packages","id"],
-    ["Billed to Client","cli"],["Charged by UPS","ups"],["Recomputed","rep"],
+    ["WMS / TMS","cli"],["UPS","ups"],["Reprice","rep"],
     ["Profit (Billed − UPS)","chk"],["Billed vs Recomputed","chk"],["UPS vs Recomputed","chk"]].map(([name,g])=>({name,g}));
   const sumRows=r.cus.map(a=>[a.code, a.name, lvl(a), why(a.block), a.orders, a.found, a.pkgs,
      m(a.amt,"cli"), m(a.cost,"ups"), m(a.rep,"rep"), m(a.profit), m(a.pgap), m(a.gap)]);
@@ -14406,8 +14405,8 @@ async function reconExport(){
   const ordCols=[["Order Number","id"],["Transaction Date","id"],["Customer Code","id"],["Rate Level","id"],
     ["Repricing Status","id"],["Tracking Number","id"],["Shipment Reference Number 1","id"],["Shipment Reference Number 2","id"],
     ["Packages","id"],["Packages Matched","id"],["Not On Invoice","id"],
-    ["Channel","cli"],["Zone","cli"],["Billed Weight","cli"],["Billed to Client","cli"],
-    ["Channel (UPS)","ups"],["Zone (UPS)","ups"],["Billed Weight (UPS)","ups"],["Charged by UPS","ups"],
+    ["Channel","cli"],["Zone","cli"],["Billed Weight","cli"],["WMS / TMS","cli"],
+    ["Channel (UPS)","ups"],["Zone (UPS)","ups"],["Billed Weight (UPS)","ups"],["UPS","ups"],
     ["Recomputed","rep"],
     ["Channel Match","chk"],["Zone Match","chk"],["Profit (Billed − UPS)","chk"],["Billed vs Recomputed","chk"],["UPS vs Recomputed","chk"]]
     .map(([name,g])=>({name,g}));
@@ -14424,7 +14423,7 @@ async function reconExport(){
   const chgName=n=>n===RECON_UNKNOWN?"Unrecognised codes":n;
   const noCode=o=>o.name===RECON_UNKNOWN||o.name===RECON_OTHER;
   const chgCols=[["Scope","id"],["Charge","id"],["Your Code","id"],["System Code","id"],
-    ["Billed to Client","cli"],["Charged by UPS","ups"],["Recomputed","rep"],
+    ["WMS / TMS","cli"],["UPS","ups"],["Reprice","rep"],
     ["Billed vs Recomputed","chk"],["Recomputed vs UPS","chk"]].map(([name,g])=>({name,g}));
   const chgRows=[];
   const crow=(scope,o,pre)=>chgRows.push([scope, pre+chgName(o.name),
@@ -14554,8 +14553,8 @@ async function reconExport(){
   const rbHead=[["Customer Code","EFE3CB"],["Customer Name","EFE3CB"],["Order Number","EFE3CB"],
     ["Tracking Number","EFE3CB"],["Invoice Date","EFE3CB"],["Charge","EFE3CB"],["UPS Description","EFE3CB"],
     ["Type","EFE3CB"],["Less Billed As","EFE3CB"],
-    ["Charged by UPS",UPSH],["Billed to Client",WMSH],["Client Rate",REPH],["To re-bill",DIFH],
-    ["Fuel %",REPH],["Fuel",DIFH],["To re-bill incl. Fuel",DIFH]].map(([n,f])=>dh(n,f));
+    ["UPS",UPSH],["WMS / TMS",WMSH],["Reprice",REPH],["Difference",DIFH],
+    ["Fuel %",REPH],["Fuel",DIFH],["Total incl. Fuel",DIFH]].map(([n,f])=>dh(n,f));
   const rbRows=rb.items.map(it=>[it.cus, cusNameOf(it.cus), it.order, it.trk, dcell(it.invDate), it.charge, it.desc||"",
      typeOf(it), (it.creditFrom||[]).join(", "),
      dm(it.ups), dm(it.billed), it.rate==null?"":dm(it.rate), dm(it.amt),
@@ -14807,8 +14806,8 @@ function renderAnalysis(){
       +(r.hasBilled?" · itemised charges imported":" · no itemised charges"));
   const tiles=$("#anaTiles");
   if(tiles) tiles.innerHTML=[
-    [L("向客戶收","Billed to client"), money(t.amt), ""],
-    [L("UPS 收","Charged by UPS"),     money(t.cost), ""],
+    ["WMS / TMS", money(t.amt), ""],
+    ["UPS",       money(t.cost), ""],
     [L("毛利","Profit"),               money(t.profit), "", t.profit<0],
     [L("毛利率","Margin"),             anaPct(t.margin),
       L(t.orders+" 筆 · "+r.cus.length+" 個客戶",
@@ -14885,7 +14884,7 @@ async function anaExport(){
   const m=v=>v==null?"":{v,t:"n",s:M};
   const pc=v=>v==null?"":{v:+v.toFixed(2),t:"n",s:P};
   const t=r.tot, lvls=anaLevels(r);
-  const lvlRows=[["Rate Level","Clients","Orders","Billed to Client","Charged by UPS",
+  const lvlRows=[["Rate Level","Clients","Orders","WMS / TMS","UPS",
     "Profit","Margin %","Share of Profit %"].map(HD)]
    .concat(lvls.map(o=>[anaLvlName(o.level), o.n, o.orders,
      m(o.amt), m(o.cost), m(o.profit), pc(o.margin), pc(o.share)]))
@@ -14894,7 +14893,7 @@ async function anaExport(){
   const why=b=>b===RL_NONE?"NOT PRICED — no rate level assigned"
              :b===RL_GONE?"NOT PRICED — rate level deleted":"";
   const cusRows=[["Customer Code","Customer Name","Rate Level","Repricing Status","Orders",
-    "Packages","Billed to Client","Charged by UPS","Profit","Margin %","Recomputed",
+    "Packages","WMS / TMS","UPS","Profit","Margin %","Reprice",
     "Billed vs Recomputed","UPS vs Recomputed"].map(HD)]
    .concat(r.cus.slice().sort((x,y)=>y.profit-x.profit).map(a=>[
      a.code, a.name, a.block?"":anaLvlName(a.level), why(a.block), a.orders, a.pkgs,
@@ -14902,8 +14901,8 @@ async function anaExport(){
    .concat([["TOTAL","","","",t.orders,t.pkgs,m(t.amt),m(t.cost),m(t.profit),
      pc(t.margin),m(t.rep),m(t.pgap),m(t.gap)]]);
   const chgName=n=>n===RECON_UNKNOWN?"Unrecognised codes":n;
-  const chgRows=[["Charge","Your Code","System Code","Billed to Client","Recomputed",
-    "Charged by UPS","Billed vs Recomputed","Recomputed vs UPS"].map(HD)]
+  const chgRows=[["Charge","Your Code","System Code","WMS / TMS","Reprice",
+    "UPS","WMS / TMS vs Reprice","Reprice vs UPS"].map(HD)]
    .concat((r.chg||[]).map(o=>[chgName(o.name),
      o.name===RECON_UNKNOWN?"":chgCodeOf(o.name),
      o.name===RECON_UNKNOWN?"":chgUpsCodes(o.name).join(" "),
@@ -15254,7 +15253,7 @@ function dashWmsAgg(){
   }
   const rest=cents(total-itemised);
   if(Math.abs(rest)>=0.005) buckets[DASH_WMS_REST]=rest;
-  return {src:RECON_SRC, buckets, total:cents(total), n:r.orders.length};
+  return {src:RECON_SRC, buckets, total:cents(total), n:r.orders.length, rebill:cents((r.rebill&&r.rebill.grand)||0)};
 }
 const RECLASS_RE=/AHS\/Large Package|AHS\/大包裹/;
 /* 同一種附加費被 UPS 拆成多個變體收費的,在圓餅上合成一塊來排名。
@@ -15668,7 +15667,7 @@ function dashAllHTML(all){
       <th>${L("期別","Invoice")}</th><th>${L("帳單日","Date")}</th>
       ${multi?`<th>${L("UPS 帳號","Account")}</th>`:""}
       <th>${L("貨件","Shipments")}</th>
-      <th>${L("向客戶收","Charge customer")}</th><th>UPS</th>
+      <th>${L("重算","Reprice")}</th><th>UPS</th>
       <th>${L("毛利","Profit")}</th><th>${L("毛利率","Margin")}</th>
       <th>${L("帳戶層費用","Account charges")}</th>
     </tr></thead><tbody>${rows}</tbody>
@@ -15979,7 +15978,7 @@ function prSheetPeriods(){
     return m?Math.floor((Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/86400000):"";
   };
   const head=[L("期別","Invoice"),L("帳單日","Invoice date"),L("UPS 帳號","UPS account"),
-              L("貨件","Shipments"),L("向客戶收","Charge customer"),"UPS",
+              L("貨件","Shipments"),L("重算","Reprice"),"UPS",
               L("毛利","Profit"),L("毛利率","Margin"),L("帳戶層費用","Account charges"),
               L("備註","Note")];
   const body=[]; let tn=0,tr=0,tb=0,ta=0,nOk=0;
@@ -16605,7 +16604,7 @@ function renderDashboard(){
     <!-- 帳戶層費用不算進毛利,所以它前面不掛減號 —— 掛了就是在說它有被扣掉。
          中間那條線把它和前面那條算式分開。 -->
     <div class="dflow">
-      <div class="dcell"><div class="dk">${L("向客戶收","Charge customer")}</div>
+      <div class="dcell"><div class="dk">${L("重算","Reprice")}</div>
         <div class="dv">${money(d.repriced)}</div></div>
       <div class="dcell dop" data-op="−"><div class="dk">UPS</div>
         <div class="dv">${money(d.billed)}</div></div>
@@ -16614,6 +16613,17 @@ function renderDashboard(){
       <div class="dcell dapart"><div class="dk">${L("帳戶層費用","Account charges")}</div>
         <div class="dv">${money(d.account)}</div></div>
     </div>
+    ${wmsAgg?`<!-- 對帳那一側:向客戶實收的 + 補收清單的差額 = 應向客戶收的 -->
+    <div class="dflow" style="margin-top:8px">
+      <div class="dcell"><div class="dk">${esc(wmsAgg.src)}</div>
+        <div class="dv">${money(wmsAgg.total)}</div></div>
+      <div class="dcell dop" data-op="+"><div class="dk">${L("差額(補收)","Difference (to re-bill)")}</div>
+        <div class="dv">${money(wmsAgg.rebill)}</div></div>
+      <div class="dcell dop" data-op="="><div class="dk">${L("應收合計","Chargeable")}</div>
+        <div class="dv">${money(cents(wmsAgg.total+wmsAgg.rebill))}</div></div>
+      <div class="dcell dapart"><div class="dk">${L("對帳筆數","Reconciled rows")}</div>
+        <div class="dv">${wmsAgg.n}</div></div>
+    </div>`:""}
     <div class="dcard">
       <div class="ch"><h3>${L("費用組成","Cost breakdown")}</h3>
         <button class="act ghost" id="bPerXls" style="padding:3px 11px;font-size:12px">${
@@ -16706,7 +16716,7 @@ function prSheetInvoice(){
     kv(L("帳單日","Invoice date"), serial(invDate), DATE),
     kv(L("UPS 帳號","UPS account"), acct),
     kv(L("貨件數","Shipments"), d.n, INT),
-    kv(L("向客戶收","Charge customer"), cents(d.repriced), MONEY),
+    kv(L("重算","Reprice"), cents(d.repriced), MONEY),
     kv("UPS", cents(d.billed), MONEY),
     kv(L("毛利","Profit"), cents(profit), MONEY),
     kv(L("毛利率","Margin"), d.repriced?profit/Math.abs(d.repriced):0, PCT),
@@ -16780,7 +16790,7 @@ function prSheetInvoice(){
     return n===""?tcell(v,"center"):{v:n,t:"n",s:{fmt:DATE,align:"center",border:true}}; };
   const det=[[hc(L("期號","Invoice Number"),null,"left"),hc(L("帳單日","Invoice Date")),
               hc(L("追蹤號","Tracking"),null,"left"),
-              hc(L("向客戶收","Charge customer")),hc("UPS"),
+              hc(L("重算","Reprice")),hc("UPS"),
               hc(L("毛利","Profit")),hc(L("毛利率","Margin"))]];
   /* 不放合計列:總數在 Summary 頁,而腳註列會被 Excel 的篩選排序捲進資料裡。 */
   for(const o of reportRows()){
@@ -18909,9 +18919,9 @@ $("#bCsv") && ($("#bCsv").onclick=async ()=>{
        color:(typeof v==="number"&&v<0)?RED:undefined}});
 
   const DET=[L("期號","Invoice Number"),L("帳單日","Invoice Date"),L("追蹤號","Tracking"),
-             L("向客戶收","Billed amount"),"UPS",L("毛利","Profit"),L("毛利率","Margin")];
+             L("重算","Reprice"),"UPS",L("毛利","Profit"),L("毛利率","Margin")];
   const OV=[L("期號","Invoice Number"),L("帳單日","Invoice Date"),"UPS",
-            L("向客戶收","Charge Customer"),L("毛利","Profit"),L("毛利率","Margin")];
+            L("重算","Reprice"),L("毛利","Profit"),L("毛利率","Margin")];
   const DCOL=[{w:20},{w:12},{w:22},{w:14},{w:14},{w:14},{w:10}];
   const sheets=[]; const ovRows=[];
   for(const inv of Object.keys(byInv).sort()){
@@ -18951,7 +18961,7 @@ $("#bCsv") && ($("#bCsv").onclick=async ()=>{
       sumRows.push([lab(L("帳單日","Invoice date")),dc(r[1])]);
       sumRows.push([lab(L("UPS 帳號","UPS account")),tx(acct0)]);
       sumRows.push([lab(L("貨件數","Shipments")),nm(n,INT)]);
-      sumRows.push([lab(L("向客戶收","Charge customer")),nm(sv)]);
+      sumRows.push([lab(L("重算","Reprice")),nm(sv)]);
       sumRows.push([lab("UPS"),nm(cv)]);
       sumRows.push([lab(L("毛利","Profit")),nm(r2(sv-cv))]);
       sumRows.push([lab(L("毛利率","Margin")),nm(sv?r6((sv-cv)/Math.abs(sv)):0,PCT)]);
@@ -19022,7 +19032,7 @@ $("#bCsv") && ($("#bCsv").onclick=async ()=>{
                       wr(noteBy[t]||""),nm(r2(cost[t]||0))]));
   blockOf(L("報表上有、帳單上沒有","Billed to client, not on invoice"),
     [L("追蹤號","Tracking"),L("原因","Reason"),L("期號","Invoice"),
-     L("UPS 備註","UPS note"),L("向客戶收","Charged")],
+     L("UPS 備註","UPS note"),L("重算","Reprice")],
     noCost.map(t=>[tx(t),tx(whyOf(noteBy[t],"","")),tx(invNo[t]||"","center"),
                    wr(noteBy[t]||""),nm(r2(sell[t]||0))]));
   if(oRows.length)
@@ -19366,7 +19376,7 @@ const I18N={
   "th.runinvdate":["帳單日期","Invoice date"],
   "th.runinv":["帳單","Invoice"],
   "th.runsrc":["來源","Source"],
-  "th.runrebill":["應補收","To re-bill"],
+  "th.runrebill":["差額","Difference"],
   "th.runwhen":["對帳時間","Reconciled"],
   "rs.inv":["1. UPS 帳單匯入","1. UPS Invoice Import"],
   "rs.wms":["2. WMS / TMS 匯入","2. WMS / TMS Import"],
@@ -19485,10 +19495,13 @@ const I18N={
     "Charges UPS billed that WMS / TMS did not bill the client, one item per row, largest first, under UPS's own itemised name with the invoice wording beneath, ready to pass on to the customer. To re-bill is the customer's own rate where the rate level priced the charge, otherwise the UPS amount. Fuel comes last: to re-bill times the customer's fuel percent, only on charges UPS itself fuels. Profit is only accurate once these are re-billed; the full comparison is folded below."],
   "th.rebillorder":["單號","Order Number"],
   "th.rebilltrk":["追蹤號","Tracking Number"],
-  "th.rebillrate":["客戶費率","Client rate"],
-  "th.rebillamt":["應補收","To re-bill"],
-  "th.rebillfuel":["燃油","Fuel"],
-  "th.rebillgrand":["含燃油","Incl. fuel"],
+  "th.rebillrate":["重算","Reprice"],
+  "th.rebillamt":["差額","Difference"],
+  "th.rbwms":["WMS / TMS","WMS / TMS"],
+  "th.rbups":["UPS","UPS"],
+  "th.rbrep":["重算","Reprice"],
+  "th.rebillfuel":["燃油附加費","Fuel surcharge"],
+  "th.rebillgrand":["合計","Total"],
   "th.rebillitems":["項目","Items"],
   "hd.rebillsum":["補收彙總","Re-bill summary"],
   "hint.rebillsum":["每個客戶要補收多少;哪幾種費用最常漏收。","How much to re-bill per customer, and which charges are missed most."],
@@ -19601,11 +19614,11 @@ const I18N={
   "hd.reconres":["依客戶","By customer"],
   "th.reconorders":["筆數","Rows"],
   "th.reconpkgs":["件數","Packages"],
-  "th.reconbilled":["客戶實收","Billed to customer"],
-  "th.reconups":["UPS 實收","Charged by UPS"],
+  "th.reconbilled":["WMS / TMS","WMS / TMS"],
+  "th.reconups":["UPS","UPS"],
   "th.reconprofit":["毛利","Profit"],
   "th.reconmargin":["毛利率","Margin"],
-  "th.reconrep":["系統重算","Recomputed"],
+  "th.reconrep":["重算","Reprice"],
   "th.recongap":["UPS 差異","UPS vs recomputed"],
   "th.reconpgap":["定價差異","Billed vs recomputed"],
   "hint.reconcols":["各客戶依其指派之費率層級重算;實收、重算與 UPS 三數推出定價差異與 UPS 差異。定義與特殊情況詳見說明(PDF)。","Each customer is repriced at its assigned rate level; billed, recomputed and UPS amounts yield the pricing and UPS variances. Definitions and edge cases are in the guide."],
@@ -19670,7 +19683,7 @@ const I18N={
   "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",
     "Nothing to analyse yet. This page reads the reconciliation — once the filled template is imported, the numbers land here and the whole analysis can be exported."],
   "btn.anaxls":["匯出毛利分析","Export analysis"],
-  "th.chgbilled":["向客戶收","Billed to client"],
+  "th.chgbilled":["WMS / TMS","WMS / TMS"],
   "th.chgpgap":["實收 vs 應收","Billed vs recomputed"],
   "lb.tplchg":["逐項費用(選填)","Itemised charges (optional)"],
   "hd.analvl":["依費率層級","By rate level"],
