@@ -1293,13 +1293,22 @@ main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
 .hrow .hnum{font-family:Consolas,monospace;font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
 .hrow .hnum.pos{color:var(--run2);font-weight:700}
 .hrow .hnum.neg{color:var(--neg);font-weight:700}
-/* 還沒有批次的時候,中間放路怎麼走 —— 三步一列。 */
-.hsteps{display:flex;align-items:stretch;gap:12px;flex-wrap:wrap;margin-top:16px}
-.hsteps .hstep{flex:1 1 220px;padding:14px 16px;border:2px dashed var(--line);border-radius:12px;background:var(--panel)}
-.hsteps .hstep i{font-style:normal;font-size:20px;display:block;margin-bottom:6px}
-.hsteps .hstep b{display:block;font-size:14px;color:var(--ink);margin-bottom:4px}
-.hsteps .hstep s{display:block;text-decoration:none;font-size:12.5px;color:var(--muted);line-height:1.6}
-.hsteps .harw{align-self:center;color:var(--accent);font-size:20px}
+/* 還沒有批次的時候的引導卡:編號在左、一步一列,第一步是一顆實心按鈕。
+   三個空的虛線框並排看起來像沒做完 —— 一張卡、三列,才像刻意的。 */
+.hstart{margin-top:18px;max-width:900px;border:2px solid var(--accent);border-radius:14px;
+  overflow:hidden;background:var(--panel);box-shadow:0 2px 0 rgba(0,0,0,.06)}
+.hstarthd{padding:15px 20px 13px;border-bottom:2px solid var(--line)}
+.hstarthd b{display:block;font-family:var(--titlefam);font-size:20px;color:var(--ink);margin-bottom:4px}
+.hstarthd span{font-size:13px;color:var(--muted)}
+.hstart .hstep{display:flex;align-items:center;gap:16px;padding:14px 20px;
+  border-top:1px solid var(--line-soft,var(--line))}
+.hstart .hstep:first-of-type{border-top:0}
+.hstart .hstep .hnum{flex:0 0 34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--titlefam);font-size:16px;font-weight:700;
+  background:var(--accent);color:var(--tab)}
+.hstart .hstx{flex:1 1 auto;min-width:0}
+.hstart .hstx b{display:block;font-size:15px;color:var(--ink);margin-bottom:2px}
+.hstart .hstx s{display:block;text-decoration:none;font-size:12.5px;color:var(--muted);line-height:1.6}
 @media (max-width:900px){ .homeboard{grid-template-columns:1fr}
   .hrow{grid-template-columns:1fr auto}
   .hrow .hd{display:none} }
@@ -8534,28 +8543,49 @@ function renderHome(){
   const card=(cls,k,v,sub,extra)=>`<div class="hcard${cls?" "+cls:""}">
     <div class="hk">${esc(k)}</div><div class="hv${v.neg?" neg":""}">${v.html}</div>
     ${sub?`<div class="hsub">${sub}</div>`:""}${extra||""}</div>`;
-  const hero=last
-    ? card("hero", L("最近一次對帳的毛利","Profit · latest reconciliation"),
-        {html:money(pf)+(mg==null?"":`<small>${anaPct(mg)}</small>`), neg:pf<0},
-        esc(runLabelOf(last))+" · "+esc(tplWhen(last.when))+(last.by?" · "+esc(last.by):""),
-        `<div class="heq">
-          <div>${L("應收合計","Chargeable")}<b>${money(ch)}</b></div>
-          <div>UPS<b>${money(cost)}</b></div>
-          <div>${L("對帳筆數","Rows")}<b>${toNum(last.n).toLocaleString()}</b></div>
-        </div>`)
-    : `<div class="hcard hero"><div class="hk">${esc(L("最近一次對帳","Latest reconciliation"))}</div>
-        <div class="hempty">${esc(L("還沒有對帳批次。匯入 UPS 帳單,再把填好的 WMS / TMS 模板倒進來,結果就會出現在這裡。",
-          "No reconciliation yet. Import a UPS invoice, then bring in the filled WMS / TMS template — the result lands here."))}</div></div>`;
-  const rb=last
-    ? card("", L("這一批的應補收","To re-bill · latest batch"),
-        {html:money(rebill), neg:rebill<0},
-        esc(L("向客戶補收的差額","the shortfall to bill the client")))
-    : card("", L("這一批的應補收","To re-bill · latest batch"), {html:"—"}, "");
+  /* 還沒有任何對帳的時候,三塊磚裡有兩塊沒有東西可講 —— 一個「—」和一個 0
+     並排,看起來像壞掉,不像新的。那時候不擺磚,擺一張「從這裡開始」:
+     三步一列,編號在左邊,第一步給一顆真的按鈕。 */
+  if(!last){
+    const step=(n,t,d,go,primary)=>`<div class="hstep">
+      <span class="hnum">${n}</span>
+      <div class="hstx"><b>${esc(t)}</b><s>${esc(d)}</s></div>
+      ${go?`<button class="act${primary?"":" ghost"} sm" data-go="${go}">${
+        esc(L("前往","Go"))}</button>`:""}</div>`;
+    box.innerHTML=`<div class="hstart">
+      <div class="hstarthd">
+        <b>${esc(L("從這裡開始","Start here"))}</b>
+        <span>${esc(per.length
+          ? L("已歸檔 "+per.length+" 期帳單。填好模板倒進來,就會有第一份對帳結果。",
+              per.length+" invoice period(s) filed. Bring in a filled template and the first reconciliation appears.")
+          : L("三步就會有第一份對帳結果。","Three steps to your first reconciliation."))}</span>
+      </div>
+      ${step(1,L("匯入 UPS 帳單","Import the UPS invoice"),
+              L("一次可以選好幾期,匯入即歸檔","several periods at once; filed as they import"),
+              "files", !per.length)}
+      ${step(2,L("下載模板、填好倒回來","Download the template, fill it, bring it back"),
+              L("一個追蹤號一列,綠色那幾欄是要填的","one tracking number per row; the green columns are yours"),
+              "wmsdata", !!per.length)}
+      ${step(3,L("看結果","Read the result"),
+              L("該補收多少、這一批賺多少","what to re-bill, and what the batch made"),"")}
+    </div>`;
+    box.querySelectorAll("[data-go]").forEach(b2=>{ b2.onclick=()=>showTab(b2.dataset.go); });
+    return;
+  }
+  const hero=card("hero", L("最近一次對帳的毛利","Profit · latest reconciliation"),
+      {html:money(pf)+(mg==null?"":`<small>${anaPct(mg)}</small>`), neg:pf<0},
+      esc(runLabelOf(last))+" · "+esc(tplWhen(last.when))+(last.by?" · "+esc(last.by):""),
+      `<div class="heq">
+        <div>${L("應收合計","Chargeable")}<b>${money(ch)}</b></div>
+        <div>UPS<b>${money(cost)}</b></div>
+        <div>${L("對帳筆數","Rows")}<b>${toNum(last.n).toLocaleString()}</b></div>
+      </div>`);
+  const rb=card("", L("這一批的應補收","To re-bill · latest batch"),
+      {html:money(rebill), neg:rebill<0},
+      esc(L("向客戶補收的差額","the shortfall to bill the client")));
   const hist=card("", L("帳單歷史","Invoices filed"),
     {html:String(per.length)+`<small>${L("期","periods")}</small>`},
     per.length?esc(L("最新:","Latest: ")+per[0].key+" · "+(per[0].date||"—")):esc(L("還沒有帳單","nothing filed yet")));
-  /* 中間那一段:有批次就列最近幾批(點一下就開),沒有就講一次路怎麼走。
-     兩種情況都要有東西 —— 首頁空著不是留白,是沒有內容。 */
   const rows=runs.slice(0,5).map(r=>{
     const v=r.sum||{}; const c=cents(toNum(v.amt)+toNum(v.rebill));
     const p=cents(c-toNum(v.cost));
@@ -8565,23 +8595,13 @@ function renderHome(){
       <span class="hnum">${toNum(r.n).toLocaleString()}${L(" 筆"," rows")}</span>
       <span class="hnum">${money(c)}</span>
       <span class="hnum ${p<0?"neg":"pos"}">${money(p)}</span></button>`; }).join("");
-  const mid=runs.length
-    ? `<div class="hlist"><div class="hlisthd">${esc(L("最近的對帳批次","Recent reconciliations"))}
-         <span>${esc(L("點一下開起來看","open one to look at it"))}</span></div>${rows}</div>`
-    : `<div class="hsteps">
-        <div class="hstep"><i>📁</i><b>${esc(L("匯入 UPS 帳單","Import the UPS invoice"))}</b>
-          <s>${esc(L("一次可以選好幾期,匯入即歸檔","several periods at once; filed as they import"))}</s></div>
-        <div class="harw">→</div>
-        <div class="hstep"><i>📄</i><b>${esc(L("下載模板、填好倒回來","Download the template, fill it, bring it back"))}</b>
-          <s>${esc(L("一個追蹤號一列,綠色那幾欄是要填的","one tracking number per row; the green columns are yours"))}</s></div>
-        <div class="harw">→</div>
-        <div class="hstep"><i>⚖️</i><b>${esc(L("看結果","Read the result"))}</b>
-          <s>${esc(L("該補收多少、這一批賺多少","what to re-bill, and what the batch made"))}</s></div>
-      </div>`;
   box.innerHTML=`<div class="homeboard">${hero}${rb}${hist}</div>
     <div class="hacts">
       <button class="act ghost" data-go="analysis">📈 ${esc(L("儀表板","Dashboard"))}</button>
-    </div>${mid}`;
+    </div>
+    <div class="hlist"><div class="hlisthd">${esc(L("最近的對帳批次","Recent reconciliations"))}
+      <span>${esc(L("點一下開起來看","open one to look at it"))}</span></div>${rows}</div>`;
+  box.querySelectorAll("[data-go]").forEach(b2=>{ b2.onclick=()=>showTab(b2.dataset.go); });
   box.querySelectorAll("[data-run]").forEach(b=>{ b.onclick=()=>{
     if(typeof reconOpenRun==="function")
       reconOpenRun(b.dataset.run,false).catch(e=>toast(String((e&&e.message)||e),false));
