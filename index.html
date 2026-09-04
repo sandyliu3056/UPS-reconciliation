@@ -13516,6 +13516,17 @@ function bucketsOf(name){
   for(const [code,col] of Object.entries(REBILL_CODECOL)) if(col===name){ const m=ACC_CODE_MAP[code]; if(m&&m.fee&&!out.includes(m.fee)) out.push(m.fee); }
   return out;
 }
+/* 退款的短名:寬表的退款欄用「AHS Refund」這種叫法,一看就知道退的是哪一類。 */
+function refundShortOf(nm){
+  const n=String(nm||"");
+  if(/additional handling/i.test(n)) return "AHS";
+  if(/large package/i.test(n)) return "LPS";
+  if(/delivery area/i.test(n)) return "DAS";
+  if(/remote area/i.test(n)) return "RAS";
+  if(/adult signature/i.test(n)) return "Adult Signature";
+  if(/signature/i.test(n)) return "Signature";
+  return "";
+}
 function rebillDisabled(name){
   const dis=(CFG&&CFG.raw&&CFG.raw.accessorial_disabled)||[];
   if(!dis.length) return false;
@@ -14821,6 +14832,7 @@ function reconRun(list){
         const billedAmt=bw2==null?0:cents(toNum(bw2));
         if(Math.abs(billedAmt)>0.004){
           items.push(Object.assign({kind:"refund", charge:bn, desc:zn+" — reversed",
+            refShort:refundShortOf(nm),
             ups:0, billed:billedAmt, rate:0, amt:cents(-billedAmt), credit:0, creditFrom:[], wms:billedAmt, over:0},
             base, zOldTxt?{zone:zOldTxt}:{}));
         }
@@ -14937,13 +14949,12 @@ function reconRun(list){
         backTot=cents(backTot+w);
         /* 合併欄自己沒有 UPS 行:說明改用被沖銷成員的帳單原文(沒有原文就用
            成員名),對帳單上看得出退的是哪一種附加費。 */
+        const revd=famFees.filter(m=>rev.has(m)&&!upsCols.includes(m));
         let dsc=(desc[n]||[]).join(" / ");
-        if(!dsc){
-          const revd=famFees.filter(m=>rev.has(m)&&!upsCols.includes(m));
-          dsc=revd.map(m=>(desc[m]||[]).join(" / ")).filter(Boolean).join(" / ")
-             || revd.join(" / ");
-        }
+        if(!dsc) dsc=revd.map(m=>(desc[m]||[]).join(" / ")).filter(Boolean).join(" / ")
+                     || revd.join(" / ");
         items.push(Object.assign({kind:"refund", charge:n, desc:dsc,
+          refShort:refundShortOf(revd[0]||n),
           ups:0, billed:w, rate:0, amt:cents(-w), credit:0, creditFrom:[], wms:w, over:0}, base));
       }
       if(coveredByHead) continue;
@@ -15707,7 +15718,8 @@ async function reconExport(){
   const rb=r.rebill||{items:[]};
   const ordInfo=new Map();
   for(const o2 of (r.orders||[])) ordInfo.set((o2.trks||[]).join(", "), o2);
-  const rbColOf=it=>(it.kind==="refund" && gs.some(g=>g.head===it.charge))?"Refund":it.charge;
+  const rbColOf=it=>(it.kind==="refund" && gs.some(g=>g.head===it.charge))
+    ?((it.refShort?it.refShort+" ":"")+"Refund"):it.charge;
   const rbByOrd=new Map();
   for(const it of rb.items){
     const k=it.cus+" "+it.order+" "+it.trk;
@@ -15720,7 +15732,7 @@ async function reconExport(){
   const rbOrders=[...rbByOrd.values()].filter(o=>Object.keys(o.amt).length)
     .sort((a,b3)=>String(a.cus).localeCompare(String(b3.cus))||String(a.trk).localeCompare(String(b3.trk)));
   const rbCols=[...new Set(rbOrders.flatMap(o=>Object.keys(o.amt)))];
-  const rbOrd=n=>{ if(n==="Refund") return 2e6; const i=AUD_FEES.indexOf(n); return i<0?1e6:i; };
+  const rbOrd=n=>{ if(/ ?Refund$/.test(n)) return 2e6; const i=AUD_FEES.indexOf(n); return i<0?1e6:i; };
   rbCols.sort((a,b3)=>rbOrd(a)-rbOrd(b3)||a.localeCompare(b3));
   const dm$=v=>({v:cents(v||0),t:"n",s:{fmt:"$#,##0.00"}});
   const rbHead=[["Customer Code","EFE3CB"],["Customer Name","EFE3CB"],["Customer Level","EFE3CB"],
