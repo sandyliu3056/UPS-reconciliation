@@ -1660,7 +1660,11 @@ label:has(#newChanOn){display:none !important}
        → 看結果,三步在同一顆按鈕底下)、看趨勢、查歷史、管理。左欄不再印編號。 -->
   <button role="tab" aria-selected="false" data-p="home" class="display" id="navHome"><i class="nnum">🏠</i><span class="nico"></span><span data-i18n="tab.home">Home</span></button>
   <div class="navgrp" data-i18n="nav.cfg">Configuration</div>
-  <button role="tab" aria-selected="false" data-p="general" class="display"><span class="nico">⚙️</span><span data-i18n="tab.general">General Setting</span></button>
+  <!-- 系統設定原本收在「計價設定」底下的第三個子頁。它裝的是全帳號共用的東西
+       (DIM、稽核費、燃油適用、追蹤 API),和層級、代碼不是同一件事,藏在
+       第三個子頁裡也沒有人找得到 —— 拉出來自己一項。 -->
+  <button role="tab" aria-selected="false" data-p="sys" class="display"><span class="nico">⚙️</span><span data-i18n="tab.sys">General Settings</span></button>
+  <button role="tab" aria-selected="false" data-p="general" class="display"><span class="nico">🧮</span><span data-i18n="tab.general">General Setting</span></button>
   <button role="tab" aria-selected="false" data-p="rate" class="display"><span class="nico">👥</span><span data-i18n="tab.rate">Account &amp; Client Setup</span></button>
   <button role="tab" aria-selected="false" data-p="cat" class="display"><span class="nico">🚚</span><span data-i18n="tab.cat">Channels &amp; Surcharges</span></button>
   <button role="tab" aria-selected="false" data-p="fill" class="display"><span class="nico">💵</span><span data-i18n="tab.fill">Channel &amp; Surcharge Rates</span></button>
@@ -1699,7 +1703,9 @@ label:has(#newChanOn){display:none !important}
   <div class="setnav-tabs" data-g="general">
     <button data-r="setting" data-i18n="rt.levels">1. Level Setup</button>
     <button data-r="code2"   data-i18n="rt.chgcode">2. Charge Codes</button>
-    <button data-r="sys"     data-i18n="rt.sys">3. System</button>
+  </div>
+  <div class="setnav-tabs" data-g="sys" hidden>
+    <button data-r="sys"     data-i18n="rt.sys">1. General Settings</button>
   </div>
   <div class="setnav-tabs" data-g="rate" hidden>
     <button data-r="cus"     data-i18n="rt.customers">1. Client Setup</button>
@@ -8650,7 +8656,8 @@ const TAB_KEY="ups_recon_tab";
    Account & Client —— 客戶名單與層級指派。
    渠道與附加費設置管理 —— 有哪些渠道/附加費/Demand 期間(全帳號共用)。
    渠道與附加費費率 —— 那一層要收多少錢(唯一分層的一頁)。 */
-const SET_GROUPS={ general:["setting","code2","sys"],
+const SET_GROUPS={ sys:["sys"],
+                   general:["setting","code2"],
                    rate:["cus"],
                    cat:["chan","rules","demand"],
                    fill:["ratefill"] };
@@ -8735,7 +8742,7 @@ function showSetCards(which){
     show("cardOnOff",    which==="sys");
     const h=$("#setHead");
     if(h) h.textContent = which==="sys"
-      ? L("系統設定","System configuration")
+      ? L("一般設定","General settings")
       : L("層級設定","Level setup");
   }
 }
@@ -21520,6 +21527,7 @@ const I18N={
   "tab.rate":["帳戶與客戶","Account & Client Setup"],
   "tab.rateset":["費率層級管理","Rate Level Management"],
   "tab.general":["一般設定","General Setting"],
+  "tab.sys":["一般設定","General Settings"],
   "tab.cat":["渠道與附加費設置管理","Channels & Surcharges"],
   "tab.fill":["渠道與附加費費率","Channel & Surcharge Rates"],
   "tab.ratefill":["費率填寫","Rate Entry"],
@@ -21568,7 +21576,7 @@ const I18N={
   "rt.chan":["1. 渠道管理","1. Channels"],
   "rt.demand":["3. Demand Surcharge","3. Demand Surcharge"],
   "rt.chgcode":["2. 費用代碼設置","2. Charge Codes"],
-  "rt.sys":["3. 系統設定","3. System"],
+  "rt.sys":["1. 一般設定","1. General Settings"],
   "hd.analysis":["毛利分析","Profit analysis"],
   "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",
     "Nothing to analyse yet. This page reads the reconciliation — once the filled template is imported, the numbers land here and the whole analysis can be exported."],
@@ -23795,7 +23803,8 @@ var RENAME={
   /* 01 */
   "rt.levels":  ["1. 費率層級",        "1. Rate Levels"],
   "rt.chgcode": ["2. 費用代碼對照",    "2. Charge Code Mapping"],
-  "rt.sys":     ["3. 系統設定",        "3. System Settings"],
+  "rt.sys":     ["1. 一般設定",        "1. General Settings"],
+  "tab.sys":    ["一般設定",          "General Settings"],
   /* 02 */
   "rt.customers":["1. 客戶名錄",       "1. Customer Directory"],
   /* 03 */

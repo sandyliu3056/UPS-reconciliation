@@ -50,12 +50,15 @@ setTimeout(()=>{
   const nav01=D.querySelector('#tabs button[data-p="general"] [data-i18n="tab.general"]');
   ok(!!nav01&&nav01.textContent.trim()==='Pricing Configuration',
      '01 \u6539\u540d\uff1a'+(nav01?nav01.textContent.trim():'?'));
-  ok(!/General Setting/.test(D.getElementById('tabs').textContent), '\u5074\u6b04\u4e0a\u6c92\u6709 General Setting \u4e86');
+  /* 舊名字「General Setting」(單數,指的是計價設定那一項)不該再出現;
+     新的「General Settings」是拉出來自成一項的全帳號設定,它該在。 */
+  ok(!/General Setting(?!s)/.test(D.getElementById('tabs').textContent), '\u5074\u6b04\u4e0a\u6c92\u6709\u820a\u7684 General Setting');
+  ok(/General Settings/.test(D.getElementById('tabs').textContent), '\u5074\u6b04\u4e0a\u6709 General Settings');
   const navTxt=D.getElementById('tabs').textContent;
   ['Customer Management','Channel & Surcharge Catalog','Channel & Surcharge Rates','WMS / TMS Import','UPS Invoice Import']
     .forEach(n=>ok(navTxt.indexOf(n)>=0, '\u5074\u6b04\uff1a'+n));
   const sub=D.getElementById('rateSide').textContent;
-  ['1. Rate Levels','2. Charge Code Mapping','3. System Settings','1. Customer Directory','2. Surcharge Catalog','3. Demand Periods',
+  ['1. Rate Levels','2. Charge Code Mapping','1. General Settings','1. Customer Directory','2. Surcharge Catalog','3. Demand Periods',
    '1. Base Rates','2. Surcharge Rates','3. Dimensional Rules','4. Demand Rates']
     .forEach(n=>ok(sub.indexOf(n)>=0, '\u5b50\u9801\uff1a'+n));
   ok(D.querySelectorAll('.mzwrap').length===12, '12 \u96bb\u90fd\u5728\u9801\u4e0a');
