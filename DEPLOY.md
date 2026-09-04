@@ -13,7 +13,7 @@
 | `_headers` | Netlify / Cloudflare Pages 的快取規則 |
 | `.nojekyll` | GitHub Pages 必備,否則底線開頭的檔案會被略過 |
 | `.githooks/pre-commit` | 阻擋客戶資料與金鑰進版本庫 |
-| `sql/` | Supabase 資料表與 RLS。只在啟用 Supabase 登入時需要 |
+| `supabase/` | Edge Function 原始碼,以及 Supabase 資料表與 RLS 的 SQL |
 
 ## 部署
 
@@ -56,7 +56,7 @@
 
 - `open` — 不設密碼，開站就進入
 - `local` — 用內建帳號名單登入（目前設定）
-- `supabase` — 用 Supabase 帳號登入，需要先套用 `sql/` 裡的結構
+- `supabase` — 用 Supabase 帳號登入，需要先在 SQL Editor 套用 `supabase/schema.sql` 與 `supabase/auth_history.sql`
 
 `anonKey` 是瀏覽器端的公開金鑰。`service_role` 金鑰不可以放進這個檔案。
 
