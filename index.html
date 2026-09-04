@@ -1295,18 +1295,19 @@ main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
 .hrow .hnum.neg{color:var(--neg);font-weight:700}
 /* 還沒有批次的時候的引導卡:編號在左、一步一列,第一步是一顆實心按鈕。
    三個空的虛線框並排看起來像沒做完 —— 一張卡、三列,才像刻意的。
-   藍色系、行距壓緊:這張是「引導」,不是資料,跟四周琥珀色的卡分開。 */
-.hstart{margin-top:14px;max-width:900px;border:2px solid var(--com);border-radius:14px;
+   行距壓緊;頭帶用系統自己的深底淺字(跟視窗標題同一套),跟四周的
+   卡分得開,又不跳出配色。 */
+.hstart{margin-top:14px;max-width:900px;border:2px solid var(--accent);border-radius:14px;
   overflow:hidden;background:var(--panel);box-shadow:0 2px 0 rgba(0,0,0,.06)}
-.hstarthd{padding:10px 16px 8px;border-bottom:2px solid var(--com);background:var(--com-bg)}
-.hstarthd b{display:block;font-family:var(--titlefam);font-size:17px;color:var(--com);margin-bottom:2px}
-.hstarthd span{font-size:12.5px;color:var(--muted)}
+.hstarthd{padding:9px 16px 8px;background:var(--accent)}
+.hstarthd b{display:block;font-family:var(--titlefam);font-size:17px;color:var(--tab);margin-bottom:1px}
+.hstarthd span{font-size:12.5px;color:var(--panel);opacity:.88}
 .hstart .hstep{display:flex;align-items:center;gap:13px;padding:8px 16px;
   border-top:1px solid var(--line-soft,var(--line))}
 .hstart .hstep:first-of-type{border-top:0}
 .hstart .hstep .hnum{flex:0 0 26px;height:26px;border-radius:50%;display:grid;place-items:center;
   font-family:var(--titlefam);font-size:14px;font-weight:700;
-  background:var(--com);color:#fff}
+  background:var(--accent);color:var(--tab)}
 .hstart .hstx{flex:1 1 auto;min-width:0}
 .hstart .hstx b{display:block;font-size:14px;color:var(--ink)}
 .hstart .hstx s{display:block;text-decoration:none;font-size:12px;color:var(--muted);line-height:1.5}
