@@ -264,6 +264,14 @@ input[type=file]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
 .pill{border:1.5px solid var(--line);border-radius:999px;padding:1px 9px;
   font-size:11.5px;font-weight:600;white-space:nowrap}
 .pill.ok{color:var(--run2);border-color:var(--run2)}
+/* 04 那一頁的抬頭列:正在編價的層級要一眼看到,和左上角那顆同一種語彙。 */
+#p-ratefill .rfbar{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin:10px 0 0}
+#p-ratefill .rfnow{display:flex;align-items:center;gap:9px;white-space:nowrap;
+  padding:5px 13px;border-radius:10px;background:var(--accent);color:var(--tab);
+  border:2px solid var(--accent);box-shadow:0 2px 0 rgba(0,0,0,.18)}
+#p-ratefill .rfnow .k{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.86}
+#p-ratefill .rfnow b{font-size:14.5px;font-weight:700}
+#p-ratefill .rfnote{margin:0;font-size:12.5px;color:var(--muted);max-width:46ch;line-height:1.6}
 .pill.warn{color:var(--accent);border-color:var(--accent)}
 .pill.no{color:var(--neg);border-color:var(--neg)}
 .savenote{font-size:12.5px;color:var(--run2)}
@@ -2142,10 +2150,16 @@ label:has(#newChanOn){display:none !important}
 <section class="page" id="p-ratefill">
   <div class="lf sketch">
     <h3 class="display"><span class="em">💵</span><span data-i18n="hd.ratefill">Channel &amp; Surcharge Rates</span>
-      <span class="pill" data-i18n="pill.perlvl">Per level</span>
-      <span id="fillLvlName" class="pill ok"></span></h3>
-    <p class="hint" style="margin:6px 0 8px;max-width:78ch" data-i18n="hint.ratefill">Everything on this page belongs to the level selected at top right. What exists is managed under 03 Channels &amp; Surcharges; this page only prices it.</p>
-    <div class="row">
+      <span class="pill" data-i18n="pill.perlvl">Per level</span></h3>
+    <!-- 這一頁的全部內容都屬於某一層,所以「正在編價的是哪一層」不是一句說明,
+         是這一頁的標題本身 —— 用和左上角那顆同一種樣子,兩處講的是同一件事。
+         「項目在哪裡增減」以前是一句話裡的半句;它其實是一個動作,給它一顆按鈕。 -->
+    <div class="rfbar">
+      <div class="rfnow"><span class="k" data-i18n="lb.rfnow">Pricing</span>
+        <b id="fillLvlName"></b></div>
+      <p class="rfnote" data-i18n="hint.rfshort">This page only sets the money. Which items exist is decided in the catalog.</p>
+      <span style="flex:1 1 auto"></span>
+      <button class="act ghost" id="bFillCat">📚 <span data-i18n="btn.fillcat">Add or remove items</span></button>
       <button class="act ghost" id="bFillPrev">👁 <span data-i18n="btn.fillprev">Preview this level's rates</span></button>
     </div>
   </div>
@@ -13141,6 +13155,8 @@ function fillLvlSync(){
   const e=$("#fillLvlName");
   if(e) e.textContent=rlName((rlStore()||{}).active)||"";
 }
+/* 「有哪些項目」和「一項多少錢」是兩頁的事。以前那句話只是告訴你要自己走過去。 */
+$("#bFillCat") && ($("#bFillCat").onclick=()=>showTab("cat"));
 
 /* 日期挑選器。桌面版是自己畫的月曆,不是系統控制項 ——
    瀏覽器原生的 date input 每個系統長得都不一樣,對不上這套外觀。 */
@@ -21523,7 +21539,9 @@ const I18N={
   "th.lvlfilled":["已設費率層級","Levels priced"],
   "hint.acczone":["依 Zone 級距的附加費沿用各渠道自己的 Zone —— 與基本運費同一套 Zone,只是費率不同。","Zone-scaled surcharges reuse each channel's own zones — the same zones as the base rates, only the rates differ."],
   "hd.ratefill":["渠道與附加費費率","Channel & Surcharge Rates"],
-  "hint.ratefill":["這一頁全部屬於右上角「正在編輯」那一層。有哪些項目由「03 渠道與附加費設置管理」決定,這裡只填錢。","Everything on this page belongs to the level selected at top right. What exists is managed under 03 Channels & Surcharges; this page only prices it."],
+  "lb.rfnow":["正在編價","Pricing"],
+  "hint.rfshort":["這一頁只填錢。有哪些項目由目錄決定。","This page only sets the money. Which items exist is decided in the catalog."],
+  "btn.fillcat":["到目錄增減項目","Add or remove items"],
   "btn.fillprev":["預覽本層費率","Preview this level's rates"],
   "hd.baserate":["渠道基本運費","Channel base rates"],
   "hd.demrate":["Demand 附加費費率","Demand surcharge rates"],
