@@ -10812,17 +10812,21 @@ function openBreakdown(){
     if(!wmsUsed && o.r && loaded.has(o.inv||"(current)")){ o.wms=bkdWmsOf(t); if(o.wms) wmsUsed=true; }
   }
   const wsrc=(typeof RECON_SRC!=="undefined"&&RECON_SRC)||"WMS";
-  /* 總覽:重算、UPS 實收、向客戶實收三個數並排;毛利與毛利率不在這裡算 —— 那是整期的事。 */
+  /* 總覽:重算、UPS 實收、向客戶實收並排,最後兩欄是毛利(實收 + 應補收 − UPS)
+     與毛利率(毛利 ÷(實收 + 應補收))。 */
   H.push(`<div class="bkdov"><div class="bkdov-hd">${L("各期總覽","Invoice overview")}</div>`);
   H.push(`<div class="tablewrap" style="margin:0"><table style="width:100%">`);
+  const pfTip=L(wsrc+" 實收 + 應補收 − UPS 實收",wsrc+" billed + To re-bill − UPS billed");
   H.push(`<thead><tr><th>Invoice</th><th>${L("帳單日期","Invoice date")}</th>`
     +`<th class="num">Reprice</th>`
     +`<th class="num">${L("UPS 實收","UPS billed")}</th>`
     +`<th class="num">${L(wsrc+" 實收",wsrc+" billed")}</th>`
-    +`<th class="num">${L("應補收","To re-bill")}</th></tr></thead><tbody>`);
+    +`<th class="num">${L("應補收","To re-bill")}</th>`
+    +`<th class="num" title="${pfTip}">${L("毛利","Profit")}</th>`
+    +`<th class="num" title="${pfTip}">${L("毛利率","Margin")}</th></tr></thead><tbody>`);
   let tRe=0,tUp=0,tWm=0,tRb=0,anyWm=false,anyRb=false,allPriced=true,bi=0;
   if(!pk.length)
-    H.push(`<tr><td colspan="6" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
+    H.push(`<tr><td colspan="8" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
       "No package lines for this tracking number, only account-level charges. See below.")}</td></tr>`);
   for(const o of pk){
     const rp=(BKD_NOLVL||!o.r||o.r.total==null)?null:o.r.total;
@@ -10831,23 +10835,32 @@ function openBreakdown(){
     tUp+=up;
     if(o.wms){ tWm+=o.wms.amt; anyWm=true;
       if(Math.abs(o.wms.rebill||0)>0.004){ tRb+=o.wms.rebill; anyRb=true; } }
+    const rev=o.wms?cents(o.wms.amt+(o.wms.rebill||0)):null;
+    const pf=rev==null?null:cents(rev-up);
+    const mg=(pf!=null&&Math.abs(rev)>0.004)?(pf/rev*100):null;
     H.push(`<tr class="bkdjump" data-bi="${bi++}" title="${
         L("點一下跳到該期明細","Click to jump to this invoice's detail")}">`
       +`<td class="mono">${esc2(o.inv)}</td><td>${esc2(nd(o.invDate)||o.invDate)}</td>`
       +`<td class="num">${rp==null?"—":money2(rp)}</td>`
       +`<td class="num">${money2(up)}</td>`
       +`<td class="num">${o.wms?money2(o.wms.amt):"—"}</td>`
-      +`<td class="num">${(o.wms&&Math.abs(o.wms.rebill||0)>0.004)?money2(o.wms.rebill):"—"}</td></tr>`);
+      +`<td class="num">${(o.wms&&Math.abs(o.wms.rebill||0)>0.004)?money2(o.wms.rebill):"—"}</td>`
+      +`<td class="num${pf!=null&&pf<-0.0001?" bkdneg":""}">${pf==null?"—":money2(pf)}</td>`
+      +`<td class="num${mg!=null&&mg<0?" bkdneg":""}">${mg==null?"—":mg.toFixed(1)+"%"}</td></tr>`);
   }
   H.push(`</tbody>`);
   if(pk.length>1){
     const TF="border-top:2px solid var(--accent);background:var(--select);font-weight:700";
+    const tRev=cents(tWm+tRb), tPf=cents(tRev-tUp);
+    const tMg=(anyWm&&Math.abs(tRev)>0.004)?(tPf/tRev*100):null;
     H.push(`<tfoot><tr><td style="${TF}">${L("合計","Total")}</td>`
       +`<td style="${TF}"></td>`
       +`<td class="num" style="${TF}">${allPriced?money2(tRe):"—"}</td>`
       +`<td class="num" style="${TF}">${money2(tUp)}</td>`
       +`<td class="num" style="${TF}">${anyWm?money2(tWm):"—"}</td>`
-      +`<td class="num" style="${TF}">${anyRb?money2(tRb):"—"}</td></tr></tfoot>`);
+      +`<td class="num" style="${TF}">${anyRb?money2(tRb):"—"}</td>`
+      +`<td class="num${anyWm&&tPf<-0.0001?" bkdneg":""}" style="${TF}">${anyWm?money2(tPf):"—"}</td>`
+      +`<td class="num${tMg!=null&&tMg<0?" bkdneg":""}" style="${TF}">${tMg==null?"—":tMg.toFixed(1)+"%"}</td></tr></tfoot>`);
   }
   H.push(`</table></div></div>`);
   /* 同一個追蹤號跨兩期(原件一期、更正一期)時,兩張卡各自只有半筆帳:向客戶
