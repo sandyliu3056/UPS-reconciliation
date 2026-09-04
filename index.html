@@ -21916,6 +21916,16 @@ function applyLang(){
     try{ renderRecon(); }catch(e){}
   }
   if(typeof renderAnalysis==="function"){ try{ renderAnalysis(); }catch(e){} }
+  /* 首頁那一塊、儀表板、接舊資料那張卡都是 JS 現寫的字,不吃 data-i18n。
+     切了語言不重畫,它們會停在另一種語言 —— 而首頁正是最常停在那裡的一頁。 */
+  if(typeof renderHome==="function"){ try{ renderHome(); }catch(e){} }
+  if(typeof renderClaimCard==="function"){ try{ renderClaimCard(); }catch(e){} }
+  if(typeof renderDashboard==="function" && document.querySelector("#p-analysis.on")){
+    try{ renderDashboard(); }catch(e){}
+  }
+  /* 設定頁那個抬頭(層級設定 / 一般設定)也是算出來的。 */
+  if(typeof showSetCards==="function" && typeof SET_TAB!=="undefined"
+     && document.querySelector("#p-setting.on")){ try{ showSetCards(SET_TAB); }catch(e){} }
   /* 這幾個字是照著選到的來源寫的,字典蓋回去之後要再寫一次。 */
   if(typeof reconSrcPaint==="function"){ try{ reconSrcPaint(); }catch(e){} }
   /* 三個帳號視窗的抬頭是算出來的(改的是誰、打了幾個字),開著切語言
