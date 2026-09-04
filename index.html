@@ -15631,23 +15631,33 @@ async function reconExport(){
 
   /* ---- To re-bill:補收清單,和畫面上同一份 —— 一個追蹤號一項費用一列。 ---- */
   const rb=r.rebill||{items:[]};
-  const typeOf=it=>it.kind==="zone"?"Zone correction":it.kind==="refund"?"Refund":it.kind==="swap"?"Substituted":it.kind==="short"?"Short-billed":it.kind==="audit"?"Audit fee":it.unset?"Rate not set":(it.rate===0?"No contract rate":"Not billed");
+  /* 一張追蹤號一列,費用攤成欄(和 Detail 同一種讀法):格子裡是應補收金額,
+     退款是負數,空白代表這一項沒有要補收的。欄序照 Consolidated 的費用順序。
+     金額 0 的項目(費率未設定等)不佔格;燃油、含燃油合計各一欄收尾。 */
+  const rbByOrd=new Map();
+  for(const it of rb.items){
+    const k=it.cus+" "+it.order+" "+it.trk;
+    let o=rbByOrd.get(k);
+    if(!o){ o={cus:it.cus,order:it.order,trk:it.trk,invDate:it.invDate,fuelPct:null,fuel:0,total:0,amt:{}}; rbByOrd.set(k,o); }
+    if(Math.abs(it.amt)>0.004) o.amt[it.charge]=cents((o.amt[it.charge]||0)+it.amt);
+    if(it.fuel) o.fuel=cents(o.fuel+it.fuel);
+    if(it.fuelPct!=null && o.fuelPct==null) o.fuelPct=it.fuelPct;
+    o.total=cents(o.total+it.total);
+  }
+  const rbOrders=[...rbByOrd.values()].filter(o=>Object.keys(o.amt).length)
+    .sort((a,b3)=>String(a.cus).localeCompare(String(b3.cus))||String(a.trk).localeCompare(String(b3.trk)));
+  const rbCols=[...new Set(rbOrders.flatMap(o=>Object.keys(o.amt)))];
+  const rbOrd=n=>{ const i=AUD_FEES.indexOf(n); return i<0?1e6:i; };
+  rbCols.sort((a,b3)=>rbOrd(a)-rbOrd(b3)||a.localeCompare(b3));
   const rbHead=[["Customer Code","EFE3CB"],["Customer Name","EFE3CB"],["Order Number","EFE3CB"],
-    ["Tracking Number","EFE3CB"],["Invoice Date","EFE3CB"],["Charge","EFE3CB"],["UPS Description","EFE3CB"],
-    ["Type","EFE3CB"],["Less Billed As","EFE3CB"],
-    ["UPS",UPSH],["WMS / TMS",WMSH],["Reprice",REPH],
-    ["Over-collected",DIFH],["To re-bill",DIFH],
-    ["Fuel %",REPH],["Fuel",DIFH],["Total incl. Fuel",DIFH]].map(([n,f])=>dh(n,f));
-  /* WMS / TMS 那一欄是客戶端實收的金額,Reprice 是應收的。兩者的差自己看得出來,
-     所以不再多一欄「差額」—— 真正要拿去做事的是兩個數:還要向客戶收多少
-     (To re-bill),以及收多了該退多少(Over-collected)。 */
-  const rbRows=rb.items.map(it=>[it.cus, cusNameOf(it.cus), it.order, it.trk, dcell(it.invDate), it.charge, it.desc||"",
-     typeOf(it), (it.creditFrom||[]).join(", "),
-     dm(it.ups), dm(it.wms), it.rate==null?"":dm(it.rate),
-     it.over>0.004?dm(it.over):"", dm(it.amt),
-     it.fuel?{v:it.fuelPct,t:"n",s:{fmt:"0.00"}}:"", dm(it.fuel), dm(it.total)]);
+    ["Tracking Number","EFE3CB"],["Invoice Date","EFE3CB"]]
+    .concat(rbCols.map(n=>[n,DIFH]))
+    .concat([["Fuel %",REPH],["Fuel",DIFH],["Total incl. Fuel",DIFH]]).map(([n,f])=>dh(n,f));
+  const rbRows=rbOrders.map(o=>[o.cus, cusNameOf(o.cus), o.order, o.trk, dcell(o.invDate)]
+    .concat(rbCols.map(n=>o.amt[n]!=null?dm(o.amt[n]):""))
+    .concat([o.fuelPct!=null?{v:o.fuelPct,t:"n",s:{fmt:"0.00"}}:"", dm(o.fuel), dm(o.total)]));
   const rebillSheet={name:"To re-bill", rows:[rbHead,...rbRows], ignoreTextNumbers:true,
-    cols:[16,24,20,22,12,40,44,16,36,16,16,14,15,14,10,12,18].map(w=>({w}))};
+    cols:[16,24,20,22,12].concat(rbCols.map(()=>18),[10,12,18]).map(w=>({w}))};
 
   /* ---- 每個客戶一頁:給客戶看的對帳單,照舊 SOP 的 Item / Amount 兩欄 ----
      一個追蹤號底下一項一列,燃油自己一列(Item 寫 Fuel Surcharge),最後一列合計。
