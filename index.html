@@ -13938,16 +13938,37 @@ async function reconTemplate(src){
        · 最後是總額兩欄,「Total Amount - WMS」必填。
      匯入端照欄名認欄,「- UPS」那些欄只是給人對照,不讀。 */
   const ships=(SHIPS||[]);
-  const feeCols=ships.length?consColsOf(ships):AUD_FEES.slice();
+  /* 費用欄不看「現在有沒有載入帳單」—— 以前有帳單時只列帳單上有收的十幾項,
+     沒帳單時列全部二十八項,同一顆按鈕於是給出兩種寬度不同的檔:WMS 那份
+     十幾欄、TMS 那份一路長到 BQ。空白模板要能先發給同仁,不能取決於誰按的
+     時候畫面上載了什麼。固定的那一份 + 這個帳號自訂的附加費,永遠一樣。 */
+  const dynFees=Object.values((CFG&&CFG.raw&&CFG.raw.dynamic_surcharge_mapping)||{})
+    .filter(d=>d&&d.enabled!==false)
+    .map(d=>String(d.name||"").trim())
+    .filter(n=>n && AUD_FEES.indexOf(n)<0);
+  let feeCols=AUD_FEES.concat([...new Set(dynFees)].sort());
+  /* TMS 那一側系統本來就把額外處理與大包裹收在同一欄,拆成四欄要人自己分,
+     分不出來 —— 所以 TMS 的模板出合併欄(RECON_GROUPS.ahslps 的組名),
+     位置就是原本第一個細項的位置。匯入端本來就認合併欄。 */
+  if(src==="TMS"){
+    const g=RECON_GROUPS.ahslps, mem=new Set(g.fees);
+    const at=feeCols.findIndex(c=>mem.has(c));
+    feeCols=feeCols.filter(c=>!mem.has(c));
+    if(at>=0) feeCols.splice(at,0,g.head); else feeCols.push(g.head);
+  }
   const HI=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF",wrap:true}});
   const HU=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"FFC000",color:"1F1F1F",wrap:true}});
   const HM=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"92D050",color:"1F1F1F",wrap:true}});
   const HQ=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"1F5638",color:"FFFFFF",wrap:true}});
   const mineCols=[RECON_COL.cus, RECON_COL.order, "Channel - "+src, "Zone - "+src, "Billed Weight - "+src];
-  const hd=AUD_BASE.map(HI).concat([HI("Invoice Number")],
-      [HQ(mineCols[0])], mineCols.slice(1).map(HM));
-  for(const c of feeCols){ hd.push(HU(c+" - UPS")); hd.push(HM(c+" - "+src)); }
-  hd.push(HU("Total Amount - UPS")); hd.push(HQ("Total Amount - "+src));
+  /* 模板空了之後,「- UPS」那一側和帳單抄來的那幾欄(尺寸、實重、Zone、渠道、
+     期號)永遠是空白 —— 五十幾欄沒有人要填的欄位,只是把表拉到 BQ 去。留下
+     要填的:日期、兩個參考號、追蹤號,再來就是同仁那幾欄與每一項費用一欄。
+     匯入端本來就照欄名認欄,舊的、帶「- UPS」的檔照樣讀得進來。 */
+  const hd=[HI(RECON_COL.date), HI(RECON_COL.ref1), HI(RECON_COL.ref2), HQ(RECON_COL.trk)]
+    .concat([HQ(mineCols[0])], mineCols.slice(1).map(HM));
+  for(const c of feeCols) hd.push(HM(c+" - "+src));
+  hd.push(HQ("Total Amount - "+src));
   const MONEY="#,##0.00";
   /* 模板是空白的:只有表頭,一列資料都不帶。以前它把手上那批帳單整個倒進去
      ——一次匯入三十九期就是十六萬列、混著三十九個期號的一份檔,沒辦法拿給
@@ -13971,9 +13992,10 @@ async function reconTemplate(src){
     gRow("Total Amount - UPS","帳單這一件的合計 UPS total for the package","不用改 Leave as is"),
     gRow("Total Amount - "+src,"這一件向客戶收的總額 Whole amount billed to the client for the package","必填;應等於各「- "+src+"」費用欄合計 Required; should equal the "+src+" charge columns"),
     ["","",""],
-    gRow(L("費用欄","Charge columns"),L("帳單上有收的每一項,照 Consolidated 的順序","Every charge UPS billed, in Consolidated order"),
+    gRow(L("費用欄","Charge columns"),L("一項一欄,照 Consolidated 的順序","One column per charge, in Consolidated order"),
          L("UPS 開帳後才有的(更正、地址更正、退件…)向客戶補收了才填,沒補收留空","Charges that only exist once UPS invoiced (corrections, address correction, returns…) are filled only if re-billed to the client, else left blank"))];
   const notes={
+    [RECON_GROUPS.ahslps.head]:["額外處理與大包裹合在一欄(TMS 系統就是這樣收的);拆開的細項欄不必再填 Additional handling and large package in one column, the way TMS bills them; the individual columns are not needed",""],
     "Base Rate":["出貨當時向客戶收的運費 Freight billed at shipping time",""],
     "Fuel Surcharge":["燃油附加費 Fuel surcharge",""],
     "Residential Surcharge":["住宅附加費 Residential surcharge",""],
@@ -14009,12 +14031,11 @@ async function reconTemplate(src){
        .concat(reg.map(c=>[c.code, c.name||c.code]))}
   ];
   await xlWrite(sheets, src+"_Reconciliation_Template.xlsx");
-  reconMsg(L(src+" 空白模板已下載:"+feeCols.length+" 項費用欄"
-             +(ships.length?"(這一批帳單上有收的都在)":"(全部固定費用欄)")
-             +",一件一列自己填;填寫說明在 Guide 分頁,客戶代碼與渠道名稱分別在 Customers、Channels 分頁。",
-             "Blank "+src+" template downloaded: "+feeCols.length+" charge column(s)"
-             +(ships.length?" — every charge this batch of invoices billed":" — the full fixed set")
-             +". One package per row, filled in by hand; the Guide sheet has the column rules and the Customers and Channels sheets have the codes to use."), true);
+  reconMsg(L(src+" 空白模板已下載:一件一列,"+feeCols.length+" 項費用各一欄,全部都是要填的欄位。"
+             +"填寫說明在 Guide 分頁,客戶代碼與渠道名稱分別在 Customers、Channels 分頁。",
+             "Blank "+src+" template downloaded: one package per row, one column per charge ("
+             +feeCols.length+" of them), and nothing in it that is not yours to fill. "
+             +"The Guide sheet has the column rules; the Customers and Channels sheets have the codes to use."), true);
 }
 
 /* --------------------------------------------------------------------
