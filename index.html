@@ -10970,7 +10970,7 @@ function bkdLines(res, groups, wms){
     psub+=res.base||0;
   }
   for(const [k,v] of Object.entries(res.acc||{})){ P.push([feeDisplay(k), cents(v)]); psub+=v; }
-  P.push([L("燃油 ","Fuel ")+res.fuelPct+"%", cents(res.fuel||0)]);
+  P.push([L("燃油附加費 ","Fuel Surcharge ")+fmtPct2(res.fuelPct)+"%", cents(res.fuel||0)]);
   psub+=res.fuel||0;
   return {U:U, P:P, W:W, usub:cents(usub), psub:cents(psub), wsub:cents(wsub)};
 }
@@ -10978,6 +10978,11 @@ function bkdLines(res, groups, wms){
    Residential」、我們寫「基本運費」),硬排成左右兩欄只會製造假的對應關係。
    所以明細用長格式:一列一個項目,多一欄說它是誰算的,顏色照樣分邊 ——
    要看對照就用樞紐,要看清單就直接讀。 */
+/* 燃油 % 的顯示:最多兩位小數,尾零去掉 —— 22.275 寫 22.28、22.50 寫 22.5。 */
+function fmtPct2(v){
+  const n=toNum(v||0);
+  return String((Math.round(n*100)/100).toFixed(2)).replace(/\.?0+$/,"");
+}
 async function bkdXlsx(){
   if(!BKD_LAST||!BKD_LAST.out) return;
   const {trk,out}=BKD_LAST;
@@ -11214,7 +11219,7 @@ function bkdSection(r, wms, name0){
                      +" — "+feeDisplay(k)+" @ "+(res.channel||"")):money(v)}</td></tr>`);
       psub+=v;
     }
-    P.push(`<tr><td>${L("燃油 ","Fuel ")+esc2(res.fuelPct)+"%"}</td><td class="num">${money(res.fuel||0)}</td></tr>`);
+    P.push(`<tr><td>${L("燃油附加費 ","Fuel Surcharge ")+esc2(fmtPct2(res.fuelPct))+"%"}</td><td class="num">${money(res.fuel||0)}</td></tr>`);
     psub+=res.fuel||0;
     /* 沒有層級:整欄只留一句話,金額一個都不寫。 */
     const rpBody=(typeof BKD_NOLVL!=="undefined"&&BKD_NOLVL)
@@ -11250,15 +11255,18 @@ function bkdSection(r, wms, name0){
                      : it.kind==="miss"?L("漏收","Not billed"):"";
       const rbFuel=cents((wms.items||[]).reduce((a,it)=>a+(it.fuel||0),0));
       const pct=((wms.items||[]).find(it=>it.fuel>0.004)||{}).fuelPct;
+      /* 說明和項目名一樣(或只是它的一部分)就不重複印 —— 整齊為先。 */
+      const nk=x=>String(x||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
       for(const it of (wms.items||[])){
         if(!(Math.abs(it.amt)>0.004)) continue;
         const tg=tagOf(it);
+        const showD=it.desc && !nk(it.charge).includes(nk(it.desc));
         extra.push(`<tr><td>${esc2(it.charge)}`
           +(tg?`<span class="bkdtag">${esc2(tg)}</span>`:"")
-          +(it.desc?`<span class="bkdsub">${esc2(it.desc)}</span>`:"")
+          +(showD?`<span class="bkdsub">${esc2(it.desc)}</span>`:"")
           +`</td><td class="num">${money(it.amt)}</td></tr>`);
       }
-      if(rbFuel>0.004) extra.push(`<tr><td>${L("燃油附加費 ","Fuel surcharge ")+(pct!=null?esc2(pct)+"%":"")}</td>`
+      if(rbFuel>0.004) extra.push(`<tr><td>${L("燃油附加費 ","Fuel Surcharge ")+(pct!=null?esc2(fmtPct2(pct))+"%":"")}</td>`
         +`<td class="num">${money(rbFuel)}</td></tr>`);
       /* 溢收是反方向的錢:掛在應補收合計下面,不併進去。整件只有溢收、沒有
          要補收的時候,這一格就是退款那一格,標題與合計一起換過來 —— 不會出現
@@ -15784,7 +15792,7 @@ async function reconExport(){
         dimTxt(u2.dimsC), dimTxt(u2.dimsA), wt0(u2.entered),
         (o2.upsWt!==""&&o2.upsWt!=null)?wt0(o2.upsWt):wt0(u2.billed)];
       rows.push(idc.concat([it.charge, it.desc||"", dc(it.amt)])); sum=cents(sum+it.amt);
-      if(Math.abs(it.fuel)>0.004){ rows.push(idc.concat(["Fuel Surcharge", it.charge+" @ "+it.fuelPct+"%", dc(it.fuel)])); sum=cents(sum+it.fuel); }
+      if(Math.abs(it.fuel)>0.004){ rows.push(idc.concat(["Fuel Surcharge", it.charge+" @ "+fmtPct2(it.fuelPct)+"%", dc(it.fuel)])); sum=cents(sum+it.fuel); }
     }
     rows.push(["","","","","","","","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:CUR,bold:true}}]);
     cusSheets.push({name:sheetName(code), rows:[cusHead,...rows], cols:[12,22,20,20,7,16,16,9,9,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
