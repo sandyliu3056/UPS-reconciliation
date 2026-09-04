@@ -2628,6 +2628,10 @@ label:has(#newChanOn){display:none !important}
       </div>
     </div>
 
+    <!-- 換身分之後的退路。平常是空的,只有這台電腦上真的還有舊身分的資料
+         時才長出東西來 —— 見 renderClaimCard()。 -->
+    <div id="claimHost"></div>
+
     <!-- 費率設定檔。整份取代,而且是一個帳號設定一次的動作,所以擺在設定的
          最上面,不跟每期要調的欄位混在一起。載入與儲存放在同一處:載入只寫
          進這台電腦,要按儲存設定才會寫進帳號 —— 兩顆按鈕分在不同分頁時,
@@ -8353,6 +8357,69 @@ function claimLocalIdentity(){
     return {from, moved, periods:n};
   }).catch(()=>{ try{ localStorage.setItem(CLAIMED_KEY+"::"+ME.id,"1"); }catch(e){} return null; });
 }
+/* 自動接手只在「主帳號、而且新身分還是空的」時候動。條件差一點的人 ——
+   角色還沒設成 admin、或已經在新身分底下存過一次設定 —— 就會看到一個空的
+   系統,而資料其實還在這台電腦上,只是掛在舊身分底下。那是最嚇人的一種畫面:
+   什麼都沒壞,但看起來全沒了。
+   所以自動之外要有手動:把這台電腦上找得到的舊身分列出來,點一下就接過來。
+   和自動那條走同一段程式,一樣只複製、不刪除。 */
+function claimCopyFrom(from){
+  if(!ME||!ME.id||!from) return Promise.resolve(null);
+  let moved=0;
+  for(const base of [CFG_KEY_BASE,CFG_NAME_BASE,HIST_KEY,HIST_RULE_KEY,HISTINV_KEY]){
+    try{
+      const v=localStorage.getItem(base+"::"+from);
+      /* 手動是明示的動作,所以蓋過去 —— 自動那條不敢蓋,是因為沒有人按下同意。 */
+      if(v!=null){ localStorage.setItem(base+"::"+ME.id,v); moved++; }
+    }catch(e){}
+  }
+  return idbCopyDatabase(IDB_NAME+"::"+from, idbName()).then(n=>{
+    try{ localStorage.setItem(CLAIMED_KEY+"::"+ME.id,"1"); }catch(e){}
+    return {from, moved, periods:n};
+  });
+}
+function renderClaimCard(){
+  const host=$("#claimHost"); if(!host) return;
+  host.innerHTML="";
+  if(LOCAL_MODE||!ME||!ME.id) return;
+  const cands=localIdentitiesOnThisMachine().filter(x=>x!==ME.id);
+  if(!cands.length) return;
+  const nm=c=>c.replace(/^local::/,"");
+  host.innerHTML=`<div class="sketch-soft" style="padding:14px 16px;margin:14px 0">
+    <div class="subhd" style="margin-top:0">📦 ${esc(L("從舊帳號接資料過來","Bring data over from an older account"))}</div>
+    <p class="hint" style="margin:8px 0 10px;max-width:880px">${esc(L(
+      "這台電腦上還留著以前用本機帳號存的費率設定與帳單歷史。點下面那個名字,就把它接到你現在登入的這個帳號名下 —— 只複製,舊的原封不動留著,接錯了也退得回去。",
+      "This machine still holds the rate configuration and invoice history from an older local account. Pick the name below to bring a copy across to the account you are signed in as — the originals are left untouched, so a wrong choice costs nothing."))}</p>
+    <div class="row">${cands.map(c=>
+      `<button class="act" data-claim="${esc(c)}">${esc(nm(c))}</button>`).join(" ")}
+      <span id="claimSum" class="affsum"></span></div></div>`;
+  host.querySelectorAll("[data-claim]").forEach(b=>{
+    b.onclick=async()=>{
+      const from=b.dataset.claim;
+      const ok=await uiConfirm({
+        title:L("接資料過來","Bring the data across"),
+        body:L("把「"+nm(from)+"」的費率設定與帳單歷史複製到你現在這個帳號。"
+               +"舊的那一份不會被刪除。完成後畫面會重新整理。",
+               "Copy the rate configuration and invoice history from \""+nm(from)
+               +"\" into the account you are signed in as. The originals are not deleted. "
+               +"The page reloads when it is done."),
+        okText:L("接過來","Bring it across")});
+      if(!ok) return;
+      const sum=$("#claimSum");
+      host.querySelectorAll("[data-claim]").forEach(x=>x.disabled=true);
+      if(sum) sum.textContent=L("接資料中…","Bringing it across…");
+      try{
+        const r=await claimCopyFrom(from);
+        if(sum) sum.textContent=L("好了,重新整理…","Done — reloading…");
+        setTimeout(()=>location.reload(),400);
+      }catch(e){
+        host.querySelectorAll("[data-claim]").forEach(x=>x.disabled=false);
+        if(sum){ sum.textContent=L("接不過來:","Could not copy: ")+String((e&&e.message)||e);
+                 sum.className="affsum bad"; }
+      }
+    };
+  });
+}
 /* 一個 IndexedDB 整批抄到另一個。來源不存在就當 0 期,不建立空的資料庫。 */
 function idbCopyDatabase(fromName,toName){
   return new Promise(res=>{
@@ -8716,6 +8783,7 @@ function editLvlSync(p){
    混用的時候,左邊按「對帳」和設定裡按「2. 客戶」長得一模一樣。 */
 function showSetTab(k){
   if(!RATE_TABS.includes(k)) k=RATE_HOME;
+  if(typeof renderClaimCard==="function") try{ renderClaimCard(); }catch(e){}
   SET_TAB=k;
   SET_LAST[setGroupOf(k)]=k;
   RATE_ENTER=true;
