@@ -10662,6 +10662,9 @@ $("#bTrkSearch") && ($("#bTrkSearch").onclick=()=>renderHist());
 /* 這一次開的是誰的費率層級 —— openBreakdown 算出來,bkdSection 畫的時候要用,
    兩支函式各自獨立,放在外面才看得到。 */
 let BKD_LVL="";
+/* 這個追蹤號沒有經由 WMS / TMS 模板導入:認不出客戶,也就沒有費率層級。
+   這時不重新計價 —— 退回畫面上正開著的那一層算,層級根本不對,數字只會誤導。 */
+let BKD_NOLVL=false;
 function openBreakdown(){
   const t=String(($("#trkSearch")||{}).value||"").trim().toUpperCase();
   const body=$("#bkdBody");
@@ -10721,6 +10724,9 @@ function openBreakdown(){
   if(bkdLvl && typeof RECON_CFG!=="undefined" && RECON_CFG.clear) RECON_CFG.clear();
   const bkdCfg=(bkdLvl&&typeof reconCfgFor==="function"&&reconCfgFor(bkdLvl))||CFG;
   BKD_LVL=(bkdLvl&&typeof cusLevelLabel==="function"&&cusLevelLabel(bkdLvl))||"";
+  /* 計價照樣跑 —— UPS 那一欄的分段、Zone、計費重都從它來 —— 但沒有層級時
+     Reprice 的金額一律不顯示、不匯出。 */
+  BKD_NOLVL=!bkdLvl;
   const keepOrig=ORIG;
   ORIG=buildOriginals([...(HISTROWS||[]),...(ROWS||[])], new Set([t]));
   for(const g of list){
@@ -10794,7 +10800,7 @@ function openBreakdown(){
     H.push(`<tr><td colspan="6" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
       "No package lines for this tracking number, only account-level charges. See below.")}</td></tr>`);
   for(const o of pk){
-    const rp=(o.r&&o.r.total!=null)?o.r.total:null;
+    const rp=(BKD_NOLVL||!o.r||o.r.total==null)?null:o.r.total;
     const up=o.r?o.r.s.upsTotal:o.ups;
     if(rp!=null) tRe+=cents(rp); else allPriced=false;
     tUp+=up;
@@ -10967,7 +10973,7 @@ async function bkdXlsx(){
   const pk=out.filter(o=>o.pkgN!==0);
   for(const o of pk){
     const up=cents(o.r?o.r.s.upsTotal:o.ups||0);
-    const re=o.r?cents(o.r.total||0):null;
+    const re=(o.r&&!BKD_NOLVL)?cents(o.r.total||0):null;
     if(re==null) allPriced=false; else tRe+=re;
     tUp+=up;
     const df=(re==null)?null:cents(re-up);
@@ -11018,8 +11024,11 @@ async function bkdXlsx(){
       const L2=bkdLines(res,groups,wms);
       for(const [it,v] of L2.U) push(o.inv,nm,0,it,v);
       push(o.inv,nm,0,L("小計","Subtotal"),L2.usub,true);
-      for(const [it,v] of L2.P) push(o.inv,nm,1,it,v);
-      push(o.inv,nm,1,L("小計","Subtotal"),L2.psub,true);
+      /* 沒有層級就不寫重算列 —— 畫面上不顯示的數字,檔案裡也不該出現。 */
+      if(!BKD_NOLVL){
+        for(const [it,v] of L2.P) push(o.inv,nm,1,it,v);
+        push(o.inv,nm,1,L("小計","Subtotal"),L2.psub,true);
+      }
       if(wms){
         for(const [it,v] of L2.W) push(o.inv,nm,2,it,v,false,wsrc(o));
         push(o.inv,nm,2,L("總金額","Total Amount"),L2.wsub,true,wsrc(o));
@@ -11157,6 +11166,13 @@ function bkdSection(r, wms, name0){
     }
     P.push(`<tr><td>${L("燃油 ","Fuel ")+esc2(res.fuelPct)+"%"}</td><td class="num">${money(res.fuel||0)}</td></tr>`);
     psub+=res.fuel||0;
+    /* 沒有層級:整欄只留一句話,金額一個都不寫。 */
+    const rpBody=(typeof BKD_NOLVL!=="undefined"&&BKD_NOLVL)
+      ? `<p class="bkdside-note" style="margin:2px 0 0">${L(
+          "此追蹤號未由 WMS / TMS 模板導入,無法判定所屬客戶與費率層級,故不重新計價。",
+          "This tracking number was not imported through a WMS / TMS template, so its client and rate level are unknown and it is not repriced.")}</p>`
+      : `${sideMeta(res.zoneUsed||res.s.zone, bwv)}<table>${P.join("")}</table>`;
+    const rpFoot=(typeof BKD_NOLVL!=="undefined"&&BKD_NOLVL)?"—":money(psub);
 
     /* 第三欄:對帳匯進來的、向客戶實收的。只有這一次對帳有這個追蹤號才長出來。
        合計就寫 Total Amount —— 和模板、匯出檔最後那一欄同一個名字、同一個數,
@@ -11222,8 +11238,8 @@ function bkdSection(r, wms, name0){
       +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(usub)}</span></div></div></div>`
       +`<div class="bkdside rp"><div class="bkdside-lbl">${L("重新計價","Reprice")}`
       +(BKD_LVL?`<span class="bkdlvl">${esc2(L("層級 ","Level ")+BKD_LVL)}</span>`:"")+`</div>`
-      +`<div class="bkdside-body">${sideMeta(res.zoneUsed||res.s.zone, bwv)}<table>${P.join("")}</table>`
-      +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(psub)}</span></div></div></div>`
+      +`<div class="bkdside-body">${rpBody}`
+      +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${rpFoot}</span></div></div></div>`
       +Wc+Rc
       +`</div></div>`;
   };
@@ -11244,7 +11260,7 @@ function bkdSection(r, wms, name0){
     +`<span class="v">${money2(s.upsTotal)}</span></div>`
     +`<div class="bt"><span class="l">${L("重新計價","Reprice")}`
     +(BKD_LVL?`<span class="bkdlvl">${esc2(L("層級 ","Level ")+BKD_LVL)}</span>`:"")+`</span>`
-    +`<span class="v">${money2(r.total||0)}</span></div>`
+    +`<span class="v">${BKD_NOLVL?"—":money2(r.total||0)}</span></div>`
     +(wms?`<div class="bt"><span class="l">${esc2(wms.src)+L(" 實收"," billed")}</span>`
       +`<span class="v">${money2(wms.amt)}</span></div>`:"")
     +(wRb?`<div class="bt d"><span class="l">${L("應補收","To re-bill")}</span>`
