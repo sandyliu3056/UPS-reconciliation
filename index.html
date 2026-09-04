@@ -11766,7 +11766,8 @@ function consFeesOf(ls, opts){
   const reversed=[];
   for(const c of Object.keys(fees)){ const v=cents(fees[c]); if(v===0) delete fees[c]; else fees[c]=v; }
   for(const c of Object.keys(neg)) if(toNum(fees[c]||0)<=0.004) reversed.push(c);
-  for(const c of Object.keys(descs)) if(!(c in fees)) delete descs[c];
+  /* 被沖銷成 0 的欄位原文留著:改收的退款要拿它向客戶說明退的是哪一筆。 */
+  for(const c of Object.keys(descs)) if(!(c in fees) && !reversed.includes(c)) delete descs[c];
   return {fees, codeCol, descs, reversed};
 }
 /* 這一批追蹤號在 Consolidated 上會長出哪些費用欄:固定欄照 py 的順序,帳單自己
@@ -14882,7 +14883,15 @@ function reconRun(list){
         const w=cents(toNum(b[n]));
         if(!(Math.abs(w)>0.004)) continue;
         backTot=cents(backTot+w);
-        items.push(Object.assign({kind:"refund", charge:n, desc:(desc[n]||[]).join(" / "),
+        /* 合併欄自己沒有 UPS 行:說明改用被沖銷成員的帳單原文(沒有原文就用
+           成員名),對帳單上看得出退的是哪一種附加費。 */
+        let dsc=(desc[n]||[]).join(" / ");
+        if(!dsc){
+          const revd=famFees.filter(m=>rev.has(m)&&!upsCols.includes(m));
+          dsc=revd.map(m=>(desc[m]||[]).join(" / ")).filter(Boolean).join(" / ")
+             || revd.join(" / ");
+        }
+        items.push(Object.assign({kind:"refund", charge:n, desc:dsc,
           ups:0, billed:w, rate:0, amt:cents(-w), credit:0, creditFrom:[], wms:w, over:0}, base));
       }
       if(coveredByHead) continue;
