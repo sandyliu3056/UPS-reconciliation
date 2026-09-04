@@ -17443,15 +17443,14 @@ function dashBarHTML(){
       <span class="dmd">${esc(p.date||"—")}</span>
       <span class="dmn">${rowsL(p.rows)} · ${trkL(p.trk)}</span></button>`).join("");
   /* 兩期以上才給「全部期別」—— 只有一期的話,總攬就是那一期本身。 */
-  const allItem=list.length>1?`<button type="button" class="dmi dmall${DASH_ALL?" on":""}"
+  const allItem=list.length>1?`<div class="dmall-sep"></div><button type="button" class="dmi dmall${DASH_ALL?" on":""}"
       role="option" aria-selected="${DASH_ALL}" data-inv="__all__"
       data-find="${esc(L("全部期別 all periods","all periods 全部期別"))}">
       <span class="dmtick" aria-hidden="true">${DASH_ALL?"✓":""}</span>
       <span class="dmk">${L("全部期別","All periods")}</span>
       <span class="dmd">${list.length}${L(" 期"," periods")}</span>
       <span class="dmn">${L("以目前費率把每一期重算,並排比較",
-        "every period repriced with the current rates, side by side")}</span></button>
-      <div class="dmall-sep"></div>`:"";
+        "every period repriced with the current rates, side by side")}</span></button>`:"";
   /* 批次一組、期別一組,同一張選單分段列 —— 批次是「這一份對帳」,
      期別是「這一期帳單」,選了誰整頁就是誰,不會兩邊各選一個。 */
   const runItems=runs.length
@@ -17485,8 +17484,8 @@ function dashBarHTML(){
       <div class="dmenu" id="dashMenu">${find}
         <div class="dmhd" id="dashMhd">${L("歷史帳單 · ","In history · ")}${list.length}${L(" 期","")}</div>
         <div class="dmlist" id="dashMlist" role="listbox"
-          aria-label="${L("帳單期別","Invoice")}">${allItem}${runItems}${items
-          ||`<div class="dmempty">${L("帳單歷史尚無資料。","Nothing filed to history.")}</div>`}</div>
+          aria-label="${L("帳單期別","Invoice")}">${runItems}${items
+          ||`<div class="dmempty">${L("帳單歷史尚無資料。","Nothing filed to history.")}</div>`}${allItem}</div>
         ${odd?`<div class="dmfoot">${L(
           "另有 "+odd+" 筆期號不像期號(多半是沒有標題列、欄位順序不同的檔案匯壞了),沒有列在這裡。要清掉請到「帳單歷史 → 已存帳單」。",
           odd+" filed entr"+(odd>1?"ies":"y")+" had no invoice-shaped number — usually a file that imported with the wrong columns. Not listed here; clear them from Invoice History → Stored Invoices.")}</div>`:""}
