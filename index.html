@@ -10811,6 +10811,11 @@ function openBreakdown(){
     o.wms=null;
     if(!wmsUsed && o.r && loaded.has(o.inv||"(current)")){ o.wms=bkdWmsOf(t); if(o.wms) wmsUsed=true; }
   }
+  /* 這個追蹤號的期別都不在目前載入的帳單裡(整筆靠歸檔對帳)時,
+     掛在第一張有計價的卡上 —— 對帳結果照樣要看得到。 */
+  if(!wmsUsed) for(const o of pk){
+    if(o.r){ o.wms=bkdWmsOf(t); if(o.wms){ wmsUsed=true; } break; }
+  }
   const wsrc=(typeof RECON_SRC!=="undefined"&&RECON_SRC)||"WMS";
   /* 總覽:重算、UPS 實收、向客戶實收並排,最後兩欄是毛利(實收 + 應補收 − UPS)
      與毛利率(毛利 ÷(實收 + 應補收))。 */
