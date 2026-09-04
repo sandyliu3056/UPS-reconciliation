@@ -11700,10 +11700,16 @@ function consIdentityOf(ls){
   /* UPS 重新量過的更正列寫的才是最後照著收錢的重量。和異常報表同一條規則。 */
   const frt=frts.find(l=>String(l.layer||"")==="ADJ"&&toNum(l.billed)>0)||frts[0]||ls[0]||{};
   const pick=f=>{ for(const x of ls) if(x&&x[f]) return x[f]; return ""; };
+  /* 渠道欄寫的是渠道:更正期只有「Shipping Charge Correction Ground」這種運費行
+     時,優先找乾淨的服務名,找不到就去掉更正字頭留下服務名。 */
+  const chanClean=frts.find(l=>{ const d=String((l&&l.desc)||"").trim();
+    return d && !/^SHIPPING CHARGE CORRECTION/i.test(d) && !/^ZONE ADJUSTMENT/i.test(d); });
+  const chan=String(((chanClean||frts[0])||{}).desc||"").trim()
+    .replace(/^SHIPPING CHARGE CORRECTION\s*/i,"").replace(/^ZONE ADJUSTMENT\s*/i,"").trim();
   return { date:String(pick("shipDate")||""), ref1:String(pick("ref1")||""), ref2:String(pick("ref2")||""),
            dimsC:String(pick("dimsC")||0), dimsA:String(pick("dimsA")||0),
            entered:toNum(frt.entered), billed:toNum(frt.billed), zone:String(frt.zone||0),
-           chan:String((frts[0]||{}).desc||"").trim() };
+           chan };
 }
 /* 這一行歸到哪一欄。對帳時登記過的自訂附加費用自己的名字 —— 重算那一側也叫
    這個名字,兩邊才對得起來;稽核中心匯出照 py 的 classify_fee,不帶自訂名。
