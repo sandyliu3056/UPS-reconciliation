@@ -16869,7 +16869,7 @@ function dashFilter(data){
    —— 那是這張圖自己的事,不是整頁的篩選。 */
 function dashFilterHTML(data){
   const meas=`<span class="fseg">`
-    +[["profit",L("毛利","Profit")],["margin",L("毛利率","Margin")]].map(([k,t])=>
+    +[["profit",L("重算差額","Reprice − UPS")],["margin",L("差額率","Variance %")]].map(([k,t])=>
       `<button type="button" class="fsegb${DASH_F.measure===k?" on":""}" data-m="${k}">${esc(t)}</button>`
     ).join("")+`</span>`;
   return `<div class="dfilters">${meas}</div>`;
@@ -16934,7 +16934,7 @@ function dashAllHTML(all){
       ${multi?`<th>${L("UPS 帳號","Account")}</th>`:""}
       <th>${L("貨件","Shipments")}</th>
       <th>${L("重算","Reprice")}</th><th>UPS</th>
-      <th>${L("毛利","Profit")}</th><th>${L("毛利率","Margin")}</th>
+      <th>${L("重算差額","Reprice − UPS")}</th><th>${L("差額率","Variance %")}</th>
       <th>${L("帳戶層費用","Account charges")}</th>
     </tr></thead><tbody>${rows}</tbody>
     <tfoot><tr><td class="ak" colspan="${multi?3:2}">${L("合計 "+ok.length+" 期",
@@ -17292,8 +17292,7 @@ function prSheetPeriods(){
   };
   const head=[L("期別","Invoice"),L("帳單日","Invoice date"),L("UPS 帳號","UPS account"),
               L("貨件","Shipments"),L("重算","Reprice"),"UPS",
-              L("毛利","Profit"),L("毛利率","Margin"),L("帳戶層費用","Account charges"),
-              L("備註","Note")];
+              L("重算差額","Reprice − UPS"),L("差額率","Variance %"),L("帳戶層費用","Account charges")];
   const body=[]; let tn=0,tr=0,tb=0,ta=0,nOk=0;
   for(const d of data){
     const a=dashAcctOf(d);
@@ -17301,9 +17300,7 @@ function prSheetPeriods(){
        註記,同一個帳號就變成兩種字串。畫面上的下拉選單同一個道理。 */
     const acct=a.id||"";
     if(d.missing){
-      body.push([d.key, serial(d.date), acct, 0,0,0,0,0,0,
-                 L("只有索引,沒有明細,請重新匯入本期",
-                   "Index only, no detail — import this period again")]);
+      body.push([d.key, serial(d.date), acct, 0,0,0,0,0,0]);
       continue;
     }
     nOk++;
@@ -17312,22 +17309,19 @@ function prSheetPeriods(){
     body.push([d.key, serial(d.date), acct, d.n,
                cents(d.repriced), cents(d.billed), g,
                d.repriced?(d.repriced-d.billed)/Math.abs(d.repriced):0,
-               cents(d.account), ""]);
+               cents(d.account)]);
   }
   const gt=tr-tb;
   body.push([L("合計 "+nOk+" 期","Total · "+nOk+(nOk===1?" period":" periods")),"","",tn,
-             cents(tr), cents(tb), cents(gt), tr?gt/Math.abs(tr):0, cents(ta), ""]);
+             cents(tr), cents(tb), cents(gt), tr?gt/Math.abs(tr):0, cents(ta)]);
   /* 欄位各有各的格式:錢是 $、比例是 %、件數是整數、日期是日期。
      虧損的那幾格用紅字,和畫面上同一個訊號 —— 一整欄黑字裡要逐格看負號。 */
   const MONEY="$#,##0.00", PCT="0.0%", INT="#,##0", DATE="mm/dd/yyyy";
   const fmtOf=c=>c===1?DATE:(c===3?INT:(c===7?PCT:([4,5,6,8].indexOf(c)>=0?MONEY:"")));
   const HEAD="E8E2D6", FOOT="FFF2CC", RED="C00000";
-  /* 標題和它底下的數字要靠同一邊。Excel 的數字一律靠右,標題置中的話,
-     一欄裡標題在中間、數字在右邊,看起來就是沒對齊。文字欄靠左、數字欄靠右,
-     標題跟著走。
-     另外每一格都補上細框線 —— 有底色的儲存格會蓋掉 Excel 自己的格線,
-     不補就變成一片沒有格子的色塊。 */
-  const alignOf=c=>(c===0||c===2||c===9)?"left":"right";
+  /* 整張表置中對齊 —— 使用者指定。每一格都補上細框線:有底色的儲存格會
+     蓋掉 Excel 自己的格線,不補就變成一片沒有格子的色塊。 */
+  const alignOf=()=>"center";
   const grid=[head.map((h,c)=>({v:h,t:"s",
     s:{bold:true,fill:HEAD,align:alignOf(c),wrap:true,border:true}}))];
   body.forEach((row,ri)=>{
@@ -17347,7 +17341,7 @@ function prSheetPeriods(){
   const accts=[...new Set(data.map(d=>dashAcctOf(d).id).filter(Boolean))].sort();
   const last=data.map(d=>String(d.date||"")).filter(Boolean).sort().pop()||"";
   return {sheets:[{name:LANG?"Profit by period":"各期利潤", rows:grid,
-                   cols:[20,12,16,10,16,16,14,10,16,38].map(w=>({w:w})),
+                   cols:[20,12,16,10,16,16,14,10,16].map(w=>({w:w})),
                    freeze:{r:1,c:0}}],
           accts:accts, last:last, n:nOk};
 }
@@ -17964,14 +17958,6 @@ function renderDashboard(){
         <div class="dv">${wmsAgg.n}</div></div>
     </div>`:`<div class="dempty" style="padding:14px 18px;margin-bottom:12px">${L("毛利要等對帳:匯入 WMS / TMS 檔之後,這裡才會有「實收 + 補收 − UPS」。",
         "Profit waits for the reconciliation: import the WMS / TMS file and this line shows billed + difference − UPS.")}</div>`}
-    <div class="dflow" style="margin-top:8px">
-      <div class="dcell"><div class="dk">${L("UPS(載入的全部期別)","UPS (all loaded periods)")}</div>
-        <div class="dv">${money(d.billed)}</div></div>
-      <div class="dcell dapart"><div class="dk">${L("重算(找漏收用)","Reprice (missed-charge check)")}</div>
-        <div class="dv">${money(d.repriced)}</div></div>
-      <div class="dcell dapart"><div class="dk">${L("帳戶層費用","Account charges")}</div>
-        <div class="dv">${money(d.account)}</div></div>
-    </div>
     <div class="dcard">
       <div class="ch"><h3>${L("費用組成","Cost breakdown")}</h3>
         <button class="act ghost" id="bPerXls" style="padding:3px 11px;font-size:12px">${
@@ -18066,17 +18052,16 @@ function prSheetInvoice(){
     kv(L("貨件數","Shipments"), d.n, INT),
     kv(L("重算","Reprice"), cents(d.repriced), MONEY),
     kv("UPS", cents(d.billed), MONEY),
-    kv(L("毛利","Profit"), cents(profit), MONEY),
-    kv(L("毛利率","Margin"), d.repriced?profit/Math.abs(d.repriced):0, PCT),
+    kv(L("重算差額","Reprice − UPS"), cents(profit), MONEY),
+    kv(L("差額率","Variance %"), d.repriced?profit/Math.abs(d.repriced):0, PCT),
     kv(L("帳戶層費用","Account charges"), cents(d.account), MONEY, true)];
   /* 有對帳在畫面上時,摘要也要有它:實收、應補收、應收合計、對帳毛利 ——
      和儀表板那一條同一份數字(dashWmsAgg),檔案和畫面對不起來的報表沒人信。 */
   const wa=(typeof dashWmsAgg==="function")&&dashWmsAgg();
   if(wa){
+    /* 實收與應補收併進應收合計一列 —— 組成寫在項目名裡,數字只留合計。 */
     sum.push(
-      kv(wa.src+L(" 實收"," billed"), wa.total, MONEY),
-      kv(L("應補收(含燃油)","To re-bill (incl. fuel)"), wa.rebill, MONEY),
-      kv(L("應收合計","Chargeable"), wa.chargeable, MONEY),
+      kv(L("應收合計("+wa.src+" 實收 + 應補收)","Chargeable ("+wa.src+" billed + re-bill)"), wa.chargeable, MONEY),
       kv(L("對帳毛利(應收合計 − UPS)","Reconciliation profit (Chargeable − UPS)"), wa.profit, MONEY),
       kv(L("對帳筆數","Reconciled rows"), wa.n, INT, true));
   }
@@ -18095,7 +18080,7 @@ function prSheetInvoice(){
   const cbHead1=[hc(L("費用類別","Charge"),HEAD,"left"),
                  hc(L("金額","Amount"),HEAD),hc("",HEAD),
                  hc(L("佔比","Share"),HEAD),hc("",HEAD),
-                 hc(L("毛利","Profit"),HEAD)];
+                 hc(L("重算差額","Reprice − UPS"),HEAD)];
   const cbHead2=[hc("",HEAD,"left"),
                  hc(UPSCOL,UPS),hc(REPCOL,REP),
                  hc(UPSCOL,UPS),hc(REPCOL,REP),
@@ -18147,26 +18132,13 @@ function prSheetInvoice(){
     s:Object.assign({align:al||"left",border:true},extra||{})});
   const dcell=v=>{ const n=serial(normYmd(v)||"");
     return n===""?tcell(v,"center"):{v:n,t:"n",s:{fmt:DATE,align:"center",border:true}}; };
-  const det=[[hc(L("期號","Invoice Number"),null,"left"),hc(L("帳單日","Invoice Date")),
-              hc(L("追蹤號","Tracking"),null,"left"),
-              hc(L("重算","Reprice")),hc("UPS"),
-              hc(L("毛利","Profit")),hc(L("毛利率","Margin"))]];
-  /* 不放合計列:總數在 Summary 頁,而腳註列會被 Excel 的篩選排序捲進資料裡。 */
-  for(const o of reportRows()){
-    const t=o["Tracking"]; if(!t) continue;
-    const sv=r2v(toNum(o["Total"])), cv=r2v(trkCost[t]||0);
-    det.push([tcell(trkInv[t]||keys.join(", ")),dcell(trkDate[t]||invDate),tcell(t),
-      ncell(sv),ncell(cv),ncell(r2v(sv-cv)),ncell(sv?(sv-cv)/Math.abs(sv):0,PCT)]);
-  }
+  /* 逐件明細頁拿掉了:重算差是查漏收的工具,逐件看在畫面上的計費明細更快。 */
 
   return {sheets:[
     {name:L("本期摘要","Summary"), rows:sum, cols:[{w:22},{w:24}], freeze:{r:1,c:0}},
     {name:L("費用組成","Cost breakdown"), rows:cb,
      cols:[{w:30},{w:16},{w:16},{w:12},{w:12},{w:15}],
      merges:cbMerges, freeze:{r:2,c:1}},
-    {name:L("逐件明細","Tracking detail"), rows:det,
-     cols:[{w:20},{w:12},{w:22},{w:15},{w:14},{w:13},{w:10}],
-     freeze:{r:1,c:0}, filter:"A1:G"+det.length},
   ], accts:acct?[acct]:[], key:keys[0]||"", last:invDate||""};
 }
 /* 卡片上列出的東西倒成 Excel。兩張工作表:摘要就是畫面上那幾組,明細
@@ -19914,7 +19886,7 @@ function exportIssues(){
     merges.push({s:{r:0,c:c},e:{r:0,c:c+1}});
   });
   const diffAt=head1.length;
-  head1.push(L("毛利","Profit")); head2.push("");
+  head1.push(L("重算差額","Reprice − UPS")); head2.push("");
   merges.push({s:{r:0,c:diffAt},e:{r:1,c:diffAt}});
   const wide=[head1, head2];
   const order=[...perTrk.values()].sort((a,b)=>b.sev-a.sev || Math.abs(b.ups)-Math.abs(a.ups));
@@ -20062,7 +20034,7 @@ function renderRate(){
     ${accN.map(n=>`<th class="num">${esc(n)}${infoN.has(n)
         ? ` <span style="font-weight:400">(`+L("僅顯示","report only")+`)</span>` : ""}</th>`).join("")}
     <th class="num">${T("hd.fuel")}</th><th class="num">${T("t.calc")}</th>
-    <th class="num">${T("t.ups")}</th><th class="num">${L("毛利","Profit")}</th>
+    <th class="num">${T("t.ups")}</th><th class="num">${L("重算差額","Reprice − UPS")}</th>
     <th>${T("th.note")}</th></tr>`;
   $("#tRate").tBodies[0].innerHTML=RATED.slice(0,300).map(o=>`<tr>
     <td class="mono">${esc(o.s.tracking)}</td>
@@ -20323,9 +20295,9 @@ $("#bCsv") && ($("#bCsv").onclick=async ()=>{
        color:(typeof v==="number"&&v<0)?RED:undefined}});
 
   const DET=[L("期號","Invoice Number"),L("帳單日","Invoice Date"),L("追蹤號","Tracking"),
-             L("重算","Reprice"),"UPS",L("毛利","Profit"),L("毛利率","Margin")];
+             L("重算","Reprice"),"UPS",L("重算差額","Reprice − UPS"),L("差額率","Variance %")];
   const OV=[L("期號","Invoice Number"),L("帳單日","Invoice Date"),"UPS",
-            L("重算","Reprice"),L("毛利","Profit"),L("毛利率","Margin")];
+            L("重算","Reprice"),L("重算差額","Reprice − UPS"),L("差額率","Variance %")];
   const DCOL=[{w:20},{w:12},{w:22},{w:14},{w:14},{w:14},{w:10}];
   const sheets=[]; const ovRows=[];
   for(const inv of Object.keys(byInv).sort()){
@@ -20367,8 +20339,8 @@ $("#bCsv") && ($("#bCsv").onclick=async ()=>{
       sumRows.push([lab(L("貨件數","Shipments")),nm(n,INT)]);
       sumRows.push([lab(L("重算","Reprice")),nm(sv)]);
       sumRows.push([lab("UPS"),nm(cv)]);
-      sumRows.push([lab(L("毛利","Profit")),nm(r2(sv-cv))]);
-      sumRows.push([lab(L("毛利率","Margin")),nm(sv?r6((sv-cv)/Math.abs(sv)):0,PCT)]);
+      sumRows.push([lab(L("重算差額","Reprice − UPS")),nm(r2(sv-cv))]);
+      sumRows.push([lab(L("差額率","Variance %")),nm(sv?r6((sv-cv)/Math.abs(sv)):0,PCT)]);
     });
     sumRows.push([{v:"",t:"s"},{v:"",t:"s"}]);
     sumRows.push([lab(L("帳戶層費用","Account charges")),nm(r2(accountTotal))]);
