@@ -13801,7 +13801,14 @@ function reconParse(sheetRows){
     return -1;
   };
   const isNew=find("Tracking Number")>=0;
-  const mineOr=(names, legacy)=>{ const j=findMine(...names); return j>=0?j:find(...(isNew?[]:legacy)); };
+  /* 「不帶後綴的 Zone / Channel / Billed Weight 是帳單抄來的」只在檔案裡真的有
+     帳單那一側的時候才成立 —— 也就是有「- UPS」欄,或尺寸、實重、Shipping
+     Channel 這些從帳單抄來的欄。現在的模板整張都是同仁填的,沒有另一側,
+     欄名也就不再帶後綴;帶後綴的舊檔照樣優先讀後綴那一欄。 */
+  const hasInvSide=low.some(h=>/\s-\s*ups$/.test(h))
+    || find("Package Dimensions")>=0 || find("Detail Keyed Dim")>=0
+    || find("Shipping Channel")>=0 || find("Entered Weight")>=0;
+  const mineOr=(names, legacy)=>{ const j=findMine(...names); return j>=0?j:(hasInvSide?-1:find(...legacy)); };
   const ix={
     trk:  find("Tracking Number","Tracking Numbers"),
     cus:  mineOr(["Customer Code"],["Customer Code"]),
@@ -13811,7 +13818,7 @@ function reconParse(sheetRows){
     ref1: find("Shipment Reference Number 1"), ref2: find("Shipment Reference Number 2"),
     chan: mineOr(["Channel","Shipping Channel"],["Channel"]),
     zone: mineOr(["Zone"],["Zone"]),
-    wt:   mineOr(["Billed Weight","Billed Weight (lb)"],["Billed Weight (lb)"]),
+    wt:   mineOr(["Billed Weight","Billed Weight (lb)"],["Billed Weight","Billed Weight (lb)"]),
   };
   /* 客戶代碼、單號、總額這三欄新舊版式都沒有字尾也認 —— 它們本來就只有同仁會填。 */
   if(ix.cus<0)   ix.cus=find("Customer Code");
@@ -13946,29 +13953,34 @@ async function reconTemplate(src){
     .filter(d=>d&&d.enabled!==false)
     .map(d=>String(d.name||"").trim())
     .filter(n=>n && AUD_FEES.indexOf(n)<0);
-  let feeCols=AUD_FEES.concat([...new Set(dynFees)].sort());
-  /* TMS 那一側系統本來就把額外處理與大包裹收在同一欄,拆成四欄要人自己分,
-     分不出來 —— 所以 TMS 的模板出合併欄(RECON_GROUPS.ahslps 的組名),
-     位置就是原本第一個細項的位置。匯入端本來就認合併欄。 */
-  if(src==="TMS"){
-    const g=RECON_GROUPS.ahslps, mem=new Set(g.fees);
+  /* 模板上只留客戶端出貨當下就知道、而且真的向客戶收的費用。
+     運費更正、地址更正、退件、改道、指定日取件這些是 UPS 開帳之後才發生的,
+     WMS / TMS 端不會知道,擺在模板上只會讓人以為自己漏填;超大件是 UPS 才
+     收的,我們系統不先收。自訂附加費同理 —— 那是帳單上的代碼。 */
+  const TPL_DROP=new Set(["Over Maximum Size","Address Correction","Shipping Charge Correction",
+    "Returns Electronic Label","Return To Sender - Web Request","Reroute - Web Request",
+    "Future Day Pickup - Alternate Address - Web Request","Residential Pickup surcharge",
+    "Undeliverable Return","Return to Sender - Base Rate","Returns - Base Rate"]);
+  /* 客戶端收在同一格的,模板就給同一欄:配送地區與偏遠一欄、簽名一欄、
+     額外處理一欄 —— TMS 的額外處理連大包裹一起收,WMS 的大包裹分開。
+     這幾個組名對帳引擎本來就認得,填合併欄和分開填細項算出來一樣。 */
+  let feeCols=AUD_FEES.filter(c=>!TPL_DROP.has(c));
+  for(const g of ["dasras","sig",(src==="TMS"?"ahslps":"ahs")]){
+    const def=RECON_GROUPS[g], mem=new Set(def.fees);
     const at=feeCols.findIndex(c=>mem.has(c));
     feeCols=feeCols.filter(c=>!mem.has(c));
-    if(at>=0) feeCols.splice(at,0,g.head); else feeCols.push(g.head);
+    if(at>=0) feeCols.splice(at,0,def.head); else feeCols.push(def.head);
   }
   const HI=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF",wrap:true}});
   const HU=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"FFC000",color:"1F1F1F",wrap:true}});
   const HM=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"92D050",color:"1F1F1F",wrap:true}});
   const HQ=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"1F5638",color:"FFFFFF",wrap:true}});
-  const mineCols=[RECON_COL.cus, RECON_COL.order, "Channel - "+src, "Zone - "+src, "Billed Weight - "+src];
-  /* 模板空了之後,「- UPS」那一側和帳單抄來的那幾欄(尺寸、實重、Zone、渠道、
-     期號)永遠是空白 —— 五十幾欄沒有人要填的欄位,只是把表拉到 BQ 去。留下
-     要填的:日期、兩個參考號、追蹤號,再來就是同仁那幾欄與每一項費用一欄。
-     匯入端本來就照欄名認欄,舊的、帶「- UPS」的檔照樣讀得進來。 */
-  const hd=[HI(RECON_COL.date), HI(RECON_COL.ref1), HI(RECON_COL.ref2), HQ(RECON_COL.trk)]
-    .concat([HQ(mineCols[0])], mineCols.slice(1).map(HM));
-  for(const c of feeCols) hd.push(HM(c+" - "+src));
-  hd.push(HQ("Total Amount - "+src));
+  /* 欄名不帶「- WMS / - TMS」了:整張表都是同仁要填的,沒有另一側可以混淆,
+     後綴只是讓每個欄名長一截。參考號兩欄也拿掉 —— 對帳是照追蹤號比的,
+     單號空白時本來就會退回用追蹤號。 */
+  const hd=[HM(RECON_COL.date), HQ(RECON_COL.trk), HQ(RECON_COL.cus), HM(RECON_COL.order),
+            HM("Channel"), HM("Zone"), HM("Billed Weight")]
+    .concat(feeCols.map(HM), [HQ("Total Amount")]);
   const MONEY="#,##0.00";
   /* 模板是空白的:只有表頭,一列資料都不帶。以前它把手上那批帳單整個倒進去
      ——一次匯入三十九期就是十六萬列、混著三十九個期號的一份檔,沒辦法拿給
@@ -13980,22 +13992,24 @@ async function reconTemplate(src){
   const G=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
   const gRow=(c,f,n)=>[c,f,n];
   const guide=[[G("Column"),G("Fill with / 填什麼"),G("Notes / 說明")],
-    gRow(AUD_BASE.join(", ")+", Invoice Number","帳單抄來的識別欄,不用改 Identity from the invoice — leave as is",
+    gRow(RECON_COL.trk,"追蹤號 Tracking number","必填;對帳照它比對帳單,一票多件時一件一列 Required; the reconciliation matches on it — one row per package",
          "版式與稽核中心匯出的 Consolidated Invoice 相同,一個追蹤號一列 Same layout as the Audit Center's Consolidated Invoice sheet, one tracking per row"),
     gRow(RECON_COL.cus,"客戶代碼 Customer code","必填;要在客戶名單裡,對照 Customers 分頁 Required; must be on the client list, see the Customers sheet"),
-    gRow(RECON_COL.order,"系統單號 Order number","選填;空白時用參考號 1、2;一票多件時各件同一個單號 Optional; blank falls back to reference 1 / 2; a multi-piece order repeats its number on each package"),
-    gRow("Channel - "+src,"計價用的渠道 Channel used for pricing","選填;系統的渠道名稱,對照 Channels 分頁;Ground 不分商業／住宅;匯入後與系統判的渠道核對 Optional; a system channel name, see the Channels sheet; Ground has no com/res split; checked against the system's channel"),
-    gRow("Zone - "+src,"計價用的 UPS Zone Zone used for pricing","選填;匯入後與帳單上的 Zone(左邊那一欄)核對 Optional; checked against the invoice Zone column"),
-    gRow("Billed Weight - "+src,"向客戶計價的計費重量(lb)Billable weight the client was charged on, lb","選填;只記錄不核對,合約計費重量本來就不必相同 Optional; recorded only, the contract billed weight need not match"),
-    gRow("<費用> - UPS  <charge> - UPS","帳單收的 Charged by UPS","不必填;要對照的話看系統跑完的報表 Not needed; the system's own report has the invoice figures"),
-    gRow("<費用> - "+src+"  <charge> - "+src,"向客戶收的 Billed to the client","按件填;空白 = 未填,0 = 實收零 Per package; blank = not filled, 0 = billed zero"),
-    gRow("Total Amount - UPS","帳單這一件的合計 UPS total for the package","不用改 Leave as is"),
-    gRow("Total Amount - "+src,"這一件向客戶收的總額 Whole amount billed to the client for the package","必填;應等於各「- "+src+"」費用欄合計 Required; should equal the "+src+" charge columns"),
+    gRow(RECON_COL.order,"系統單號 Order number","選填;空白時用追蹤號;一票多件時各件同一個單號 Optional; blank falls back to the tracking number; a multi-piece order repeats its number on each package"),
+    gRow("Channel","計價用的渠道 Channel used for pricing","選填;系統的渠道名稱,對照 Channels 分頁;Ground 不分商業／住宅;匯入後與系統判的渠道核對 Optional; a system channel name, see the Channels sheet; Ground has no com/res split; checked against the system's channel"),
+    gRow("Zone","計價用的 UPS Zone Zone used for pricing","選填;匯入後與帳單上的 Zone 核對 Optional; checked against the Zone UPS billed"),
+    gRow("Billed Weight","向客戶計價的計費重量(lb)Billable weight the client was charged on, lb","選填;只記錄不核對,合約計費重量本來就不必相同 Optional; recorded only, the contract billed weight need not match"),
+    gRow(L("<費用>","<charge>"),"向客戶收的 Billed to the client","按件填;空白 = 未填,0 = 實收零 Per package; blank = not filled, 0 = billed zero"),
+    gRow("Total Amount","這一件向客戶收的總額 Whole amount billed to the client for the package","必填;應等於各費用欄合計 Required; should equal the charge columns"),
     ["","",""],
-    gRow(L("費用欄","Charge columns"),L("一項一欄,照 Consolidated 的順序","One column per charge, in Consolidated order"),
-         L("UPS 開帳後才有的(更正、地址更正、退件…)向客戶補收了才填,沒補收留空","Charges that only exist once UPS invoiced (corrections, address correction, returns…) are filled only if re-billed to the client, else left blank"))];
+    gRow(L("費用欄","Charge columns"),L("出貨當下向客戶收的那幾項","The charges billed to the client at shipping time"),
+         L("UPS 開帳後才有的(運費更正、地址更正、退件、改道…)不在這張表上,系統自己從帳單認",
+           "Charges that only exist once UPS has invoiced (freight corrections, address correction, returns, reroutes…) are not on this sheet — the system takes them from the invoice"))];
   const notes={
-    [RECON_GROUPS.ahslps.head]:["額外處理與大包裹合在一欄(TMS 系統就是這樣收的);拆開的細項欄不必再填 Additional handling and large package in one column, the way TMS bills them; the individual columns are not needed",""],
+    [RECON_GROUPS.ahslps.head]:["額外處理與大包裹合在一欄 —— TMS 就是這樣收的 Additional handling and large package in one column, the way TMS bills them",""],
+    [RECON_GROUPS.ahs.head]:["額外處理(重量、尺寸、包裝)合在一欄 Additional handling — weight, dimension and packaging in one column",""],
+    [RECON_GROUPS.dasras.head]:["配送地區與偏遠地區合在一欄(含延伸、商業／住宅)Delivery area and remote area in one column, extended and com/res included",src==="TMS"?"TMS 的 DAS 欄 TMS column: DAS":""],
+    [RECON_GROUPS.sig.head]:["簽名與成人簽名合在一欄 Signature and adult signature in one column",src==="TMS"?"TMS 的 Signature 欄 TMS column: Signature":""],
     "Base Rate":["出貨當時向客戶收的運費 Freight billed at shipping time",""],
     "Fuel Surcharge":["燃油附加費 Fuel surcharge",""],
     "Residential Surcharge":["住宅附加費 Residential surcharge",""],
@@ -14011,15 +14025,15 @@ async function reconTemplate(src){
              :/^Additional Handling Surcharge/.test(n)?["加值處理費,照帳單那一欄填 Additional handling — fill the column UPS billed",src==="TMS"?"TMS 的 Delivery Surcharge 拆出加值處理的部分 The additional-handling part of the TMS Delivery Surcharge":""]
              :/Signature$/.test(n)?["簽名服務 Signature service",src==="TMS"?"TMS 的 Signature 欄 TMS column: Signature":""]
              :null;
-  for(const c of feeCols){ const f=notes[c]||grp(c)||[c,""]; guide.push(gRow(c+" - "+src, f[0], f[1])); }
+  for(const c of feeCols){ const f=notes[c]||grp(c)||[c,""]; guide.push(gRow(c, f[0], f[1])); }
   guide.push(["","",""]);
-  guide.push(gRow(L("規則","Rules"),"欄名不可改、不可增刪;不要動黃色與深棕色的欄 Do not rename, add or remove columns; leave the yellow and dark-brown columns alone",
-                  "只讀綠色欄;缺客戶代碼或總額的列整份退回 Only the green columns are read; a row missing Customer Code or Total Amount rejects the whole file"));
-  const idW=[12,22,22,22,16,16,10,10,7,26,18, 16,20,18,10,14];
+  guide.push(gRow(L("規則","Rules"),"欄名不可改、不可增刪 Do not rename, add or remove columns",
+                  "缺追蹤號、客戶代碼或總額的列整份退回;整列空白的略過 A row missing the tracking number, client code or total rejects the whole file; entirely blank rows are skipped"));
+  const idW=[12,22,16,20,18,10,14];
   const sheets=[
     /* 不凍結、不加篩選:要的人自己在 Excel 開,一下就好;強加上去的反而礙事。 */
     {name:RECON_SHEET, rows, ignoreTextNumbers:true,
-     cols:idW.concat(feeCols.flatMap(n=>[Math.min(30,Math.max(14,n.length+8)),Math.min(30,Math.max(14,n.length+8))]),[18,18]).map(w=>({w}))},
+     cols:idW.concat(feeCols.map(n=>Math.min(34,Math.max(14,n.length+6))),[18]).map(w=>({w}))},
     {name:"Guide", freeze:{r:1,c:0}, cols:[{w:46},{w:54},{w:62}], rows:guide, ignoreTextNumbers:true},
     /* 兩張對照表,都是可見的參考頁,不做下拉:客戶代碼和渠道都是同仁從自己
        系統抄過來的,下拉反而擋手。渠道列的是族名,旁邊寫系統裡對應的幾條。 */
