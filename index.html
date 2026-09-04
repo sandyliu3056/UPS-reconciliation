@@ -8555,8 +8555,6 @@ function renderHome(){
       </div>`;
   box.innerHTML=`<div class="homeboard">${hero}${rb}${hist}</div>
     <div class="hacts">
-      <button class="act" data-go="files">📁 ${esc(L("UPS 帳單匯入","UPS Invoice Import"))}</button>
-      <button class="act ghost" data-go="wmsdata">📄 ${esc(L("WMS / TMS 匯入","WMS / TMS Import"))}</button>
       <button class="act ghost" data-go="analysis">📈 ${esc(L("儀表板","Dashboard"))}</button>
     </div>${mid}`;
   box.querySelectorAll("[data-run]").forEach(b=>{ b.onclick=()=>{
