@@ -2759,7 +2759,6 @@ label:has(#newChanOn){display:none !important}
     <p class="hint" style="margin:0 0 11px;max-width:78ch" data-i18n="hint.reconruns">Every imported WMS / TMS file is kept together with its result. Open one to load that period's invoice from history and compare it again at today's rates; the figures here are from the last run.</p>
     <div class="tablewrap" style="max-height:40vh"><table id="tReconRuns"><thead><tr>
       <th data-i18n="th.runinvdate">Invoice date</th>
-      <th data-i18n="th.runinv">Invoice</th>
       <th data-i18n="th.runsrc">Source</th>
       <th class="num" data-i18n="th.reconorders">Orders</th>
       <th class="num" data-i18n="th.reconbilled">Billed to customer</th>
@@ -2791,12 +2790,6 @@ label:has(#newChanOn){display:none !important}
     <h3 class="display"><span class="em">👤</span><span data-i18n="hd.anacus">By client</span></h3>
     <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.anacus">Sorted by profit, largest first. Margin is profit over what the client was billed — a big client on a thin margin can be worth less than a small one on a fat margin.</p>
     <div class="row" style="margin-bottom:9px">
-      <label class="inlab" style="margin-left:0" data-i18n="lb.anasort">Sort by</label>
-      <span class="foldwrap"><select id="anaSort" class="fold">
-        <option value="profit" data-i18n="opt.anaprofit">Profit</option>
-        <option value="margin" data-i18n="opt.anamargin">Margin</option>
-        <option value="amt" data-i18n="opt.anabilled">Billed</option>
-      </select></span>
       <span style="flex:1 1 auto"></span>
       <span id="anaCusSum" class="affsum"></span>
     </div>
@@ -13691,7 +13684,7 @@ function renderReconRuns(){
       card.hidden=!runs.length;
       const tb=$("#tReconRuns")&&$("#tReconRuns").tBodies[0];
       if(tb) tb.innerHTML=runs.map(r=>{ const s=r.sum||{}, cur=r.key===RECON_RUN_KEY;
-        return `<tr${cur?' class="cur"':""}><td>${esc(r.invDate||"—")}</td><td class="mono">${esc((r.invoices||[]).join(", "))}</td>
+        return `<tr${cur?' class="cur"':""}><td>${esc(r.invDate||"—")}</td>
           <td>${esc(r.src)}</td><td class="num">${r.n||0}</td>
           <td class="num">${money(s.amt||0)}</td><td class="num">${money(s.cost||0)}</td>
           <td class="num"><span class="mny ${(s.profit||0)<0?"neg":(s.profit>0?"pos":"")}">${money(s.profit||0)}</span></td>
@@ -13703,7 +13696,9 @@ function renderReconRuns(){
     renderTplHist(runs);
     if(mini) mini.innerHTML=runs.length
       ? `<div class="subhd" style="margin-top:12px">${esc(L("已存的對帳","Stored reconciliations"))}</div>`
-        +runs.map(r=>`<button class="act ghost" data-open="${esc(r.key)}" style="margin:6px 6px 0 0">${esc((r.invDate||"—")+" · "+(r.invoices||[]).join(", ")+" · "+r.src+" · "+(r.n||0)+" "+L("筆","row(s)"))}</button>`).join("")
+        +runs.map(r=>{ const iv=(r.invoices||[]);
+        const ivTxt=iv.length>2?(iv.length+L(" 期"," invoices")):iv.join(", ");
+        return `<button class="act ghost" data-open="${esc(r.key)}" style="margin:6px 6px 0 0">${esc((r.invDate||"—")+(ivTxt?" · "+ivTxt:"")+" · "+r.src+" · "+(r.n||0)+" "+L("筆","row(s)"))}</button>`; }).join("")
       : "";
   };
   if(RECON_RUNS) paint(RECON_RUNS); else idbRunAll().then(paint).catch(()=>paint([]));
@@ -16088,8 +16083,6 @@ function bindAnalysis(){
   const x=$("#bAnaXls");
   if(x) x.onclick=()=>{ anaExport().catch(e=>
     toast(String(e&&e.message||e), false)); };
-  const sel=$("#anaSort");
-  if(sel) sel.onchange=e=>{ ANA_SORT=e.target.value; renderAnalysis(); };
 }
 
 function bindRecon(){
