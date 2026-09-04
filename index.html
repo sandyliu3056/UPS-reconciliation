@@ -224,6 +224,13 @@ button.act,a.act{font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;
   border:2px solid var(--accent);border-radius:7px;padding:7px 17px;
   background:var(--tab);color:var(--text);letter-spacing:.2px}
 button.act:hover:not(:disabled),a.act:hover{background:var(--accent);color:#fff}
+/* 跑得久的按鈕:原地轉圈,並且維持自己的顏色(:disabled 會把它調淡,
+   看起來像壞掉的按鈕,而不是正在做事的按鈕)。 */
+button.act.busy:disabled{cursor:progress;opacity:1;border-color:var(--run2);color:var(--text)}
+.act .spin{display:inline-block;width:12px;height:12px;flex:none;margin-right:7px;
+  vertical-align:-2px;border:2px solid var(--line);border-top-color:var(--run2);
+  border-radius:50%;animation:dspin .7s linear infinite}
+@media (prefers-reduced-motion:reduce){.act .spin{animation:none}}
 button.act.run{background:var(--run);color:#fff}
 button.act.run:hover:not(:disabled){background:var(--run-hover);color:#fff}
 button.act.alt{background:var(--run2);border-color:var(--run2);color:#fff}
@@ -14089,6 +14096,24 @@ function reconRerunBtn(){
   const b=$("#bReconRerun");
   if(b) b.hidden=false;
 }
+/* 分析要把歸檔的明細整批讀回來再重算,幾萬列的時候會跑上好幾秒。按鈕不動、
+   畫面不動,看起來就像沒反應 —— 於是有人再按一次,而每按一次都會把歸檔的
+   快取清掉從頭來過,結果是愈按愈慢。轉圈和上鎖是同一件事的兩面。 */
+let RECON_BUSY=false;
+function reconBusyPaint(on){
+  RECON_BUSY=!!on;
+  for(const id of ["bReconRun2","bReconRerun"]){
+    const b=$("#"+id); if(!b) continue;
+    if(on){
+      if(b.dataset.lbl==null) b.dataset.lbl=b.innerHTML;
+      b.disabled=true; b.classList.add("busy");
+      b.innerHTML=`<span class="spin" aria-hidden="true"></span>`+esc(L("分析中…","Analysing…"));
+    }else{
+      b.disabled=false; b.classList.remove("busy");
+      if(b.dataset.lbl!=null){ b.innerHTML=b.dataset.lbl; delete b.dataset.lbl; }
+    }
+  }
+}
 /* 帳單匯入或切期之後:手上有 WMS / TMS 的單就自動重新比對,結果永遠對著
    現在載入的這一期。以前要人自己回 05 按「重新比對」。 */
 function reconAutoRun(){
@@ -14097,14 +14122,16 @@ function reconAutoRun(){
   const wasPending=!!RECON.pending;
   const fname=RECON.fname||"";
   const go=()=>{
-    reconRerunFrom(rows, true);
-    if(RECON) RECON.fname=fname;
-    if(wasPending) toast(L("帳單進來了,"+rows.length+" 筆已自動比對,結果在「3. 對帳分析」。",
-                           "Invoice loaded — "+rows.length+" row(s) compared automatically. See step 3, Reconciliation Analysis."),true);
+    try{
+      reconRerunFrom(rows, true);
+      if(RECON) RECON.fname=fname;
+      if(wasPending) toast(L("帳單進來了,"+rows.length+" 筆已自動比對,結果在「3. 對帳分析」。",
+                             "Invoice loaded — "+rows.length+" row(s) compared automatically. See step 3, Reconciliation Analysis."),true);
+    } finally { reconBusyPaint(false); }
     renderRecon();
   };
   /* 目前這期沒有的追蹤號先去歸檔找,找完才跑 —— 不然「不在帳單上」會先講一次錯的。 */
-  if(typeof reconFetchArchived==="function") reconFetchArchived(rows).then(go,go);
+  if(typeof reconFetchArchived==="function"){ reconBusyPaint(true); reconFetchArchived(rows).then(go,go); }
   else go();
   return true;
 }
@@ -16206,17 +16233,28 @@ function bindRecon(){
   $("#bReconImp") && ($("#bReconImp").onclick=()=>$("#fRecon").click());
   /* 「分析」:拿匯入的列和載入的帳單比。兩邊缺哪一邊就講哪一邊。 */
   const analyse=()=>{
+    /* 已經在跑就不要再跑一次:第二次會把第一次撈到一半的歸檔清掉。 */
+    if(RECON_BUSY){ setStatus(L("分析中,請稍候…","Analysing — one moment…")); return; }
     const rows=RECON&&RECON.list;
     const say=m=>{ reconMsg(m,false); toast(m,false); };
     if(!rows||!rows.length){ say(L("還沒有 WMS / TMS 資料,先到「2. WMS / TMS 匯入」導入模板。","No WMS / TMS rows yet — import the template under step 2, WMS / TMS Import, first.")); return; }
     if(!CFG){ say(L("還沒載入費率設定。","No rate configuration is loaded.")); return; }
+    reconBusyPaint(true);
+    reconMsg(L("分析中:把歸檔裡這些追蹤號的明細讀回來,再整批重算…",
+               "Analysing: reading the archived detail for these tracking numbers, then repricing…"),true);
     const go=()=>{
-      const ok=reconRerunFrom(rows, false, RECON&&RECON.charges);
+      let ok=false;
+      try{ ok=reconRerunFrom(rows, false, RECON&&RECON.charges); }
+      finally{ reconBusyPaint(false); }
       if(ok) toast(L("已分析 "+rows.length+" 筆。","Analysed "+rows.length+" row(s)."),true);
     };
-    /* 先把歸檔期別的行撈齊再跑 —— 只要在系統內的 raw invoice,一律一起計算。 */
-    if(typeof reconFetchArchived==="function") reconFetchArchived(rows).then(go,go);
-    else go();
+    /* 先把歸檔期別的行撈齊再跑 —— 只要在系統內的 raw invoice,一律一起計算。
+       等瀏覽器把轉圈畫出來再開跑:同一個 tick 裡跑完的話,轉圈根本不會出現。 */
+    const run=()=>{
+      if(typeof reconFetchArchived==="function") reconFetchArchived(rows).then(go,go);
+      else go();
+    };
+    requestAnimationFrame(()=>requestAnimationFrame(run));
   };
   $("#bReconRerun") && ($("#bReconRerun").onclick=analyse);
   $("#bReconRun2") && ($("#bReconRun2").onclick=analyse);
