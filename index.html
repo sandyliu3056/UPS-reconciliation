@@ -22860,8 +22860,9 @@ function armSort(t){
 
 /* ── 4. 首欄凍結 ───────────────────────────────────────────────────────
    十一到十三欄的表往右捲之後,看到一排數字卻不知道是誰的。
-   第一欄釘住,身分就一直在。 */
-var PIN_IDS=["tRecon","tReconChg","tHist","tSize","tAnaCus","tAnaLvl"];
+   第一欄釘住,身分就一直在。tHist 不釘:那張表首欄是期號,同一頁幾乎同值,
+   釘住只會蓋掉資料。 */
+var PIN_IDS=["tRecon","tReconChg","tSize","tAnaCus","tAnaLvl"];
 
 function arm(){
   SORT_IDS.forEach(function(id){ var t=document.getElementById(id);

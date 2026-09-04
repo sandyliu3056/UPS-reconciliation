@@ -171,7 +171,7 @@ function armSort(t){
 /* ── 4. 首欄凍結 ───────────────────────────────────────────────────────
    十一到十三欄的表往右捲之後,看到一排數字卻不知道是誰的。
    第一欄釘住,身分就一直在。 */
-var PIN_IDS=["tRecon","tReconChg","tHist","tSize","tAnaCus","tAnaLvl"];
+var PIN_IDS=["tRecon","tReconChg","tSize","tAnaCus","tAnaLvl"];
 
 function arm(){
   SORT_IDS.forEach(function(id){ var t=document.getElementById(id);
