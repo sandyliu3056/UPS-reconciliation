@@ -2633,6 +2633,25 @@ label:has(#newChanOn){display:none !important}
       </div>
     </div>
 
+    <!-- 追蹤 API:貨況查詢走哪一條路。憑證永遠不在這裡 —— 這一格只收端點網址,
+         金鑰放在 Supabase 的 secrets 裡,換人接手也不必動到程式。 -->
+    <div class="sketch-soft" id="cardTrkApi" style="padding:14px 16px;margin:14px 0 14px">
+      <div class="subhd" style="margin-top:0" data-i18n="hd.trkapi">🔎 Tracking API (UPS status)</div>
+      <p class="hint" style="margin:8px 0 10px;max-width:880px" data-i18n="hint.trkapi">The Tracking page asks UPS where a parcel is. The request goes through your own proxy so the UPS credentials never reach the browser. This field takes the proxy address only; leave it empty and the app uses this site's own /api/track, if the deployment has one.</p>
+      <div class="row" style="margin-bottom:8px">
+        <label class="inlab" style="margin-left:0" data-i18n="lb.trkapiurl">Edge Function URL</label>
+        <input id="trkApiUrl" class="cell" style="width:min(520px,100%);text-align:left"
+               placeholder="https://xxxx.supabase.co/functions/v1/ups-track">
+        <button class="act ghost" id="bTrkApiTest" data-i18n="btn.trkapitest">Test connection</button>
+        <span id="trkApiSum" class="affsum"></span>
+      </div>
+      <details id="trkApiHelp">
+        <summary style="cursor:pointer;font-size:12.5px;font-weight:600" data-i18n="lb.trkapisteps">Setting this up (for whoever installs it)</summary>
+        <div class="hint" style="margin:9px 0 0;max-width:880px" data-i18n="hint.trkapisteps">Steps 1 and 2 work without any UPS credentials — deploy first, add the credentials the day they arrive. Between the two, Test connection says the endpoint is reachable and the credentials are still missing, which is exactly what it should say.</div>
+        <pre id="trkApiCmds" style="margin:9px 0 0;padding:11px 13px;overflow-x:auto;font-size:12px;line-height:1.7;border:1.5px solid var(--line);border-radius:9px;background:var(--stripe)"></pre>
+      </details>
+    </div>
+
     <!-- 住/商判定來源:目前用不到(對帳只看差異,不靠地址 API 判住/商),
          先隱藏。要叫回來把下面這個 div 的 hidden 拿掉即可,程式與視窗都還在。 -->
     <div class="sketch-soft" hidden style="padding:14px 16px;margin:14px 0 14px">
@@ -7339,6 +7358,7 @@ function rlSyncShared(){
     const g=c.global_rules||(c.global_rules={}), sg=src.global_rules||{};
     g.resi_source=sg.resi_source||"system";
     g.resi_api_url=String(sg.resi_api_url||"");
+    g.track_api_url=String(sg.track_api_url||"");
     demandSyncInto(c.demand_config||(c.demand_config={}), src.demand_config||{});
     seedAccRowsInto(c, src.dynamic_surcharge_mapping);
   });
@@ -7356,6 +7376,7 @@ function rlSeedStructInto(seed){
   const g=seed.global_rules||(seed.global_rules={}), sg=src.global_rules||{};
   g.resi_source=sg.resi_source||"system";
   g.resi_api_url=String(sg.resi_api_url||"");
+  g.track_api_url=String(sg.track_api_url||"");
   demandSyncInto(seed.demand_config||(seed.demand_config={}), src.demand_config||{});
   /* demandSyncInto 以「目標既有金額」為準 —— 種子沒有既有金額,結果就是留白 */
   seedAccRowsInto(seed, src.dynamic_surcharge_mapping);
@@ -10871,6 +10892,7 @@ function openBreakdown(){
         L("整筆合計 · 不分帳單期","Whole tracking · all invoices")}</div><div class="bkdsum-row">`
       +c(L(wsrc+" 實收",wsrc+" billed"), money2(tWm))
       +c(L("應補收","To re-bill"), anyRb?money2(tRb):money2(0), "+")
+      +c(L("應收合計","Chargeable"), money2(tRev), "=")
       +c(L("UPS 實收","UPS billed"), money2(tUp), "−")
       +c(L("毛利","Profit"), money2(tPf), "=", tPf<-0.0001)
       +c(L("毛利率","Margin"), tMg==null?"—":tMg.toFixed(1)+"%", "", tMg!=null&&tMg<0)
@@ -12588,6 +12610,8 @@ function renderConfigTabs(){
   if($("#resiSrcSys")) $("#resiSrcSys").checked=(_rs==="system");
   if($("#resiSrcApi")) $("#resiSrcApi").checked=(_rs==="api");
   if($("#resiApiUrl")) $("#resiApiUrl").value=g.resi_api_url||"";
+  if($("#trkApiUrl")) $("#trkApiUrl").value=g.track_api_url||"";
+  if(typeof paintTrkApi==="function") paintTrkApi();
   if(typeof paintResiSrcSum==="function") paintResiSrcSum();
   if($("#resiApiBox")) $("#resiApiBox").style.display=(_rs==="api")?"":"none";
   renderDemand();
@@ -13970,7 +13994,97 @@ function trackRender(){
   if(wrap) wrap.hidden=!rows.length;
   $("#bTrackXls") && ($("#bTrackXls").hidden=!rows.length);
 }
-/* 問 UPS 貨況:號碼送到站台自己的 /api/track,那一支拿憑證去問 UPS。
+/* 貨況查詢走哪一條路:設定裡填了 Edge Function 就走它,沒填就退回站台自己的
+   /api/track(Vercel 版)。兩支回同一個形狀,所以底下的程式不必知道接的是誰。 */
+function trackApiUrl(){
+  const g=(CFG&&CFG.raw&&CFG.raw.global_rules)||{};
+  return String(g.track_api_url||"").trim();
+}
+/* 代理要認得呼叫的人是誰,才不會把 UPS 額度開給全世界:先拿登入的 token,
+   沒有就退回 anon 金鑰(和地址代理同一條規矩)。 */
+async function trackAuthToken(){
+  let auth="";
+  try{
+    if(typeof AUTH!=="undefined" && AUTH){
+      const {data}=await AUTH.auth.getSession();
+      auth=(data&&data.session&&data.session.access_token)||"";
+    }
+  }catch(e){}
+  if(!auth && typeof AUTH_CONFIG!=="undefined" && AUTH_CONFIG) auth=AUTH_CONFIG.anonKey||"";
+  return auth;
+}
+function paintTrkApi(){
+  const el=$("#trkApiSum");
+  const url=trackApiUrl();
+  if(el&&!el.dataset.live) el.textContent=url
+    ? L("目前:"+url, "Now: "+url)
+    : L("目前:站台自己的 /api/track(沒有填 Edge Function)",
+        "Now: this site's own /api/track (no Edge Function set)");
+  const pre=$("#trkApiCmds");
+  if(pre){
+    const ref=(function(){ try{ return String((AUTH_CONFIG&&AUTH_CONFIG.url)||"")
+      .replace(/^https?:\/\//,"").split(".")[0]||"<project-ref>"; }catch(e){ return "<project-ref>"; } })();
+    pre.textContent=
+      "# 1. "+L("部署函式(還沒有 UPS 憑證也可以先做)","Deploy the function (no UPS credentials needed yet)")+"\n"
+     +"npm i -g supabase\n"
+     +"supabase login\n"
+     +"supabase link --project-ref "+ref+"\n"
+     +"supabase functions deploy ups-track\n\n"
+     +"# 2. "+L("把上面那一格填成","Paste this into the field above")+"\n"
+     +"https://"+ref+".supabase.co/functions/v1/ups-track\n\n"
+     +"# 3. "+L("憑證到手那一天再做(UPS Developer Portal → 應用程式)",
+                "The day the credentials arrive (UPS Developer Portal → your app)")+"\n"
+     +"supabase secrets set UPS_CLIENT_ID=xxx UPS_CLIENT_SECRET=yyy\n"
+     +"# "+L("選填:出貨帳號、測試環境","optional: shipper account, test environment")+"\n"
+     +"supabase secrets set UPS_ACCOUNT=zzz UPS_BASE=https://wwwcie.ups.com\n";
+  }
+}
+$("#trkApiUrl") && ($("#trkApiUrl").onchange=e=>{
+  (CFG.raw.global_rules||(CFG.raw.global_rules={})).track_api_url=String(e.target.value||"").trim();
+  if(typeof rlSyncShared==="function") rlSyncShared();
+  CFG=readConfig(CFG.raw); DIRTY=true;
+  const el=$("#trkApiSum"); if(el) delete el.dataset.live;
+  paintTrkApi();
+  setStatus(L("追蹤 API 端點已更新 —— 尚未儲存","Tracking API endpoint updated — not saved yet"));
+});
+/* 測試連線:證明四件事分得開 —— 端點打不打得通、認不認得呼叫者、憑證設了沒、
+   UPS 認不認那組憑證。含糊地說一句「失敗」,設定的人就得自己猜是哪一段。 */
+async function trkApiTest(){
+  const el=$("#trkApiSum"), btn=$("#bTrkApiTest");
+  const say=(m,bad)=>{ if(!el) return; el.dataset.live="1"; el.textContent=m;
+    el.className="affsum"+(bad?" bad":""); };
+  const url=trackApiUrl();
+  if(!url){ say(L("沒有填 Edge Function:現在走站台自己的 /api/track。",
+                  "No Edge Function set — the app uses this site's own /api/track."),false); return; }
+  if(btn) btn.disabled=true;
+  say(L("測試中…","Testing…"),false);
+  try{
+    const auth=await trackAuthToken();
+    const headers={"Content-Type":"application/json"};
+    if(auth){ headers["Authorization"]="Bearer "+auth; headers["apikey"]=auth; }
+    const r=await fetch(url,{method:"POST",headers,body:JSON.stringify({ping:true})});
+    let j=null; try{ j=await r.json(); }catch(e){}
+    if(r.status===401){ say(L("端點在,但它不認得這個呼叫者(沒登入或 anon 金鑰不對)。",
+                              "The endpoint answered but does not recognise the caller (not signed in, or the anon key is wrong)."),true); return; }
+    if(r.status===404){ say(L("這個網址上沒有函式 —— 網址打錯,或 ups-track 還沒部署。",
+                              "No function at that URL — either the address is wrong or ups-track is not deployed yet."),true); return; }
+    if(!r.ok){ say(L("端點回了 HTTP "+r.status+(j&&j.error?":"+j.error:""),
+                     "The endpoint answered HTTP "+r.status+(j&&j.error?": "+j.error:"")),true); return; }
+    if(j&&j.configured===false){
+      say(L("端點通了,UPS 憑證還沒設 —— 就差最後一步(supabase secrets set …)。",
+            "Endpoint reachable; the UPS credentials are not set yet — that is the last step (supabase secrets set …)."),false); return; }
+    if(j&&j.auth===false){
+      say(L("憑證設了,但 UPS 不接受:"+String(j.error||"").slice(0,120),
+            "Credentials are set but UPS rejected them: "+String(j.error||"").slice(0,120)),true); return; }
+    say(L("都通了:端點、登入、UPS 憑證都沒問題("+String((j&&j.base)||"")+")。",
+          "All good: endpoint, sign-in and UPS credentials ("+String((j&&j.base)||"")+")."),false);
+  }catch(e){
+    say(L("連不上這個端點:"+String((e&&e.message)||e)+"(網址錯、函式沒部署,或 CORS 沒放行)。",
+          "Could not reach the endpoint: "+String((e&&e.message)||e)+" (wrong address, function not deployed, or CORS)."),true);
+  }finally{ if(btn) btn.disabled=false; }
+}
+$("#bTrkApiTest") && ($("#bTrkApiTest").onclick=()=>{ trkApiTest(); });
+/* 問 UPS 貨況:號碼送到代理,那一支拿憑證去問 UPS。
    沒有這一支(靜態站)或憑證沒設,就把話講清楚,不裝作查過。 */
 async function trackUps(){
   const note=$("#trackNote"), btn=$("#bTrackUpsApi");
@@ -13979,17 +14093,35 @@ async function trackUps(){
   if(!rows.length) return;
   if(btn) btn.disabled=true;
   if(note) note.textContent=L("向 UPS 查詢 "+rows.length+" 個追蹤號…","Asking UPS about "+rows.length+" tracking number(s)…");
+  const url=trackApiUrl(), viaFn=!!url;
   try{
-    const r=await fetch("/api/track",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({numbers:rows.map(x=>x.t)})});
+    const headers={"Content-Type":"application/json"};
+    if(viaFn){
+      const auth=await trackAuthToken();
+      if(auth){ headers["Authorization"]="Bearer "+auth; headers["apikey"]=auth; }
+    }
+    const r=await fetch(url||"/api/track",{method:"POST",headers,
+      body:JSON.stringify({numbers:rows.map(x=>x.t)})});
     let j=null; try{ j=await r.json(); }catch(e){}
+    if(r.status===401){
+      if(note) note.textContent=L("代理不認得這個呼叫者:請重新登入,或到「01 General Setting → 3. 系統設定 → 追蹤 API」按「測試連線」看是哪一段。",
+                                  "The proxy does not recognise this caller: sign in again, or press Test connection under 01 General Setting → 3. System → Tracking API.");
+      return;
+    }
     if(r.status===503){
-      if(note) note.textContent=L("UPS API 憑證還沒設:到 Vercel 專案 Settings → Environment Variables 設 UPS_CLIENT_ID、UPS_CLIENT_SECRET、UPS_ACCOUNT,再 Redeploy。",
-                                  "UPS API credentials are not set: add UPS_CLIENT_ID, UPS_CLIENT_SECRET and UPS_ACCOUNT under the Vercel project's Settings → Environment Variables, then redeploy.");
+      if(note) note.textContent=viaFn
+        ? L("函式在,但 UPS 憑證還沒設:supabase secrets set UPS_CLIENT_ID=… UPS_CLIENT_SECRET=…(步驟在「系統設定 → 追蹤 API」裡)。",
+            "The function is deployed but has no UPS credentials: supabase secrets set UPS_CLIENT_ID=… UPS_CLIENT_SECRET=… (the steps are under System → Tracking API).")
+        : L("UPS API 憑證還沒設:到 Vercel 專案 Settings → Environment Variables 設 UPS_CLIENT_ID、UPS_CLIENT_SECRET、UPS_ACCOUNT,再 Redeploy。",
+            "UPS API credentials are not set: add UPS_CLIENT_ID, UPS_CLIENT_SECRET and UPS_ACCOUNT under the Vercel project's Settings → Environment Variables, then redeploy.");
       return;
     }
     if(r.status===404&&!j){
-      if(note) note.textContent=L("這個站台沒有 /api/track:UPS 貨況查詢只在 Vercel 部署上有(api/track.js)。",
-                                  "This site has no /api/track: the UPS status lookup exists only on the Vercel deployment (api/track.js).");
+      if(note) note.textContent=viaFn
+        ? L("這個網址上沒有函式:網址打錯,或 ups-track 還沒部署(supabase functions deploy ups-track)。",
+            "No function at that URL: the address is wrong, or ups-track is not deployed yet (supabase functions deploy ups-track).")
+        : L("這個站台沒有 /api/track:請在「系統設定 → 追蹤 API」填 Supabase 的 Edge Function 網址。",
+            "This site has no /api/track: set the Supabase Edge Function URL under System → Tracking API.");
       return;
     }
     if(!r.ok||!j||!Array.isArray(j.results)){
@@ -20988,6 +21120,12 @@ const I18N={
   "th.trackorder":["單號","Order"],
   "hd.reconruns":["已存的對帳","Stored reconciliations"],
   "hint.reconruns":["每一份匯入的 WMS / TMS 檔都連同結果存著。「開啟」把那一期的帳單從歷史載回來,照今天的費率再比對一次;這裡的數字是上次對帳的結果。","Every imported WMS / TMS file is kept together with its result. Open one to load that period's invoice from history and compare it again at today's rates; the figures here are from the last run."],
+  "hd.trkapi":["🔎 追蹤 API(UPS 貨況)","🔎 Tracking API (UPS status)"],
+  "hint.trkapi":["「追蹤查詢」那一頁要問 UPS 貨到哪裡了。呼叫會先送到你自己的代理,UPS 的憑證因此不會出現在網頁裡。這一格只收代理的網址;留白就走站台自己的 /api/track(部署上有的話)。","The Tracking page asks UPS where a parcel is. The request goes through your own proxy so the UPS credentials never reach the browser. This field takes the proxy address only; leave it empty and the app uses this site's own /api/track, if the deployment has one."],
+  "lb.trkapiurl":["Edge Function 網址","Edge Function URL"],
+  "btn.trkapitest":["測試連線","Test connection"],
+  "lb.trkapisteps":["怎麼設(給架站的人看)","Setting this up (for whoever installs it)"],
+  "hint.trkapisteps":["第 1、2 步不需要任何 UPS 憑證 —— 先把函式部署起來,憑證到手那天再補。中間這段期間按「測試連線」會說「端點通了、憑證還沒設」,那正是它該說的話。","Steps 1 and 2 work without any UPS credentials — deploy first, add the credentials the day they arrive. Between the two, Test connection says the endpoint is reachable and the credentials are still missing, which is exactly what it should say."],
   "th.runbatch":["批次","Batch"],
   "th.runinvdate":["UPS 帳單日","UPS invoice date"],
   "th.runinv":["帳單","Invoice"],

@@ -92,11 +92,11 @@ ok(px('html.ink .lf>h3')>=19, '\u6bb5\u843d\u6a19\u984c \u2265 19px');
 ok(px('html.ink .nav button')>=14.5, '\u5074\u6b04 \u2265 14.5px');
 
 console.log('\n[7] \u6c92\u640d\u5230\u539f\u672c\u7684\u6771\u897f');
-ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft').length===16,
-   '61 \u500b .sketch\u300116 \u500b .sketch-soft \u90fd\u5728');
+ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft').length===17,
+   '61 \u500b .sketch\u300117 \u500b .sketch-soft \u90fd\u5728\uff08\u8ffd\u8e64 API \u591a\u4e00\u5f35\uff09');
 ok(D.querySelectorAll('table').length===32&&D.querySelectorAll('.modalbg').length===27,
    '\u8868\u683c 34\u3001\u8996\u7a97 27\uff08\u591a\u4e86\u8dd1\u5e33\u55ae\u7684\u6c99\u6f0f\uff09');
-ok(D.querySelectorAll('[data-i18n]').length===599, 'i18n 標記 599 個(已存的對帳多一欄批次)');
+ok(D.querySelectorAll('[data-i18n]').length===605, 'i18n 標記 605 個(追蹤 API 設定卡)');
 
 console.log('\n[8] \u7d19\u7684\u984f\u8272');
 ok(/--paper-mask:url\(/.test(face), '\u6709\u4e00\u5f35\u5c08\u9580\u7576\u906e\u7f69\u7684\u5642\u9ede');
