@@ -24,6 +24,8 @@
   --ups-bg:color-mix(in srgb, var(--text) 7%, var(--panel));
   --rp:color-mix(in srgb, var(--run2) 85%, #201200);
   --rp-bg:color-mix(in srgb, var(--run2) 15%, var(--panel));
+  /* 應補收那一欄:主題的負值紅拉深一點,和「實收」的綠分得開。 */
+  --rb:color-mix(in srgb, var(--neg) 78%, var(--accent));
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;max-width:100%;overflow-x:hidden}
@@ -1066,6 +1068,7 @@ tr.bkdjump{cursor:pointer}
 tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel))}
 .bkdseg.resi{border-left-color:var(--resi)}
 .bkdseg.com{border-left-color:var(--com)}
+.bkdseg{container-type:inline-size}
 .bkdseg-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .bkdseg-name{font-weight:700;font-size:13.5px;color:var(--accent)}
 .bkdchip{font-size:11.5px;padding:2px 9px;border-radius:20px;font-weight:600}
@@ -1080,6 +1083,12 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
 .bkdside.wms{border:2px solid var(--wms,#4f8a3a)}
 .bkdside.wms .bkdside-lbl{background:var(--wms,#4f8a3a)}
 .bkdside.wms .bkdside-body{background:color-mix(in srgb, var(--wms,#4f8a3a) 9%, var(--panel))}
+/* 第四欄:應補收。實收是已經收到的錢,應補收是還沒收到的錢 —— 併在同一欄
+   會被讀成同一筆,所以自己一格,擺在最右邊。 */
+.bkdcols.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.bkdside.rb{border:2px solid var(--rb)}
+.bkdside.rb .bkdside-lbl{background:var(--rb)}
+.bkdside.rb .bkdside-body{background:color-mix(in srgb, var(--rb) 9%, var(--panel))}
 .bkdside-note{font-size:11px;color:var(--muted);padding:4px 0 2px}
 .bkdside{border-radius:7px;overflow:hidden;display:flex;flex-direction:column}
 .bkdside.ups{border:2px solid var(--ups)}
@@ -1095,6 +1104,9 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
   padding-top:5px;font-weight:700;
   border-top:1.5px solid color-mix(in srgb, var(--text) 35%, transparent)}
 .bkdside-ft .num{font-family:Consolas,monospace;white-space:nowrap}
+/* 溢收掛在應補收合計下面:反方向的錢,列出來但不進合計,所以不再拉一條線。 */
+.bkdside-ft.rfnd{margin-top:0;border-top:none;padding-top:3px;font-size:11.5px;
+  font-weight:600;color:var(--neg)}
 .bkdside.ups .bkdside-body{background:var(--ups-bg)}
 .bkdside.rp .bkdside-body{background:var(--rp-bg)}
 .bkdside table{width:100%;font-size:12.5px;table-layout:fixed;background:transparent}
@@ -1113,7 +1125,8 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
   font-size:9.5px;font-weight:700;letter-spacing:.3px;opacity:.75;white-space:nowrap}
 .bkdsub{display:block;font-size:10.5px;color:var(--muted);margin-top:1px}
 .bkdside tr.bkdadd td{font-weight:700}
-.bkdside tr.bkdneg2 td{color:var(--neg)}
+.bkdside.rb .bkdside-ft{color:var(--rb)}
+.bkdside.rb.rfndonly .bkdside-ft{color:var(--neg)}
 .bkdglbl{font-size:10.5px;color:var(--muted);font-weight:700;padding-top:7px;
   letter-spacing:.7px;text-transform:uppercase}
 .bkdmiss{color:var(--neg);border-bottom:1.5px dotted var(--neg);cursor:help}
@@ -1172,8 +1185,16 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
 .bkdtot .chip{display:inline-block;padding:0 9px;border-radius:999px;line-height:1.5;
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25)}
 .bkdtot.three{grid-template-columns:repeat(3,minmax(0,1fr))}
-@media(max-width:640px){.bkdcols,.bkdcols.three,.bkdtot,.bkdtot.three{grid-template-columns:1fr}}
-@media(min-width:641px) and (max-width:980px){.bkdcols.three{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.bkdtot.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+/* 四欄照卡片自己的寬度收,不是照視窗:視窗放得再寬,這個視窗沒拉大就還是
+   860px,四欄擠在裡面每個項目都要斷行。窄的時候收成 2×2 —— 上排是 UPS 對
+   重算,下排是實收對應補收,應補收仍舊在右手邊。 */
+@container (max-width:880px){.bkdcols.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@container (max-width:520px){.bkdcols.four{grid-template-columns:1fr}}
+@media(max-width:640px){.bkdcols,.bkdcols.three,.bkdcols.four,
+  .bkdtot,.bkdtot.three,.bkdtot.four{grid-template-columns:1fr}}
+@media(min-width:641px) and (max-width:980px){.bkdcols.three,.bkdcols.four{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .bkdtot.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* 場景與時鐘 */
 #scene{width:100%;height:200px;display:block;border-radius:0}
@@ -10981,8 +11002,10 @@ async function bkdXlsx(){
 }
 /* 單一期的明細:讀 priceShipment 算出來的紀錄,原樣複述。 */
 function bkdSection(r, wms){
-  const money2=v=>"$"+(Math.round((v||0)*100)/100).toLocaleString(undefined,
-    {minimumFractionDigits:2,maximumFractionDigits:2});
+  /* 負數寫成 -$3.25,不是 $-3.25 —— 錢的正負號在幣別記號前面。 */
+  const money2=v=>{ const n=Math.round((v||0)*100)/100;
+    return (n<0?"-$":"$")+Math.abs(n).toLocaleString(undefined,
+      {minimumFractionDigits:2,maximumFractionDigits:2}); };
   const s=r.s, esc2=x=>esc(String(x==null?"":x));
   const H=[];
   const segName=lay=> lay==="ADJ" ? L("帳單調整","Adjustment")
@@ -11037,18 +11060,24 @@ function bkdSection(r, wms){
     P.push(`<tr><td>${L("燃油 ","Fuel ")+esc2(res.fuelPct)+"%"}</td><td class="num">${money(res.fuel||0)}</td></tr>`);
     psub+=res.fuel||0;
 
-    /* 第三欄:對帳匯進來的、向客戶收的。只有這一次對帳有這個追蹤號才長出來。 */
-    let Wc="";
+    /* 第三欄:對帳匯進來的、向客戶實收的。只有這一次對帳有這個追蹤號才長出來。
+       合計就寫 Total Amount —— 和模板、匯出檔最後那一欄同一個名字、同一個數,
+       是「原本收了多少」,不摻任何還沒收到的錢。 */
+    let Wc="", Rc="";
     if(wms){
       const W=wms.rows.map(([k,v])=>`<tr><td>${esc2(k)}</td><td class="num">${money(v)}</td></tr>`);
       const note=[];
       if(wms.order) note.push(L("單號 ","Order ")+esc2(wms.order));
       if(wms.pieces>1) note.push(L("此單 "+wms.pieces+" 件合計","Order total for "+wms.pieces+" packages"));
-      /* 實收之後再列「還要補收」與「多收」:光看實收看不出這一件收完了沒有。
-         補收含燃油,和補收清單、匯出的 To re-bill 是同一個數。 */
-      const extra=[];
-      /* 一項一列,和補收清單、匯出的 To re-bill 是同一組數字;燃油照舊最後
+      Wc=`<div class="bkdside wms"><div class="bkdside-lbl">${esc2(wms.src)+L(" 實收"," billed")}</div>`
+        +`<div class="bkdside-body"><table>${W.join("")}</table>`
+        +(note.length?`<div class="bkdside-note">${note.join(" · ")}</div>`:"")
+        +`<div class="bkdside-ft"><span>${L("總金額","Total Amount")}</span>`
+        +`<span class="num">${money(wms.amt)}</span></div></div></div>`;
+      /* 第四欄:應補收。已經收到的錢和還沒收到的錢分兩格,兩個合計各自成立。
+         一項一列,和補收清單、匯出的 To re-bill 是同一組數字;燃油照舊最後
          才算,所以它自己一列。只給一個總數沒辦法拿去跟客戶對。 */
+      const extra=[];
       const tagOf=it=> it.kind==="swap"?L("改收","Substituted")
                      : it.kind==="short"?L("短收","Short-billed")
                      : it.kind==="audit"?L("稽核費","Audit fee")
@@ -11065,24 +11094,30 @@ function bkdSection(r, wms){
       }
       if(rbFuel>0.004) extra.push(`<tr><td>${L("燃油附加費 ","Fuel surcharge ")+(pct!=null?esc2(pct)+"%":"")}</td>`
         +`<td class="num">${money(rbFuel)}</td></tr>`);
-      /* 補收各項與燃油列完就夠了 —— 再補一列「含燃油的補收合計」是同一筆錢
-         講第二次,底下的應收總額本來就把它算進去了。 */
-      if(wms.over>0.004) extra.push(`<tr class="bkdneg2"><td>${L("溢收,應退還","Over-collected, refundable")}</td>`
-        +`<td class="num">${money(-wms.over)}</td></tr>`);
-      const due=cents(wms.amt+(wms.rebill||0));
-      Wc=`<div class="bkdside wms"><div class="bkdside-lbl">${esc2(wms.src)+L(" 實收"," billed")}</div>`
-        +`<div class="bkdside-body"><table>${W.join("")}`
-        +(extra.length?`<tr><td colspan="2" class="bkdglbl">${L("應補收項目","Charges to re-bill")}</td></tr>`+extra.join(""):"")
-        +`</table>`
-        +(note.length?`<div class="bkdside-note">${note.join(" · ")}</div>`:"")
-        +`<div class="bkdside-ft"><span>${wms.rebill>0.004?L("應收總額","Total due"):L("小計","Subtotal")}</span>`
-        +`<span class="num">${money(due)}</span></div></div></div>`;
+      /* 溢收是反方向的錢:掛在應補收合計下面,不併進去。整件只有溢收、沒有
+         要補收的時候,這一格就是退款那一格,標題與合計一起換過來 —— 不會出現
+         一格叫「應補收」、合計卻是 0.00。 */
+      const hasRb=extra.length>0, hasOver=wms.over>0.004;
+      if(hasRb||hasOver)
+        Rc=`<div class="bkdside rb${hasRb?"":" rfndonly"}"><div class="bkdside-lbl">${
+             hasRb?L("應補收","To re-bill"):L("溢收,應退還","Over-collected, refundable")}</div>`
+          +`<div class="bkdside-body"><table>${hasRb?extra.join("")
+             :`<tr><td>${L("已向客戶收取,UPS 未收取此費用","Billed to the client, not charged by UPS")}</td>`
+              +`<td class="num">${money(-wms.over)}</td></tr>`}</table>`
+          +(hasRb
+            ?`<div class="bkdside-ft"><span>${L("應補收合計","Total to re-bill")}</span>`
+             +`<span class="num">${money(wms.rebill||0)}</span></div>`
+             +(hasOver?`<div class="bkdside-ft rfnd"><span>${L("溢收,應退還","Over-collected, refundable")}</span>`
+                       +`<span class="num">${money(-wms.over)}</span></div>`:"")
+            :`<div class="bkdside-ft"><span>${L("應退還合計","Total refundable")}</span>`
+             +`<span class="num">${money(-wms.over)}</span></div>`)
+          +`</div></div>`;
     }
     return `<div class="bkdseg ${resi?"resi":"com"}">`
       +`<div class="bkdseg-hd"><span class="bkdseg-name">${esc2(name)}</span>`
       +`<span class="bkdchip ${resi?"resi":"com"}">${chip}</span>`
       +`<span class="bkdmeta">${meta.map(m=>`<span class="mp">${m}</span>`).join("")}</span></div>`
-      +`<div class="bkdcols${wms?" three":""}">`
+      +`<div class="bkdcols${wms?(Rc?" four":" three"):""}">`
       +`<div class="bkdside ups"><div class="bkdside-lbl">${L("UPS 實收","UPS billed")}</div>`
       +`<div class="bkdside-body"><table>${U.join("")}</table>`
       +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(usub)}</span></div></div></div>`
@@ -11090,7 +11125,7 @@ function bkdSection(r, wms){
       +(BKD_LVL?`<span class="bkdlvl">${esc2(L("層級 ","Level ")+BKD_LVL)}</span>`:"")+`</div>`
       +`<div class="bkdside-body"><table>${P.join("")}</table>`
       +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(psub)}</span></div></div></div>`
-      +Wc
+      +Wc+Rc
       +`</div></div>`;
   };
   H.push(segCard(r, s.groups||[], segName(s.layer), wms||null));
@@ -11104,7 +11139,8 @@ function bkdSection(r, wms){
   const wDiff=wms?cents(wms.amt-s.upsTotal):null;
   const wTone=wDiff==null?"":(wDiff<0?"d":"p");
   /* 三個數並排:UPS 實收、重算、向客戶實收。毛利與毛利率先不放。 */
-  H.push(`<div class="bkdtot${wms?" three":""}">`
+  const wRb=wms&&wms.rebill>0.004, wOv=wms&&wms.over>0.004;
+  H.push(`<div class="bkdtot${wms?((wRb||wOv)?" four":" three"):""}">`
     +`<div class="bt"><span class="l">${L("UPS 實收","UPS billed")}</span>`
     +`<span class="v">${money2(s.upsTotal)}</span></div>`
     +`<div class="bt"><span class="l">${L("重新計價","Reprice")}`
@@ -11112,8 +11148,10 @@ function bkdSection(r, wms){
     +`<span class="v">${money2(r.total||0)}</span></div>`
     +(wms?`<div class="bt"><span class="l">${esc2(wms.src)+L(" 實收"," billed")}</span>`
       +`<span class="v">${money2(wms.amt)}</span></div>`:"")
-    +(wms&&wms.rebill>0.004?`<div class="bt"><span class="l">${L("應收總額","Total due")}</span>`
-      +`<span class="v">${money2(cents(wms.amt+wms.rebill))}</span></div>`:"")
+    +(wRb?`<div class="bt d"><span class="l">${L("應補收","To re-bill")}</span>`
+      +`<span class="v">${money2(wms.rebill)}</span></div>`
+     :wOv?`<div class="bt d"><span class="l">${L("溢收,應退還","Over-collected, refundable")}</span>`
+      +`<span class="v">${money2(-wms.over)}</span></div>`:"")
     +`</div>`);
   return H.join("");
 }
