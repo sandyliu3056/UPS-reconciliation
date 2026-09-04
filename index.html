@@ -911,6 +911,9 @@ tr.blocked{opacity:.72}
   font-weight:800;font-size:13px;color:var(--accent);background:var(--panel);
   border:1.5px solid var(--line);border-radius:50%}
 .pie{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.pie.pieflat{display:block}
+.pie.pieflat .plegend{width:100%}
+.pie.pieflat .plegend table{width:100%}
 .pie2{display:grid;grid-template-columns:repeat(auto-fit,minmax(345px,1fr));gap:20px}
 .pcap{font-size:11.5px;font-weight:700;letter-spacing:1.2px;color:var(--muted);
   margin:0 0 10px;padding-bottom:5px;border-bottom:1.5px solid var(--line);
@@ -17825,13 +17828,14 @@ function renderDashboard(){
   };
   /* noAmt:只講佔比,不列金額。渠道那一張要的是「生意怎麼分布」,
      金額在上面的費用組成已經講過一次了。 */
-  const pieBlock=(items,total,centerBig,centerSmall,noAmt)=>{
+  const pieBlock=(items,total,centerBig,centerSmall,noAmt,noPie)=>{
     const rows=items.map(([n,v,col,fold])=>`<tr${fold?' class="pfold"':""}>`
       +`<td class="pnm"><span class="pdot" style="background:${col}"></span>${fold?"↳ ":""}${esc(n)}</td>`
       +(noAmt?"":`<td class="pamt">${money(v)}</td>`)
       /* 有錢但四捨五入成 0.0% 的寫「<0.1%」—— 寫 0.0% 看起來像沒有東西,
          而那一列的存在本身就是在說「有,只是很小」。 */
       +`<td class="ppct">${pct(v,total)}</td></tr>`).join("");
+    if(noPie) return `<div class="pie pieflat"><div class="plegend"><table>${rows}</table></div></div>`;
     return `<div class="pie"><svg viewBox="0 0 150 150" width="150" height="150" role="img" aria-label="${esc(centerSmall)}">`
       +donut(items.filter(x=>x[3]!=="fold"),total)
       +`<text class="phole" x="75" y="71" text-anchor="middle" font-size="17" font-weight="700">${esc(centerBig)}</text>`
@@ -17894,17 +17898,13 @@ function renderDashboard(){
     }
     return out;
   };
+  /* 圓餅拿掉了 —— 使用者指定:這三欄要的是逐項清單,圈圈只是同一個數字
+     再畫一次。 */
   const oneP=(obj,extra,cap,sum,unkBy)=>{
     const it=pieItems(obj,extra,unkBy);
     const t=it.filter(x=>x[3]!=="fold").reduce((a,[,v])=>a+Math.abs(v),0);
-    const bf=(obj["Base Rate"]||0)+(obj["Undeliverable Return"]||0)+(obj["Fuel Surcharge"]||0);
-    /* 圓心那個百分比以前只標「運費 + 燃油」,沒說是「佔什麼」的比例 ——
-       一個沒有分母的百分比,讀的人只能猜。底下把它講完整。 */
     return `<div><div class="pcap">${esc(cap)}<b>${money(sum)}</b></div>`
-      +pieBlock(it,t,(t?Math.round(Math.abs(bf)/t*100):0)+"%",L("運費 + 燃油","freight + fuel"))
-      +`<div class="pnote">${L(
-        "圓心:基本運費、退件回程與燃油合計佔本欄總額之比例;其餘為附加費。",
-        "Centre: base freight, return legs and fuel as a share of this column's total. The remainder is surcharges.")}</div>`
+      +pieBlock(it,t,"","",false,true)
       +`</div>`;
   };
   const wmsAgg=dashWmsAgg();
@@ -17916,7 +17916,10 @@ function renderDashboard(){
     +`<div class="pie2">`
     +oneP(sc?sc.buckets:d.buckets, sc?0:uAmt, L("重算","REPRICED"), sc?sc.repriced:d.repriced, sc?sc.unknownBy:d.unknownBy)
     +oneP(sc?sc.upsBuckets:(d.upsBuckets||{}), 0, L("UPS 帳單","UPS BILLED"), sc?sc.billed:d.billed, sc?sc.upsUnknownBy:d.upsUnknownBy)
-    +(wmsAgg?oneP(wmsAgg.buckets,0,L(wmsAgg.src+" 實收",wmsAgg.src+" BILLED"),wmsAgg.total,{}):"")
+    +(wmsAgg?(()=>{ const ch=Object.assign({},wmsAgg.buckets);
+        const RBK=L("應補收","To re-bill");
+        if(Math.abs(wmsAgg.rebill||0)>0.004) ch[RBK]=(ch[RBK]||0)+wmsAgg.rebill;
+        return oneP(ch,0,L("應收合計","CHARGEABLE"),wmsAgg.chargeable,{}); })():"")
     +`</div>`;
   const chItems=Object.entries((sc&&sc.chanAgg)||d.chanAgg||{})
     .filter(([,v])=>Math.abs(v)>0.004)
