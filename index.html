@@ -805,18 +805,19 @@ tr.blocked{opacity:.72}
 .glass{display:block;margin:2px auto 10px}
 .glass[hidden],.runok[hidden],#runBar[hidden]{display:none}
 .glass .sand{fill:var(--tab)}
-.glass .frame{fill:none;stroke:var(--accent);stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.glass .frame{fill:none;stroke:var(--accent);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
 .glass.spin{animation:glassflip 2.6s cubic-bezier(.7,0,.3,1) infinite}
 @keyframes glassflip{0%,72%{transform:rotate(0)}88%,100%{transform:rotate(180deg)}}
 .glass{transform-origin:50% 50%}
 .glass .top{animation:sandtop 2.6s linear infinite}
 .glass .bot{animation:sandbot 2.6s linear infinite}
 .glass .grain{animation:graindrop .55s linear infinite}
-@keyframes sandtop{0%{transform:scaleY(1)}70%,100%{transform:scaleY(.06)}}
-@keyframes sandbot{0%{transform:scaleY(.06)}70%,100%{transform:scaleY(1)}}
-@keyframes graindrop{0%{opacity:0;transform:translateY(-4px)}30%{opacity:1}100%{opacity:0;transform:translateY(7px)}}
-.glass .top{transform-origin:50% 30px}
-.glass .bot{transform-origin:50% 74px}
+@keyframes sandtop{0%{transform:scaleY(1)}70%,100%{transform:scaleY(0)}}
+@keyframes sandbot{0%{transform:scaleY(0)}70%,100%{transform:scaleY(1)}}
+@keyframes graindrop{0%{opacity:0;transform:translateY(-3px)}25%{opacity:1}100%{opacity:0;transform:translateY(8px)}}
+/* 上面那堆從底部收掉、下面那堆從底部長起來 —— 兩個原點都在自己那一格的底 */
+.glass .top{transform-origin:50% 52px}
+.glass .bot{transform-origin:50% 89px}
 @media (prefers-reduced-motion:reduce){
   .glass.spin,.glass .top,.glass .bot,.glass .grain{animation:none}
 }
@@ -2923,15 +2924,28 @@ label:has(#newChanOn){display:none !important}
     <div class="modalhd"><span id="runTitle">Processing</span>
       <button class="mx" id="bRunX" hidden>✕</button></div>
     <div class="modalbody">
-      <svg class="glass spin" id="runGlass" width="92" height="112" viewBox="0 0 64 104" aria-hidden="true">
-        <g class="frame">
-          <path d="M14 8h36M14 96h36"/>
-          <path d="M18 8c0 18 14 24 14 44s-14 26-14 44"/>
-          <path d="M46 8c0 18-14 24-14 44s14 26 14 44"/>
+      <svg class="glass spin" id="runGlass" width="96" height="128" viewBox="0 0 64 104" aria-hidden="true">
+        <defs>
+          <clipPath id="glassIn">
+            <path d="M15 15 C15 33 31 44 31.6 51.4 L32.4 51.4 C33 44 49 33 49 15 Z
+                     M31.6 52.6 C31 60 15 71 15 89 L49 89 C49 71 33 60 32.4 52.6 Z"/>
+          </clipPath>
+        </defs>
+        <!-- 沙子剪在玻璃裡面:上面的漏下去、下面的堆起來,形狀跟著玻璃走 -->
+        <g clip-path="url(#glassIn)">
+          <!-- 上面那堆中間漏成一個漏斗口,下面那堆是慢慢長高的錐形 —— 平平的
+               一塊看起來像磚頭,不像沙。剪影之外的部分被玻璃剪掉,所以兩邊
+               畫寬一點沒關係。 -->
+          <path class="sand top" d="M8 14 L24 14 L32 26 L40 14 L56 14 L56 53 L8 53 Z"/>
+          <path class="sand bot" d="M8 90 L56 90 L56 70 L32 51 L8 70 Z"/>
         </g>
-        <rect class="sand top" x="21" y="14" width="22" height="22" rx="3"/>
-        <rect class="sand bot" x="21" y="70" width="22" height="22" rx="3"/>
-        <rect class="sand grain" x="30.5" y="48" width="3" height="8" rx="1.5"/>
+        <rect class="sand grain" x="31" y="50" width="2" height="9" rx="1"/>
+        <g class="frame">
+          <!-- 上下兩塊木頭,中間兩條腰身 -->
+          <path d="M11 9h42M11 95h42"/>
+          <path d="M15 12C15 31 32 41 32 52s-17 21-17 40"/>
+          <path d="M49 12C49 31 32 41 32 52s17 21 17 40"/>
+        </g>
       </svg>
       <div class="runok" id="runMark" hidden>✓</div>
       <div class="runstep" id="runStep">—</div>
