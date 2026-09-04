@@ -10698,12 +10698,7 @@ function openBreakdown(){
   const bkdCode=(()=>{
     const w=(typeof bkdWmsOf==="function"&&bkdWmsOf(t))||null;
     if(w&&w.cus) return w.cus;
-    const key=(typeof reconTrk==="function")?reconTrk(t):String(t||"").toUpperCase();
-    for(const run of (RECON_RUNS||[])){
-      for(const r of (run.rows||[]))
-        if((r.trks||[]).some(x=>reconTrk(x)===key) && r.cus) return r.cus;
-    }
-    return "";
+    return (typeof reconTrkCus==="function")?reconTrkCus(t):"";
   })();
   const bkdReg=(typeof cusReg==="function"?cusReg():[]).find(c=>bkdCode&&c.code===bkdCode);
   const bkdLvl=bkdReg&&bkdReg.level;
@@ -10806,7 +10801,25 @@ function openBreakdown(){
       +`<td class="num" style="${TF}">${anyWm?money2(tWm):"—"}</td></tr></tfoot>`);
   }
   H.push(`</table></div></div>`);
-  pk.forEach((o,ci)=>{
+  /* 同一個追蹤號跨兩期(原件一期、更正一期)時,兩張卡各自只有半筆帳:向客戶
+     實收與應補收掛在第一期,而造成補收的那張更正在第二期 —— 兩邊都對不起來。
+     期別留在上面那張總覽表(要看哪一期收了什麼都在那裡),底下把整個追蹤號
+     合成一張卡:UPS 實收是各期相加,重新計價逐項相加,客戶那兩欄本來就只有一份。 */
+  const pkOk=pk.filter(o=>o.r);
+  if(pkOk.length>1){
+    const wmsAny=(pkOk.find(o=>o.wms)||{}).wms||null;
+    H.push(`<div class="bkdinv" id="bkdInv0"><span class="no">${
+        pkOk.map(o=>esc2(o.inv)).join("  ·  ")}</span>`
+      +`<span class="dt">${pkOk.map(o=>esc2(nd(o.invDate)||o.invDate)).join(" · ")}</span>`
+      +`<span class="tag">${L(pkOk.length+" 期合併","Merged from "+pkOk.length+" invoices")}</span></div>`);
+    H.push(`<div class="bkdchap">`+bkdSection(bkdMergePk(pkOk), wmsAny,
+             L("跨期合計","All invoices combined"))+`</div>`);
+    for(const o of pk) if(!o.r)
+      H.push(`<div class="bkdinv"><span class="no">${esc2(o.inv)}</span>`
+        +`<span class="dt">${esc2(nd(o.invDate)||o.invDate)}</span></div>`
+        +`<div class="bkdchap"><div class="note warn">${esc2(o.err)
+            ||L("這一期無法計價。","Could not price this period.")}</div></div>`);
+  }else pk.forEach((o,ci)=>{
     H.push(`<div class="bkdinv" id="bkdInv${ci}"><span class="no">${esc2(o.inv)}</span>`
       +`<span class="dt">${esc2(nd(o.invDate)||o.invDate)}</span></div>`);
     if(o.r) H.push(`<div class="bkdchap">`+bkdSection(o.r,o.wms)+`</div>`);
@@ -10817,7 +10830,8 @@ function openBreakdown(){
   body.innerHTML=H.join("");
   /* 上表每一列都是捷徑 —— 點了就捲到那一期的金色章節帶。 */
   body.querySelectorAll("tr.bkdjump").forEach(tr=>{
-    tr.onclick=()=>{ const el=body.querySelector("#bkdInv"+tr.dataset.bi);
+    tr.onclick=()=>{ const el=body.querySelector("#bkdInv"+tr.dataset.bi)
+                      ||body.querySelector("#bkdInv0");
       if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); };
   });
   /* 畫面畫完的同時把資料留著 —— 匯出要的是同一份東西,重算一次遲早會對不起來。 */
@@ -11000,8 +11014,39 @@ async function bkdXlsx(){
   ], name);
   toast(ok?L("已匯出 "+trk,"Exported "+trk):L("已取消存檔","Save cancelled"), ok);
 }
+/* 跨期合成一筆:UPS 那一側把各期的行接起來(每一期原本是什麼段落照舊標著),
+   重新計價那一側逐項相加。抵成 0 的項目不列 —— UPS 沖掉額外處理費改收大包裹,
+   合起來看額外處理費就是沒收,列一行 $0.00 只會讓人以為漏了什麼。 */
+function bkdMergePk(pk){
+  const c2=v=>Math.round((toNum(v)||0)*100)/100;
+  const groups=[], acc={}, miss=new Set();
+  let upsTotal=0, total=0, base=0, fuel=0, fuelPct=null;
+  let baseMissing=false, baseWhy=null, last=null, seg=null;
+  for(const o of pk){
+    const r=o.r, s=r.s||{};
+    upsTotal+=toNum(s.upsTotal); total+=toNum(r.total);
+    base+=toNum(r.base); fuel+=toNum(r.fuel);
+    for(const [k,v] of Object.entries(r.acc||{})) acc[k]=c2((acc[k]||0)+toNum(v));
+    for(const k of (r.missFees||[])) miss.add(k);
+    if(r.baseMissing){ baseMissing=true; if(!baseWhy) baseWhy=r.baseWhy||null; }
+    if(toNum(r.fuelPct)>0) fuelPct=toNum(r.fuelPct);
+    for(const g of (s.groups||[])) groups.push(g);
+    if(!seg && (r.rtn||r.npb)) seg=r;
+    last=r;
+  }
+  for(const k of Object.keys(acc)) if(Math.abs(acc[k])<0.005) delete acc[k];
+  const s0=(last&&last.s)||{}, sg=(seg&&seg.s)||{};
+  return Object.assign({}, last, {
+    s:Object.assign({}, s0, {groups, upsTotal:c2(upsTotal), layer:"SHP",
+      rtnSeg:sg.rtnSeg||null, npb:sg.npb||null}),
+    total:c2(total), base:c2(base), fuel:c2(fuel), fuelPct,
+    acc, missFees:miss, baseMissing, baseWhy,
+    /* 合起來之後基本運費就是這一件最後的運費,不再是哪一期的差額 */
+    netCA:false, reclassCA:false,
+    rtn:(seg&&seg.rtn)||null, npb:(seg&&seg.npb)||null});
+}
 /* 單一期的明細:讀 priceShipment 算出來的紀錄,原樣複述。 */
-function bkdSection(r, wms){
+function bkdSection(r, wms, name0){
   /* 負數寫成 -$3.25,不是 $-3.25 —— 錢的正負號在幣別記號前面。 */
   const money2=v=>{ const n=Math.round((v||0)*100)/100;
     return (n<0?"-$":"$")+Math.abs(n).toLocaleString(undefined,
@@ -11029,10 +11074,13 @@ function bkdSection(r, wms){
     const gA=groups.find(g=>g.dimsA&&g.dimsC);
     if(gA&&(gA.dimsA.l!==gA.dimsC.l||gA.dimsA.w!==gA.dimsC.w||gA.dimsA.h!==gA.dimsC.h))
       meta.push(`${gA.dimsA.l}×${gA.dimsA.w}×${gA.dimsA.h} → ${gA.dimsC.l}×${gA.dimsC.w}×${gA.dimsC.h}`);
-    const U=[]; let usub=0;
+    const U=[]; let usub=0; let lastLbl=null;
     for(const g of groups){
-      if(groups.length>1)
-        U.push(`<tr><td colspan="2" class="bkdglbl">${esc2(segName(g.layer))}</td></tr>`);
+      const glbl=segName(g.layer);
+      if(groups.length>1 && glbl!==lastLbl){
+        U.push(`<tr><td colspan="2" class="bkdglbl">${esc2(glbl)}</td></tr>`);
+        lastLbl=glbl;
+      }
       for(const l of g.lines){
         if(Math.abs(l.net)<0.005) continue;
         usub+=l.net;
@@ -11081,11 +11129,12 @@ function bkdSection(r, wms){
       const tagOf=it=> it.kind==="swap"?L("改收","Substituted")
                      : it.kind==="short"?L("短收","Short-billed")
                      : it.kind==="audit"?L("稽核費","Audit fee")
+                     : it.kind==="refund"?L("退還","Refund")
                      : it.kind==="miss"?L("漏收","Not billed"):"";
       const rbFuel=cents((wms.items||[]).reduce((a,it)=>a+(it.fuel||0),0));
       const pct=((wms.items||[]).find(it=>it.fuel>0.004)||{}).fuelPct;
       for(const it of (wms.items||[])){
-        if(!(it.amt>0.004)) continue;
+        if(!(Math.abs(it.amt)>0.004)) continue;
         const tg=tagOf(it);
         extra.push(`<tr><td>${esc2(it.charge)}`
           +(tg?`<span class="bkdtag">${esc2(tg)}</span>`:"")
@@ -11128,7 +11177,7 @@ function bkdSection(r, wms){
       +Wc+Rc
       +`</div></div>`;
   };
-  H.push(segCard(r, s.groups||[], segName(s.layer), wms||null));
+  H.push(segCard(r, s.groups||[], name0||segName(s.layer), wms||null));
   if(r.rtn) H.push(segCard(r.rtn, (s.rtnSeg&&s.rtnSeg.groups)||[], L("退件回程","Return leg")));
   if(r.npb) H.push(segCard(r.npb, (s.npb&&s.npb.groups)||[], L("第二段運送","Second movement")));
   const bkDiff=(r.total||0)-s.upsTotal;
@@ -13383,6 +13432,22 @@ function reconRowsLoad(){
 const RECON_LAST_KEY="ups_recon_last";
 function reconLastKey(){ return RECON_LAST_KEY+"::"+whoKey(); }
 let RECON_RUNS=null;    /* 這個帳號存過的對帳,畫面用的快取;存、刪、換人就清掉 */
+/* 追蹤號 → 客戶代號。以前計費明細每開一次就把每一份存檔的每一列掃過一遍,
+   存了幾期、每期十幾萬列之後,開一次視窗要等好幾秒。索引跟著 RECON_RUNS
+   這個陣列本身走:那邊一換(存、刪、換人)這裡就跟著重建。 */
+let RECON_TRKIX=null, RECON_TRKIX_OF=null;
+function reconTrkCus(trk){
+  const runs=RECON_RUNS||[];
+  if(RECON_TRKIX_OF!==runs || !RECON_TRKIX){
+    const ix=new Map();
+    for(const run of runs) for(const r of (run.rows||[])){
+      if(!r.cus) continue;
+      for(const x of (r.trks||[])){ const k=reconTrk(x); if(k && !ix.has(k)) ix.set(k, r.cus); }
+    }
+    RECON_TRKIX=ix; RECON_TRKIX_OF=runs;
+  }
+  return RECON_TRKIX.get(reconTrk(trk))||"";
+}
 let RECON_RUN_KEY="";   /* 現在畫面上這一份 */
 function reconInvKeys(){ return [...new Set((ROWS||[]).map(r=>String(r.invoice||"").trim()).filter(Boolean))].sort(); }
 function reconRunKey(src,invs){ return (src==="TMS"?"TMS":"WMS")+"|"+invs.join("+"); }
@@ -14470,8 +14535,24 @@ function reconRun(list){
       const sameNames=!usedHead && upsCols.every(c=>paidOwn.includes(c))
                                 && paidOwn.every(c=>upsCols.includes(c));
       if(sameNames) continue;
+      /* 客戶端收了、UPS 最後沒收的那幾項:那一筆費用不成立了,整筆退還,不拿去
+         抵 UPS 收的別項。出貨時收額外處理費、UPS 量過改收大包裹 —— 客戶帳單上
+         掛的是額外處理費,UPS 收的是大包裹,兩個是不同的費用,對客戶要一退一收
+         才對得起來;倒過來(先收大包裹、後來是額外處理費)也一樣。
+         合併欄收的不退:那一欄本來就同時涵蓋兩者,帳單上沒有一筆可退的。 */
+      const swapOut=paidOwn.filter(n=>!upsCols.includes(n));
+      let backed=0;
+      for(const n of swapOut){
+        const w=cents(toNum(b[n]));
+        if(!(Math.abs(w)>0.004)) continue;
+        backed=cents(backed+w);
+        items.push(Object.assign({kind:"refund", charge:n, desc:(desc[n]||[]).join(" / "),
+          ups:0, billed:w, rate:0, amt:cents(-w), credit:0, creditFrom:[], wms:w, over:0}, base));
+      }
       const rows=upsCols.map(mk).sort((x,y)=>y.amt-x.amt);
-      let credit=famBilled, first=null, others=0;
+      /* 退掉的那幾筆不再抵:剩下的已收金額 —— 同名收得不夠的、用合併欄收的 ——
+         才拿去抵 UPS 收的那幾項。 */
+      let credit=cents(famBilled-backed), first=null, others=0;
       for(const it of rows){
         if(credit<=0.004) break;
         const use=Math.min(credit, it.amt);
@@ -14483,7 +14564,7 @@ function reconRun(list){
                        if(first) others=cents(others+use); else first=it; }
       }
       if(first){
-        first.wms=cents(famBilled-others);
+        first.wms=cents(famBilled-backed-others);
         first.over=credit>0.004?cents(credit):0;
       }
       /* 抵完剛好、什麼都不必補的那幾列不列出來 —— 補收清單只放要做事的。
@@ -14912,7 +14993,7 @@ function renderRebill(){
   const dash=`<span class="empty">—</span>`;
   const tb=$("#tRebill")&&$("#tRebill").tBodies[0];
   /* 畫面上只放費用名稱和一個標籤;帳單原文和「抵已收」的細節滑上去看,匯出的 To re-bill 也都有。 */
-  const tagOf=it=>it.kind==="swap"?L("改收","Substituted"):it.kind==="short"?L("短收","Short-billed"):it.kind==="audit"?L("稽核費","Audit fee"):it.unset?L("費率未設定","Rate not set"):(it.rate===0?L("合約無此項","No contract rate"):L("漏收","Not billed"));
+  const tagOf=it=>it.kind==="refund"?L("退還","Refund"):it.kind==="swap"?L("改收","Substituted"):it.kind==="short"?L("短收","Short-billed"):it.kind==="audit"?L("稽核費","Audit fee"):it.unset?L("費率未設定","Rate not set"):(it.rate===0?L("合約無此項","No contract rate"):L("漏收","Not billed"));
   const chgCell=it=>`${esc(it.charge)} <span class="chggrp">${esc(tagOf(it))}</span>`;
   const chgTip=it=>esc([it.desc?L("UPS 名目:","UPS: ")+it.desc:"",
     L("客戶端實收 ","billed to the client ")+money(it.wms)
@@ -14926,14 +15007,24 @@ function renderRebill(){
   /* 這一份在畫面上只回答「哪些單、哪一項要補收」——一筆一筆的金額擠成七八欄
      只會看不下去,而真正要動手的人開的是匯出的活頁簿。合計與多收寫在下面
      那一行,每一列的金額留在滑入提示裡。 */
-  if(tb) tb.innerHTML=items.map(it=>`<tr><td class="mono">${esc(it.cus)}</td><td>${esc(cusNameOf(it.cus))}</td>
+  /* 畫面上最多列 300 筆就好:真正一個月的補收清單可以有幾千筆,全部塞進
+     DOM 整頁都會跟著鈍;要做事的人開的本來就是匯出的活頁簿。 */
+  const CAPR=300;
+  if(tb) tb.innerHTML=items.slice(0,CAPR).map(it=>`<tr><td class="mono">${esc(it.cus)}</td><td>${esc(cusNameOf(it.cus))}</td>
       <td class="mono">${esc(it.order)}</td><td class="mono">${esc(it.trk)}</td>
       <td title="${chgTip(it)}">${chgCell(it)}</td></tr>`).join("")
+    +(items.length>CAPR?`<tr><td colspan="5" class="empty">${L(
+        "畫面只列前 "+CAPR+" 筆;全部 "+items.length+" 筆都在匯出的活頁簿裡。",
+        "Showing the first "+CAPR+" of "+items.length+" items — the full list is in the exported workbook.")}</td></tr>`:"")
     ||`<tr><td colspan="5" class="empty">${esc(rb&&rb.noItem
         ? L("模板沒有逐項費用欄,列不出漏收的項目。","The file has no itemised charge columns, so missed charges cannot be listed.")
         : L("沒有漏收的項目。","Nothing to re-bill."))}</td></tr>`;
+  /* 補收與退還是兩個方向的錢,分開講:UPS 改收別的費用時,客戶原本收的那一項
+     要整筆退還、UPS 收的那一項照全額補收,合起來只給一個數看不出是收還是退。 */
   const tot=items.reduce((a,it)=>cents(a+it.amt),0);
   const totFuel=items.reduce((a,it)=>cents(a+(it.fuel||0)),0), grand=cents(tot+totFuel);
+  const chgSum=items.filter(it=>(it.total||0)>0).reduce((a,it)=>cents(a+it.total),0);
+  const refSum=cents(-items.filter(it=>(it.total||0)<0).reduce((a,it)=>cents(a+it.total),0));
   const totOver=items.reduce((a,it)=>cents(a+(it.over||0)),0);
   const tf=$("#tRebill")&&$("#tRebill").tFoot;
   if(tf) tf.innerHTML="";
@@ -14943,10 +15034,12 @@ function renderRebill(){
     const skip=rb&&rb.skipped?rb.skipped:0;
     const unset=items.filter(it=>it.unset).length;
     sum.textContent=(rb&&rb.noItem)?"":L(
-      "補收 "+money(tot)+" · 燃油附加費 "+money(totFuel)+" · 合計 "+money(grand)
-        +(totOver>0.004?" · 多收(應退客戶)"+money(totOver):"")+" · "+items.length+" 項 · "+cusN+" 個客戶 · 逐筆金額在匯出的活頁簿裡"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":"")
+      "應補收 "+money(chgSum)+(refSum>0.004?" · 應退還 "+money(refSum):"")
+        +" · 淨額 "+money(grand)+" · 其中燃油附加費 "+money(totFuel)
+        +(totOver>0.004?" · 溢收(應退還)"+money(totOver):"")+" · "+items.length+" 項 · "+cusN+" 個客戶 · 逐筆金額在匯出的活頁簿裡"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":"")
         +(unset?" · "+unset+" 項費率未設定(到 04 渠道與附加費費率設好再匯一次)":""),
-      "To re-bill "+money(tot)+" · fuel surcharge "+money(totFuel)+" · total "+money(grand)
+      "To re-bill "+money(chgSum)+(refSum>0.004?" · to refund "+money(refSum):"")
+        +" · net "+money(grand)+" · fuel surcharge within it "+money(totFuel)
         +(totOver>0.004?" · over-collected (owed back) "+money(totOver):"")+" · "+items.length+" item(s) · "+cusN+" customer(s) · the figures are in the exported workbook"+(skip?" · "+skip+" row(s) without itemised charges not listed":"")
         +(unset?" · "+unset+" item(s) with no rate set (set them under 04 Channel & Surcharge Rates and import again)":""));
   }
@@ -15167,7 +15260,7 @@ async function reconExport(){
 
   /* ---- To re-bill:補收清單,和畫面上同一份 —— 一個追蹤號一項費用一列。 ---- */
   const rb=r.rebill||{items:[]};
-  const typeOf=it=>it.kind==="swap"?"Substituted":it.kind==="short"?"Short-billed":it.kind==="audit"?"Audit fee":it.unset?"Rate not set":(it.rate===0?"No contract rate":"Not billed");
+  const typeOf=it=>it.kind==="refund"?"Refund":it.kind==="swap"?"Substituted":it.kind==="short"?"Short-billed":it.kind==="audit"?"Audit fee":it.unset?"Rate not set":(it.rate===0?"No contract rate":"Not billed");
   const rbHead=[["Customer Code","EFE3CB"],["Customer Name","EFE3CB"],["Order Number","EFE3CB"],
     ["Tracking Number","EFE3CB"],["Invoice Date","EFE3CB"],["Charge","EFE3CB"],["UPS Description","EFE3CB"],
     ["Type","EFE3CB"],["Less Billed As","EFE3CB"],
@@ -17328,12 +17421,9 @@ function renderDashboard(){
     <!-- 毛利只從對帳算:向客戶實收 + 補收差額 − 那幾筆的 UPS 實收。重算不是毛利的基準,
          它只用來找漏收,所以放在第二行,和整批帳單的 UPS 總額、帳戶層費用並列。 -->
     ${wmsAgg?`<div class="dflow">
-      <div class="dcell"><div class="dk">${esc(wmsAgg.src)}</div>
-        <div class="dv">${money(wmsAgg.total)}</div></div>
-      <div class="dcell dop" data-op="+"><div class="dk">${L("差額(補收)","Difference (to re-bill)")}</div>
-        <div class="dv">${money(wmsAgg.rebill)}</div></div>
-      <div class="dcell dop" data-op="="><div class="dk">${L("應收合計","Chargeable")}</div>
-        <div class="dv">${money(wmsAgg.chargeable)}</div></div>
+      <div class="dcell"><div class="dk">${L("應收合計","Chargeable")}</div>
+        <div class="dv">${money(wmsAgg.chargeable)}</div>
+        <div class="dsub">${esc(wmsAgg.src)+" "+money(wmsAgg.total)+L(" + 補收 "," + re-bill ")+money(wmsAgg.rebill)}</div></div>
       <div class="dcell dop" data-op="−"><div class="dk">UPS</div>
         <div class="dv">${money(wmsAgg.cost)}</div></div>
       <div class="dcell dop" data-op="="><div class="dk">${L("毛利","Profit")}</div>
