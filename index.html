@@ -14466,8 +14466,20 @@ async function reconFetchArchived(list){
   }
   const tplAcct=new Set();
   for(const k of need){ const m=/^1Z([A-Z0-9]{6})/.exec(k); if(m) tplAcct.add(m[1]); }
+  /* 模板帳號在歸檔裡有哪幾期(各期帳單日)+ 模板的出貨日範圍:帳號對得上、
+     週期不齊時,講得出缺的是哪幾週。 */
+  const tplPer={};
+  for(const r of all){
+    const k=String((r&&r.invoice)||"").trim(); if(!k) continue;
+    const a2=(typeof acctFromInvoice==="function"&&acctFromInvoice(k))||"";
+    if(!a2||!tplAcct.has(a2)) continue;
+    if(!(k in tplPer)||!tplPer[k]) tplPer[k]=String((r.invDate||"")).trim();
+  }
+  let tplFrom="",tplTo="";
+  for(const e of list){ const d=(typeof normYmd==="function"&&normYmd(String(e.date||"")))||"";
+    if(!d) continue; if(!tplFrom||d<tplFrom) tplFrom=d; if(!tplTo||d>tplTo) tplTo=d; }
   RECON_ARCH_INFO={rows:all.length, periods:inArch.size, idxOnly, matched:0, sample:"",
-                   archAcct, tplAcct:[...tplAcct]};
+                   archAcct, tplAcct:[...tplAcct], tplPer, tplFrom, tplTo, inLoaded:0};
   if(!all.length) return 0;
   /* 模板裡每一個追蹤號,把歸檔裡「不在目前載入期別」的行全部撿出來 ——
      整筆缺席的補整筆;本期有、其他期別還有更正行(SCC、Zone 調整、改收)的,
@@ -14479,6 +14491,9 @@ async function reconFetchArchived(list){
   /* 一筆都對不上時抽一個樣本:模板的追蹤號拿去歸檔裡做「包含」比對,
      寫法不同(多了字尾、少了字首)當場看得出來。 */
   if(!extra.length){
+    /* 有列、但全部都在目前載入的期別上:引擎理應從載入那一側對到 ——
+       對不到就是載入的那份和歸檔不同步,提示重新載入,不誤報「歸檔沒有」。 */
+    RECON_ARCH_INFO.inLoaded=all.filter(r=>r&&r.tracking&&need.has(reconTrk(r.tracking))).length;
     const first=[...need][0]||"";
     if(first){
       const hit=all.find(r=>String((r&&r.tracking)||"").toUpperCase().indexOf(first)>=0
@@ -15255,6 +15270,23 @@ function renderRecon(){
             +"。請在「1. UPS 帳單匯入」把 "+missA.join("、")+" 各期帳單匯入一次(匯入即自動歸檔),再按 Analyse。",
           "These tracking numbers belong to UPS account "+missA.join(", ")+", but this browser's archive only holds: "+(cover||"—")
             +". Import that account's invoices once under step 1, UPS Invoice Import (importing archives them), then press Analyse again."));
+        else if(!ai.matched){
+          if((ai.inLoaded||0)>0) warn.push(L(
+            "歸檔裡其實有這些追蹤號的 "+ai.inLoaded+" 行,而且就在目前載入的期別上,但對帳引擎沒有對到 —— 請回到「1. UPS 帳單匯入」把那幾期重新載入一次,再按 Analyse。",
+            ai.inLoaded+" archived line(s) for these tracking numbers exist on the period(s) currently loaded, yet the reconciliation did not match them — reload those invoices under step 1, then press Analyse again."));
+          else{
+            const perList=Object.entries(ai.tplPer||{}).sort((x,y)=>x[0].localeCompare(y[0]));
+            if(perList.length) warn.push(L(
+              "帳號 "+ai.tplAcct.join("、")+" 在歸檔裡有:"
+                +perList.map(([k2,d2])=>k2+(d2?"("+d2+")":"")).join("、")
+                +",但這幾期都沒有這些追蹤號。這批出貨日 "+(ai.tplFrom||"?")+" ~ "+(ai.tplTo||"?")
+                +",請在「1. UPS 帳單匯入」補匯涵蓋這段期間的各週帳單(更正也可能出現在其後幾週),再按 Analyse。",
+              "Account "+ai.tplAcct.join(", ")+" is archived for: "
+                +perList.map(([k2,d2])=>k2+(d2?" ("+d2+")":"")).join(", ")
+                +", but none of those periods carry these tracking numbers. The rows shipped "+(ai.tplFrom||"?")+" – "+(ai.tplTo||"?")
+                +"; import the weekly invoices covering that span under step 1 (corrections can appear a few weeks later), then press Analyse again."));
+          }
+        }
       }
       if(ai.idxOnly&&ai.idxOnly.length) warn.push(L(
         "注意:有 "+ai.idxOnly.length+" 期只有索引、沒有明細,搜尋不到它們的內容:"
