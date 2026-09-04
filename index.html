@@ -592,9 +592,8 @@ tbody tr:nth-child(even){background:var(--stripe)}
 tbody tr:hover{background:color-mix(in srgb, var(--select) 45%, transparent)}
 td.num,th.num{text-align:right}
 td.neg{color:var(--neg)}
-#chgModal table th,#chgModal table td{padding:3px 9px;line-height:1.45}
-#chgModal table td{font-size:12px}
-#chgModal .modalbody{padding-top:12px}
+#chgCard table th,#chgCard table td{padding:3px 9px;line-height:1.45}
+#chgCard table td{font-size:12px}
 #p-recon .mny.neg{color:var(--neg)}
 #p-recon .mny.pos{color:var(--run2)}
 #p-recon tfoot td{border-top:2px solid var(--line);background:var(--stripe)}
@@ -1311,24 +1310,6 @@ main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
 .hstart .hstx{flex:1 1 auto;min-width:0}
 .hstart .hstx b{display:block;font-size:14px;color:var(--ink)}
 .hstart .hstx s{display:block;text-decoration:none;font-size:12px;color:var(--muted);line-height:1.5}
-/* 費用代碼卡:三行「是什麼/用在哪/不影響」、一條進度、三步驟。 */
-#chgCard .chgexp{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;
-  margin:2px 0 13px;max-width:84ch}
-#chgCard .chgexp b{color:var(--run2);font-size:13px;white-space:nowrap}
-#chgCard .chgexp span{color:var(--muted);font-size:13px;line-height:1.55}
-#chgCard .chgprog{display:flex;align-items:center;gap:12px;margin:0 0 13px}
-#chgCard .chgbar{flex:0 0 190px;height:10px;border:2px solid var(--accent);
-  border-radius:99px;overflow:hidden;background:var(--panel)}
-#chgCard .chgbar i{display:block;height:100%;width:0;background:var(--tab);transition:width .3s}
-#chgCard .chgsteps{border:2px solid var(--line);border-radius:12px;overflow:hidden;max-width:900px}
-#chgCard .chgstep{display:flex;align-items:center;gap:13px;padding:8px 14px;
-  border-top:1px solid var(--line)}
-#chgCard .chgstep:first-child{border-top:0}
-#chgCard .chgstep .hnum{flex:0 0 26px;height:26px;border-radius:50%;display:grid;place-items:center;
-  font-family:var(--titlefam);font-size:14px;font-weight:700;background:var(--accent);color:var(--tab)}
-#chgCard .chgstx{flex:1 1 auto;min-width:0}
-#chgCard .chgstx b{display:block;font-size:13.5px;color:var(--ink)}
-#chgCard .chgstx s{display:block;text-decoration:none;font-size:12px;color:var(--muted);line-height:1.5}
 @media (max-width:900px){ .homeboard{grid-template-columns:1fr}
   .hrow{grid-template-columns:1fr auto}
   .hrow .hd{display:none} }
@@ -2810,37 +2791,32 @@ label:has(#newChanOn){display:none !important}
 </section>
 
 <!-- ==================== Code Lookup ==================== -->
-<!-- 費用代碼:上面那張卡是「你們的代碼」—— 開頭三行講是什麼、用在哪、
-     不影響什麼,一條進度條,然後匯出→填→匯回三步。下面那張是「UPS 的
-     代碼」字典。以前一句抽象話加四顆並排的按鈕,看的人不知道這頁在幹嘛。 -->
+<!-- 費用代碼:對照表本身就攤在頁面上 —— 37 列、Your code 一欄空著,這頁
+     在幹嘛不用另外教。上方一句話講清楚用途與界線(不影響金額),工具列
+     一條:搜尋、計數、匯出/匯入/說明。之前試過教學式的三行說明加步驟卡,
+     看起來不像正式系統;表格才是這一頁的內容。 -->
 <section class="page" id="p-code">
   <div class="lf sketch" id="chgCard">
-    <h3 class="display"><span class="em">🏷</span><span data-i18n="hd.chgcode">Your charge codes</span></h3>
-    <div class="chgexp">
-      <b data-i18n="lb.chgwhat">What this is</b><span data-i18n="tx.chgwhat">Match every charge this system knows to your company’s own code and name (e.g. Residential Surcharge → RES01).</span>
-      <b data-i18n="lb.chgwhere">Where it shows</b><span data-i18n="tx.chgwhere">Under each charge in the on-screen tables, and as the Your Code column of exported reconciliation reports.</span>
-      <b data-i18n="lb.chgnot">Never affects</b><span data-i18n="tx.chgnot">Any amount. The mapping takes no part in the calculation — it only decides how charges are labelled.</span>
-    </div>
-    <div class="chgprog">
-      <div class="chgbar" aria-hidden="true"><i id="chgBarFill"></i></div>
+    <h3 class="display"><span class="em">🏷</span><span data-i18n="hd.chgcode">Charge code mapping</span></h3>
+    <p class="hint" style="margin:0 0 10px;max-width:88ch" data-i18n="hint.chgcode">Assigns each charge your own code and name, used for on-screen labels and the Your Code column of exported reports — amounts are never affected. Maintain the table in Excel: export, fill in, import back.</p>
+    <div class="row" style="margin-bottom:9px">
+      <label class="inlab" style="margin-left:0" data-i18n="lb.search">Search</label>
+      <input id="chgSearch" class="cell" style="width:190px;text-align:left">
       <span id="chgCount" class="affsum"></span>
-    </div>
-    <div class="chgsteps">
-      <div class="chgstep"><span class="hnum">1</span>
-        <div class="chgstx"><b data-i18n="st.chg1">Export the code table</b><s data-i18n="st.chg1d">one Excel row per charge; codes already set travel along</s></div>
-        <button class="act sm" id="bChgExport" data-i18n="btn.chgexport">Export codes</button></div>
-      <div class="chgstep"><span class="hnum">2</span>
-        <div class="chgstx"><b data-i18n="st.chg2">Fill in Your Code and Your Name in Excel</b><s data-i18n="st.chg2d">leave a cell blank to keep the internal name</s></div></div>
-      <div class="chgstep"><span class="hnum">3</span>
-        <div class="chgstx"><b data-i18n="st.chg3">Import it back</b><s data-i18n="st.chg3d">rows naming a charge this system does not have are listed, never silently dropped</s></div>
-        <button class="act sm" id="bChgImport" data-i18n="btn.chgimport">Import codes</button>
-        <input type="file" id="fChgImport" accept=".csv,.txt,.xlsx,.xls" style="display:none"></div>
-    </div>
-    <div class="row" style="margin-top:11px">
-      <button class="act ghost sm" id="bChgView" data-i18n="btn.chgview">View codes</button>
+      <span style="flex:1 1 auto"></span>
+      <button class="act ghost sm" id="bChgExport" data-i18n="btn.chgexport">Export codes</button>
+      <button class="act ghost sm" id="bChgImport" data-i18n="btn.chgimport">Import codes</button>
       <a class="act ghost sm" href="doc/Charge_Codes_Guide.pdf" download
          style="text-decoration:none" data-i18n="btn.chgpdf">Guide (PDF)</a>
+      <input type="file" id="fChgImport" accept=".csv,.txt,.xlsx,.xls" style="display:none">
     </div>
+    <div class="tablewrap" style="max-height:min(56vh,500px)"><table id="tChg"><thead><tr>
+      <th data-i18n="th.chgname">Charge</th>
+      <th data-i18n="th.chgups">System code</th>
+      <th data-i18n="th.chgmine">Your code</th>
+      <th data-i18n="th.chgmyname">Your name</th>
+      <th data-i18n="th.chgsrc">Source</th>
+    </tr></thead><tbody></tbody></table></div>
   </div>
   <div class="lf sketch">
     <h3 class="display"><span class="em">🔎</span><span data-i18n="hd.code">UPS Charge Code Lookup</span></h3>
@@ -3187,30 +3163,6 @@ label:has(#newChanOn){display:none !important}
      自己去另一個分頁一個一個加。這個視窗把「發現」和「補上」接起來。
      預設收費方式是「照帳單收」而不是「重新計價」—— 新代碼還沒有費率,
      選重新計價的話它會以 0 計價,那筆錢就真的少收了。照帳單收至少是成本。 -->
-<div id="chgBg" class="modalbg">
-  <div class="modal sketch" id="chgModal" style="width:min(940px,100%)">
-    <div class="modalhd">
-      <span data-i18n="hd.chgcode">Charge codes</span>
-      <button class="mx" id="chgX">✕</button>
-    </div>
-    <div class="modalbody">
-      <div class="row" style="margin-bottom:8px">
-        <label class="inlab" style="margin-left:0" data-i18n="lb.search">Search</label>
-        <input id="chgSearch" class="cell" style="width:190px;text-align:left">
-        <span style="flex:1 1 auto"></span>
-        <span id="chgCount2" class="affsum"></span>
-      </div>
-      <div class="tablewrap" style="max-height:min(58vh,520px)"><table id="tChg"><thead><tr>
-        <th data-i18n="th.chgname">Charge</th>
-        <th data-i18n="th.chgups">System code</th>
-        <th data-i18n="th.chgmine">Your code</th>
-        <th data-i18n="th.chgmyname">Your name</th>
-        <th data-i18n="th.chgsrc">Source</th>
-      </tr></thead><tbody></tbody></table></div>
-    </div>
-  </div>
-</div>
-
 <div id="cusEditBg" class="modalbg">
   <div class="modal sketch" id="cusEditModal" style="width:min(520px,100%)">
     <div class="modalhd">
@@ -7989,23 +7941,11 @@ function renderChgCodes(){
       <td class="empty">${esc(T("chg.src."+c.src)||c.src)}</td></tr>`;
   }).join("")||`<tr><td colspan="5" class="empty">—</td></tr>`;
   const done=all.filter(c=>chgCodeOf(c.name)).length;
-  /* 進度條:設到哪裡一眼看到,不用去讀那行小字。 */
-  const fill=$("#chgBarFill");
-  if(fill) fill.style.width=(all.length?Math.round(done/all.length*100):0)+"%";
   const txt=L(
     "共 "+all.length+" 項,已設代碼 "+done+" 項",
     all.length+" charges, "+done+" with a code");
-  /* 同一句話兩個地方要:卡片上一句,視窗裡一句。 */
-  for(const id of ["#chgCount","#chgCount2"]){ const e=$(id); if(e) e.textContent=txt; }
+  const cnt=$("#chgCount"); if(cnt) cnt.textContent=txt;
 }
-/* 代碼表是拿來查的,不是拿來填的 —— 填的那條路是匯出、改、匯入。所以它
-   不佔一個分頁,按了才開,關掉就走。 */
-function openChgView(){
-  renderChgCodes();
-  $("#chgBg") && $("#chgBg").classList.add("on");
-  $("#chgSearch") && $("#chgSearch").focus();
-}
-function closeChgView(){ $("#chgBg") && $("#chgBg").classList.remove("on"); }
 function showCusTab(which){
   CUS_TAB=CUS_PANE[which]?which:"cus";
   for(const k of Object.keys(CUS_PANE)){
@@ -8055,9 +7995,6 @@ function bindCustomers(){
     cusSaveAnd(()=>{ CFG.raw.customers=cusReg().filter(c=>c.code!==code); });
   });
   $("#chgSearch") && ($("#chgSearch").oninput=()=>renderChgCodes());
-  $("#bChgView") && ($("#bChgView").onclick=openChgView);
-  $("#chgX")     && ($("#chgX").onclick=closeChgView);
-  $("#chgBg")    && ($("#chgBg").onclick=e=>{ if(e.target.id==="chgBg") closeChgView(); });
   $("#bChgExport") && ($("#bChgExport").onclick=exportChgCodes);
   $("#bChgImport") && ($("#bChgImport").onclick=()=>$("#fChgImport").click());
   $("#fChgImport") && ($("#fChgImport").onchange=e=>{
@@ -8934,6 +8871,7 @@ function showTab(p){
   if(p==="home" && typeof renderHome==="function") try{ renderHome(); }catch(e){}
   if(p==="admin"&&ME&&ME.role==="admin"){ loadLoginHistory(); loadUsers(); }
   if(p==="cus"&&typeof renderCustomers==="function") renderCustomers();
+  if(p==="code"&&typeof renderChgCodes==="function") renderChgCodes();
   if(p==="analysis"&&typeof renderAnalysis==="function") renderAnalysis();
   if(p==="analysis"&&typeof renderDashboard==="function") renderDashboard();
   /* 層級表以前只有動過才重畫,所以載入設定之後第一次進來是一張空表。
@@ -21591,7 +21529,6 @@ const I18N={
   "ct.cusreg":["客戶","Customers"],
   "ct.chgcode":["費用代碼","Charge codes"],
   "ct.recon":["對帳","Reconciliation"],
-  "btn.chgview":["檢視代碼","View codes"],
   "btn.chgpdf":["說明文件(PDF)","Guide (PDF)"],
   "hd.reconchg":["逐項比對","By charge"],
   "hd.rebill":["補收清單","To re-bill"],
@@ -21666,22 +21603,9 @@ const I18N={
   "btn.tickunassigned":["全選未指定","Tick unassigned"],
   "btn.assign":["指定","Assign"],
   "btn.cusexport":["匯出待指定清單","Export unassigned list"],
-  "hd.chgcode":["你的費用代碼","Your charge codes"],
-  "lb.chgwhat":["這是什麼","What this is"],
-  "tx.chgwhat":["把系統裡的每一項費用,對上你們自己的代碼與名稱(例:Residential Surcharge → RES01)。",
-    "Match every charge this system knows to your company’s own code and name (e.g. Residential Surcharge → RES01)."],
-  "lb.chgwhere":["用在哪裡","Where it shows"],
-  "tx.chgwhere":["畫面上的費用明細會在費用名稱下標出你的代碼;匯出的對帳報表多一欄 Your Code。",
-    "Under each charge in the on-screen tables, and as the Your Code column of exported reconciliation reports."],
-  "lb.chgnot":["不影響","Never affects"],
-  "tx.chgnot":["任何金額。對照表不參與計算,只決定費用怎麼稱呼、報表怎麼標。",
-    "Any amount. The mapping takes no part in the calculation — it only decides how charges are labelled."],
-  "st.chg1":["匯出代碼表","Export the code table"],
-  "st.chg1d":["一項費用一列的 Excel;已設好的代碼會一起帶出去","one Excel row per charge; codes already set travel along"],
-  "st.chg2":["在 Excel 填 Your Code 與 Your Name","Fill in Your Code and Your Name in Excel"],
-  "st.chg2d":["留白就沿用系統內部名稱","leave a cell blank to keep the internal name"],
-  "st.chg3":["匯回系統","Import it back"],
-  "st.chg3d":["對不上名稱的列會逐一列出,不會安靜略過","rows naming a charge this system does not have are listed, never silently dropped"],
+  "hd.chgcode":["費用代碼對照","Charge code mapping"],
+  "hint.chgcode":["為每項費用指定自己的代碼與名稱,用於畫面標示與匯出報表的 Your Code 欄 —— 不影響任何金額。整批維護走 Excel:匯出、填寫、匯回。",
+    "Assigns each charge your own code and name, used for on-screen labels and the Your Code column of exported reports — amounts are never affected. Maintain the table in Excel: export, fill in, import back."],
   "th.chgname":["費用(系統內部名稱)","Charge (internal name)"],
   "th.chgups":["系統代碼","System code"],
   "th.chgmine":["你的代碼","Your code"],
