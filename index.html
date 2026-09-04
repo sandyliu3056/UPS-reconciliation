@@ -14414,7 +14414,17 @@ async function reconFetchArchived(list){
   for(const r of all){ const k=String((r&&r.invoice)||"").trim(); if(k) inArch.add(k); }
   const idxOnly=Object.keys((typeof histInv==="function"&&histInv())||{})
     .filter(k=>looksLikeInvKey(k) && !inArch.has(String(k).trim()));
-  RECON_ARCH_INFO={rows:all.length, periods:inArch.size, idxOnly, matched:0, sample:""};
+  /* 兩邊的帳號並排:模板追蹤號的貨主號(1Z 後六碼)對歸檔各期的帳號 ——
+     「這台瀏覽器根本沒有那個帳號的期別」一眼就看得出來。 */
+  const archAcct={};
+  for(const k of inArch){
+    const a=(typeof acctFromInvoice==="function"&&acctFromInvoice(k))||"";
+    if(a) archAcct[a]=(archAcct[a]||0)+1;
+  }
+  const tplAcct=new Set();
+  for(const k of need){ const m=/^1Z([A-Z0-9]{6})/.exec(k); if(m) tplAcct.add(m[1]); }
+  RECON_ARCH_INFO={rows:all.length, periods:inArch.size, idxOnly, matched:0, sample:"",
+                   archAcct, tplAcct:[...tplAcct]};
   if(!all.length) return 0;
   /* 模板裡每一個追蹤號,把歸檔裡「不在目前載入期別」的行全部撿出來 ——
      整筆缺席的補整筆;本期有、其他期別還有更正行(SCC、Zone 調整、改收)的,
@@ -15176,6 +15186,16 @@ function renderRecon(){
       else warn.push(L(
         "已搜尋歸檔明細 "+ai.rows.toLocaleString()+" 列("+ai.periods+" 期)仍找不到這些追蹤號。",
         "Searched "+ai.rows.toLocaleString()+" archived detail line(s) across "+ai.periods+" period(s); these tracking numbers were not found."));
+      /* 帳號對不上是最常見的原因:模板是 586Y51 的貨,歸檔裡只有別的帳號。 */
+      if(ai.tplAcct&&ai.tplAcct.length&&ai.archAcct){
+        const missA=ai.tplAcct.filter(a=>!ai.archAcct[a]);
+        const cover=Object.entries(ai.archAcct).map(([a,n2])=>a+"("+n2+L(" 期"," period"+(n2>1?"s":""))+")").join("、");
+        if(missA.length) warn.push(L(
+          "這批追蹤號屬於 UPS 帳號 "+missA.join("、")+",但這台瀏覽器的歸檔只有:"+(cover||"—")
+            +"。請在「1. UPS 帳單匯入」把 "+missA.join("、")+" 各期帳單匯入一次(匯入即自動歸檔),再按 Analyse。",
+          "These tracking numbers belong to UPS account "+missA.join(", ")+", but this browser's archive only holds: "+(cover||"—")
+            +". Import that account's invoices once under step 1, UPS Invoice Import (importing archives them), then press Analyse again."));
+      }
       if(ai.idxOnly&&ai.idxOnly.length) warn.push(L(
         "注意:有 "+ai.idxOnly.length+" 期只有索引、沒有明細,搜尋不到它們的內容:"
           +ai.idxOnly.slice(0,5).join("、")+(ai.idxOnly.length>5?" …":"")+"。請重新匯入那幾期。",
