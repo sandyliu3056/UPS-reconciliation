@@ -14383,7 +14383,10 @@ async function reconTemplate(src){
      rows:[[G("Customer Code"),G("Customer Name")]]
        .concat(reg.map(c=>[c.code, c.name||c.code]))}
   ];
-  await xlWrite(sheets, src+"_Reconciliation_Template.xlsx");
+  /* 檔名帶當天日期,一天倒好幾份也分得出來。 */
+  const d0=new Date(), p2=n=>String(n).padStart(2,"0");
+  const ymd0=d0.getFullYear()+"-"+p2(d0.getMonth()+1)+"-"+p2(d0.getDate());
+  await xlWrite(sheets, src+"_Reconciliation_Template_"+ymd0+".xlsx");
   reconMsg(L(src+" 空白模板已下載:一件一列,"+feeCols.length+" 項費用各一欄,全部都是要填的欄位。"
              +"填寫說明在 Guide 分頁,客戶代碼與渠道名稱分別在 Customers、Channels 分頁。",
              "Blank "+src+" template downloaded: one package per row, one column per charge ("
@@ -15554,7 +15557,9 @@ async function reconExport(){
     const n=Math.floor((Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/86400000);
     return {v:n,t:"n",s:{fmt:"m/d/yyyy",align:"right"}};
   };
-  const dimTxt=v=>(v==null||String(v).trim()==="0")?"":String(v);
+  /* 尺寸與重量沒有值就寫 0,不留空白 —— 每一頁同一條規則。 */
+  const dimTxt=v=>{ const s=String(v==null?"":v).trim(); return (!s||s==="0")?"0":s; };
+  const wt0=v=>({v:toNum(v||0),t:"n"});
   const zoneCell=z=>/^\d+$/.test(String(z||""))?{v:+z,t:"n"}:String(z||"");
   /* 應收:重算有算這一項就用重算;沒有(合約沒費率、UPS 才有的項目)照 UPS 實收。 */
   const shouldOf=(o,c)=>{ const F=o.fees||{}; const known=F.known||new Set();
@@ -15589,12 +15594,11 @@ async function reconExport(){
     const fees=o.fees||{rep:{},ups:{}}, billed=o.billedFees||null, u=o.ups||{};
     const row=[dcell(o.invDate), dcell(o.date), o.cus, lvl(o), o.order, (o.trks||[]).join(", "),
                o.ref1||"", o.ref2||"", dimTxt(u.dimsC), dimTxt(u.dimsA),
-               u.entered==null?"":{v:toNum(u.entered),t:"n"},
+               wt0(u.entered),
                /* 計費重與 Zone 都照重算實際採用的(ZONE 更正、最低計費重之後的
                   最後狀態)—— 旁邊的 Repriced 金額就是拿它們算的,兩邊才對得上;
                   沒計價的退回帳單原單。 */
-               (o.upsWt!==""&&o.upsWt!=null)?{v:toNum(o.upsWt),t:"n"}
-                 :(u.billed==null?"":{v:toNum(u.billed),t:"n"}),
+               (o.upsWt!==""&&o.upsWt!=null)?wt0(o.upsWt):wt0(u.billed),
                zoneCell(o.upsZone||u.zone||""), u.chan||""];
     let tS=0, tW=0;
     /* 運費更正:重算算的是更正後的最後運費,拆不出「原運費」和「更正」兩段。
@@ -15627,37 +15631,50 @@ async function reconExport(){
   });
   const dWidths=[12,12,16,16,20,22,22,22,16,16,10,10,7,26]
     .concat(charges.flatMap(()=>[14,14,14]),[14,14,14],anyCarried?[26]:[]);
-  const detailSheet={name:"Detail", rows:[h1,h2,...dRows], merges, cols:dWidths.map(w=>({w})), ignoreTextNumbers:true};
+  const detailSheet={name:"Detail", rows:[h1,h2,...dRows], merges, freeze:{r:2,c:0},
+    cols:dWidths.map(w=>({w})), ignoreTextNumbers:true};
 
-  /* ---- To re-bill:補收清單,和畫面上同一份 —— 一個追蹤號一項費用一列。 ---- */
+  /* ---- To re-bill:一張追蹤號一列,費用攤成欄(和 Detail 同一種讀法)。
+       識別欄:客戶、層級、單號、追蹤號、日期、渠道、Zone、尺寸與重量。
+       金額一律帶 $、沒有的寫 $0.00,整欄可以直接加總;合併欄的退款獨立一欄
+       「Refund」(負數);Fuel、Total 收尾。金額 0 的項目(費率未設定等)不佔格。 ---- */
   const rb=r.rebill||{items:[]};
-  /* 一張追蹤號一列,費用攤成欄(和 Detail 同一種讀法):格子裡是應補收金額,
-     退款是負數,空白代表這一項沒有要補收的。欄序照 Consolidated 的費用順序。
-     金額 0 的項目(費率未設定等)不佔格;燃油、含燃油合計各一欄收尾。 */
+  const ordInfo=new Map();
+  for(const o2 of (r.orders||[])) ordInfo.set((o2.trks||[]).join(", "), o2);
+  const rbColOf=it=>(it.kind==="refund" && gs.some(g=>g.head===it.charge))?"Refund":it.charge;
   const rbByOrd=new Map();
   for(const it of rb.items){
-    const k=it.cus+" "+it.order+" "+it.trk;
+    const k=it.cus+" "+it.order+" "+it.trk;
     let o=rbByOrd.get(k);
-    if(!o){ o={cus:it.cus,order:it.order,trk:it.trk,invDate:it.invDate,fuelPct:null,fuel:0,total:0,amt:{}}; rbByOrd.set(k,o); }
-    if(Math.abs(it.amt)>0.004) o.amt[it.charge]=cents((o.amt[it.charge]||0)+it.amt);
+    if(!o){ o={cus:it.cus,order:it.order,trk:it.trk,invDate:it.invDate,fuel:0,total:0,amt:{}}; rbByOrd.set(k,o); }
+    if(Math.abs(it.amt)>0.004){ const c=rbColOf(it); o.amt[c]=cents((o.amt[c]||0)+it.amt); }
     if(it.fuel) o.fuel=cents(o.fuel+it.fuel);
-    if(it.fuelPct!=null && o.fuelPct==null) o.fuelPct=it.fuelPct;
     o.total=cents(o.total+it.total);
   }
   const rbOrders=[...rbByOrd.values()].filter(o=>Object.keys(o.amt).length)
     .sort((a,b3)=>String(a.cus).localeCompare(String(b3.cus))||String(a.trk).localeCompare(String(b3.trk)));
   const rbCols=[...new Set(rbOrders.flatMap(o=>Object.keys(o.amt)))];
-  const rbOrd=n=>{ const i=AUD_FEES.indexOf(n); return i<0?1e6:i; };
+  const rbOrd=n=>{ if(n==="Refund") return 2e6; const i=AUD_FEES.indexOf(n); return i<0?1e6:i; };
   rbCols.sort((a,b3)=>rbOrd(a)-rbOrd(b3)||a.localeCompare(b3));
-  const rbHead=[["Customer Code","EFE3CB"],["Customer Name","EFE3CB"],["Order Number","EFE3CB"],
-    ["Tracking Number","EFE3CB"],["Invoice Date","EFE3CB"]]
+  const dm$=v=>({v:cents(v||0),t:"n",s:{fmt:"$#,##0.00"}});
+  const rbHead=[["Customer Code","EFE3CB"],["Customer Name","EFE3CB"],["Customer Level","EFE3CB"],
+    ["Order Number","EFE3CB"],["Tracking Number","EFE3CB"],["Invoice Date","EFE3CB"],
+    ["Transaction Date","EFE3CB"],["Channel","EFE3CB"],["Zone","EFE3CB"],
+    ["Package Dimensions","EFE3CB"],["Detail Keyed Dim","EFE3CB"],
+    ["Entered Weight","EFE3CB"],["Billed Weight","EFE3CB"]]
     .concat(rbCols.map(n=>[n,DIFH]))
-    .concat([["Fuel %",REPH],["Fuel",DIFH],["Total incl. Fuel",DIFH]]).map(([n,f])=>dh(n,f));
-  const rbRows=rbOrders.map(o=>[o.cus, cusNameOf(o.cus), o.order, o.trk, dcell(o.invDate)]
-    .concat(rbCols.map(n=>o.amt[n]!=null?dm(o.amt[n]):""))
-    .concat([o.fuelPct!=null?{v:o.fuelPct,t:"n",s:{fmt:"0.00"}}:"", dm(o.fuel), dm(o.total)]));
+    .concat([["Fuel",DIFH],["Total",DIFH]]).map(([n,f])=>dh(n,f));
+  const rbRows=rbOrders.map(o=>{
+    const o2=ordInfo.get(o.trk)||{}, u2=o2.ups||{};
+    return [o.cus, cusNameOf(o.cus), lvl(o2), o.order, o.trk, dcell(o.invDate),
+      dcell(o2.date||""), String(o2.sysChan||o2.chan||u2.chan||""), zoneCell(o2.upsZone||u2.zone||""),
+      dimTxt(u2.dimsC), dimTxt(u2.dimsA), wt0(u2.entered),
+      (o2.upsWt!==""&&o2.upsWt!=null)?wt0(o2.upsWt):wt0(u2.billed)]
+      .concat(rbCols.map(n=>dm$(o.amt[n]||0)))
+      .concat([dm$(o.fuel), dm$(o.total)]);
+  });
   const rebillSheet={name:"To re-bill", rows:[rbHead,...rbRows], ignoreTextNumbers:true,
-    cols:[16,24,20,22,12].concat(rbCols.map(()=>18),[10,12,18]).map(w=>({w}))};
+    cols:[16,24,14,20,22,12,12,20,7,16,16,9,9].concat(rbCols.map(()=>18),[12,14]).map(w=>({w}))};
 
   /* ---- 每個客戶一頁:給客戶看的對帳單,照舊 SOP 的 Item / Amount 兩欄 ----
      一個追蹤號底下一項一列,燃油自己一列(Item 寫 Fuel Surcharge),最後一列合計。
@@ -15672,7 +15689,9 @@ async function reconExport(){
   };
   /* 給客戶看的對帳單,一位客戶一頁。金額 0 的(費率未設定、合約無此項)不上。
      不合併儲存格、表頭不上色、日期 m/d/yyyy —— 這一頁是要貼進客戶帳單的,越素越好搬。 */
-  const cusHead=["Transaction Date","Tracking Number","Order Number","Channel","Zone","Item","Description","Amount"]
+  const cusHead=["Transaction Date","Tracking Number","Order Number","Channel","Zone",
+    "Package Dimensions","Detail Keyed Dim","Entered Weight","Billed Weight",
+    "Item","Description","Amount"]
     .map(n=>({v:n,t:"s",s:{bold:true,align:"left",border:true}}));
   /* 金額帶 $:這一頁是客戶帳單,幣別要寫明。 */
   const CUR="$#,##0.00";
@@ -15682,11 +15701,15 @@ async function reconExport(){
     if(!sorted.length) continue;
     const rows=[]; let sum=0;
     for(const it of sorted){
-      rows.push([dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"", it.charge, it.desc||"", dc(it.amt)]); sum=cents(sum+it.amt);
-      if(Math.abs(it.fuel)>0.004){ rows.push([dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"", "Fuel Surcharge", it.charge+" @ "+it.fuelPct+"%", dc(it.fuel)]); sum=cents(sum+it.fuel); }
+      const o2=ordInfo.get(it.trk)||{}, u2=o2.ups||{};
+      const idc=[dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"",
+        dimTxt(u2.dimsC), dimTxt(u2.dimsA), wt0(u2.entered),
+        (o2.upsWt!==""&&o2.upsWt!=null)?wt0(o2.upsWt):wt0(u2.billed)];
+      rows.push(idc.concat([it.charge, it.desc||"", dc(it.amt)])); sum=cents(sum+it.amt);
+      if(Math.abs(it.fuel)>0.004){ rows.push(idc.concat(["Fuel Surcharge", it.charge+" @ "+it.fuelPct+"%", dc(it.fuel)])); sum=cents(sum+it.fuel); }
     }
-    rows.push(["","","","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:CUR,bold:true}}]);
-    cusSheets.push({name:sheetName(code), rows:[cusHead,...rows], cols:[12,22,20,20,7,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
+    rows.push(["","","","","","","","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:CUR,bold:true}}]);
+    cusSheets.push({name:sheetName(code), rows:[cusHead,...rows], cols:[12,22,20,20,7,16,16,9,9,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
   }
 
   /* ---- WMS / TMS 有、這期帳單上沒有的追蹤號:另外一頁,照模板的綠色欄
@@ -15702,8 +15725,8 @@ async function reconExport(){
     const GRN="92D050";
     const offCarried=offInv.some(o=>o.carried);
     const nHead=["Customer Code","Customer Name","Order Number","Tracking Number","Transaction Date",
-                 "Channel - "+src,"Zone - "+src,"Billed Weight - "+src].map(n=>dh(n,GRN))
-      .concat(fcols.map(n=>dh(n+" - "+src,GRN)), [dh("Total Amount - "+src,GRN)], offCarried?[dh("Carried From",GRN)]:[]);
+                 "Channel","Zone","Billed Weight"].map(n=>dh(n,GRN))
+      .concat(fcols.map(n=>dh(n,GRN)), [dh("Total Amount",GRN)], offCarried?[dh("Carried From",GRN)]:[]);
     const nRows=offInv.map(o=>[String(o.cus||""), String(o.name||""), String(o.order||""), (o.trks||[]).join(", "), dcell(o.date),
                                String(o.chan||""), zoneCell(o.zone), o.wt===""||o.wt==null?"":{v:toNum(o.wt),t:"n"}]
       .concat(fcols.map(c=>dm((o.billedFees||{})[c])), [dm(o.amt)], offCarried?[carriedTxt(o)]:[]));
