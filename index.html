@@ -10950,13 +10950,15 @@ async function bkdXlsx(){
                     : lay==="RTN" ? L("退件回程","Return leg")
                     : L("原始出貨","Original shipment");
 
-  /* ---- 各期比較 ---- */
-  const sum=[[hc(L("追蹤號 ","Tracking ")+trk,HEAD,"left"),hc("",HEAD),hc("",HEAD),hc("",HEAD),hc("",HEAD),hc("",HEAD)],
+  /* ---- 各期比較:欄位照畫面上的總覽 —— 重算、UPS、實收、應補收都在 ---- */
+  const wsrc0=((out.find(o=>o.wms)||{}).wms||{}).src||RECON_SRC||"WMS";
+  const sum=[[hc(L("追蹤號 ","Tracking ")+trk,HEAD,"left"),hc("",HEAD),hc("",HEAD),hc("",HEAD),hc("",HEAD),hc("",HEAD),hc("",HEAD),hc("",HEAD)],
              [hc(L("期別","Invoice"),HEAD,"left"),hc(L("帳單日","Invoice date"),HEAD),
               hc(L("UPS 實收","UPS billed"),UPSC),hc(L("重算","Repriced"),REPC),
+              hc(wsrc0+L(" 實收"," billed"),WMSB),hc(L("應補收","To re-bill"),WMSB),
               hc(L("毛利","Profit"),HEAD),hc(L("毛利率","Margin"),HEAD)]];
-  const sumMerges=[{s:{r:0,c:0},e:{r:0,c:5}}];
-  let tUp=0,tRe=0,allPriced=true;
+  const sumMerges=[{s:{r:0,c:0},e:{r:0,c:7}}];
+  let tUp=0,tRe=0,tWm=0,tRb=0,anyWm=false,anyRb=false,allPriced=true;
   /* 只有帳戶層的期別不進比較表 —— 它們集中在明細頁最後一段。 */
   const pk=out.filter(o=>o.pkgN!==0);
   for(const o of pk){
@@ -10966,9 +10968,15 @@ async function bkdXlsx(){
     tUp+=up;
     const df=(re==null)?null:cents(re-up);
     const sd=serial(o.invDate);
+    const wm=o.wms?cents(o.wms.amt):null;
+    const rb=(o.wms&&Math.abs(o.wms.rebill||0)>0.004)?cents(o.wms.rebill):null;
+    if(wm!=null){ tWm+=wm; anyWm=true; }
+    if(rb!=null){ tRb+=rb; anyRb=true; }
     sum.push([c(o.inv,"","left"),
       sd==null?c(o.invDate||"","","right"):c(sd,DATE,"right"),
       c(up,MONEY,"right",UPSB), re==null?c("—","","right",REPB):c(re,MONEY,"right",REPB),
+      wm==null?c("—","","right",WMSB):c(wm,MONEY,"right",WMSB),
+      rb==null?c("—","","right",WMSB):c(rb,MONEY,"right",WMSB),
       df==null?c("—","","right"):c(df,MONEY,"right"),
       (df==null||Math.abs(re)<1e-9)?c("—","","right"):c(df/Math.abs(re),PCT,"right")]);
   }
@@ -10977,6 +10985,8 @@ async function bkdXlsx(){
     sum.push([c(L("合計","Total"),"","left",FOOT,true), c("","",  "right",FOOT,true),
       c(cents(tUp),MONEY,"right",FOOT,true),
       allPriced?c(cents(tRe),MONEY,"right",FOOT,true):c("—","","right",FOOT,true),
+      anyWm?c(cents(tWm),MONEY,"right",FOOT,true):c("—","","right",FOOT,true),
+      anyRb?c(cents(tRb),MONEY,"right",FOOT,true):c("—","","right",FOOT,true),
       td==null?c("—","","right",FOOT,true):c(td,MONEY,"right",FOOT,true),
       (td==null||Math.abs(tRe)<1e-9)?c("—","","right",FOOT,true)
         :c(td/Math.abs(tRe),PCT,"right",FOOT,true)]);
@@ -10987,10 +10997,12 @@ async function bkdXlsx(){
               hc(L("來源","Source"),HEAD,"left"),hc(L("項目","Item"),HEAD,"left"),
               hc(L("金額","Amount"),HEAD)]];
   const wsrc=(o)=>(o.wms&&o.wms.src)||RECON_SRC||"WMS";
+  const RBB="F8E9E6";
   const push=(inv,seg,side,item,amt,bold,src)=>{
-    const fill=side===0?UPSB:side===1?REPB:WMSB;
+    const fill=side===0?UPSB:side===1?REPB:side===3?RBB:WMSB;
     det.push([c(inv,"","left",fill,bold),c(seg,"","left",fill,bold),
-      c(side===0?L("UPS 實收","UPS billed"):side===1?L("重算","Repriced"):(src||"WMS")+L(" 實收"," billed"),"","left",fill,bold),
+      c(side===0?L("UPS 實收","UPS billed"):side===1?L("重算","Repriced")
+        :side===3?L("應補收","To re-bill"):(src||"WMS")+L(" 實收"," billed"),"","left",fill,bold),
       c(item,"","left",fill,bold),c(amt,MONEY,"right",fill,bold)]);
   };
   for(const o of out){
@@ -11006,7 +11018,20 @@ async function bkdXlsx(){
       push(o.inv,nm,1,L("小計","Subtotal"),L2.psub,true);
       if(wms){
         for(const [it,v] of L2.W) push(o.inv,nm,2,it,v,false,wsrc(o));
-        push(o.inv,nm,2,L("小計","Subtotal"),L2.wsub,true,wsrc(o));
+        push(o.inv,nm,2,L("總金額","Total Amount"),L2.wsub,true,wsrc(o));
+      }
+      /* 應補收:和畫面上第四欄同一組數 —— 一項一列、燃油淨額一列、合計一列。 */
+      if(wms && (wms.items||[]).length){
+        const tag=it=>it.kind==="refund"?L("退還","Refund"):it.kind==="swap"?L("改收","Substituted")
+                   :it.kind==="short"?L("短收","Short-billed"):it.kind==="audit"?L("稽核費","Audit fee")
+                   :L("漏收","Not billed");
+        for(const it of wms.items){
+          if(!(Math.abs(it.amt)>0.004)) continue;
+          push(o.inv,nm,3,it.charge+"("+tag(it)+")",cents(it.amt));
+        }
+        const rbF=cents(wms.items.reduce((a,it)=>a+(it.fuel||0),0));
+        if(Math.abs(rbF)>0.004) push(o.inv,nm,3,L("燃油附加費","Fuel surcharge"),rbF);
+        push(o.inv,nm,3,L("應補收合計","Total to re-bill"),cents(wms.rebill||0),true);
       }
     }
   }
@@ -11022,7 +11047,7 @@ async function bkdXlsx(){
   const name=("Tracking_"+trk+"_Breakdown").replace(/[^A-Za-z0-9_-]+/g,"")+".xlsx";
   const ok=await xlWrite([
     {name:L("各期比較","Per invoice"), rows:sum, merges:sumMerges,
-     cols:[{w:20},{w:13},{w:14},{w:14},{w:13},{w:11}], freeze:{r:2,c:1}},
+     cols:[{w:20},{w:13},{w:14},{w:14},{w:14},{w:13},{w:13},{w:11}], freeze:{r:2,c:1}},
     {name:L("明細","Detail"), rows:det,
      cols:[{w:20},{w:16},{w:13},{w:38},{w:14}], freeze:{r:1,c:0},
      filter:"A1:E"+det.length},
