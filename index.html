@@ -1106,6 +1106,9 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
    畫面上正在編輯的那一層,和對帳表算的不是同一層,兩邊的 Reprice 對不起來。 */
 .bkdlvl{margin-left:8px;padding:2px 8px;border:1.5px solid currentColor;border-radius:10px;
   font-size:11px;font-weight:700;letter-spacing:.3px;opacity:.9;white-space:nowrap}
+.bkdtag{margin-left:6px;padding:0 6px;border:1px solid currentColor;border-radius:8px;
+  font-size:9.5px;font-weight:700;letter-spacing:.3px;opacity:.75;white-space:nowrap}
+.bkdsub{display:block;font-size:10.5px;color:var(--muted);margin-top:1px}
 .bkdside tr.bkdadd td{font-weight:700}
 .bkdside tr.bkdneg2 td{color:var(--neg)}
 .bkdglbl{font-size:10.5px;color:var(--muted);font-weight:700;padding-top:7px;
@@ -10827,7 +10830,11 @@ function bkdWmsOf(trk){
   const rebill=cents(items.reduce((a,it)=>a+toNum(it.total),0));
   const over=cents(items.reduce((a,it)=>a+toNum(it.over),0));
   return {src:RECON_SRC, rows, amt, order:o.order, cus:o.cus, name:o.name,
-          pieces:(o.trks||[]).length, rebill, over, items:items.length};
+          pieces:(o.trks||[]).length, rebill, over,
+          /* 補收不能只給一個總數 —— 要收客戶的錢,得說得出是哪幾項。 */
+          items:items.map(it=>({charge:it.charge, desc:it.desc||"", kind:it.kind,
+            amt:cents(toNum(it.amt)), fuel:cents(toNum(it.fuel)), fuelPct:it.fuelPct,
+            total:cents(toNum(it.total)), over:cents(toNum(it.over))}))};
 }
 function bkdLines(res, groups, wms){
   const U=[], P=[], W=[];
@@ -11022,17 +11029,34 @@ function bkdSection(r, wms){
       /* 實收之後再列「還要補收」與「多收」:光看實收看不出這一件收完了沒有。
          補收含燃油,和補收清單、匯出的 To re-bill 是同一個數。 */
       const extra=[];
-      if(wms.rebill>0.004) extra.push(`<tr class="bkdadd"><td>${L("還要補收(含燃油)","To re-bill incl. fuel")}</td>`
-        +`<td class="num">${money(wms.rebill)}</td></tr>`);
-      if(wms.over>0.004) extra.push(`<tr class="bkdneg2"><td>${L("多收,應退客戶","Over-collected, owed back")}</td>`
+      /* 一項一列,和補收清單、匯出的 To re-bill 是同一組數字;燃油照舊最後
+         才算,所以它自己一列。只給一個總數沒辦法拿去跟客戶對。 */
+      const tagOf=it=> it.kind==="swap"?L("改收","Substituted")
+                     : it.kind==="audit"?L("稽核費","Audit fee")
+                     : it.kind==="miss"?L("漏收","Not billed"):"";
+      const rbFuel=cents((wms.items||[]).reduce((a,it)=>a+(it.fuel||0),0));
+      const pct=((wms.items||[]).find(it=>it.fuel>0.004)||{}).fuelPct;
+      for(const it of (wms.items||[])){
+        if(!(it.amt>0.004)) continue;
+        const tg=tagOf(it);
+        extra.push(`<tr><td>${esc2(it.charge)}`
+          +(tg?`<span class="bkdtag">${esc2(tg)}</span>`:"")
+          +(it.desc?`<span class="bkdsub">${esc2(it.desc)}</span>`:"")
+          +`</td><td class="num">${money(it.amt)}</td></tr>`);
+      }
+      if(rbFuel>0.004) extra.push(`<tr><td>${L("燃油附加費 ","Fuel surcharge ")+(pct!=null?esc2(pct)+"%":"")}</td>`
+        +`<td class="num">${money(rbFuel)}</td></tr>`);
+      /* 補收各項與燃油列完就夠了 —— 再補一列「含燃油的補收合計」是同一筆錢
+         講第二次,底下的應收總額本來就把它算進去了。 */
+      if(wms.over>0.004) extra.push(`<tr class="bkdneg2"><td>${L("溢收,應退還","Over-collected, refundable")}</td>`
         +`<td class="num">${money(-wms.over)}</td></tr>`);
       const due=cents(wms.amt+(wms.rebill||0));
       Wc=`<div class="bkdside wms"><div class="bkdside-lbl">${esc2(wms.src)+L(" 實收"," billed")}</div>`
         +`<div class="bkdside-body"><table>${W.join("")}`
-        +(extra.length?`<tr><td colspan="2" class="bkdglbl">${L("對帳之後","After reconciliation")}</td></tr>`+extra.join(""):"")
+        +(extra.length?`<tr><td colspan="2" class="bkdglbl">${L("應補收項目","Charges to re-bill")}</td></tr>`+extra.join(""):"")
         +`</table>`
         +(note.length?`<div class="bkdside-note">${note.join(" · ")}</div>`:"")
-        +`<div class="bkdside-ft"><span>${wms.rebill>0.004?L("應收合計","Due in total"):L("小計","Subtotal")}</span>`
+        +`<div class="bkdside-ft"><span>${wms.rebill>0.004?L("應收總額","Total due"):L("小計","Subtotal")}</span>`
         +`<span class="num">${money(due)}</span></div></div></div>`;
     }
     return `<div class="bkdseg ${resi?"resi":"com"}">`
@@ -11069,7 +11093,7 @@ function bkdSection(r, wms){
     +`<span class="v">${money2(r.total||0)}</span></div>`
     +(wms?`<div class="bt"><span class="l">${esc2(wms.src)+L(" 實收"," billed")}</span>`
       +`<span class="v">${money2(wms.amt)}</span></div>`:"")
-    +(wms&&wms.rebill>0.004?`<div class="bt"><span class="l">${L("應收合計(實收 + 補收)","Due in total")}</span>`
+    +(wms&&wms.rebill>0.004?`<div class="bt"><span class="l">${L("應收總額","Total due")}</span>`
       +`<span class="v">${money2(cents(wms.amt+wms.rebill))}</span></div>`:"")
     +`</div>`);
   return H.join("");
@@ -15137,6 +15161,22 @@ async function reconExport(){
 }
 
 /* 讀檔+解析,不寫入。回 {err} 或 {p, fname} —— 匯入與預覽共用同一條讀取路。 */
+/* 這個檔是 WMS 還是 TMS 的:先看欄名的字尾(舊模板帶「- WMS」「- TMS」),
+   再看檔名,最後看形狀 —— 額外處理與大包裹合在一欄是 TMS 的收法。三個都看
+   不出來就維持現在這一邊,不亂猜。 */
+function reconSrcOf(rows, fname){
+  const head=((rows&&rows[0])||[]).map(c=>String(c==null?"":c).trim());
+  for(const h of head){
+    const m=/\s-\s*(WMS|TMS)$/i.exec(h);
+    if(m) return m[1].toUpperCase();
+  }
+  const fn=String(fname||"").toUpperCase();
+  if(/\bTMS\b|TMS[_-]/.test(fn)) return "TMS";
+  if(/\bWMS\b|WMS[_-]/.test(fn)) return "WMS";
+  const low=head.map(h=>h.toLowerCase());
+  if(low.includes(RECON_GROUPS.ahslps.head.toLowerCase())) return "TMS";
+  return "";
+}
 async function reconRead(file){
   if(!file) return {err:""};
   /* 帳單還沒進來也收:檔案先留著,帳單一匯入就自動比對。以前這裡直接擋下,
@@ -15147,7 +15187,15 @@ async function reconRead(file){
   catch(e){ return {err:L("這個檔案讀不開:","Could not read the file: ")+(e&&e.message||e)}; }
   const rows=wb.sheets[RECON_SHEET] || wb.sheets[(wb.order||[])[0]] || wb.sheets[""];
   if(!rows) return {err:L("找不到 "+RECON_SHEET+" 分頁。","No "+RECON_SHEET+" sheet found.")};
-  return {p:reconParse(rows), fname:(file&&file.name)||""};
+  /* 匯進來的是哪一邊的檔,由檔案自己講 —— 上面那個 WMS / TMS 開關是給下載
+     模板用的,匯入時忘了切,整份對帳就會掛著錯的名字(存起來的那一份、
+     畫面上的欄名、匯出的表頭都是)。 */
+  const src=reconSrcOf(rows, (file&&file.name)||"");
+  if(src && src!==RECON_SRC){
+    RECON_SRC=src;
+    if(typeof reconSrcPaint==="function") reconSrcPaint();
+  }
+  return {p:reconParse(rows), fname:(file&&file.name)||"", srcSwitched:src&&src===RECON_SRC?src:""};
 }
 /* 解析結果寫進系統。回傳 true 代表收下了。 */
 async function reconAccept(p, fname){
@@ -15211,9 +15259,14 @@ async function reconAccept(p, fname){
 }
 /* 直接匯入(測試與既有呼叫端用)。畫面上的匯入鈕走預覽那條路。 */
 async function reconImport(file){
+  const before=RECON_SRC;
   const r=await reconRead(file);
   if(r.err!==undefined && r.p===undefined){ if(r.err) reconMsg(r.err,false); return; }
-  await reconAccept(r.p, r.fname);
+  const ok=await reconAccept(r.p, r.fname);
+  /* 換過邊就講一聲 —— 畫面上的字全部跟著變,沒說的話會以為自己按錯。 */
+  if(ok && before!==RECON_SRC)
+    toast(L("這是 "+RECON_SRC+" 的檔,來源已切成 "+RECON_SRC+"。",
+            "That is a "+RECON_SRC+" file — the source is now "+RECON_SRC+"."), true);
 }
 /* 規格書的 Preview-first:先看見,確認了才寫入。 */
 async function reconPreviewImport(file){
