@@ -1102,6 +1102,12 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
   width:82px;white-space:nowrap}
 .bkdside tr.bkdsub td{border-top:1.5px solid color-mix(in srgb, var(--text) 35%, transparent);
   padding-top:4px;font-weight:700}
+/* 費率層級的小標:重算是照哪一層算的,一眼看得到 —— 以前這個視窗用的是
+   畫面上正在編輯的那一層,和對帳表算的不是同一層,兩邊的 Reprice 對不起來。 */
+.bkdlvl{margin-left:8px;padding:2px 8px;border:1.5px solid currentColor;border-radius:10px;
+  font-size:11px;font-weight:700;letter-spacing:.3px;opacity:.9;white-space:nowrap}
+.bkdside tr.bkdadd td{font-weight:700}
+.bkdside tr.bkdneg2 td{color:var(--neg)}
 .bkdglbl{font-size:10.5px;color:var(--muted);font-weight:700;padding-top:7px;
   letter-spacing:.7px;text-transform:uppercase}
 .bkdmiss{color:var(--neg);border-bottom:1.5px dotted var(--neg);cursor:help}
@@ -10612,6 +10618,9 @@ $("#bTrkSearch") && ($("#bTrkSearch").onclick=()=>renderHist());
    不是另寫一顆說明用引擎(py :12926 的教訓仍然成立 —— 這裡沒有第二套算法)。
    追蹤號存在於已存帳單(或本期匯入)就能看;每一期各算一次,
    先列各期比對(Invoice / 日期 / Reprice / UPS 實收 / 差異 / %),再逐期展開明細。 */
+/* 這一次開的是誰的費率層級 —— openBreakdown 算出來,bkdSection 畫的時候要用,
+   兩支函式各自獨立,放在外面才看得到。 */
+let BKD_LVL="";
 function openBreakdown(){
   const t=String(($("#trkSearch")||{}).value||"").trim().toUpperCase();
   const body=$("#bkdBody");
@@ -10652,6 +10661,15 @@ function openBreakdown(){
   const keep=ACCT_LINES, out=[];
   /* 純 ADJ 的 C−A 要對到原件那一段(origFrtFor)。這個視窗手上就有全部
      歷史列,同步建對照,算完還原 —— 不動主流程那一份。 */
+  /* 重算要照這一件的客戶所屬的費率層級算 —— 對帳表與匯出一向是這樣算的,
+     只有這個視窗以前用 CFG(畫面上正在編輯的那一層),於是同一件包裹在兩個
+     地方會出現兩個「Reprice」。客戶認不出來(還沒對帳、或不在名單裡)才退回
+     用現在這一層,並且在抬頭上講明是用哪一層算的。 */
+  const bkdCus=(typeof bkdWmsOf==="function"&&bkdWmsOf(t))||null;
+  const bkdReg=(typeof cusReg==="function"?cusReg():[]).find(c=>bkdCus&&c.code===bkdCus.cus);
+  const bkdLvl=bkdReg&&bkdReg.level;
+  const bkdCfg=(bkdLvl&&typeof reconCfgFor==="function"&&reconCfgFor(bkdLvl))||CFG;
+  BKD_LVL=(bkdLvl&&typeof cusLevelLabel==="function"&&cusLevelLabel(bkdLvl))||"";
   const keepOrig=ORIG;
   ORIG=buildOriginals([...(HISTROWS||[]),...(ROWS||[])], new Set([t]));
   for(const g of list){
@@ -10663,7 +10681,7 @@ function openBreakdown(){
     const pkg=g.rows.filter(l=>!isAccountLevelLine(l));
     try{
       const s=pkg.length?shipmentsOf(pkg).find(x=>String(x.tracking).toUpperCase()===t):null;
-      if(s) r=priceShipment(CFG,s);
+      if(s) r=priceShipment(bkdCfg,s);
     }catch(e){ err=String((e&&e.message)||e); }
     out.push({inv:g.invoice,invDate:g.invDate,r,err,
       ups:pkg.reduce((a,l)=>a+(l.net||0),0),
@@ -10802,7 +10820,14 @@ function bkdWmsOf(trk){
   if(rows.length && Math.abs(rest)>=0.005) rows.push([REST, rest]);
   rows.sort((x,y)=>rank(x[0])-rank(y[0])||String(x[0]).localeCompare(String(y[0])));
   if(!rows.length) rows.push([L("總額(未逐項)","Total amount (not itemised)"), amt]);
-  return {src:RECON_SRC, rows, amt, order:o.order, cus:o.cus, name:o.name, pieces:(o.trks||[]).length};
+  /* 這一件還要向客戶補收多少(含燃油)、以及收多了該退多少 —— 補收清單是
+     一張單一張單算的,這裡把屬於這個追蹤號的那幾項挑出來。 */
+  const items=((r.rebill&&r.rebill.items)||[]).filter(it=>
+    String(it.trk||"").split(/[,;\s]+/).some(x=>reconTrk(x)===k));
+  const rebill=cents(items.reduce((a,it)=>a+toNum(it.total),0));
+  const over=cents(items.reduce((a,it)=>a+toNum(it.over),0));
+  return {src:RECON_SRC, rows, amt, order:o.order, cus:o.cus, name:o.name,
+          pieces:(o.trks||[]).length, rebill, over, items:items.length};
 }
 function bkdLines(res, groups, wms){
   const U=[], P=[], W=[];
@@ -10994,10 +11019,21 @@ function bkdSection(r, wms){
       const note=[];
       if(wms.order) note.push(L("單號 ","Order ")+esc2(wms.order));
       if(wms.pieces>1) note.push(L("此單 "+wms.pieces+" 件合計","Order total for "+wms.pieces+" packages"));
+      /* 實收之後再列「還要補收」與「多收」:光看實收看不出這一件收完了沒有。
+         補收含燃油,和補收清單、匯出的 To re-bill 是同一個數。 */
+      const extra=[];
+      if(wms.rebill>0.004) extra.push(`<tr class="bkdadd"><td>${L("還要補收(含燃油)","To re-bill incl. fuel")}</td>`
+        +`<td class="num">${money(wms.rebill)}</td></tr>`);
+      if(wms.over>0.004) extra.push(`<tr class="bkdneg2"><td>${L("多收,應退客戶","Over-collected, owed back")}</td>`
+        +`<td class="num">${money(-wms.over)}</td></tr>`);
+      const due=cents(wms.amt+(wms.rebill||0));
       Wc=`<div class="bkdside wms"><div class="bkdside-lbl">${esc2(wms.src)+L(" 實收"," billed")}</div>`
-        +`<div class="bkdside-body"><table>${W.join("")}</table>`
+        +`<div class="bkdside-body"><table>${W.join("")}`
+        +(extra.length?`<tr><td colspan="2" class="bkdglbl">${L("對帳之後","After reconciliation")}</td></tr>`+extra.join(""):"")
+        +`</table>`
         +(note.length?`<div class="bkdside-note">${note.join(" · ")}</div>`:"")
-        +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(wms.amt)}</span></div></div></div>`;
+        +`<div class="bkdside-ft"><span>${wms.rebill>0.004?L("應收合計","Due in total"):L("小計","Subtotal")}</span>`
+        +`<span class="num">${money(due)}</span></div></div></div>`;
     }
     return `<div class="bkdseg ${resi?"resi":"com"}">`
       +`<div class="bkdseg-hd"><span class="bkdseg-name">${esc2(name)}</span>`
@@ -11007,7 +11043,8 @@ function bkdSection(r, wms){
       +`<div class="bkdside ups"><div class="bkdside-lbl">${L("UPS 實收","UPS billed")}</div>`
       +`<div class="bkdside-body"><table>${U.join("")}</table>`
       +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(usub)}</span></div></div></div>`
-      +`<div class="bkdside rp"><div class="bkdside-lbl">${L("重新計價","Reprice")}</div>`
+      +`<div class="bkdside rp"><div class="bkdside-lbl">${L("重新計價","Reprice")}`
+      +(BKD_LVL?`<span class="bkdlvl">${esc2(L("層級 ","Level ")+BKD_LVL)}</span>`:"")+`</div>`
       +`<div class="bkdside-body"><table>${P.join("")}</table>`
       +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(psub)}</span></div></div></div>`
       +Wc
@@ -11027,10 +11064,13 @@ function bkdSection(r, wms){
   H.push(`<div class="bkdtot${wms?" three":""}">`
     +`<div class="bt"><span class="l">${L("UPS 實收","UPS billed")}</span>`
     +`<span class="v">${money2(s.upsTotal)}</span></div>`
-    +`<div class="bt"><span class="l">${L("重新計價","Reprice")}</span>`
+    +`<div class="bt"><span class="l">${L("重新計價","Reprice")}`
+    +(BKD_LVL?`<span class="bkdlvl">${esc2(L("層級 ","Level ")+BKD_LVL)}</span>`:"")+`</span>`
     +`<span class="v">${money2(r.total||0)}</span></div>`
     +(wms?`<div class="bt"><span class="l">${esc2(wms.src)+L(" 實收"," billed")}</span>`
       +`<span class="v">${money2(wms.amt)}</span></div>`:"")
+    +(wms&&wms.rebill>0.004?`<div class="bt"><span class="l">${L("應收合計(實收 + 補收)","Due in total")}</span>`
+      +`<span class="v">${money2(cents(wms.amt+wms.rebill))}</span></div>`:"")
     +`</div>`);
   return H.join("");
 }
@@ -13168,7 +13208,11 @@ const RECON_GROUPS={
   sig:{head:"Signature / Adult Signature", fees:["Signature","Adult Signature"]},
   scc:{head:"Base Rate + Shipping Charge Correction", fees:["Base Rate","Shipping Charge Correction"], auto:true},
 };
-const RECON_OTHER="Other Fees (non-carrier)";
+/* WMS / TMS 自己收的服務費(貼標、處理費那一類),不是 UPS 的費用:不和帳單
+   比對、不進補收,但要算進向客戶收的總額。以前叫「Other Fees (non-carrier)」
+   —— 那是我自己編的名字,現場的叫法就是 Service Fee。舊檔案裡的舊欄名照收。 */
+const RECON_OTHER="Service Fee";
+const RECON_OTHER_ALIAS=["Other Fees (non-carrier)","Other Fees","Service Charge","Handling Fee"];
 /* 補收清單用的「家族」:客戶端和 UPS 端可能用不同的細項收同一件事 —— 出貨時收
    AHS、UPS 量過改收 LPS;WMS 收商業 DAS、UPS 改判住宅 DAS。同一家族先抵,只補
    UPS 比客戶多收的部分。 */
@@ -13859,7 +13903,8 @@ function reconParse(sheetRows){
     const base=m[1].trim();
     if(!base || ID_NAMES.has(base.toLowerCase())) return;
     if(Object.values(RECON_GROUPS).some(d=>d.head.toLowerCase()===base.toLowerCase())) return;
-    if(base.toLowerCase()===RECON_OTHER.toLowerCase()) return;
+    if(base.toLowerCase()===RECON_OTHER.toLowerCase()
+       || RECON_OTHER_ALIAS.some(a=>a.toLowerCase()===base.toLowerCase())) return;
     addCol(reconLegacyName(base), j);
   });
   const plainOk=nm=>{ const j=find(nm); if(j<0) return -1; return find(nm+" - UPS")>=0?-1:j; };
@@ -13882,7 +13927,9 @@ function reconParse(sheetRows){
     return {err:L("「Additional Handling Surcharge」和「Additional Handling + Large Package Surcharge」只能留一欄。",
                   "Keep only one of \"Additional Handling Surcharge\" and \"Additional Handling + Large Package Surcharge\".")};
   for(const [hd,j] of gIx) addCol(hd,j);
-  { let j=findMine(RECON_OTHER); if(j<0) j=plainOk(RECON_OTHER); addCol(RECON_OTHER,j); }
+  { let j=findMine(RECON_OTHER,...RECON_OTHER_ALIAS);
+    if(j<0) for(const nm of [RECON_OTHER,...RECON_OTHER_ALIAS]){ j=plainOk(nm); if(j>=0) break; }
+    addCol(RECON_OTHER,j); }
   const out=[], issues=[], sumWarn=[];
   const seenTrk=new Map();
   const known=new Set(cusReg().map(c=>c.code));
@@ -13985,6 +14032,9 @@ async function reconTemplate(src){
     feeCols=feeCols.filter(c=>!mem.has(c));
     if(at>=0) feeCols.splice(at,0,def.head); else feeCols.push(def.head);
   }
+  /* 自己收的服務費也要有一欄:沒有欄可填,它就只能從總額裡被算成
+     「未逐項列示」,畫面上是一筆沒有名字的錢。 */
+  feeCols.push(RECON_OTHER);
   const HI=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF",wrap:true}});
   const HU=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"FFC000",color:"1F1F1F",wrap:true}});
   const HM=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"92D050",color:"1F1F1F",wrap:true}});
@@ -14023,6 +14073,8 @@ async function reconTemplate(src){
     [RECON_GROUPS.ahslps.head]:["額外處理與大包裹合在一欄 —— TMS 就是這樣收的 Additional handling and large package in one column, the way TMS bills them",""],
     [RECON_GROUPS.ahs.head]:["額外處理(重量、尺寸、包裝)合在一欄 Additional handling — weight, dimension and packaging in one column",""],
     [RECON_GROUPS.dasras.head]:["配送地區與偏遠地區合在一欄(含延伸、商業／住宅)Delivery area and remote area in one column, extended and com/res included",src==="TMS"?"TMS 的 DAS 欄 TMS column: DAS":""],
+    [RECON_OTHER]:["你們自己收的服務費(貼標、處理費…),不是 UPS 的費用 Your own service fee (labelling, handling…), not a UPS charge",
+                   "算進向客戶收的總額,但不和帳單比對、不進補收 Counted in the client total, but never compared with the invoice or re-billed"],
     [RECON_GROUPS.sig.head]:["簽名與成人簽名合在一欄 Signature and adult signature in one column",src==="TMS"?"TMS 的 Signature 欄 TMS column: Signature":""],
     "Base Rate":["出貨當時向客戶收的運費 Freight billed at shipping time",""],
     "Fuel Surcharge":["燃油附加費 Fuel surcharge",""],
