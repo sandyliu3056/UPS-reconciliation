@@ -1914,7 +1914,6 @@ label:has(#newChanOn){display:none !important}
   </div>
   <div class="lf sketch" id="reconTplCard">
     <h3 class="display"><span class="em">📄</span><span data-i18n="hd.recon">WMS / TMS data</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.recon">One order per row; every itemized charge is compared three ways on acceptance. Column rules and the TMS mapping are in the guide.</p>
     <!-- 第一列:來源 → 模板 → 匯入 → 預覽,一條線就是整個流程。 -->
     <div class="row">
       <label class="inlab" style="margin-left:0" data-i18n="lb.datasrc">Data source</label>
@@ -1944,17 +1943,6 @@ label:has(#newChanOn){display:none !important}
           <dt data-i18n="lb.itemized">Itemized</dt><dd id="rdItems">—</dd>
           <dt data-i18n="lb.state">Status</dt><dd id="rdState"><span class="empty">—</span></dd>
         </dl>
-      </div>
-      <!-- 系統從檔案讀哪幾欄、拿去做什麼:一欄一句白話。沒有箭頭、沒有燈號,
-           那些看起來像要設定什麼,其實沒有東西可設。 -->
-      <div class="sketch-soft mini">
-        <div class="subhd" style="margin-top:0" data-i18n="hd.mapping">📋 Import column reference</div>
-        <div class="maprow"><span data-i18n="mp.trk">Tracking Number</span><b data-i18n="mp.trk2">Matched to the invoice. A number that is not on the invoice stays out of the comparison and goes on the Not on Invoice sheet when exported.</b></div>
-        <div class="maprow"><span data-i18n="mp.cus">Customer Code</span><b data-i18n="mp.cus2">Required. Must be on the customer list; the shipment is repriced at the rate level assigned to that customer.</b></div>
-        <div class="maprow"><span data-i18n="mp.chk">Channel · Zone · Billed Weight - WMS / TMS</span><b data-i18n="mp.chk2">Optional. Channel and Zone are checked against the invoice and any difference is flagged row by row; billed weight is recorded only.</b></div>
-        <div class="maprow"><span data-i18n="mp.chg">&lt;charge&gt; - WMS / TMS</span><b data-i18n="mp.chg2">Each charge billed to the client, compared with what UPS billed and what the system recomputes. Blank means not filled; 0 means billed zero.</b></div>
-        <div class="maprow"><span data-i18n="mp.amt">Total Amount - WMS / TMS</span><b data-i18n="mp.amt2">Required. The whole amount billed to the client for the package; it should equal the charge columns.</b></div>
-        <p class="hint" style="margin:8px 0 0" data-i18n="mp.note">The yellow and dark-brown columns are invoice data for reference only; the system never reads them.</p>
       </div>
     </div>
 
@@ -21223,7 +21211,7 @@ const I18N={
   "tab.wmsdata":["WMS / TMS 資料","WMS / TMS Data"],
   "nav.cfg":["設定","Configuration"],
   "tab.reconflow":["對帳作業","Reconciliation"],
-  "tab.track":["追蹤查詢","Tracking"],
+  "tab.track":["貨況查詢","Tracking Status"],
   "hd.track":["查單號狀態","Tracking status"],
   "btn.trackapi":["查 UPS 貨況","Check UPS status"],
   "btn.tracktpl":["Excel 範本","Excel template"],
