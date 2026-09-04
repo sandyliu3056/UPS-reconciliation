@@ -15824,7 +15824,7 @@ async function reconExport(){
   };
   /* 給客戶看的對帳單,一位客戶一頁。金額 0 的(費率未設定、合約無此項)不上。
      不合併儲存格、表頭不上色、日期 m/d/yyyy —— 這一頁是要貼進客戶帳單的,越素越好搬。 */
-  const cusHead=["Transaction Date","Tracking Number","Order Number","Channel","Zone",
+  const cusHead=["Customer Code","Transaction Date","Tracking Number","Order Number","Channel","Zone",
     "Package Dimensions","Detail Keyed Dim","Entered Weight","Billed Weight",
     "Item","Description","Amount"]
     .map(n=>({v:n,t:"s",s:{bold:true,align:"left",border:true}}));
@@ -15837,14 +15837,14 @@ async function reconExport(){
     const rows=[]; let sum=0;
     for(const it of sorted){
       const o2=ordInfo.get(it.trk)||{}, u2=o2.ups||{};
-      const idc=[dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"",
+      const idc=[String(code||""), dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"",
         dimTxt(u2.dimsC), dimTxt(u2.dimsA), wt0(u2.entered),
         (o2.upsWt!==""&&o2.upsWt!=null)?wt0(o2.upsWt):wt0(u2.billed)];
       rows.push(idc.concat([it.charge, it.desc||"", dc(it.amt)])); sum=cents(sum+it.amt);
       if(Math.abs(it.fuel)>0.004){ rows.push(idc.concat(["Fuel Surcharge", it.charge+" @ "+fmtPct2(it.fuelPct)+"%", dc(it.fuel)])); sum=cents(sum+it.fuel); }
     }
-    rows.push(["","","","","","","","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:CUR,bold:true}}]);
-    cusSheets.push({name:sheetName(code), rows:[cusHead,...rows], cols:[12,22,20,20,7,16,16,9,9,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
+    rows.push(["","","","","","","","","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:CUR,bold:true}}]);
+    cusSheets.push({name:sheetName(code), rows:[cusHead,...rows], cols:[16,12,22,20,20,7,16,16,9,9,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
   }
 
   /* ---- WMS / TMS 有、這期帳單上沒有的追蹤號:另外一頁,照模板的綠色欄
