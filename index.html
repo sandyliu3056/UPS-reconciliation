@@ -585,6 +585,9 @@ td.cells{white-space:normal}
 .note{margin:10px 0 0;font-size:12.5px;line-height:1.6;color:var(--muted)}
 .note.warn{color:var(--neg)}
 .note.plain{color:var(--neg)}
+/* 做好了的訊息用綠字:和上面兩種紅字的提醒分開,一眼就知道是「加進去了」
+   還是「有問題」。 */
+.note.good{color:#1f7a3d}
 .note b{color:var(--ink)} .note.warn b{color:var(--neg)}
 /* 擋下來的事情要看起來像被擋下來,不能跟旁邊的提醒長一樣 —— 這一則的意思是
    「這幾個客戶沒有重算」,不是「順帶一提」。 */
@@ -17883,10 +17886,12 @@ function dynImport(file){
 }
 /* 對話框裡的提示。狀態列在視窗底下,開著這個對話框的人看不到,
    按了會像沒反應。訊息就放在 Add Range 那一列底下。 */
-function fuelNote(msg){
+/* ok=true 是「做好了」,不是警告 —— 兩種訊息共用一個紅框的話,加成功也
+   像出事。 */
+function fuelNote(msg, ok){
   const box=$("#fuelNote");
   if(!box) return;
-  box.innerHTML = msg ? `<div class="note plain">${esc(msg)}</div>` : "";
+  box.innerHTML = msg ? `<div class="note ${ok?"good":"plain"}">${esc(msg)}</div>` : "";
 }
 function openFuel(){
   fuelNote("");
@@ -18013,16 +18018,15 @@ function addFuelRange(){
     s[c].sort((a,b)=>String(a.start).localeCompare(String(b.start)));
   }
   CFG=readConfig(CFG.raw); DIRTY=true; renderFuelRows();
-  /* 有折扣:成功後把算式講出來,欄位與折數保留 —— 連加下一段
-     (下一期的公告值)只要改 Fuel % 就好。沒折扣照舊清空。 */
-  if(_eff!==null){
-    fuelNote((LANG?"Added: ":"已加入:")+_effTitle);
-    $("#fuelFrom").value=""; $("#fuelTo").value="";
-  }else{
-    fuelNote("");
-    $("#fuelFrom").value=""; $("#fuelTo").value=""; $("#fuelPct").value="";
-    fuelEffPaint();
-  }
+  /* 加完就把整列清空,包含折數 —— 留著上一段的數字,下一段很容易照著按下去
+     就送出,而且畫面上分不出那是「還沒送出的」還是「剛剛加過的」。加了什麼
+     寫在底下那一行,要對照看得到。 */
+  $("#fuelFrom").value=""; $("#fuelTo").value=""; $("#fuelPct").value="";
+  const fold=$("#fuelPctFold");
+  if(fold&&fold.options.length) fold.selectedIndex=0;
+  fuelEffPaint();
+  fuelNote((LANG?"Added: ":"已新增:")+(_eff!==null?_effTitle
+    :(LANG?pct+"%":pct+"%"))+(LANG?"  ·  "+chans.length+" channel(s)":"  ·  "+chans.length+" 個渠道"), true);
   setStatus((LANG?"Added a range to ":"已新增區間到 ")+chans.length
     +(LANG?" channel(s)":" 個渠道"));
 }
