@@ -2509,7 +2509,9 @@ label:has(#newChanOn){display:none !important}
   font-size:11px;line-height:1.5;color:var(--muted)}
 /* 全部期別總攬:一期一列,和上面那條「向客戶收 − UPS − 帳戶層費用」同一組數字 */
 #p-dash .dmi.dmall .dmk{color:var(--run2)}
-#p-dash .dmall-sep{height:1px;background:var(--line);opacity:.6;margin:5px 8px}
+#p-dash .dmsec{padding:7px 13px 4px;font-size:10.5px;font-weight:700;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--muted)}
+.dmall-sep{height:1px;background:var(--line);opacity:.6;margin:5px 8px}
 #p-dash .atbl{width:100%;border-collapse:collapse;font-size:12.5px;background:transparent}
 /* 這張表有十欄,而且每一欄都 nowrap —— 撐寬它的是大寫加字距的標題,不是
    數字本身。標題的字距和左右內距各收一點,整張表就縮得回卡片裡;寬度不夠
@@ -16875,15 +16877,7 @@ function dashAllHTML(all){
   /* 毛利 = 向客戶收 − UPS 收。毛利率用「向客戶收」當分母(收入),
      這是毛利率的通用算法,也讓兩期之間比得起來 —— 用 UPS 當分母的話,
      同樣賺一塊錢,成本低的那一期看起來比較賺。 */
-  const gapOf=d=>d.repriced-d.billed;
-  /* 那一欄拿掉了。毛利和毛利率就在旁邊,那條長條只是把同一個數字再畫一次,
-     而且是「相對於本表最長的一期」—— 一個沒有人會拿來對帳的比例。 */
   const cell=(v,cls)=>`<td class="num ${cls||""}">${money(v)}</td>`;
-  const pctCell=(profit,rev)=>{
-    if(!rev) return `<td class="num">—</td>`;   /* 沒有收入就沒有毛利率可言 */
-    const m=profit/Math.abs(rev)*100;
-    return `<td class="num ${m<0?"neg":"pos"}">${m.toFixed(1)}%</td>`;
-  };
   /* 同一天出現兩張帳單,多半是兩個 UPS 帳號各出一張 —— 只看期號和日期,
      那兩列看起來像重複匯入。帳號只有一個時不畫這一欄,免得每一列都印
      同一個號碼。 */
@@ -16896,49 +16890,40 @@ function dashAllHTML(all){
     const acell=multi?`<td class="aa">${esc(dashAcctOf(d).id||"—")}</td>`:"";
     if(d.missing) return `<tr class="amiss"><td class="ak">${esc(d.key)}</td>`
       +`<td class="ad">${esc(d.date||"—")}</td>`+acell
-      +`<td colspan="6">${L("只有索引,沒有明細,請重新匯入本期",
+      +`<td colspan="3">${L("只有索引,沒有明細,請重新匯入本期",
                             "index only, no detail — import this period again")}</td></tr>`;
-    const g=gapOf(d);
     return `<tr><td class="ak">${esc(d.key)}</td><td class="ad">${esc(d.date||"—")}</td>`+acell
       +`<td class="num">${d.n.toLocaleString()}</td>`
-      +cell(d.repriced)+cell(d.billed)
-      +cell(g, g<0?"neg":"pos")+pctCell(g, d.repriced)
-      /* 帳戶層費用不上紅字。它不算進毛利(頁尾就是這樣寫的),用毛利那一組
-         顏色去畫它,等於在說它是虧損 —— 而負的帳戶層費用是 UPS 退回來的錢,
-         那是進帳,不是虧。既然不屬於這組數字,就別借它們的顏色。 */
+      +cell(d.billed)
+      /* 帳戶層費用不上紅字:負的是 UPS 退回來的錢,不是虧損。 */
       +cell(d.account)+`</tr>`;
   }).join("");
-  const gt=tot.repriced-tot.billed;
   const empty=!ok.length
     ? `<div class="dempty" style="padding:22px 0">${L("這個條件下沒有期別。","No periods match this filter.")}</div>`
     : "";
   return `<div class="dcard">
     <div class="ch"><h3>${L("全部期別","All periods")}</h3>
-      <span class="cnote">${L("每一期都以目前的費率設定重算",
-                              "every period repriced with the current rate settings")}</span>
+      <span class="cnote">${L("各期 UPS 帳單合計","UPS invoice totals per period")}</span>
       <button class="act ghost" id="bAllXls" style="padding:3px 11px;font-size:12px">${
         L("利潤報表…","Profit report…")}</button></div>
-    ${dashFilterHTML(all)}
     ${empty||dashTrendHTML(ok, multi, accts)}
     ${empty?"":`<div class="tablewrap" style="max-height:none;overflow-x:auto">
     <table class="atbl"><thead><tr>
       <th>${L("期別","Invoice")}</th><th>${L("帳單日","Date")}</th>
       ${multi?`<th>${L("UPS 帳號","Account")}</th>`:""}
       <th>${L("貨件","Shipments")}</th>
-      <th>${L("重算","Reprice")}</th><th>UPS</th>
-      <th>${L("重算差額","Reprice − UPS")}</th><th>${L("差額率","Variance %")}</th>
+      <th>UPS</th>
       <th>${L("帳戶層費用","Account charges")}</th>
     </tr></thead><tbody>${rows}</tbody>
     <tfoot><tr><td class="ak" colspan="${multi?3:2}">${L("合計 "+ok.length+" 期",
         "Total · "+ok.length+" period"+(ok.length===1?"":"s"))}</td>
       <td class="num">${tot.n.toLocaleString()}</td>
-      ${cell(tot.repriced)}${cell(tot.billed)}
-      ${cell(gt, gt<0?"neg":"pos")}${pctCell(gt, tot.repriced)}${cell(tot.account)}
+      ${cell(tot.billed)}${cell(tot.account)}
       </tr></tfoot></table></div>`}
     <div class="dfoot">${L(
-      "毛利 = 向客戶收 − UPS 收;毛利率 = 毛利 ÷ 向客戶收。兩者均不含帳戶層費用 —— 該欄是否計入,由帳務決定。"
+      "UPS 為該期帳單合計,不含帳戶層費用。"
         +(multi?"本表含 "+accts.length+" 個 UPS 帳號,同一天可能各有一張帳單。":""),
-      "Profit is charge-customer minus UPS; margin is profit over charge-customer. Neither includes account charges — whether those belong in the figure is your accounting call."
+      "UPS is the period's invoice total, excluding account charges."
         +(multi?" This table spans "+accts.length+" UPS accounts, which can each issue an invoice on the same date.":""))}</div>
   </div>`;
 }
@@ -16952,10 +16937,10 @@ function dashTrendHTML(ok, multi, allAccts){
   if(ok.length<2) return "";
   const seq=ok.slice().sort((a,b)=>String(a.date||"").localeCompare(String(b.date||""))
                                  || String(a.key).localeCompare(String(b.key)));
-  const gapOf=d=>d.repriced-d.billed;
-  const marginOf=d=>d.repriced?(gapOf(d)/Math.abs(d.repriced)*100):0;
-  const isM=DASH_F.measure==="margin";
-  const val=d=>isM?marginOf(d):gapOf(d);
+  /* 重算從這一頁拿掉了:柱高就是那一期 UPS 帳單的合計,唯一一種量,
+     沒有切換鈕。 */
+  const isM=false;
+  const val=d=>cents(d.billed||0);
   const vals=seq.map(val);
   /* 刻度:毛利是長條,零一定要在刻度裡 —— 長條是從基線量起的面積,基線
      浮起來就會把 3% 的差距畫成兩倍高。毛利率是折線,點的位置本身就是值,
@@ -17027,9 +17012,7 @@ function dashTrendHTML(ok, multi, allAccts){
   /* 平均線。毛利率取加權平均(總毛利 ÷ 總收入),不是各期百分比的算術平均
      —— 六千件的一期和七百件的一期不該各算一票,加權平均才是這批帳單真正
      的毛利率,也和下面表格的合計列同一個數。毛利則取每期平均金額。 */
-  const sumP=seq.reduce((a,d)=>a+gapOf(d),0);
-  const sumR=seq.reduce((a,d)=>a+Math.abs(d.repriced),0);
-  const avg=isM ? (sumR?sumP/sumR*100:0) : (sumP/seq.length);
+  const avg=seq.reduce((a,d)=>a+val(d),0)/seq.length;
   /* 平均值改成寫在標題那一行。圖上有刻度線之後,再疊一條虛線就是第二種
      水平線,和刻度混在一起要停下來分辨哪條是哪條;而平均本來就是一個數字,
      用講的比用畫的清楚。 */
@@ -17057,7 +17040,7 @@ function dashTrendHTML(ok, multi, allAccts){
   const tip=d=>`${esc(d.key)} · ${esc(d.date||"")}`
     +(multi?" · "+esc(dashAcctOf(d).id):"")
     +` · ${esc(d.n.toLocaleString())}${L(" 件"," shipments")}`
-    +` · ${esc(money(gapOf(d)))} · ${marginOf(d).toFixed(1)}%`;
+    +` · ${esc(money(val(d)))}`;
   /* 繪圖區和標籤各自一排,不是疊在同一格裡 —— 平均線和折線要橫跨整個繪圖
      區,和標籤混在一起的話,那條線會從日期上面畫過去。兩排用同一組 flex
      規則、同樣的欄數和寬度上限,所以對得齊。 */
@@ -17073,16 +17056,21 @@ function dashTrendHTML(ok, multi, allAccts){
      十九次同樣的雜訊,但少了它,跨年的兩期看起來就只是 12-26 和 01-02。
      沒印年份的欄位保留同高度的空位,兩排標籤才對得齊。 */
   let lastYr="";
-  const labels=seq.map(d=>{
+  /* 期數多的時候標籤疏化:每一欄都印數值和日期,五十期就是五十個字疊成一團。
+     大約二十四個標籤以內,每 N 欄印一個,最後一欄(最新)一定印;沒印的欄
+     保留同高度的空位,兩排才對得齊。滑到任何一欄都有完整數字(tooltip)。 */
+  const every=Math.max(1, Math.ceil(seq.length/24));
+  const labels=seq.map((d,i)=>{
     const v=val(d);
     const iso=String(d.date||"");
     const yr=iso.slice(0,4);
     const newYr=!!yr && yr!==lastYr;
     if(yr) lastYr=yr;
+    const show=i===seq.length-1 || (i%every===0 && (seq.length-1-i)>=Math.ceil(every/2));
     return `<div class="tcol" title="${tip(d)}">`
-      +`<div class="tpct">${isM?v.toFixed(1)+"%":moneyShort(v)}</div>`
-      +`<div class="tlab">${esc(iso.slice(5)||d.key.slice(-4))}</div>`
-      +`<div class="tyr${newYr?"":" off"}">${esc(yr||"")}</div></div>`;
+      +`<div class="tpct">${show?(isM?v.toFixed(1)+"%":moneyShort(v)):"\u00a0"}</div>`
+      +`<div class="tlab">${show?esc(iso.slice(5)||d.key.slice(-4)):"\u00a0"}</div>`
+      +`<div class="tyr${newYr?"":" off"}">${esc(newYr?yr:"")||"\u00a0"}</div></div>`;
   }).join("");
   /* 折線:一個帳號一條,點的位置和上面的 .tdot 一致。以前多帳號時整張圖
      一條線都不畫 —— 把 A 帳號的一期連到 B 帳號的下一期確實沒有意義,但
@@ -17110,13 +17098,9 @@ function dashTrendHTML(ok, multi, allAccts){
                                                  "each account is joined on its own; never across accounts")}</span>`:""}</div>`
     : "";
   return `<div class="trend">
-    <div class="th2">${isM?L("各期毛利率","Margin by period"):L("各期毛利","Profit by period")}
-      <span>${isM
-        ? L("毛利率與單量無關,期與期之間直接可比。加權平均 "+avgTxt+",依帳單日由舊到新",
-            "margin is independent of volume, so periods compare directly. Weighted average "
-            +avgTxt+", oldest first")
-        : L("柱高為毛利金額,受單量影響。各期平均 "+avgTxt+",依帳單日由舊到新",
-            "bar height is profit, which scales with volume. Average "+avgTxt
+    <div class="th2">${L("各期 UPS 實收","UPS billed by period")}
+      <span>${L("柱高為該期 UPS 帳單合計。各期平均 "+avgTxt+",依帳單日由舊到新",
+            "bar height is the period's UPS invoice total. Average "+avgTxt
             +" per period, oldest first")}</span></div>
     <div class="tplotarea${isM?" tmargin":""}" style="--zero:${zero.toFixed(1)}%">${yaxis}<div class="tcols">${grid}${line}${plot}</div><div class="tgut"></div></div>
     <div class="tlabels${isM?" tmargin":""}"><div class="tyax"></div>${labels}<div class="tgut"></div></div>
@@ -17352,14 +17336,6 @@ function wireDashFilters(){
    期裡挑某個帳號的某一週,得先切到總攬、篩完、再切回來挑。它們現在和期別
    選單同一條,期別選單列出來的就是篩選之後的那幾期。 */
 function dashPickFilters(all){
-  /* 匯入批次:第 2 步匯過的每一份模板。挑一份就把那一批(它的期別與
-     WMS / TMS 列)整組載回來,儀表板、對帳、分析一起切過去。 */
-  let runs=(typeof RECON_RUNS!=="undefined"&&RECON_RUNS)?RECON_RUNS:null;
-  if(runs===null && typeof idbRunAll==="function" && !window.__dashRunsKick){
-    window.__dashRunsKick=true;
-    idbRunAll().then(l=>{ RECON_RUNS=l||[]; renderDashboard(); }).catch(()=>{ RECON_RUNS=[]; });
-  }
-  runs=(runs||[]).slice().sort((x,y)=>(y.when||0)-(x.when||0));
   const accts=[];
   for(const d of all||[]){
     const a=dashAcctOf(d);
@@ -17377,16 +17353,6 @@ function dashPickFilters(all){
     +`<span class="selw"><select id="dfRange">`
     +DASH_RANGES.map(r=>opt(r.k,DASH_F.range,L(r.zh,r.en))).join("")
     +`</select></span></label>`;
-  const runSel=runs.length
-    ? `<label class="fsel"><span>${L("匯入批次","Import batch")}</span>`
-      +`<span class="selw"><select id="dfRun">`
-      +((RECON_RUN_KEY&&runs.some(r2=>r2.key===RECON_RUN_KEY))?"":opt("","",L("(選擇批次)","(choose a batch)")))
-      +runs.map(r2=>{ const iv=(r2.invoices||[]);
-          const t2=(r2.invDate||"—")+" · "+r2.src+" · "+(r2.n||0)+L(" 筆"," rows")
-            +(iv.length>1?(" · "+iv.length+L(" 期"," invoices")):"");
-          return opt(r2.key,RECON_RUN_KEY,t2); }).join("")
-      +`</select></span></label>`
-    : "";
   /* 篩了兩三層之後要回到「全部」,得一個一個把下拉切回去。有東西被篩掉的
      時候才出現這顆,沒篩的時候它不該佔位置。 */
   const clr=(DASH_F.acct||DASH_F.range)
@@ -17394,7 +17360,7 @@ function dashPickFilters(all){
         title="${esc(L("清除帳號與期間的篩選","Clear the account and period filters"))}">${
         L("清除篩選","Clear filters")}</button>`
     : "";
-  return runSel+acctSel+rngSel+clr;
+  return acctSel+rngSel+clr;
 }
 function dashBarHTML(){
   const all=dashPeriods();
@@ -17407,11 +17373,24 @@ function dashBarHTML(){
   const selP=sel?all.find(p=>p.key===sel):null;
   const rowsL=n=>n.toLocaleString()+L(" 列"," lines");
   const trkL=n=>n.toLocaleString()+L(" 個追蹤號"," tracking numbers");
+  /* 匯入批次也在同一顆選單裡:批次、單一期別、全部期別互斥,選誰看誰。 */
+  let runs=(typeof RECON_RUNS!=="undefined"&&RECON_RUNS)?RECON_RUNS:null;
+  if(runs===null && typeof idbRunAll==="function" && !window.__dashRunsKick){
+    window.__dashRunsKick=true;
+    /* 讀失敗不能把空清單快取起來 —— 重新整理或下一次進來要再試,
+       不然存過的批次就從選單上消失了。 */
+    idbRunAll().then(l=>{ RECON_RUNS=l||[]; renderDashboard(); })
+      .catch(()=>{ window.__dashRunsKick=false; });
+  }
+  runs=(runs||[]).slice().sort((x,y)=>(y.when||0)-(x.when||0));
+  const curRun=(!DASH_ALL && !sel && RECON_RUN_KEY)?runs.find(r2=>r2.key===RECON_RUN_KEY):null;
   let big, small;
   if(DASH_ALL){ big=L("全部期別","All periods");
                 small=list.length+L(" 期 · 以目前費率重算",
                                     " periods · repriced with current rates"); }
   else if(selP){ big=selP.key; small=selP.date||L("沒有帳單日","no invoice date"); }
+  else if(curRun){ big=(curRun.invDate||"—")+" · "+curRun.src+" · "+(curRun.n||0)+L(" 筆"," rows");
+                   small=L("匯入批次 · ","Import batch · ")+(curRun.invoices||[]).length+L(" 期"," invoice periods"); }
   else if(cur.length>1){ big=L("本次匯入","This import");
                          small=cur.length+L(" 期 · ", " periods · ")+cur.join(", "); }
   else if(cur.length===1){ big=cur[0]; small=L("尚未匯入","not imported yet"); }
@@ -17446,6 +17425,22 @@ function dashBarHTML(){
       <span class="dmn">${L("以目前費率把每一期重算,並排比較",
         "every period repriced with the current rates, side by side")}</span></button>
       <div class="dmall-sep"></div>`:"";
+  /* 批次一組、期別一組,同一張選單分段列 —— 批次是「這一份對帳」,
+     期別是「這一期帳單」,選了誰整頁就是誰,不會兩邊各選一個。 */
+  const runItems=runs.length
+    ? `<div class="dmsec">${L("匯入批次(已對帳)","Import batches (reconciled)")}</div>`
+      +runs.map(r2=>{ const on=!!(curRun&&curRun.key===r2.key);
+        const iv=(r2.invoices||[]);
+        return `<button type="button" class="dmi${on?" on":""}" role="option" aria-selected="${on}"
+          data-run="${esc(r2.key)}"
+          data-find="${esc(((r2.invDate||"")+" "+r2.src+" "+(r2.fname||"")+" batch 批次").toLowerCase())}">
+          <span class="dmtick" aria-hidden="true">${on?"✓":""}</span>
+          <span class="dmk">${esc((r2.invDate||"—")+" · "+r2.src)}</span>
+          <span class="dmd">${esc(String(r2.n||0))}${L(" 筆"," rows")}</span>
+          <span class="dmn">${esc(iv.length+L(" 期"," invoice period"+(iv.length===1?"":"s")))}${
+            r2.fname?esc(" · "+r2.fname):""}</span></button>`; }).join("")
+      +`<div class="dmall-sep"></div><div class="dmsec">${L("歷史期別","Invoice periods")}</div>`
+    : "";
   /* 期數多的時候用眼睛找很慢,超過八期就給一個過濾框。 */
   const find=list.length>8
     ? `<input id="dashFind" class="dmfind" type="search" autocomplete="off"
@@ -17455,7 +17450,7 @@ function dashBarHTML(){
      反過來擺,等於要人先挑完再去縮小挑選範圍。 */
   return `<div class="dbar" id="dashPick">
     ${dashPickFilters(all)}
-    <span class="dbl">${L("帳單期別","Invoice")}</span>
+    <span class="dbl">${L("檢視","View")}</span>
     <div class="dselw">
       <button type="button" class="dsel" id="dashSel" aria-haspopup="listbox"
         aria-expanded="false" ${list.length?"":"disabled"}
@@ -17465,7 +17460,7 @@ function dashBarHTML(){
       <div class="dmenu" id="dashMenu">${find}
         <div class="dmhd" id="dashMhd">${L("歷史帳單 · ","In history · ")}${list.length}${L(" 期","")}</div>
         <div class="dmlist" id="dashMlist" role="listbox"
-          aria-label="${L("帳單期別","Invoice")}">${allItem}${items
+          aria-label="${L("帳單期別","Invoice")}">${allItem}${runItems}${items
           ||`<div class="dmempty">${L("帳單歷史尚無資料。","Nothing filed to history.")}</div>`}</div>
         ${odd?`<div class="dmfoot">${L(
           "另有 "+odd+" 筆期號不像期號(多半是沒有標題列、欄位順序不同的檔案匯壞了),沒有列在這裡。要清掉請到「帳單歷史 → 已存帳單」。",
@@ -17551,9 +17546,6 @@ function dashFollowFilter(){
 }
 function wireDashPickFilters(){
   const re=()=>dashFollowFilter();
-  const ru=$("#dfRun");
-  if(ru) ru.onchange=()=>{ const k=ru.value; if(!k) return;
-    reconOpenRun(k,false).catch(err=>toast(String((err&&err.message)||err),false)); };
   const a=$("#dfAcct");
   if(a) a.onchange=()=>{ DASH_F.acct=a.value; re(); };
   const r=$("#dfRange");
@@ -17594,6 +17586,12 @@ function wireDashBar(){
     e.stopPropagation();
     const it=e.target.closest(".dmi"); if(!it) return;
     dashMenuClose();
+    if(it.dataset.run){
+      DASH_ALL=false;
+      dashBusyPaint(L("匯入批次","Import batch"));
+      reconOpenRun(it.dataset.run,false).catch(err=>toast(String((err&&err.message)||err),false));
+      return;
+    }
     dashPickInvoice(it.dataset.inv);
   };
   menu.onkeydown=e=>{
