@@ -10671,9 +10671,24 @@ function openBreakdown(){
      只有這個視窗以前用 CFG(畫面上正在編輯的那一層),於是同一件包裹在兩個
      地方會出現兩個「Reprice」。客戶認不出來(還沒對帳、或不在名單裡)才退回
      用現在這一層,並且在抬頭上講明是用哪一層算的。 */
-  const bkdCus=(typeof bkdWmsOf==="function"&&bkdWmsOf(t))||null;
-  const bkdReg=(typeof cusReg==="function"?cusReg():[]).find(c=>bkdCus&&c.code===bkdCus.cus);
+  /* 這一件是哪個客戶的:先看畫面上這一份對帳,再看存過的每一份 —— 那些常常
+     是別的期別、別的客戶,而客戶各自掛在不同的費率層級。只看現在這一份的話,
+     其他期別的單子一律退回用畫面上那一層算,又是錯的層級。 */
+  const bkdCode=(()=>{
+    const w=(typeof bkdWmsOf==="function"&&bkdWmsOf(t))||null;
+    if(w&&w.cus) return w.cus;
+    const key=(typeof reconTrk==="function")?reconTrk(t):String(t||"").toUpperCase();
+    for(const run of (RECON_RUNS||[])){
+      for(const r of (run.rows||[]))
+        if((r.trks||[]).some(x=>reconTrk(x)===key) && r.cus) return r.cus;
+    }
+    return "";
+  })();
+  const bkdReg=(typeof cusReg==="function"?cusReg():[]).find(c=>bkdCode&&c.code===bkdCode);
   const bkdLvl=bkdReg&&bkdReg.level;
+  /* 費率可能剛改過:層級設定的快取是對帳跑的時候建的,這裡先清掉再拿,
+     免得畫面上改完費率、視窗還在用舊的算。 */
+  if(bkdLvl && typeof RECON_CFG!=="undefined" && RECON_CFG.clear) RECON_CFG.clear();
   const bkdCfg=(bkdLvl&&typeof reconCfgFor==="function"&&reconCfgFor(bkdLvl))||CFG;
   BKD_LVL=(bkdLvl&&typeof cusLevelLabel==="function"&&cusLevelLabel(bkdLvl))||"";
   const keepOrig=ORIG;
@@ -11035,6 +11050,7 @@ function bkdSection(r, wms){
       /* 一項一列,和補收清單、匯出的 To re-bill 是同一組數字;燃油照舊最後
          才算,所以它自己一列。只給一個總數沒辦法拿去跟客戶對。 */
       const tagOf=it=> it.kind==="swap"?L("改收","Substituted")
+                     : it.kind==="short"?L("短收","Short-billed")
                      : it.kind==="audit"?L("稽核費","Audit fee")
                      : it.kind==="miss"?L("漏收","Not billed"):"";
       const rbFuel=cents((wms.items||[]).reduce((a,it)=>a+(it.fuel||0),0));
@@ -14374,39 +14390,69 @@ function reconRun(list){
       if(k===SCC) continue;
       const upsCols=cols.filter(c=>upsF[c]>0.004);
       if(!upsCols.length) continue;
-      const wCols=cols.filter(c=>{ const w=billedOf(c); return w!=null && Math.abs(w)>0.004; });
-      const missCols=upsCols.filter(c=>!wCols.includes(c));
-      if(!missCols.length) continue;
-      const rows=missCols.map(c=>{
+      const isFam=k[0]==="f";
+      const mk=c=>{
         const u=cents(upsF[c]), r0=rateOf(c);
         const unset=r0==="unset", rate=unset?0:r0;
         return Object.assign({kind:"miss", charge:c, desc:(desc[c]||[]).join(" / "), ups:u, billed:0, rate, unset,
                               amt:unset?0:(rate!=null?rate:u), credit:0, creditFrom:[]}, base);
-      }).sort((x,y)=>y.amt-x.amt);
-      if(k[0]==="f"){
-        /* UPS 把 A 費改收成 B 費(退掉 A、加收 B),而客戶端還是照 A 收的。
-           已收的 A 拿來抵應收的 B:抵得掉就不必補收。 */
-        const extra=wCols.filter(c=>!(upsF[c]>0.004));
-        const extraTotal=cents(extra.reduce((a,c)=>a+billedOf(c),0));
-        let credit=extraTotal, first=null, others=0;
-        for(const it of rows){
-          if(credit<=0.004) break;
-          const use=Math.min(credit, it.amt);
-          if(use>0.004){ it.kind="swap"; it.credit=cents(use); it.billed=cents(use);
-                         it.amt=cents(it.amt-use); it.creditFrom=extra.slice(); credit=cents(credit-use);
-                         if(first) others=cents(others+use); else first=it; }
-        }
-        /* 抵完還有剩:那是客戶被多收的錢。以前這個餘額就在這裡消失 ——
-           畫面上只剩「不必補收」,而多收的部分不見了,兩張表於是對不起來:
-           Rating Breakdown 那邊寫著向客戶收 95.55,補收表寫著差額 0。
-           第一列照實掛上客戶端實收的金額(扣掉後面幾列已經抵掉的),
-           差額就是「應收 − 實收」,負數就是多收。 */
-        if(first){
-          first.wms=cents(extraTotal-others);
-          first.over=credit>0.004?cents(credit):0;
-        }
+      };
+      if(!isFam){
+        /* 單獨一項的費用:客戶端收了就算收了(金額本來就會和 UPS 不同 ——
+           收的是我們的費率),沒收才補。 */
+        const w=billedOf(cols[0]);
+        if(w!=null && Math.abs(w)>0.004) continue;
+        items.push(...upsCols.map(mk).sort((x,y)=>y.amt-x.amt));
+        continue;
       }
-      items.push(...rows);
+      /* 同一家族(額外處理／大包裹、配送地區／偏遠、簽名)的整組比對。
+         客戶端可能用另一個名目收(出貨時收 AHS、UPS 量過改收 LPS),也可能
+         用合併欄收 —— TMS 的額外處理與大包裹本來就是一欄。所以不是問「這一項
+         收了沒有」,而是「這一家族該收多少、實際收了多少」,差額才補收。
+         以前只看「完全沒收」的項目,合併欄一填,整組就被當成收過了:UPS 改收
+         的大包裹要 50.90,客戶端只收了 4.50,那 46.40 從此不會出現在補收清單上。 */
+      const heads=Object.values(RECON_GROUPS).filter(d=>!d.auto && d.fees.some(f=>cols.includes(f)));
+      const paidNames=[];
+      let famBilled=0;
+      for(const c of cols){
+        const w=b[c];
+        if(w!=null && Math.abs(toNum(w))>0.004){ famBilled+=toNum(w); paidNames.push(c); }
+      }
+      for(const d of heads){
+        const w=b[d.head];
+        if(w!=null && Math.abs(toNum(w))>0.004){ famBilled+=toNum(w); paidNames.push(d.head); }
+      }
+      famBilled=cents(famBilled);
+      /* 名目對得起來就不比金額:客戶端收的就是 UPS 收的那幾項,金額本來就會
+         不一樣(收的是我們的費率),那是毛利,不是漏收。要比的是「UPS 收的
+         和客戶端收的不是同一件事」—— 出貨時收 AHS、UPS 量過改收 LPS,或者
+         客戶端用合併欄收(TMS 的額外處理與大包裹本來就是一欄)。 */
+      const paidOwn=paidNames.filter(n=>cols.includes(n));
+      const usedHead=paidNames.length>paidOwn.length;
+      const sameNames=!usedHead && upsCols.every(c=>paidOwn.includes(c))
+                                && paidOwn.every(c=>upsCols.includes(c));
+      if(sameNames) continue;
+      const rows=upsCols.map(mk).sort((x,y)=>y.amt-x.amt);
+      let credit=famBilled, first=null, others=0;
+      for(const it of rows){
+        if(credit<=0.004) break;
+        const use=Math.min(credit, it.amt);
+        if(use>0.004){ it.credit=cents(use); it.billed=cents(use);
+                       it.amt=cents(it.amt-use); it.creditFrom=paidNames.slice();
+                       /* 客戶端是用同一個名目收的就不是「改收」,只是收得不夠。 */
+                       it.kind=paidNames.includes(it.charge)?"short":"swap";
+                       credit=cents(credit-use);
+                       if(first) others=cents(others+use); else first=it; }
+      }
+      if(first){
+        first.wms=cents(famBilled-others);
+        first.over=credit>0.004?cents(credit):0;
+      }
+      /* 抵完剛好、什麼都不必補的那幾列不列出來 —— 補收清單只放要做事的。
+         多收的那一列留著。費率未設定只有在這一家族客戶端一毛都沒收的時候才列:
+         已經收過了,費率沒設也比不出短收多少,列出來只是一堆做不了事的紅字。 */
+      items.push(...rows.filter(it=>it.amt>0.004||it.over>0.004
+                                 ||(it.unset&&famBilled<=0.004)));
     }
   }
   /* 燃油最後算:每一項的應補收 × 這一筆客戶的燃油 %,只算 UPS 本來就加燃油的項目
@@ -14828,7 +14874,7 @@ function renderRebill(){
   const dash=`<span class="empty">—</span>`;
   const tb=$("#tRebill")&&$("#tRebill").tBodies[0];
   /* 畫面上只放費用名稱和一個標籤;帳單原文和「抵已收」的細節滑上去看,匯出的 To re-bill 也都有。 */
-  const tagOf=it=>it.kind==="swap"?L("改收","Substituted"):it.kind==="audit"?L("稽核費","Audit fee"):it.unset?L("費率未設定","Rate not set"):(it.rate===0?L("合約無此項","No contract rate"):L("未收","Not billed"));
+  const tagOf=it=>it.kind==="swap"?L("改收","Substituted"):it.kind==="short"?L("短收","Short-billed"):it.kind==="audit"?L("稽核費","Audit fee"):it.unset?L("費率未設定","Rate not set"):(it.rate===0?L("合約無此項","No contract rate"):L("漏收","Not billed"));
   const chgCell=it=>`${esc(it.charge)} <span class="chggrp">${esc(tagOf(it))}</span>`;
   const chgTip=it=>esc([it.desc?L("UPS 名目:","UPS: ")+it.desc:"",
     L("客戶端實收 ","billed to the client ")+money(it.wms)
@@ -15083,7 +15129,7 @@ async function reconExport(){
 
   /* ---- To re-bill:補收清單,和畫面上同一份 —— 一個追蹤號一項費用一列。 ---- */
   const rb=r.rebill||{items:[]};
-  const typeOf=it=>it.kind==="swap"?"Substituted":it.kind==="audit"?"Audit fee":it.unset?"Rate not set":(it.rate===0?"No contract rate":"Not billed");
+  const typeOf=it=>it.kind==="swap"?"Substituted":it.kind==="short"?"Short-billed":it.kind==="audit"?"Audit fee":it.unset?"Rate not set":(it.rate===0?"No contract rate":"Not billed");
   const rbHead=[["Customer Code","EFE3CB"],["Customer Name","EFE3CB"],["Order Number","EFE3CB"],
     ["Tracking Number","EFE3CB"],["Invoice Date","EFE3CB"],["Charge","EFE3CB"],["UPS Description","EFE3CB"],
     ["Type","EFE3CB"],["Less Billed As","EFE3CB"],
