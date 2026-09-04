@@ -1090,6 +1090,10 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
 .bkdside.rb .bkdside-lbl{background:var(--rb)}
 .bkdside.rb .bkdside-body{background:color-mix(in srgb, var(--rb) 9%, var(--panel))}
 .bkdside-note{font-size:11px;color:var(--muted);padding:4px 0 2px}
+/* 格子第一行:這一側自己的 Zone 與計費重。 */
+.bkdside-meta{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.4px;
+  padding:1px 0 5px;border-bottom:1px solid color-mix(in srgb, var(--text) 18%, transparent);
+  margin-bottom:4px;white-space:nowrap}
 .bkdside{border-radius:7px;overflow:hidden;display:flex;flex-direction:column}
 .bkdside.ups{border:2px solid var(--ups)}
 .bkdside.rp{border:2px solid var(--rp)}
@@ -1186,15 +1190,11 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25)}
 .bkdtot.three{grid-template-columns:repeat(3,minmax(0,1fr))}
 .bkdtot.four{grid-template-columns:repeat(4,minmax(0,1fr))}
-/* 四欄照卡片自己的寬度收,不是照視窗:視窗放得再寬,這個視窗沒拉大就還是
-   860px,四欄擠在裡面每個項目都要斷行。窄的時候收成 2×2 —— 上排是 UPS 對
-   重算,下排是實收對應補收,應補收仍舊在右手邊。 */
-@container (max-width:880px){.bkdcols.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@container (max-width:520px){.bkdcols.four{grid-template-columns:1fr}}
+/* 四欄永遠排一列:視窗沒拉大也一樣 —— 四側並排才對得起來,寧可窄一點。
+   (手機那種 640px 以下照下面的規則收成一欄。) */
 @media(max-width:640px){.bkdcols,.bkdcols.three,.bkdcols.four,
   .bkdtot,.bkdtot.three,.bkdtot.four{grid-template-columns:1fr}}
-@media(min-width:641px) and (max-width:980px){.bkdcols.three,.bkdcols.four{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  .bkdtot.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:641px) and (max-width:980px){.bkdcols.three{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 
 /* 場景與時鐘 */
 #scene{width:100%;height:200px;display:block;border-radius:0}
@@ -2773,22 +2773,6 @@ label:has(#newChanOn){display:none !important}
       <button class="act" id="bAnaXls" data-i18n="btn.anaxls">Export analysis</button>
     </div>
     <div class="tiles" id="anaTiles"></div>
-  </div>
-
-  <div class="lf sketch" id="anaLvlCard" hidden>
-    <h3 class="display"><span class="em">🧭</span><span data-i18n="hd.analvl">By rate level</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.analvl">Every client repriced at the same level, added up. A level whose margin sits well below the others is either priced wrong or carrying the wrong clients.</p>
-    <div class="tablewrap" style="max-height:44vh"><table id="tAnaLvl"><thead><tr>
-      <th data-i18n="th.cuslevel">Rate level</th>
-      <th class="num" data-i18n="th.anaclients">Clients</th>
-      <th class="num" data-i18n="th.reconorders">Orders</th>
-      <th class="num" data-i18n="th.reconbilled">WMS / TMS</th>
-      <th class="num" data-i18n="th.runrebill">Difference</th>
-      <th class="num" data-i18n="th.reconups">UPS</th>
-      <th class="num" data-i18n="th.reconprofit">Profit</th>
-      <th class="num" data-i18n="th.reconmargin">Margin</th>
-      <th class="num" data-i18n="th.anashare">Share of profit</th>
-    </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
   </div>
 
   <div class="lf sketch" id="anaCusCard" hidden>
@@ -10799,23 +10783,26 @@ function openBreakdown(){
   H.push(`<thead><tr><th>Invoice</th><th>${L("帳單日期","Invoice date")}</th>`
     +`<th class="num">Reprice</th>`
     +`<th class="num">${L("UPS 實收","UPS billed")}</th>`
-    +`<th class="num">${L(wsrc+" 實收",wsrc+" billed")}</th></tr></thead><tbody>`);
-  let tRe=0,tUp=0,tWm=0,anyWm=false,allPriced=true,bi=0;
+    +`<th class="num">${L(wsrc+" 實收",wsrc+" billed")}</th>`
+    +`<th class="num">${L("應補收","To re-bill")}</th></tr></thead><tbody>`);
+  let tRe=0,tUp=0,tWm=0,tRb=0,anyWm=false,anyRb=false,allPriced=true,bi=0;
   if(!pk.length)
-    H.push(`<tr><td colspan="5" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
+    H.push(`<tr><td colspan="6" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
       "No package lines for this tracking number, only account-level charges. See below.")}</td></tr>`);
   for(const o of pk){
     const rp=(o.r&&o.r.total!=null)?o.r.total:null;
     const up=o.r?o.r.s.upsTotal:o.ups;
     if(rp!=null) tRe+=cents(rp); else allPriced=false;
     tUp+=up;
-    if(o.wms){ tWm+=o.wms.amt; anyWm=true; }
+    if(o.wms){ tWm+=o.wms.amt; anyWm=true;
+      if(Math.abs(o.wms.rebill||0)>0.004){ tRb+=o.wms.rebill; anyRb=true; } }
     H.push(`<tr class="bkdjump" data-bi="${bi++}" title="${
         L("點一下跳到該期明細","Click to jump to this invoice's detail")}">`
       +`<td class="mono">${esc2(o.inv)}</td><td>${esc2(nd(o.invDate)||o.invDate)}</td>`
       +`<td class="num">${rp==null?"—":money2(rp)}</td>`
       +`<td class="num">${money2(up)}</td>`
-      +`<td class="num">${o.wms?money2(o.wms.amt):"—"}</td></tr>`);
+      +`<td class="num">${o.wms?money2(o.wms.amt):"—"}</td>`
+      +`<td class="num">${(o.wms&&Math.abs(o.wms.rebill||0)>0.004)?money2(o.wms.rebill):"—"}</td></tr>`);
   }
   H.push(`</tbody>`);
   if(pk.length>1){
@@ -10824,7 +10811,8 @@ function openBreakdown(){
       +`<td style="${TF}"></td>`
       +`<td class="num" style="${TF}">${allPriced?money2(tRe):"—"}</td>`
       +`<td class="num" style="${TF}">${money2(tUp)}</td>`
-      +`<td class="num" style="${TF}">${anyWm?money2(tWm):"—"}</td></tr></tfoot>`);
+      +`<td class="num" style="${TF}">${anyWm?money2(tWm):"—"}</td>`
+      +`<td class="num" style="${TF}">${anyRb?money2(tRb):"—"}</td></tr></tfoot>`);
   }
   H.push(`</table></div></div>`);
   /* 同一個追蹤號跨兩期(原件一期、更正一期)時,兩張卡各自只有半筆帳:向客戶
@@ -10909,6 +10897,7 @@ function bkdWmsOf(trk){
   const rebill=cents(items.reduce((a,it)=>a+toNum(it.total),0));
   const over=cents(items.reduce((a,it)=>a+toNum(it.over),0));
   return {src:RECON_SRC, rows, amt, order:o.order, cus:o.cus, name:o.name,
+          zone:o.zone||"", wt:o.wt||"",
           pieces:(o.trks||[]).length, rebill, over,
           /* 補收不能只給一個總數 —— 要收客戶的錢,得說得出是哪幾項。 */
           items:items.map(it=>({charge:it.charge, desc:it.desc||"", kind:it.kind,
@@ -11091,8 +11080,6 @@ function bkdSection(r, wms, name0){
     const chip=esc2(res.channel||"");
     const bwv=res.bw&&res.bw.billable?res.bw.billable:0;
     const meta=[];
-    if(res.zoneUsed||res.s.zone) meta.push("Zone "+esc2(res.zoneUsed||res.s.zone));
-    if(bwv) meta.push(esc2(bwv)+" lb");
     const gd=(groups.find(g=>g.shipDate)||{}).shipDate||res.s.shipDate;
     /* 這是 UPS 帳單上的 Transaction Date —— 這一段實際發生(出貨/調整)的
        日期,燃油期間照它取。光一個日期認不出是什麼,標出來。 */
@@ -11100,6 +11087,14 @@ function bkdSection(r, wms, name0){
     const gA=groups.find(g=>g.dimsA&&g.dimsC);
     if(gA&&(gA.dimsA.l!==gA.dimsC.l||gA.dimsA.w!==gA.dimsC.w||gA.dimsA.h!==gA.dimsC.h))
       meta.push(`${gA.dimsA.l}×${gA.dimsA.w}×${gA.dimsA.h} → ${gA.dimsC.l}×${gA.dimsC.w}×${gA.dimsC.h}`);
+    /* 每一側用自己的 Zone 與計費重:UPS 帳單上的、重算採用的、模板裡向客戶
+       收的,三個常常不同(UPS 量過就改),混寫在抬頭等於只講了一側。 */
+    const zOf=z=>{ z=String(z==null?"":z).trim(); if(!z) return "";
+      const n=(typeof normZone==="function"&&normZone(z))||z; return "Zone "+esc2(n); };
+    const sideMeta=(z,w)=>{
+      const parts=[zOf(z), (w!=null&&String(w).trim()!==""&&toNum(w)>0)?esc2(w)+" lb":""].filter(Boolean);
+      return parts.length?`<div class="bkdside-meta">${parts.join("  ·  ")}</div>`:"";
+    };
     const U=[]; let usub=0; let lastLbl=null;
     for(const g of groups){
       const glbl=segName(g.layer);
@@ -11144,7 +11139,7 @@ function bkdSection(r, wms, name0){
       if(wms.order) note.push(L("單號 ","Order ")+esc2(wms.order));
       if(wms.pieces>1) note.push(L("此單 "+wms.pieces+" 件合計","Order total for "+wms.pieces+" packages"));
       Wc=`<div class="bkdside wms"><div class="bkdside-lbl">${esc2(wms.src)+L(" 實收"," billed")}</div>`
-        +`<div class="bkdside-body"><table>${W.join("")}</table>`
+        +`<div class="bkdside-body">${sideMeta(wms.zone, wms.wt)}<table>${W.join("")}</table>`
         +(note.length?`<div class="bkdside-note">${note.join(" · ")}</div>`:"")
         +`<div class="bkdside-ft"><span>${L("總金額","Total Amount")}</span>`
         +`<span class="num">${money(wms.amt)}</span></div></div></div>`;
@@ -11194,11 +11189,11 @@ function bkdSection(r, wms, name0){
       +`<span class="bkdmeta">${meta.map(m=>`<span class="mp">${m}</span>`).join("")}</span></div>`
       +`<div class="bkdcols${wms?(Rc?" four":" three"):""}">`
       +`<div class="bkdside ups"><div class="bkdside-lbl">${L("UPS 實收","UPS billed")}</div>`
-      +`<div class="bkdside-body"><table>${U.join("")}</table>`
+      +`<div class="bkdside-body">${sideMeta(res.s.zone, res.s.billedUPS||res.s.billed)}<table>${U.join("")}</table>`
       +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(usub)}</span></div></div></div>`
       +`<div class="bkdside rp"><div class="bkdside-lbl">${L("重新計價","Reprice")}`
       +(BKD_LVL?`<span class="bkdlvl">${esc2(L("層級 ","Level ")+BKD_LVL)}</span>`:"")+`</div>`
-      +`<div class="bkdside-body"><table>${P.join("")}</table>`
+      +`<div class="bkdside-body">${sideMeta(res.zoneUsed||res.s.zone, bwv)}<table>${P.join("")}</table>`
       +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(psub)}</span></div></div></div>`
       +Wc+Rc
       +`</div></div>`;
@@ -15588,7 +15583,7 @@ function renderAnalysis(){
   const has=!!(r&&r.cus&&r.cus.length);
   const show=(id,on)=>{ const e=$("#"+id); if(e) e.hidden=!on; };
   show("anaEmpty",!has);
-  ["anaSumCard","anaLvlCard","anaCusCard"].forEach(id=>show(id,has));
+  ["anaSumCard","anaCusCard"].forEach(id=>show(id,has));
   if(!has) return;
   const t=r.tot;
   const sign=v=>`<span class="mny ${v<0?"neg":(v>0?"pos":"")}">${money(v)}</span>`;
@@ -15615,28 +15610,6 @@ function renderAnalysis(){
     <div class="v${neg?" neg":""}">${v}</div>
     <div class="sub">${esc(sub)||"&nbsp;"}</div></div>`).join("");
 
-  const lvls=anaLevels(r), lvlName=anaLvlName;
-  const lb=$("#tAnaLvl")&&$("#tAnaLvl").tBodies[0];
-  if(lb) lb.innerHTML=lvls.map(o=>
-    `<tr><td>${esc(lvlName(o.level))}</td>
-      <td class="num">${o.n}</td>
-      <td class="num">${o.orders}</td>
-      <td class="num">${money(o.amt)}</td>
-      <td class="num">${money(o.rebill||0)}</td>
-      <td class="num">${money(o.cost)}</td>
-      <td class="num">${sign(o.profit)}</td>
-      <td class="num">${pcCell(o.margin)}</td>
-      <td class="num">${pcCell(o.share)}</td></tr>`).join("");
-  const lf=$("#tAnaLvl")&&$("#tAnaLvl").tFoot;
-  if(lf) lf.innerHTML=`<tr><td><b>${esc(L("合計","Total"))}</b></td>
-      <td class="num"><b>${r.cus.length}</b></td>
-      <td class="num"><b>${t.orders}</b></td>
-      <td class="num"><b>${money(t.amt)}</b></td>
-      <td class="num"><b>${money(t.rebill||0)}</b></td>
-      <td class="num"><b>${money(t.cost)}</b></td>
-      <td class="num"><b>${sign(t.profit)}</b></td>
-      <td class="num"><b>${pcCell(t.margin)}</b></td>
-      <td class="num"><b>${t.profit?"100.0%":"—"}</b></td></tr>`;
 
   /* 依客戶。排序讓人自己選:大客戶薄毛利和小客戶厚毛利,哪一個要先看
      不是這一頁該替人決定的。 */
@@ -15648,6 +15621,7 @@ function renderAnalysis(){
     if(b==null) return -1;
     return b-a;
   });
+  const lvlName=anaLvlName;
   const cb=$("#tAnaCus")&&$("#tAnaCus").tBodies[0];
   if(cb) cb.innerHTML=rows.map(a=>
     `<tr><td class="mono">${esc(a.code)}</td>
@@ -15685,13 +15659,7 @@ async function anaExport(){
   const M={fmt:"#,##0.00"}, P={fmt:"0.00"};
   const m=v=>v==null?"":{v,t:"n",s:M};
   const pc=v=>v==null?"":{v:+v.toFixed(2),t:"n",s:P};
-  const t=r.tot, lvls=anaLevels(r);
-  const lvlRows=[["Rate Level","Clients","Orders","WMS / TMS","Difference","UPS",
-    "Profit","Margin %","Share of Profit %"].map(HD)]
-   .concat(lvls.map(o=>[anaLvlName(o.level), o.n, o.orders,
-     m(o.amt), m(o.rebill||0), m(o.cost), m(o.profit), pc(o.margin), pc(o.share)]))
-   .concat([["TOTAL", r.cus.length, t.orders, m(t.amt), m(t.rebill||0), m(t.cost), m(t.profit),
-     pc(t.margin), t.profit?pc(100):""]]);
+  const t=r.tot;
   const why=b=>b===RL_NONE?"NOT PRICED — no rate level assigned"
              :b===RL_GONE?"NOT PRICED — rate level deleted":"";
   const cusRows=[["Customer Code","Customer Name","Rate Level","Repricing Status","Orders",
@@ -15710,8 +15678,6 @@ async function anaExport(){
      o.name===RECON_UNKNOWN?"":chgUpsCodes(o.name).join(" "),
      m(o.billed), m(o.rep), m(o.ups), m(o.pgap), m(o.gap)]));
   await xlWrite([
-    {name:"By Rate Level", rows:lvlRows, freeze:{r:1,c:0}, filter:"A1:H1",
-     cols:[{w:26},{w:9},{w:9},{w:17},{w:16},{w:13},{w:11},{w:17}]},
     {name:"By Client", rows:cusRows, freeze:{r:1,c:0}, filter:"A1:M1",
      cols:[{w:16},{w:26},{w:20},{w:30},{w:9},{w:11},{w:17},{w:16},{w:13},{w:11},
            {w:14},{w:19},{w:19}]},
@@ -16041,6 +16007,15 @@ const DASH_RECLASS="__reclass__", DASH_UNKNOWN="__unknown__", DASH_WMS_REST="__w
    分類與顏色;對不回唯一系統名稱的(偏遠地區的商/住兩欄)照 Consolidated 的名字。
    逐項沒填的只有總額,加起來和總額差的那一份自成「未逐項列示」一塊 —— 不替它猜
    是哪一項。帳單上沒有的那幾筆(Not on Invoice)不在 orders 裡,也就不在這裡。 */
+/* 對帳涵蓋的追蹤號集合:儀表板各卡片(費用組成、渠道、Zone、異常)都站在
+   同一批單子上才對得起來。沒有對帳在畫面上回 null,各卡照整批帳單。 */
+function dashScopeKeep(){
+  const r=(typeof RECON!=="undefined")&&RECON&&RECON.res;
+  if(!r||!(r.orders||[]).length) return null;
+  const keep=new Set();
+  for(const o of r.orders) for(const t of (o.trks||[])) if(t) keep.add(reconTrk(t));
+  return keep.size?keep:null;
+}
 function dashWmsAgg(){
   const r=(typeof RECON!=="undefined")&&RECON&&RECON.res;
   if(!r||!(r.orders||[]).length) return null;
@@ -16067,13 +16042,12 @@ function dashWmsAgg(){
 function dashPieScoped(){
   const r=(typeof RECON!=="undefined")&&RECON&&RECON.res;
   if(!r||!(r.orders||[]).length) return null;
-  const keep=new Set();
-  for(const o of r.orders) for(const t of (o.trks||[])) if(t) keep.add(reconTrk(t));
-  if(!keep.size) return null;
+  const keep=dashScopeKeep();
+  if(!keep) return null;
   const rows=reportRows(), rated=RATED||[];
   if(!rows.length) return null;
   const bucketCols=REPORT_COLS.filter(c=>!REPORT_META.has(c));
-  const buckets={}, upsBuckets={}, unknownBy={}, upsUnknownBy={}, zoneAgg={};
+  const buckets={}, upsBuckets={}, unknownBy={}, upsUnknownBy={}, zoneAgg={}, chanAgg={};
   let repriced=0, billed=0, n=0;
   rows.forEach((o,i)=>{
     const trk=reconTrk(o["Tracking Number"]||o["Tracking"]||"");
@@ -16085,6 +16059,8 @@ function dashPieScoped(){
     for(const c of bucketCols){ const v=toNum(o[c]); if(Math.abs(v)>0.005) buckets[c]=(buckets[c]||0)+v; }
     const rr=rated[i]; if(!rr) return;
     billed+=toNum(rr.s&&rr.s.upsTotal);
+    const ch=rr.channel||L("未知","Unknown");
+    chanAgg[ch]=(chanAgg[ch]||0)+toNum(o["Total"]);
     for(const seg of [rr, rr.rtn, rr.npb]){
       if(!seg) continue;
       for(const [c,v] of Object.entries(seg.unknownBy||{})) unknownBy[c]=(unknownBy[c]||0)+toNum(v);
@@ -16104,7 +16080,7 @@ function dashPieScoped(){
       }
     }
   });
-  return n?{buckets, upsBuckets, unknownBy, upsUnknownBy, zoneAgg,
+  return n?{buckets, upsBuckets, unknownBy, upsUnknownBy, zoneAgg, chanAgg,
             repriced:cents(repriced), billed:cents(billed), n}:null;
 }
 const RECLASS_RE=/AHS\/Large Package|AHS\/大包裹/;
@@ -16796,7 +16772,8 @@ async function prDownload(){
     const sheets=[]; let accts=[], key="", last="";
     if(wantI){ const r=prSheetInvoice();
       if(r){ sheets.push(...r.sheets); accts=accts.concat(r.accts);
-             key=r.key; if(String(r.last)>last) last=String(r.last); } }
+             key=r.key; if(String(r.last)>last) last=String(r.last); }
+      const rc=prSheetRecon(); if(rc) sheets.push(rc); }
     if(wantP){ const r=prSheetPeriods();
       if(r){ sheets.push(...r.sheets); accts=accts.concat(r.accts);
              if(String(r.last)>last) last=String(r.last); } }
@@ -16819,6 +16796,52 @@ $("#prInv") && ($("#prInv").onchange=prPaint);
 $("#prPer") && ($("#prPer").onchange=prPaint);
 $("#prGo") && ($("#prGo").onclick=prDownload);
 
+/* 對帳毛利頁:匯進來的 WMS / TMS 每一張單一列 —— 含沒有任何補收的單。
+   利潤報表以前只有「重算 vs UPS」,對過帳的人看不到自己匯進來的那批單。
+   欄位就是儀表板那一條的展開:實收 + 應補收 = 應收合計,− UPS = 毛利;
+   合計列和儀表板同一組數字。沒有對帳在畫面上就沒有這一頁。 */
+function prSheetRecon(){
+  const r=(typeof RECON!=="undefined")&&RECON&&RECON.res;
+  if(!r||!(r.orders||[]).length) return null;
+  const MONEY="$#,##0.00", PCT="0.0%", INT="#,##0";
+  const HEAD="E8E2D6", FOOT="FFF2CC", RED="C00000";
+  const rbBy=new Map();
+  for(const it of ((r.rebill&&r.rebill.items)||[]))
+    rbBy.set(it.ln, cents((rbBy.get(it.ln)||0)+toNum(it.total)));
+  const head=[L("客戶代碼","Customer Code"),L("客戶名稱","Customer Name"),
+              L("單號","Order Number"),L("追蹤號","Tracking Number"),L("件數","Packages"),
+              RECON_SRC+L(" 實收"," Billed"),L("應補收(含燃油)","To Re-bill (incl. fuel)"),
+              L("應收合計","Chargeable"),"UPS",L("毛利","Profit"),L("毛利率","Margin")];
+  const alignOf=c=>c<4?"left":"right";
+  const grid=[head.map((h,c)=>({v:h,t:"s",s:{bold:true,fill:HEAD,align:alignOf(c),wrap:true,border:true}}))];
+  const cell=(v,c,last)=>{
+    const st={align:alignOf(c),border:true,bold:last||undefined,fill:last?FOOT:undefined};
+    if(c<4) return {v:String(v==null?"":v),t:"s",s:st};
+    if(c===4) return {v:toNum(v),t:"n",s:Object.assign(st,{fmt:INT})};
+    if(c===10) return {v:toNum(v),t:"n",s:Object.assign(st,{fmt:PCT,
+      color:toNum(v)<0?RED:undefined})};
+    return {v:cents(toNum(v)),t:"n",s:Object.assign(st,{fmt:MONEY,
+      color:(c===9&&toNum(v)<0)?RED:undefined})};
+  };
+  let tAmt=0,tRb=0,tCost=0,tPkg=0;
+  const orders=r.orders.slice().sort((a,b)=>
+    String(a.cus).localeCompare(String(b.cus))||String(a.order).localeCompare(String(b.order)));
+  for(const o of orders){
+    const rb=cents(rbBy.get(o.ln)||0);
+    const amt=cents(toNum(o.amt)), cost=cents(toNum(o.cost));
+    const chg=cents(amt+rb), pf=cents(chg-cost);
+    tAmt=cents(tAmt+amt); tRb=cents(tRb+rb); tCost=cents(tCost+cost); tPkg+=toNum(o.pkgs)||0;
+    grid.push([o.cus, cusNameOf(o.cus), o.order, (o.trks||[]).join(", "),
+               o.pkgs||0, amt, rb, chg, cost, pf,
+               chg?pf/Math.abs(chg):0].map((v,c)=>cell(v,c,false)));
+  }
+  const tChg=cents(tAmt+tRb), tPf=cents(tChg-tCost);
+  grid.push([L("合計","Total"),"","","",tPkg,tAmt,tRb,tChg,tCost,tPf,
+             tChg?tPf/Math.abs(tChg):0].map((v,c)=>cell(v,c,true)));
+  return {name:L("對帳毛利","Reconciliation profit"), rows:grid,
+          cols:[14,22,20,24,8,15,17,15,14,14,10].map(w=>({w})),
+          freeze:{r:1,c:0}, filter:"A1:K"+(grid.length)};
+}
 /* 只把工作表做出來,不管存檔 —— 存不存、和誰一起存,由利潤報表那個視窗決定。 */
 function prSheetPeriods(){
   const all=(DASH_ALL_CACHE&&DASH_ALL_CACHE.data)||[];
@@ -17430,10 +17453,14 @@ function renderDashboard(){
     +oneP(sc?sc.upsBuckets:(d.upsBuckets||{}), 0, L("UPS 帳單","UPS BILLED"), sc?sc.billed:d.billed, sc?sc.upsUnknownBy:d.upsUnknownBy)
     +(wmsAgg?oneP(wmsAgg.buckets,0,L(wmsAgg.src+" 實收",wmsAgg.src+" BILLED"),wmsAgg.total,{}):"")
     +`</div>`;
-  const chItems=Object.entries(d.chanAgg||{}).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))
+  const chItems=Object.entries((sc&&sc.chanAgg)||d.chanAgg||{})
+    .filter(([,v])=>Math.abs(v)>0.004)
+    .sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))
     /* 取模,不然渠道超過十條的人會拿到 undefined 當顏色,那一塊就不見了。 */
     .map(([n,v],i)=>[n,v,/unknown|未知/i.test(n)?MISSCOL:PIE[i%PIE.length]]);
   const chTot=chItems.reduce((a,[,v])=>a+Math.abs(v),0);
+  const scNote=sc?`<span class="cnote">${esc(L("只計 "+wmsAgg.src+" 涵蓋的單",
+    "only shipments the "+wmsAgg.src+" import covers"))}</span>`:"";
   const chanHTML=pieBlock(chItems,chTot,String(chItems.length),L("渠道","channels"),true);
   /* 有對帳在畫面上就只算 WMS / TMS 涵蓋到的那批單,和費用組成同一個基準;
      金額是 0 的 Zone 整列不列 —— 一排 $0.00 只是雜訊。 */
@@ -17493,11 +17520,11 @@ function renderDashboard(){
       ${compHTML}
     </div>
     <div class="dcard" style="margin-top:12px">
-      <div class="ch"><h3>${L("渠道","Channel")}</h3></div>
+      <div class="ch"><h3>${L("渠道","Channel")}</h3>${scNote}</div>
       ${chanHTML}
     </div>
     <div class="dcard" style="margin-top:12px">
-      <div class="ch"><h3>${L("Zone 分布","Zone distribution")}</h3></div>
+      <div class="ch"><h3>${L("Zone 分布","Zone distribution")}</h3>${scNote}</div>
       <div>${zoneHTML}</div>
     </div>
     ${uCard}
@@ -17583,6 +17610,17 @@ function prSheetInvoice(){
     kv(L("毛利","Profit"), cents(profit), MONEY),
     kv(L("毛利率","Margin"), d.repriced?profit/Math.abs(d.repriced):0, PCT),
     kv(L("帳戶層費用","Account charges"), cents(d.account), MONEY, true)];
+  /* 有對帳在畫面上時,摘要也要有它:實收、應補收、應收合計、對帳毛利 ——
+     和儀表板那一條同一份數字(dashWmsAgg),檔案和畫面對不起來的報表沒人信。 */
+  const wa=(typeof dashWmsAgg==="function")&&dashWmsAgg();
+  if(wa){
+    sum.push(
+      kv(wa.src+L(" 實收"," billed"), wa.total, MONEY),
+      kv(L("應補收(含燃油)","To re-bill (incl. fuel)"), wa.rebill, MONEY),
+      kv(L("應收合計","Chargeable"), wa.chargeable, MONEY),
+      kv(L("對帳毛利(應收合計 − UPS)","Reconciliation profit (Chargeable − UPS)"), wa.profit, MONEY),
+      kv(L("對帳筆數","Reconciled rows"), wa.n, INT, true));
+  }
 
   /* ---- 費用組成:一列一種費用,UPS 和重算並排 -------------------------
      排法和異常報表那張「貨件展開」一樣:第一列是「這是什麼」,第二列是
@@ -19059,6 +19097,15 @@ function issueGroups(rows){
 }
 function renderIssueCard(){
   const g=invoiceIssues();
+  /* 有對帳在畫面上,異常也只點名 WMS / TMS 涵蓋的單 —— 沒匯進來的單子的
+     異常,等它那一批對帳時再處理;混在一起,數字對不回任何一張表。 */
+  const scKeep=(typeof dashScopeKeep==="function")?dashScopeKeep():null;
+  if(scKeep){
+    g.rows=g.rows.filter(x=>x.trk&&scKeep.has(reconTrk(x.trk)));
+    const seg2=new Map();
+    for(const [t,v] of g.segs) if(scKeep.has(reconTrk(t))) seg2.set(t,v);
+    g.segs=seg2;
+  }
   ISSUES=g.rows; ISSUE_SEGS=g.segs;
   if(!ISSUES.length) return "";
   /* 缺什麼算一次就好 —— 這段字串樣板裡會用到兩次。一定要在 ISSUES 更新
@@ -19094,7 +19141,8 @@ function renderIssueCard(){
     <div class="dcard warn issbox" style="margin-top:12px">
       <div class="ch"><h3>${L("本期異常項目","Exceptions")}</h3>
         <span class="cnote">${L("依嚴重度排序,各組標示對應之帳單列號",
-                                "sorted by severity; each group lists its invoice rows")}</span>
+                                "sorted by severity; each group lists its invoice rows")
+          +(scKeep?L(";只計對帳涵蓋的單","; only shipments the import covers"):"")}</span>
         <button class="act ghost" id="bIssXls" style="padding:3px 11px;font-size:12px">${
           L("下載明細 (.xlsx)","Download details (.xlsx)")}</button>${
         (dashGap.acc.length||dashGap.chan.length)
@@ -22361,7 +22409,7 @@ document.addEventListener("keydown",function(e){
 /* ── 3. 表頭排序 ───────────────────────────────────────────────────────
    只給看數字的那幾張:誰的毛利最低、哪一筆差最多,現在得自己一列一列找。
    排序只動畫面上的列,不碰任何金額;重畫之後回到原本的順序。 */
-var SORT_IDS=["tRecon","tReconChg","tAnaCus","tAnaLvl",
+var SORT_IDS=["tRecon","tReconChg","tAnaCus",
               "tChan","tAccMgr","tHist","tRate"];
 /* 缺值(—、not set、空白)不參與比大小:不管往哪個方向排,永遠沉底。 */
 var MISS_RE=/^(—|–|-|not set|not loaded|未設定|未載入|n\/a)?$/i;

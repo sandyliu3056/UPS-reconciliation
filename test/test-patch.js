@@ -117,12 +117,12 @@ th[0].dispatchEvent(new W.MouseEvent('click',{bubbles:true}));
 ok(tb.rows.length===1&&tb.rows[0].cells[0].className==='empty', '\u7a7a\u72c0\u614b\u4e0d\u53d7\u5f71\u97ff');
 
 console.log('\n[4] \u9996\u6b04\u51cd\u7d50');
-const pin=['tRecon','tReconChg','tHist','tSize','tAnaCus','tAnaLvl'];
+const pin=['tRecon','tReconChg','tHist','tSize','tAnaCus'];
 pin.forEach(id=>{ const e=D.getElementById(id);
   ok(!!e&&e.classList.contains('pinfirst'), id+' \u5df2\u91d8\u4f4f\u9996\u6b04'); });
 
 console.log('\n[5] \u6c92\u6709\u640d\u5230\u539f\u672c\u7684\u6771\u897f');
-ok(D.querySelectorAll('table').length===34, '\u8868\u683c\u6578\u91cf\uff0834\uff09');
+ok(D.querySelectorAll('table').length===33, '\u8868\u683c\u6578\u91cf\uff0833\uff09');
 ok(D.querySelectorAll('.modalbg').length===27, '\u8996\u7a97\u6578\u91cf\uff0827\uff09');
 ok(D.querySelectorAll('[data-i18n]').length>0, 'i18n \u6a19\u8a18\u9084\u5728');
 
