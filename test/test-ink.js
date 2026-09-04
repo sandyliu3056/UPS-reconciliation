@@ -96,7 +96,7 @@ ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft')
    '61 \u500b .sketch\u300116 \u500b .sketch-soft \u90fd\u5728');
 ok(D.querySelectorAll('table').length===32&&D.querySelectorAll('.modalbg').length===27,
    '\u8868\u683c 34\u3001\u8996\u7a97 27\uff08\u591a\u4e86\u8dd1\u5e33\u55ae\u7684\u6c99\u6f0f\uff09');
-ok(D.querySelectorAll('[data-i18n]').length===598, 'i18n 標記 598 個(依客戶卡拿掉)');
+ok(D.querySelectorAll('[data-i18n]').length===599, 'i18n 標記 599 個(已存的對帳多一欄批次)');
 
 console.log('\n[8] \u7d19\u7684\u984f\u8272');
 ok(/--paper-mask:url\(/.test(face), '\u6709\u4e00\u5f35\u5c08\u9580\u7576\u906e\u7f69\u7684\u5642\u9ede');

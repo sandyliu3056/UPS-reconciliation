@@ -2490,10 +2490,6 @@ label:has(#newChanOn){display:none !important}
   transform:rotate(45deg)}
 #p-dash .dmhd{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
   color:var(--muted);padding:3px 10px 6px}
-#p-dash .dmfind{width:100%;font:inherit;font-size:12.5px;color:var(--text);
-  background:var(--panel);border:1.5px solid var(--line);border-radius:9px;
-  padding:5px 10px;margin-bottom:6px}
-#p-dash .dmfind:focus{outline:2px solid var(--run2);outline-offset:1px}
 #p-dash .dmi{display:grid;grid-template-columns:auto 1fr auto;align-items:center;
   gap:2px 10px;width:100%;font:inherit;text-align:left;cursor:pointer;
   background:transparent;border:0;border-radius:10px;padding:6px 10px;color:var(--text)}
@@ -2763,8 +2759,9 @@ label:has(#newChanOn){display:none !important}
     <h3 class="display"><span class="em">🗂️</span><span data-i18n="hd.reconruns">Stored reconciliations</span></h3>
     <p class="hint" style="margin:0 0 11px;max-width:78ch" data-i18n="hint.reconruns">Every imported WMS / TMS file is kept together with its result. Open one to load that period's invoice from history and compare it again at today's rates; the figures here are from the last run.</p>
     <div class="tablewrap" style="max-height:40vh"><table id="tReconRuns"><thead><tr>
-      <th data-i18n="th.runinvdate">Invoice date</th>
+      <th data-i18n="th.runbatch">Batch</th>
       <th data-i18n="th.runsrc">Source</th>
+      <th data-i18n="th.runinvdate">UPS invoice date</th>
       <th class="num" data-i18n="th.reconorders">Orders</th>
       <th class="num" data-i18n="th.reconbilled">Billed to customer</th>
       <th class="num" data-i18n="th.reconups">Charged by UPS</th>
@@ -13724,13 +13721,14 @@ function renderReconRuns(){
     return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes()); };
   const paint=list=>{
     RECON_RUNS=list;
-    const runs=list.slice().sort((a,b)=>String(b.invDate||"").localeCompare(String(a.invDate||""))||(b.when||0)-(a.when||0));
+    /* 最近匯入的排最前面 —— 這張表列的是「我倒進去的那幾份」,和檢視選單同一個順序。 */
+    const runs=list.slice().sort((a,b)=>(b.when||0)-(a.when||0)||String(b.invDate||"").localeCompare(String(a.invDate||"")));
     if(card){
       card.hidden=!runs.length;
       const tb=$("#tReconRuns")&&$("#tReconRuns").tBodies[0];
       if(tb) tb.innerHTML=runs.map(r=>{ const s=r.sum||{}, cur=r.key===RECON_RUN_KEY;
-        return `<tr${cur?' class="cur"':""}><td>${esc(r.invDate||"—")}</td>
-          <td>${esc(r.src)}</td><td class="num">${r.n||0}</td>
+        return `<tr${cur?' class="cur"':""}><td title="${esc(runMetaOf(r))}">${esc(runLabelOf(r))}</td>
+          <td>${esc(r.src)}</td><td>${esc(r.invDate||"—")}</td><td class="num">${r.n||0}</td>
           <td class="num">${money(s.amt||0)}</td><td class="num">${money(s.cost||0)}</td>
           <td class="num"><span class="mny ${(s.profit||0)<0?"neg":(s.profit>0?"pos":"")}">${money(s.profit||0)}</span></td>
           <td class="num">${s.margin==null?"—":anaPct(s.margin)}</td><td class="num">${money(s.rebill||0)}</td>
@@ -13743,7 +13741,7 @@ function renderReconRuns(){
       ? `<div class="subhd" style="margin-top:12px">${esc(L("已存的對帳","Stored reconciliations"))}</div>`
         +runs.map(r=>{ const iv=(r.invoices||[]);
         const ivTxt=iv.length>2?(iv.length+L(" 期"," invoices")):iv.join(", ");
-        return `<button class="act ghost" data-open="${esc(r.key)}" style="margin:6px 6px 0 0">${esc((r.invDate||"—")+(ivTxt?" · "+ivTxt:"")+" · "+r.src+" · "+(r.n||0)+" "+L("筆","row(s)"))}</button>`; }).join("")
+        return `<button class="act ghost" data-open="${esc(r.key)}" style="margin:6px 6px 0 0">${esc(runLabelOf(r)+" · "+tplWhen(r.when)+(ivTxt?" · "+ivTxt:"")+" · "+(r.n||0)+" "+L("筆","row(s)"))}</button>`; }).join("")
       : "";
   };
   if(RECON_RUNS) paint(RECON_RUNS); else idbRunAll().then(paint).catch(()=>paint([]));
@@ -16087,7 +16085,11 @@ function renderAnalysis(){
   const pcCell=v=>v==null?`<span class="empty">—</span>`:anaPct(v);
 
   const scope=$("#anaScope");
-  if(scope) scope.textContent=L(
+  /* 這張卡算的是「手上這一份對帳」。不寫是哪一份,換過批次之後就分不出畫面上
+     的數字屬於誰。 */
+  const run=RECON_RUN_KEY&&(RECON_RUNS||[]).find(x=>x.key===RECON_RUN_KEY);
+  const who=run?[runLabelOf(run),tplWhen(run.when),run.by||""].filter(Boolean).join(" · ")+" · ":"";
+  if(scope) scope.textContent=who+L(
     r.cus.length+" 個客戶 · "+t.orders+" 筆"
       +(r.hasBilled?" · 逐項費用已匯入":" · 沒有逐項費用"),
     r.cus.length+" client"+(r.cus.length>1?"s":"")+" · "+t.orders
@@ -16096,9 +16098,9 @@ function renderAnalysis(){
   const tiles=$("#anaTiles");
   if(tiles) tiles.innerHTML=[
     ["WMS / TMS", money(t.amt), ""],
-    [L("差額(補收)","Difference (to re-bill)"), money(t.rebill||0), ""],
+    [L("應補收","To re-bill"), money(t.rebill||0), ""],
     ["UPS",       money(t.cost), ""],
-    [L("毛利","Profit"),               money(t.profit), L("實收 + 差額 − UPS","billed + difference − UPS"), t.profit<0],
+    [L("毛利","Profit"),               money(t.profit), L("實收 + 應補收 − UPS","billed + to re-bill − UPS"), t.profit<0],
     [L("毛利率","Margin"),             anaPct(t.margin),
       L(t.orders+" 筆 · "+r.cus.length+" 個客戶",
         t.orders+" order"+(t.orders>1?"s":"")+" · "+r.cus.length
@@ -17410,21 +17412,24 @@ function dashBarHTML(){
       .catch(()=>{ window.__dashRunsKick=false; });
   }
   runs=(runs||[]).slice().sort((x,y)=>(y.when||0)-(x.when||0));
-  const curRun=(!DASH_ALL && !sel && RECON_RUN_KEY)?runs.find(r2=>r2.key===RECON_RUN_KEY):null;
+  /* 批次優先。開著一份對帳的時候,這一條講的就是那份批次 —— 它底下那一期
+     帳單是它的來源,不是另一個可以各自選、各自算的東西。 */
+  const curRun=(!DASH_ALL && RECON_RUN_KEY)?runs.find(r2=>r2.key===RECON_RUN_KEY):null;
   let big, small;
   if(DASH_ALL){ big=L("全部期別","All periods");
-                small=list.length+L(" 期 · 以目前費率重算",
-                                    " periods · repriced with current rates"); }
-  else if(selP){ big=selP.key; small=selP.date||L("沒有帳單日","no invoice date"); }
+                small=list.length+L(" 期 · 各期 UPS 實收",
+                                    " periods · UPS charged, period by period"); }
   else if(curRun){ big=runLabelOf(curRun);
                    small=L("匯入批次 · ","Import batch · ")+runMetaOf(curRun); }
+  else if(selP){ big=selP.key; small=selP.date||L("沒有帳單日","no invoice date"); }
   else if(cur.length>1){ big=L("本次匯入","This import");
                          small=cur.length+L(" 期 · ", " periods · ")+cur.join(", "); }
   else if(cur.length===1){ big=cur[0]; small=L("尚未匯入","not imported yet"); }
-  else { big=L("選擇帳單期別","Choose an invoice");
-         small=list.length?list.length+L(" 期可選"," available")
-                          :L("帳單歷史尚無資料","nothing filed yet"); }
-  const chips=selP
+  else { big=L("選擇檢視","Choose a view");
+         small=runs.length?runs.length+L(" 份匯入批次"," import batch"+(runs.length===1?"":"es"))
+                          :L("還沒有匯入批次","no import batch yet"); }
+  /* 批次那一行自己把來源講完了,右邊那排小標只在「單看一期帳單」時出現。 */
+  const chips=(selP&&!curRun)
     ? [[L("帳單日","Invoice date"), selP.date||"—"],
        [L("明細","Detail"), rowsL(selP.rows)],
        [L("貨件","Shipments"), trkL(selP.trk)],
@@ -17432,60 +17437,48 @@ function dashBarHTML(){
     : [];
   /* 沒選任何一期的時候右邊是一片空的,順便把這條選單在做什麼講一句。
      總攬模式不必講 —— 那時候已經選好了,而且卡片標題自己會說。 */
-  const hint=(!selP&&!DASH_ALL&&list.length)
-    ? `<span class="dhint">${L("挑一期,就用現在的費率設定重跑那一期。",
-        "Pick a period to re-run it with your current rates.")}</span>` : "";
-  const items=list.map(p=>`<button type="button" class="dmi${p.key===sel?" on":""}"
-      role="option" aria-selected="${p.key===sel}" data-inv="${esc(p.key)}"
-      data-find="${esc((p.key+" "+p.date).toLowerCase())}">
-      <span class="dmtick" aria-hidden="true">${p.key===sel?"✓":""}</span>
-      <span class="dmk">${esc(p.key)}</span>
-      <span class="dmd">${esc(p.date||"—")}</span>
-      <span class="dmn">${rowsL(p.rows)} · ${trkL(p.trk)}</span></button>`).join("");
-  /* 兩期以上才給「全部期別」—— 只有一期的話,總攬就是那一期本身。 */
-  const allItem=list.length>1?`<div class="dmall-sep"></div><button type="button" class="dmi dmall${DASH_ALL?" on":""}"
-      role="option" aria-selected="${DASH_ALL}" data-inv="__all__"
-      data-find="${esc(L("全部期別 all periods","all periods 全部期別"))}">
-      <span class="dmtick" aria-hidden="true">${DASH_ALL?"✓":""}</span>
-      <span class="dmk">${L("全部期別","All periods")}</span>
-      <span class="dmd">${list.length}${L(" 期"," periods")}</span>
-      <span class="dmn">${L("以目前費率把每一期重算,並排比較",
-        "every period repriced with the current rates, side by side")}</span></button>`:"";
-  /* 批次一組、期別一組,同一張選單分段列 —— 批次是「這一份對帳」,
-     期別是「這一期帳單」,選了誰整頁就是誰,不會兩邊各選一個。 */
+  const hint=(!curRun&&!DASH_ALL&&(runs.length||list.length))
+    ? `<span class="dhint">${L("挑一份匯入批次,或看全部期別。",
+        "Pick an import batch, or view every period.")}</span>` : "";
+  /* 帳單期別不列在這裡了。一邊挑批次、一邊又能挑某一期,兩邊各算各的,
+     畫面上的數字就對不起來 —— 使用者說會錯亂。這條選單只剩兩種東西:
+     看哪一份匯入批次,或者全部期別並排看。 */
   const runItems=runs.length
     ? `<div class="dmsec">${L("匯入批次(已對帳)","Import batches (reconciled)")}</div>`
       +runs.map(r2=>{ const on=!!(curRun&&curRun.key===r2.key);
         return `<button type="button" class="dmi${on?" on":""}" role="option" aria-selected="${on}"
-          data-run="${esc(r2.key)}"
-          data-find="${esc((runLabelOf(r2)+" "+tplWhen(r2.when)+" "+(r2.by||"")+" "+r2.src+" batch 批次").toLowerCase())}">
+          data-run="${esc(r2.key)}">
           <span class="dmtick" aria-hidden="true">${on?"✓":""}</span>
           <span class="dmk">${esc(runLabelOf(r2))}</span>
           <span class="dmd">${esc(tplWhen(r2.when))}</span>
           <span class="dmn">${esc(runMetaOf(r2))}</span></button>`; }).join("")
-      +`<div class="dmall-sep"></div><div class="dmsec">${L("歷史期別","Invoice periods")}</div>`
     : "";
-  /* 期數多的時候用眼睛找很慢,超過八期就給一個過濾框。 */
-  const find=list.length>8
-    ? `<input id="dashFind" class="dmfind" type="search" autocomplete="off"
-        placeholder="${L("輸入期號或日期篩選…","Filter by number or date…")}"
-        aria-label="${L("篩選帳單期別","Filter invoices")}">` : "";
-  /* 篩選排在期別前面:先決定看哪個帳號、哪一段期間,再從剩下的裡面挑一期。
-     反過來擺,等於要人先挑完再去縮小挑選範圍。 */
+  const allItem=list.length?`${runItems?`<div class="dmall-sep"></div>`:""}<button type="button" class="dmi dmall${DASH_ALL?" on":""}"
+      role="option" aria-selected="${DASH_ALL}" data-inv="__all__">
+      <span class="dmtick" aria-hidden="true">${DASH_ALL?"✓":""}</span>
+      <span class="dmk">${L("全部期別","All periods")}</span>
+      <span class="dmd">${list.length}${L(" 期"," period"+(list.length===1?"":"s"))}</span>
+      <span class="dmn">${L("每一期的 UPS 實收並排比較",
+        "every filed period's UPS charge, side by side")}</span></button>`:"";
+  /* 帳號與期間是「全部期別」那張總攬在用的。只看一份批次的時候它們沒有東西
+     可篩,留在畫面上只會讓人以為切了會有事情發生。 */
   return `<div class="dbar" id="dashPick">
-    ${dashPickFilters(all)}
+    ${DASH_ALL?dashPickFilters(all):""}
     <span class="dbl">${L("檢視","View")}</span>
     <div class="dselw">
       <button type="button" class="dsel" id="dashSel" aria-haspopup="listbox"
-        aria-expanded="false" ${list.length?"":"disabled"}
-        title="${L("挑一期存在歷史裡的帳單來跑","Run any invoice kept in history")}">
+        aria-expanded="false" ${(runs.length||list.length)?"":"disabled"}
+        title="${L("挑一份匯入批次,或看全部期別","Open an import batch, or view every period")}">
         <span><span class="dsk">${esc(big)}</span><span class="dsd">${esc(small)}</span></span>
         <span class="dcar" aria-hidden="true"></span></button>
-      <div class="dmenu" id="dashMenu">${find}
-        <div class="dmhd" id="dashMhd">${L("歷史帳單 · ","In history · ")}${list.length}${L(" 期","")}</div>
+      <div class="dmenu" id="dashMenu">
+        <div class="dmhd" id="dashMhd">${runs.length
+          ? runs.length+L(" 份匯入批次"," import batch"+(runs.length===1?"":"es"))
+          : L("尚無匯入批次","No import batch yet")}</div>
         <div class="dmlist" id="dashMlist" role="listbox"
-          aria-label="${L("帳單期別","Invoice")}">${runItems}${items
-          ||`<div class="dmempty">${L("帳單歷史尚無資料。","Nothing filed to history.")}</div>`}${allItem}</div>
+          aria-label="${L("檢視","View")}">${runItems}${allItem
+          ||(runItems?"":`<div class="dmempty">${L("還沒有匯入批次,帳單歷史也還是空的。",
+                                                  "No import batch yet, and nothing filed to history.")}</div>`)}</div>
         ${odd?`<div class="dmfoot">${L(
           "另有 "+odd+" 筆期號不像期號(多半是沒有標題列、欄位順序不同的檔案匯壞了),沒有列在這裡。要清掉請到「帳單歷史 → 已存帳單」。",
           odd+" filed entr"+(odd>1?"ies":"y")+" had no invoice-shaped number — usually a file that imported with the wrong columns. Not listed here; clear them from Invoice History → Stored Invoices.")}</div>`:""}
@@ -17557,17 +17550,9 @@ function dashMenuClose(back){
    是接在 document 上的,那個全域只接一次。 */
 /* 帳號與期間現在長在最上面那一條,每一次重畫都會重生 —— 所以它們的事件跟著
    dashBarHTML 走,不是跟著「全部期別」那張卡片走。 */
-/* 篩選一換,期別跟著換:畫面上那一期若不在篩選結果裡,自動改跑結果裡
-   最新的一期。不然帳號選了 A,期別選單和整頁數字還停在 B 的帳單上,
-   看起來像篩選沒有作用。總攬模式只是重畫 —— 它本來就列的是篩過的那幾期。 */
-function dashFollowFilter(){
-  const list=dashFilter(dashPeriods());
-  const cur=dashCurKeys();
-  const onScreen=(!DASH_ALL&&cur.length===1)?cur[0]:"";
-  const stale=!DASH_ALL && list.length>0 && !list.some(p=>p.key===onScreen);
-  if(stale && !DASH_BUSY && CFG && CFG.tableRowCount>0){ dashPickInvoice(list[0].key); return; }
-  renderDashboard();
-}
+/* 帳號與期間只縮小「全部期別」那張總攬的範圍,不會替使用者換一期去跑 ——
+   換期是重算,算出來的數字會和手上那份對帳批次打架。 */
+function dashFollowFilter(){ renderDashboard(); }
 function wireDashPickFilters(){
   const re=()=>dashFollowFilter();
   const a=$("#dfAcct");
@@ -17596,10 +17581,7 @@ function wireDashBar(){
       menu.parentNode.appendChild(sc);
     }
     const on=menu.querySelector(".dmi.on")||shown()[0];
-    /* 焦點放在項目上,不是篩選框 —— 開選單的人多半是要用眼睛挑,
-       方向鍵馬上能用。要篩選就直接打字,下面的 keydown 會把字送過去。 */
     if(on){ on.scrollIntoView({block:"nearest"}); on.focus(); }
-    else { const f=$("#dashFind"); if(f) f.focus(); }
   };
   btn.onclick=e=>{ e.stopPropagation();
     menu.classList.contains("on")?dashMenuClose():open(); };
@@ -17632,34 +17614,12 @@ function wireDashBar(){
       list[n].focus(); list[n].scrollIntoView({block:"nearest"});
       return;
     }
-    /* 焦點在項目上時打可見字元,就送進篩選框繼續打 —— 使用者不必先找到
-       那個輸入框。這是選單該有的行為,不是表單。 */
-    if(e.key.length===1 && !e.ctrlKey && !e.metaKey && !e.altKey){
-      const f=$("#dashFind");
-      if(f && document.activeElement!==f){
-        f.focus(); f.value+=e.key; f.dispatchEvent(new Event("input"));
-        e.preventDefault(); return;
-      }
-    }
     if(e.key==="Home"||e.key==="End"){
       if(!list.length) return;
       e.preventDefault();
       const t=e.key==="Home"?list[0]:list[list.length-1];
       t.focus(); t.scrollIntoView({block:"nearest"});
     }
-  };
-  const find=$("#dashFind");
-  if(find) find.oninput=()=>{
-    const q=find.value.trim().toLowerCase();
-    let n=0;
-    menu.querySelectorAll(".dmi").forEach(b=>{
-      const hit=!q||(b.dataset.find||"").indexOf(q)>=0;
-      b.hidden=!hit; if(hit) n++;
-    });
-    const hd=menu.querySelector(".dmhd");
-    if(hd) hd.textContent=q
-      ? n+L(" 期符合"," matching")
-      : L("歷史帳單 · ","In history · ")+menu.querySelectorAll(".dmi").length+L(" 期","");
   };
   if(!DASH_DOCBOUND){
     DASH_DOCBOUND=true;
@@ -18063,7 +18023,12 @@ function prSheetInvoice(){
       ...(run.by?[kv2(L("操作人","Imported by"), run.by)]:[]),
       kv2(L("期別","Invoice periods"), invs.join(", ")),
       kv2(L("UPS 帳號","UPS account"), accs.join(", ")),
+      /* 匯入幾筆、對到幾筆、差在哪裡 —— 只寫「對帳筆數」的話,和第 3 步那張
+         表上的筆數對不起來,看起來像其中一邊算錯。 */
+      kv2(L("匯入筆數","Imported rows"), run.n||0, INT2, true),
       kv2(L("對帳筆數","Reconciled rows"), wab.n||0, INT2, true),
+      kv2(L("帳單上沒有(留給下一期)","Not on this invoice (carried forward)"),
+          ((run.sum&&run.sum.offInv)||0), INT2, true),
       kv2("UPS"+L("(對帳貨件)"," (reconciled shipments)"), upsRecon, MONEY2),
       kv2(L("應收合計("+wab.src+" 實收 + 應補收)","Chargeable ("+wab.src+" billed + re-bill)"), cents(wab.chargeable||0), MONEY2),
       kv2(L("對帳毛利(應收合計 − UPS)","Reconciliation profit (Chargeable − UPS)"), cents(wab.profit||0), MONEY2),
@@ -20805,10 +20770,11 @@ const I18N={
   "th.trackorder":["單號","Order"],
   "hd.reconruns":["已存的對帳","Stored reconciliations"],
   "hint.reconruns":["每一份匯入的 WMS / TMS 檔都連同結果存著。「開啟」把那一期的帳單從歷史載回來,照今天的費率再比對一次;這裡的數字是上次對帳的結果。","Every imported WMS / TMS file is kept together with its result. Open one to load that period's invoice from history and compare it again at today's rates; the figures here are from the last run."],
-  "th.runinvdate":["帳單日期","Invoice date"],
+  "th.runbatch":["批次","Batch"],
+  "th.runinvdate":["UPS 帳單日","UPS invoice date"],
   "th.runinv":["帳單","Invoice"],
   "th.runsrc":["來源","Source"],
-  "th.runrebill":["差額","Difference"],
+  "th.runrebill":["應補收","To re-bill"],
   "th.runwhen":["對帳時間","Reconciled"],
   "rs.inv":["1. UPS 帳單匯入","1. UPS Invoice Import"],
   "rs.wms":["2. WMS / TMS 匯入","2. WMS / TMS Import"],
