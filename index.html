@@ -17372,6 +17372,14 @@ function wireDashFilters(){
    期裡挑某個帳號的某一週,得先切到總攬、篩完、再切回來挑。它們現在和期別
    選單同一條,期別選單列出來的就是篩選之後的那幾期。 */
 function dashPickFilters(all){
+  /* 匯入批次:第 2 步匯過的每一份模板。挑一份就把那一批(它的期別與
+     WMS / TMS 列)整組載回來,儀表板、對帳、分析一起切過去。 */
+  let runs=(typeof RECON_RUNS!=="undefined"&&RECON_RUNS)?RECON_RUNS:null;
+  if(runs===null && typeof idbRunAll==="function" && !window.__dashRunsKick){
+    window.__dashRunsKick=true;
+    idbRunAll().then(l=>{ RECON_RUNS=l||[]; renderDashboard(); }).catch(()=>{ RECON_RUNS=[]; });
+  }
+  runs=(runs||[]).slice().sort((x,y)=>(y.when||0)-(x.when||0));
   const accts=[];
   for(const d of all||[]){
     const a=dashAcctOf(d);
@@ -17389,6 +17397,16 @@ function dashPickFilters(all){
     +`<span class="selw"><select id="dfRange">`
     +DASH_RANGES.map(r=>opt(r.k,DASH_F.range,L(r.zh,r.en))).join("")
     +`</select></span></label>`;
+  const runSel=runs.length
+    ? `<label class="fsel"><span>${L("匯入批次","Import batch")}</span>`
+      +`<span class="selw"><select id="dfRun">`
+      +((RECON_RUN_KEY&&runs.some(r2=>r2.key===RECON_RUN_KEY))?"":opt("","",L("(選擇批次)","(choose a batch)")))
+      +runs.map(r2=>{ const iv=(r2.invoices||[]);
+          const t2=(r2.invDate||"—")+" · "+r2.src+" · "+(r2.n||0)+L(" 筆"," rows")
+            +(iv.length>1?(" · "+iv.length+L(" 期"," invoices")):"");
+          return opt(r2.key,RECON_RUN_KEY,t2); }).join("")
+      +`</select></span></label>`
+    : "";
   /* 篩了兩三層之後要回到「全部」,得一個一個把下拉切回去。有東西被篩掉的
      時候才出現這顆,沒篩的時候它不該佔位置。 */
   const clr=(DASH_F.acct||DASH_F.range)
@@ -17396,7 +17414,7 @@ function dashPickFilters(all){
         title="${esc(L("清除帳號與期間的篩選","Clear the account and period filters"))}">${
         L("清除篩選","Clear filters")}</button>`
     : "";
-  return acctSel+rngSel+clr;
+  return runSel+acctSel+rngSel+clr;
 }
 function dashBarHTML(){
   const all=dashPeriods();
@@ -17553,6 +17571,9 @@ function dashFollowFilter(){
 }
 function wireDashPickFilters(){
   const re=()=>dashFollowFilter();
+  const ru=$("#dfRun");
+  if(ru) ru.onchange=()=>{ const k=ru.value; if(!k) return;
+    reconOpenRun(k,false).catch(err=>toast(String((err&&err.message)||err),false)); };
   const a=$("#dfAcct");
   if(a) a.onchange=()=>{ DASH_F.acct=a.value; re(); };
   const r=$("#dfRange");
