@@ -14395,15 +14395,26 @@ const RECON_UNKNOWN="\u0000unknown";
    才留在 Not on Invoice。找到的貨件記在這個快取,reconRun 併進 byTrk;
    同一追蹤號兩邊都有時以目前載入的為準。 */
 let RECON_XSHIPS=new Map();
+/* 上一次歸檔搜尋的結果:搜了幾列、幾期、只有索引沒有明細的期別、追蹤號寫法
+   差異的樣本 —— 「找不到」必須講得出為什麼,不能只剩一句不在帳單上。 */
+let RECON_ARCH_INFO=null;
 async function reconFetchArchived(list){
   RECON_XSHIPS=new Map();
+  RECON_ARCH_INFO=null;
   if(!list||!list.length) return 0;
   const need=new Set();
   for(const e of list) for(const t of (e.trks||[])){
     const k=reconTrk(t); if(k) need.add(k);
   }
   if(!need.size) return 0;
-  const all=await idbAllRows().catch(()=>[]);
+  let all=await idbAllRows().catch(()=>[]);
+  /* 歸檔庫讀不到時退回記憶體裡的歷史明細(History 頁載入的那一份)。 */
+  if(!all.length && typeof HISTROWS!=="undefined" && HISTROWS && HISTROWS.length) all=HISTROWS;
+  const inArch=new Set();
+  for(const r of all){ const k=String((r&&r.invoice)||"").trim(); if(k) inArch.add(k); }
+  const idxOnly=Object.keys((typeof histInv==="function"&&histInv())||{})
+    .filter(k=>looksLikeInvKey(k) && !inArch.has(String(k).trim()));
+  RECON_ARCH_INFO={rows:all.length, periods:inArch.size, idxOnly, matched:0, sample:""};
   if(!all.length) return 0;
   /* 模板裡每一個追蹤號,把歸檔裡「不在目前載入期別」的行全部撿出來 ——
      整筆缺席的補整筆;本期有、其他期別還有更正行(SCC、Zone 調整、改收)的,
@@ -14411,7 +14422,18 @@ async function reconFetchArchived(list){
   const loadedInv=new Set((ROWS||[]).map(r=>String((r&&r.invoice)||"").trim()).filter(Boolean));
   const extra=all.filter(r=>r&&r.tracking&&need.has(reconTrk(r.tracking))
                           && !loadedInv.has(String(r.invoice||"").trim()));
-  if(!extra.length) return 0;
+  RECON_ARCH_INFO.matched=extra.length;
+  /* 一筆都對不上時抽一個樣本:模板的追蹤號拿去歸檔裡做「包含」比對,
+     寫法不同(多了字尾、少了字首)當場看得出來。 */
+  if(!extra.length){
+    const first=[...need][0]||"";
+    if(first){
+      const hit=all.find(r=>String((r&&r.tracking)||"").toUpperCase().indexOf(first)>=0
+                          || first.indexOf(reconTrk((r&&r.tracking)||""))>=0);
+      if(hit) RECON_ARCH_INFO.sample=String(hit.tracking);
+    }
+    return 0;
+  }
   const touched=new Set(extra.map(r=>reconTrk(r.tracking)));
   const own=(ROWS||[]).filter(r=>r&&r.tracking&&touched.has(reconTrk(r.tracking)));
   const rows=own.concat(extra);
@@ -15079,6 +15101,25 @@ function renderRecon(){
     warn.push(L(
       RECON_SRC+" 有、但系統內任何一期帳單上都沒有的 "+r.notOnInv.length+" 筆("+money(offAmt)+")不進對帳與合計;匯出時另放「Not on Invoice」一頁。",
       r.notOnInv.length+" row(s) are in "+RECON_SRC+" but on none of the invoices imported into the system ("+money(offAmt)+"); they stay out of the reconciliation and the totals and go on their own Not on Invoice sheet when exported."));
+    /* 為什麼找不到,講得出來的都講:搜了幾列幾期、哪幾期只有索引沒有明細、
+       追蹤號寫法差異的樣本。 */
+    const ai=(typeof RECON_ARCH_INFO!=="undefined")&&RECON_ARCH_INFO;
+    if(ai){
+      if(!ai.rows) warn.push(L(
+        "歸檔明細讀不到(0 列)。請到 Invoice History 確認各期明細是否還在;只有索引、沒有明細的期別要重新匯入。",
+        "No archived detail could be read (0 lines). Check Invoice History; periods with an index but no detail must be re-imported."));
+      else warn.push(L(
+        "已搜尋歸檔明細 "+ai.rows.toLocaleString()+" 列("+ai.periods+" 期)仍找不到這些追蹤號。",
+        "Searched "+ai.rows.toLocaleString()+" archived detail line(s) across "+ai.periods+" period(s); these tracking numbers were not found."));
+      if(ai.idxOnly&&ai.idxOnly.length) warn.push(L(
+        "注意:有 "+ai.idxOnly.length+" 期只有索引、沒有明細,搜尋不到它們的內容:"
+          +ai.idxOnly.slice(0,5).join("、")+(ai.idxOnly.length>5?" …":"")+"。請重新匯入那幾期。",
+        ai.idxOnly.length+" period(s) have an index but no stored detail, so their lines cannot be searched: "
+          +ai.idxOnly.slice(0,5).join(", ")+(ai.idxOnly.length>5?" …":"")+". Re-import those periods."));
+      if(ai.sample) warn.push(L(
+        "追蹤號寫法可能不同:歸檔裡有相近的「"+ai.sample+"」。",
+        "Tracking formats may differ: the archive holds the similar \""+ai.sample+"\"."));
+    }
   }
   if(r.unmatched.length) warn.push(L(
     "有 "+r.unmatched.length+" 筆一票多件的單,部分追蹤號在這期帳單上找不到,那幾件的 UPS 成本算 0。",
