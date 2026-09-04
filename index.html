@@ -14397,16 +14397,23 @@ let RECON_XSHIPS=new Map();
 async function reconFetchArchived(list){
   RECON_XSHIPS=new Map();
   if(!list||!list.length) return 0;
-  const have=new Set((SHIPS||[]).map(x=>reconTrk(x.tracking)).filter(Boolean));
   const need=new Set();
   for(const e of list) for(const t of (e.trks||[])){
-    const k=reconTrk(t); if(k && !have.has(k)) need.add(k);
+    const k=reconTrk(t); if(k) need.add(k);
   }
   if(!need.size) return 0;
   const all=await idbAllRows().catch(()=>[]);
   if(!all.length) return 0;
-  const rows=all.filter(r=>r&&r.tracking&&need.has(reconTrk(r.tracking)));
-  if(!rows.length) return 0;
+  /* 模板裡每一個追蹤號,把歸檔裡「不在目前載入期別」的行全部撿出來 ——
+     整筆缺席的補整筆;本期有、其他期別還有更正行(SCC、Zone 調整、改收)的,
+     把那些行併進同一筆:UPS 那一側是這個追蹤號在系統內全部期別的總和。 */
+  const loadedInv=new Set((ROWS||[]).map(r=>String((r&&r.invoice)||"").trim()).filter(Boolean));
+  const extra=all.filter(r=>r&&r.tracking&&need.has(reconTrk(r.tracking))
+                          && !loadedInv.has(String(r.invoice||"").trim()));
+  if(!extra.length) return 0;
+  const touched=new Set(extra.map(r=>reconTrk(r.tracking)));
+  const own=(ROWS||[]).filter(r=>r&&r.tracking&&touched.has(reconTrk(r.tracking)));
+  const rows=own.concat(extra);
   /* shipmentsOf 會動到 ACCT_LINES,借完要還;ORIG 只補缺的鍵,不動現有的。 */
   const keepA=ACCT_LINES;
   let ships=[];
@@ -14445,9 +14452,10 @@ function reconRun(list){
     const k=reconTrk(s.tracking);
     if(k && !byTrk.has(k)) byTrk.set(k,s);
   }
-  /* 歸檔期別找到的貨件:一樣進對帳。目前載入的優先。 */
+  /* 歸檔期別的行併好的貨件:蓋過只有本期行的那一筆 —— 它是「本期行 + 其他
+     期別的行」的超集,UPS 那一側才是完整的。 */
   if(typeof RECON_XSHIPS!=="undefined" && RECON_XSHIPS)
-    for(const [k,x] of RECON_XSHIPS) if(!byTrk.has(k)) byTrk.set(k,x);
+    for(const [k,x] of RECON_XSHIPS) byTrk.set(k,x);
   RECON_CFG.clear();
   const reg=cusReg();
   const byCode=new Map(reg.map(c=>[c.code,c]));
@@ -15024,8 +15032,8 @@ function renderRecon(){
     (cIn+cOff)+" row(s) carried from earlier periods that were not on their invoice: "+cIn+" matched this invoice, "+cOff+" still not on it (kept for the next period)."));
   const archN=(r.orders||[]).filter(o=>o.arch).length;
   if(archN) warn.push(L(
-    "有 "+archN+" 筆不在目前載入的期別上,已自系統歸檔的其他期別帶入,照常計入對帳與合計。",
-    archN+" row(s) are not on the loaded invoice(s); their shipments were pulled from other archived periods and are reconciled as usual."));
+    "有 "+archN+" 筆含系統歸檔其他期別的帳單行(整筆或更正),已一併帶入計算。",
+    archN+" row(s) include invoice lines from other archived periods (whole shipments or corrections); all of them are reconciled together."));
   if(r.notOnInv && r.notOnInv.length){
     const offAmt=r.notOnInv.reduce((a,o)=>a+toNum(o.amt),0);
     warn.push(L(
@@ -15898,8 +15906,13 @@ function bindRecon(){
     if(!rows||!rows.length){ say(L("還沒有 WMS / TMS 資料,先到「2. WMS / TMS 匯入」導入模板。","No WMS / TMS rows yet — import the template under step 2, WMS / TMS Import, first.")); return; }
     if(!SHIPS||!SHIPS.length){ say(L("還沒載入這一期的 UPS 帳單,先到「1. UPS 帳單匯入」處理帳單。","This period's UPS invoice is not loaded — process it under step 1, UPS Invoice Import, first.")); return; }
     if(!CFG){ say(L("還沒載入費率設定。","No rate configuration is loaded.")); return; }
-    const ok=reconRerunFrom(rows, false, RECON&&RECON.charges);
-    if(ok) toast(L("已分析 "+rows.length+" 筆。","Analysed "+rows.length+" row(s)."),true);
+    const go=()=>{
+      const ok=reconRerunFrom(rows, false, RECON&&RECON.charges);
+      if(ok) toast(L("已分析 "+rows.length+" 筆。","Analysed "+rows.length+" row(s)."),true);
+    };
+    /* 先把歸檔期別的行撈齊再跑 —— 只要在系統內的 raw invoice,一律一起計算。 */
+    if(typeof reconFetchArchived==="function") reconFetchArchived(rows).then(go,go);
+    else go();
   };
   $("#bReconRerun") && ($("#bReconRerun").onclick=analyse);
   $("#bReconRun2") && ($("#bReconRun2").onclick=analyse);
