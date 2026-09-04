@@ -13624,14 +13624,25 @@ let RECON_RUN_KEY="";   /* 現在畫面上這一份 */
 function reconInvKeys(){ return [...new Set((ROWS||[]).map(r=>String(r.invoice||"").trim()).filter(Boolean))].sort(); }
 function reconRunKey(src,invs){ return (src==="TMS"?"TMS":"WMS")+"|"+invs.join("+"); }
 function reconRunSave(rows,res,fname){
-  const invs=reconInvKeys();
+  let invs=reconInvKeys();
+  let xdates=[];
+  /* 純歸檔對帳(沒有載入中的帳單):期別與帳單日從歸檔貨件的行取,批次照樣入檔。 */
+  if(!invs.length && typeof RECON_XSHIPS!=="undefined" && RECON_XSHIPS && RECON_XSHIPS.size){
+    const si=new Set(), sd=new Set();
+    for(const x of RECON_XSHIPS.values()) for(const l of (x.allLines||[])){
+      const k2=String((l&&l.invoice)||"").trim(); if(k2) si.add(k2);
+      const d2=normYmd((l&&l.invDate)||"")||""; if(d2) sd.add(d2);
+    }
+    invs=[...si].sort(); xdates=[...sd].sort();
+  }
   if(!invs.length||!res||!rows||!rows.length) return;
   const key=reconRunKey(RECON_SRC,invs);
   /* 帳單上沒有的那幾列留著,下一期自動帶入再對一次;對到過的追蹤號記下來,以後不再帶。 */
   const pendTrk=new Set(); for(const o of (res.notOnInv||[])) for(const t of (o.trks||[])) pendTrk.add(reconTrk(t));
   const pending=rows.filter(r=>(r.trks||[]).length && (r.trks||[]).every(t=>pendTrk.has(reconTrk(t))));
   const matched=[]; for(const o of (res.orders||[])) if(o.found>0) for(const t of (o.trks||[])) matched.push(reconTrk(t));
-  const dates=[...new Set((ROWS||[]).map(r=>normYmd(r.invDate)||"").filter(Boolean))].sort();
+  let dates=[...new Set((ROWS||[]).map(r=>normYmd(r.invDate)||"").filter(Boolean))].sort();
+  if(!dates.length) dates=xdates;
   const t=res.tot||{};
   const run={key, src:RECON_SRC==="TMS"?"TMS":"WMS", invoices:invs, invDate:dates[dates.length-1]||"",
     when:Date.now(), fname:fname||"", n:rows.length, rows, pending, matched,
@@ -14053,14 +14064,17 @@ function reconRestoreRows(){
   const keep=reconRowsLoad();
   if(!keep) return;
   const rows=keep.rows;
-  if(!CFG||!SHIPS||!SHIPS.length){
+  if(!CFG){
     RECON={issues:[], res:null, list:rows, pending:true};
     reconRerunBtn(); renderRecon();
-    reconMsg(L("上次匯入的 "+rows.length+" 筆還留著。載入這一期的 UPS 帳單之後會自動比對。",
-               "The "+rows.length+" row(s) from last time are still here. Load this period's UPS invoice and the comparison runs by itself."),true);
+    reconMsg(L("上次匯入的 "+rows.length+" 筆還留著。載入費率設定之後會自動比對。",
+               "The "+rows.length+" row(s) from last time are still here. Load the rate configuration and the comparison runs by itself."),true);
     return;
   }
-  reconRerunFrom(rows, true);
+  /* 帳單沒載入也照跑:先去歸檔把期別撿齊(reconAutoRun 會做),真的都沒有
+     reconRerunFrom 會講清楚缺什麼。 */
+  RECON={issues:[], res:null, list:rows, pending:true};
+  reconAutoRun();
 }
 function reconRerunBtn(){
   /* 「分析」一直在;沒資料按下去會講原因,不必藏。 */
@@ -14071,7 +14085,7 @@ function reconRerunBtn(){
    現在載入的這一期。以前要人自己回 05 按「重新比對」。 */
 function reconAutoRun(){
   const rows=RECON&&RECON.list;
-  if(!rows||!rows.length||!CFG||!SHIPS||!SHIPS.length) return false;
+  if(!rows||!rows.length||!CFG) return false;
   const wasPending=!!RECON.pending;
   const fname=RECON.fname||"";
   const go=()=>{
@@ -14089,9 +14103,9 @@ function reconAutoRun(){
 function reconRerunFrom(rows, quiet){
   if(!rows||!rows.length) return false;
   if(!CFG){ reconMsg(L("請先載入費率設定。","Load a rate configuration first."),false); return false; }
-  if(!SHIPS||!SHIPS.length){
-    reconMsg(L("請先匯入這一期的 UPS 帳單,對帳要拿它來比。",
-               "Import this period's UPS invoice first — there is nothing to reconcile against."),false);
+  if((!SHIPS||!SHIPS.length) && !(typeof RECON_XSHIPS!=="undefined"&&RECON_XSHIPS&&RECON_XSHIPS.size)){
+    reconMsg(L("這批追蹤號不在目前載入的帳單上,歸檔裡也還沒有它們的期別 —— 到「1. UPS 帳單匯入」把那幾期匯入(匯入即歸檔)就會自動比對。",
+               "These tracking numbers are not on the loaded invoice and no archived period carries them yet — import those weeks under step 1, UPS Invoice Import (importing archives them), and the comparison runs by itself."),false);
     return false; }
   const pf=reconPreflight(rows.map(r=>r.cus));
   const res=reconRun(rows);
@@ -15893,13 +15907,14 @@ async function reconAccept(p, fname){
     reconMsg(m,false); toast(m,false);
     return false;
   }
-  /* 帳單還沒進來:先收下、留著,帳單一匯入(06)就自動比對。 */
-  if(!CFG||!SHIPS||!SHIPS.length){
+  /* 費率設定還沒載,收下等它;帳單「載沒載入」不再是門檻 —— 歸檔裡有的
+     期別一律自動撿回來一起算,不必回步驟 1 重新處理。 */
+  if(!CFG){
     RECON={issues:[], res:null, list:p.rows, sumWarn:p.sumWarn||[], fname:fname||"", pending:true};
     const kept=reconRowsSave(p.rows);
     reconRerunBtn(); renderRecon();
-    const m=L("已收下 "+p.rows.length+" 筆"+skipNote+"。這一期的 UPS 帳單還沒匯入,到「1. UPS 帳單匯入」匯入後會自動比對。",
-              "Accepted "+p.rows.length+" row(s)"+skipNote+". This period's UPS invoice is not loaded yet — import it under step 1, UPS Invoice Import, and the comparison runs by itself.");
+    const m=L("已收下 "+p.rows.length+" 筆"+skipNote+"。請先載入費率設定,載好會自動比對。",
+              "Accepted "+p.rows.length+" row(s)"+skipNote+". Load the rate configuration and the comparison runs by itself.");
     reconMsg(m,true); toast(m,true);
     if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
     return true;
@@ -15910,6 +15925,16 @@ async function reconAccept(p, fname){
   /* 只要在系統內任何一期的 raw invoice 上,一律進對帳:目前載入的帳單沒有的
      追蹤號,先去歸檔期別找齊再跑。 */
   await reconFetchArchived(all).catch(()=>0);
+  if((!SHIPS||!SHIPS.length) && !(typeof RECON_XSHIPS!=="undefined"&&RECON_XSHIPS&&RECON_XSHIPS.size)){
+    RECON={issues:[], res:null, list:p.rows, sumWarn:p.sumWarn||[], fname:fname||"", pending:true};
+    const kept=reconRowsSave(p.rows);
+    reconRerunBtn(); renderRecon();
+    const m=L("已收下 "+p.rows.length+" 筆"+skipNote+"。這批追蹤號的期別還不在系統裡 —— 到「1. UPS 帳單匯入」把那幾週匯入(匯入即歸檔),就會自動比對。",
+              "Accepted "+p.rows.length+" row(s)"+skipNote+". Their invoice periods are not in the system yet — import those weeks under step 1, UPS Invoice Import (importing archives them), and the comparison runs by itself.");
+    reconMsg(m,true); toast(m,true);
+    if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
+    return true;
+  }
   const pf=reconPreflight(all.map(r=>r.cus));
   const res=reconRun(all);
   RECON={issues:[], res, list:all, sumWarn:p.sumWarn||[], fname:fname||"", carried:carried.length};
@@ -16215,7 +16240,6 @@ function bindRecon(){
     const rows=RECON&&RECON.list;
     const say=m=>{ reconMsg(m,false); toast(m,false); };
     if(!rows||!rows.length){ say(L("還沒有 WMS / TMS 資料,先到「2. WMS / TMS 匯入」導入模板。","No WMS / TMS rows yet — import the template under step 2, WMS / TMS Import, first.")); return; }
-    if(!SHIPS||!SHIPS.length){ say(L("還沒載入這一期的 UPS 帳單,先到「1. UPS 帳單匯入」處理帳單。","This period's UPS invoice is not loaded — process it under step 1, UPS Invoice Import, first.")); return; }
     if(!CFG){ say(L("還沒載入費率設定。","No rate configuration is loaded.")); return; }
     const go=()=>{
       const ok=reconRerunFrom(rows, false, RECON&&RECON.charges);
