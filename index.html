@@ -14720,9 +14720,15 @@ function reconRun(list){
     if(upsF[SCC]>0.004){
       const wS=billedOf(SCC);
       if(!(wS!=null && Math.abs(wS)>0.004)){
-        /* 先照費率表的重量差(舊 SOP);查不到才用最後運費 − 已收運費。 */
-        const wB=billedOf("Base Rate")||0, rB0=rateOf("Base Rate"), rB=(rB0==="unset")?null:rB0;
-        const rate=F.sccRate!=null?cents(F.sccRate):(rB==null?null:cents(rB-wB));
+        /* 補收 = 重算的最後運費 − 已收的 Base Rate:已收的加上這筆更正,正好等於
+           重算的運費(TMS + SCC = Reprice,三邊對得起來)。重算沒有運費才照舊 SOP
+           的重量差;再沒有照 UPS 實收。Base Rate 整筆沒收的不在這裡收 ——
+           未收清單會照最後運費整筆補,更正已含在裡面,不重複。 */
+        const wB=billedOf("Base Rate"), rB0=rateOf("Base Rate"), rB=(rB0==="unset")?null:rB0;
+        const hasBase=wB!=null && Math.abs(wB)>0.004;
+        let rate=null;
+        if(rB!=null) rate=hasBase?cents(rB-wB):0;
+        else if(F.sccRate!=null) rate=cents(F.sccRate);
         const amt=rate!=null?rate:cents(upsF[SCC]);
         if(amt>0.004){
           items.push(Object.assign({kind:"miss", charge:SCC, desc:(desc[SCC]||[]).join(" / "),
@@ -15585,15 +15591,12 @@ async function reconExport(){
     const wBase=billed?cents(billed["Base Rate"]||0):0;
     const hasCorr=Math.abs((F.ups||{})[SCC]||0)>0.004 || (billed&&Math.abs(billed[SCC]||0)>0.004);
     const baseKnown=!o.block&&kn.has("Base Rate");
-    /* 費率表查得到重量差時:更正 = 那個差,Base Rate 的應收 = 最後運費 − 更正
-       (就是原本重量該收的運費);查不到才把 Base Rate 視同已收足。 */
-    const sccKnown=hasCorr && F.sccRate!=null && baseKnown;
     for(const nm of charges){
       const mem=membersOf(nm);
       const ups=cents(mem.reduce((a,f)=>a+((F.ups||{})[f]||0),0));   /* 沒重算時的備援 */
       let should;
-      if(nm==="Base Rate"&&hasCorr) should=sccKnown?cents(((F.rep||{})["Base Rate"]||0)-F.sccRate):(baseKnown?wBase:ups);
-      else if(nm===SCC) should=!hasCorr?0:(sccKnown?cents(F.sccRate):(baseKnown?cents(((F.rep||{})["Base Rate"]||0)-wBase):ups));
+      if(nm==="Base Rate"&&hasCorr) should=baseKnown?wBase:ups;
+      else if(nm===SCC) should=!hasCorr?0:(baseKnown?cents(((F.rep||{})["Base Rate"]||0)-wBase):ups);
       else should=cents(mem.reduce((a,f)=>a+shouldOf(o,f),0));
       let w=0;
       if(billed){
