@@ -1250,7 +1250,59 @@ main.home{display:flex;flex-direction:column}
 main.home #app{flex:1 0 auto;display:flex;flex-direction:column;min-height:0}
 main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
 #p-home .sceneBox{margin-top:auto}
-#p-home #scene{height:clamp(200px,30vh,340px)}
+#p-home #scene{height:clamp(190px,26vh,300px)}
+/* 那一幕本來是一塊直接切在頁面底部的畫布,上緣是硬邊。把它收成一塊:
+   上緣圓角、壓一條和主色同一族的細線、底下一層淺淺的陰影,和頁面上其他
+   卡片講同一種話。 */
+#p-home .sceneBox{border-radius:14px 14px 0 0;border:2px solid var(--accent);border-bottom:none;
+  box-shadow:0 -2px 0 rgba(0,0,0,.05)}
+/* 首頁面板。三塊:最近一次對帳(大)、待補收、帳單歷史,底下三顆快捷。
+   數字用標題字型 —— 首頁是用看的,不是用讀的。 */
+.homeboard{display:grid;grid-template-columns:1.7fr 1fr 1fr;gap:14px;margin:20px 0 4px}
+.homeboard .hcard{position:relative;padding:16px 18px 15px;border-radius:12px;
+  background:var(--panel);border:2px solid var(--line);box-shadow:0 2px 0 rgba(0,0,0,.07)}
+.homeboard .hcard.hero{border-color:var(--accent)}
+.homeboard .hk{font-size:11px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.homeboard .hv{font-family:var(--titlefam);font-weight:700;color:var(--ink);
+  font-size:30px;line-height:1.12;margin-top:7px;letter-spacing:-.01em}
+.homeboard .hcard.hero .hv{font-size:40px;color:var(--accent)}
+.homeboard .hv.neg{color:var(--neg)}
+.homeboard .hv small{font-family:inherit;font-size:.52em;color:var(--muted);margin-left:9px}
+.homeboard .hsub{font-size:12.5px;color:var(--muted);margin-top:7px;line-height:1.6}
+.homeboard .heq{display:flex;gap:18px;flex-wrap:wrap;margin-top:13px;padding-top:12px;
+  border-top:1.5px dashed var(--line)}
+.homeboard .heq div{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.homeboard .heq b{display:block;font-family:Consolas,monospace;font-size:15px;
+  font-weight:700;color:var(--text);letter-spacing:0;text-transform:none;margin-top:3px}
+.homeboard .hempty{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.7}
+.hacts{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 2px}
+/* 最近幾批:一列一批,滑過去整列會亮,點一下就把那一批叫回畫面上。 */
+.hlist{margin-top:16px;border:2px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+.hlisthd{display:flex;align-items:baseline;gap:10px;padding:10px 16px;border-bottom:1.5px solid var(--line);
+  font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.hlisthd span{font-size:11.5px;font-weight:400;letter-spacing:0;text-transform:none}
+.hrow{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.5fr) 90px 120px 120px;
+  gap:12px;align-items:center;width:100%;font:inherit;text-align:left;cursor:pointer;
+  padding:11px 16px;background:transparent;border:0;border-top:1px solid var(--line-soft,var(--line));
+  color:var(--text)}
+.hrow:first-of-type{border-top:0}
+.hrow:hover{background:var(--select)}
+.hrow .hn{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hrow .hd{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .hnum{font-family:Consolas,monospace;font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
+.hrow .hnum.pos{color:var(--run2);font-weight:700}
+.hrow .hnum.neg{color:var(--neg);font-weight:700}
+/* 還沒有批次的時候,中間放路怎麼走 —— 三步一列。 */
+.hsteps{display:flex;align-items:stretch;gap:12px;flex-wrap:wrap;margin-top:16px}
+.hsteps .hstep{flex:1 1 220px;padding:14px 16px;border:2px dashed var(--line);border-radius:12px;background:var(--panel)}
+.hsteps .hstep i{font-style:normal;font-size:20px;display:block;margin-bottom:6px}
+.hsteps .hstep b{display:block;font-size:14px;color:var(--ink);margin-bottom:4px}
+.hsteps .hstep s{display:block;text-decoration:none;font-size:12.5px;color:var(--muted);line-height:1.6}
+.hsteps .harw{align-self:center;color:var(--accent);font-size:20px}
+@media (max-width:900px){ .homeboard{grid-template-columns:1fr}
+  .hrow{grid-template-columns:1fr auto}
+  .hrow .hd{display:none} }
 .clockcard{position:absolute;top:12px;right:22px;padding:0;z-index:5;
   background:transparent;border:none;pointer-events:none}
 /* 第一塊面板要讓出時鐘的位置,不然輸入框會壓到日曆 */
@@ -1660,10 +1712,6 @@ label:has(#newChanOn){display:none !important}
        → 看結果,三步在同一顆按鈕底下)、看趨勢、查歷史、管理。左欄不再印編號。 -->
   <button role="tab" aria-selected="false" data-p="home" class="display" id="navHome"><i class="nnum">🏠</i><span class="nico"></span><span data-i18n="tab.home">Home</span></button>
   <div class="navgrp" data-i18n="nav.cfg">Configuration</div>
-  <!-- 系統設定原本收在「計價設定」底下的第三個子頁。它裝的是全帳號共用的東西
-       (DIM、稽核費、燃油適用、追蹤 API),和層級、代碼不是同一件事,藏在
-       第三個子頁裡也沒有人找得到 —— 拉出來自己一項。 -->
-  <button role="tab" aria-selected="false" data-p="sys" class="display"><span class="nico">⚙️</span><span data-i18n="tab.sys">General Settings</span></button>
   <button role="tab" aria-selected="false" data-p="general" class="display"><span class="nico">🧮</span><span data-i18n="tab.general">General Setting</span></button>
   <button role="tab" aria-selected="false" data-p="rate" class="display"><span class="nico">👥</span><span data-i18n="tab.rate">Account &amp; Client Setup</span></button>
   <button role="tab" aria-selected="false" data-p="cat" class="display"><span class="nico">🚚</span><span data-i18n="tab.cat">Channels &amp; Surcharges</span></button>
@@ -1677,6 +1725,10 @@ label:has(#newChanOn){display:none !important}
   <button role="tab" aria-selected="false" data-p="hist" class="display"><span class="nico">🗂️</span><span data-i18n="tab.hist">Invoice History</span></button>
   <button role="tab" aria-selected="false" data-p="track" class="display"><span class="nico">🔎</span><span data-i18n="tab.track">Tracking</span></button>
   <div class="navgrp" data-i18n="nav.adm">Administration</div>
+  <!-- 系統設定原本收在「計價設定」底下的第三個子頁。它裝的是全帳號共用的東西
+       (DIM、稽核費、燃油適用、追蹤 API),平常不會動,所以排在最底下那一組,
+       User Administration 前面 —— 使用者指定的位置。 -->
+  <button role="tab" aria-selected="false" data-p="sys" class="display"><span class="nico">⚙️</span><span data-i18n="tab.sys">General Settings</span></button>
   <button role="tab" aria-selected="false" data-p="admin" class="display"><span class="nico">🛡️</span><span data-i18n="tab.admin">User Administration</span></button>
   <!-- 底下這幾顆收起來(HIDDEN_TABS),各自由上面的入口進去。按鈕留著是因為
        currentTab() 靠 aria-selected 找現在在哪一頁。 -->
@@ -1781,7 +1833,11 @@ label:has(#newChanOn){display:none !important}
 
 <!-- ==================== Import Files ==================== -->
 <section class="page" id="p-home">
-  <!-- 碼頭那一幕(卡車、月台、同仁、貓狗)沉在頁面底部。原本的系統流程圖拿掉了。 -->
+  <!-- 首頁本來只有底部那一幕,中間一整片空白。空白不是留白 —— 它只是沒有內容。
+       這一塊回答「我上次做到哪、現在該做什麼」:最近一次對帳的結果、還沒補收的
+       金額、帳單歷史到哪一期,加三顆最常按的按鈕。內容由 renderHome() 生成。 -->
+  <div id="homeBoard"></div>
+  <!-- 碼頭那一幕(卡車、月台、同仁、貓狗)沉在頁面底部,收窄成一條,不再佔掉下半頁。 -->
   <div class="sceneBox" id="sceneBox"><canvas id="scene"></canvas></div>
 </section>
 
@@ -2165,7 +2221,6 @@ label:has(#newChanOn){display:none !important}
         <b id="fillLvlName"></b></div>
       <p class="rfnote" data-i18n="hint.rfshort">This page only sets the money. Which items exist is decided in the catalog.</p>
       <span style="flex:1 1 auto"></span>
-      <button class="act ghost" id="bFillCat">📚 <span data-i18n="btn.fillcat">Add or remove items</span></button>
       <button class="act ghost" id="bFillPrev">👁 <span data-i18n="btn.fillprev">Preview this level's rates</span></button>
     </div>
   </div>
@@ -7185,8 +7240,11 @@ function rlStore(){
 function rlEnsure(){
   if(!CFG||!CFG.raw) return null;
   let o=CFG.raw.rate_levels;
+  /* 一層都沒有的時候還是要生一層 —— 沒有層級就沒有費率,整套計價停擺,
+     而使用者看到的會是一頁一頁的空白。名字不叫「預設 / Default」:那個字
+     看起來像系統的東西,實際上它就是使用者的第一層,該由使用者命名。 */
   if(!o||typeof o!=="object"||!Array.isArray(o.list)){
-    o=CFG.raw.rate_levels={active:"L1", list:[{id:"L1", name:L("預設","Default")}], cfg:{}};
+    o=CFG.raw.rate_levels={active:"L1", list:[{id:"L1", name:L("第一層","Level 1")}], cfg:{}};
   }
   if(!o.cfg||typeof o.cfg!=="object") o.cfg={};
   if(!o.list.some(x=>x.id===o.active)) o.active=(o.list[0]||{}).id||"L1";
@@ -7216,7 +7274,11 @@ function rlNextId(o){
 function rlName(id){
   const o=rlStore(); if(!o) return "";
   const e=o.list.find(x=>x.id===id);
-  return e?e.name:id;
+  return e?e.name:(id||"");
+}
+/* 給畫面用:一層都還沒建的時候要有話講,空字串會變成一塊看不懂的空白。 */
+function rlNameOrNone(id){
+  return rlName(id)||L("尚未建立層級","No rate level yet");
 }
 function rlActive(){ const o=rlStore(); return o?o.active:""; }
 /* 一層佔多少。整份 JSON 的長度,估個大概給人看 —— 不必精準到位元組。 */
@@ -8428,6 +8490,81 @@ function renderClaimCard(){
     };
   });
 }
+/* 首頁那一塊。數字全部取自已經存好的東西 —— 對帳批次的摘要、帳單歷史的索引,
+   不重算、不打資料庫的明細,所以進首頁是即時的。 */
+function renderHome(){
+  const box=$("#homeBoard"); if(!box) return;
+  let runs=(typeof RECON_RUNS!=="undefined"&&RECON_RUNS)?RECON_RUNS:null;
+  if(runs===null && typeof idbRunAll==="function" && !window.__homeRunsKick){
+    window.__homeRunsKick=true;
+    idbRunAll().then(l=>{ RECON_RUNS=l||[]; renderHome(); })
+      .catch(()=>{ window.__homeRunsKick=false; });
+  }
+  runs=(runs||[]).slice().sort((a,b)=>(b.when||0)-(a.when||0));
+  const last=runs[0]||null, s2=(last&&last.sum)||{};
+  const amt=toNum(s2.amt), rebill=toNum(s2.rebill), cost=toNum(s2.cost);
+  const ch=cents(amt+rebill), pf=cents(ch-cost);
+  const mg=ch?pf/Math.abs(ch)*100:null;
+  const per=(typeof dashPeriods==="function")?dashPeriods():[];
+  const card=(cls,k,v,sub,extra)=>`<div class="hcard${cls?" "+cls:""}">
+    <div class="hk">${esc(k)}</div><div class="hv${v.neg?" neg":""}">${v.html}</div>
+    ${sub?`<div class="hsub">${sub}</div>`:""}${extra||""}</div>`;
+  const hero=last
+    ? card("hero", L("最近一次對帳的毛利","Profit · latest reconciliation"),
+        {html:money(pf)+(mg==null?"":`<small>${anaPct(mg)}</small>`), neg:pf<0},
+        esc(runLabelOf(last))+" · "+esc(tplWhen(last.when))+(last.by?" · "+esc(last.by):""),
+        `<div class="heq">
+          <div>${L("應收合計","Chargeable")}<b>${money(ch)}</b></div>
+          <div>UPS<b>${money(cost)}</b></div>
+          <div>${L("對帳筆數","Rows")}<b>${toNum(last.n).toLocaleString()}</b></div>
+        </div>`)
+    : `<div class="hcard hero"><div class="hk">${esc(L("最近一次對帳","Latest reconciliation"))}</div>
+        <div class="hempty">${esc(L("還沒有對帳批次。匯入 UPS 帳單,再把填好的 WMS / TMS 模板倒進來,結果就會出現在這裡。",
+          "No reconciliation yet. Import a UPS invoice, then bring in the filled WMS / TMS template — the result lands here."))}</div></div>`;
+  const rb=last
+    ? card("", L("這一批的應補收","To re-bill · latest batch"),
+        {html:money(rebill), neg:rebill<0},
+        esc(L("向客戶補收的差額","the shortfall to bill the client")))
+    : card("", L("這一批的應補收","To re-bill · latest batch"), {html:"—"}, "");
+  const hist=card("", L("帳單歷史","Invoices filed"),
+    {html:String(per.length)+`<small>${L("期","periods")}</small>`},
+    per.length?esc(L("最新:","Latest: ")+per[0].key+" · "+(per[0].date||"—")):esc(L("還沒有帳單","nothing filed yet")));
+  /* 中間那一段:有批次就列最近幾批(點一下就開),沒有就講一次路怎麼走。
+     兩種情況都要有東西 —— 首頁空著不是留白,是沒有內容。 */
+  const rows=runs.slice(0,5).map(r=>{
+    const v=r.sum||{}; const c=cents(toNum(v.amt)+toNum(v.rebill));
+    const p=cents(c-toNum(v.cost));
+    return `<button class="hrow" data-run="${esc(r.key)}">
+      <span class="hn">${esc(runLabelOf(r))}</span>
+      <span class="hd">${esc(tplWhen(r.when))}${r.by?" · "+esc(r.by):""}</span>
+      <span class="hnum">${toNum(r.n).toLocaleString()}${L(" 筆"," rows")}</span>
+      <span class="hnum">${money(c)}</span>
+      <span class="hnum ${p<0?"neg":"pos"}">${money(p)}</span></button>`; }).join("");
+  const mid=runs.length
+    ? `<div class="hlist"><div class="hlisthd">${esc(L("最近的對帳批次","Recent reconciliations"))}
+         <span>${esc(L("點一下開起來看","open one to look at it"))}</span></div>${rows}</div>`
+    : `<div class="hsteps">
+        <div class="hstep"><i>📁</i><b>${esc(L("匯入 UPS 帳單","Import the UPS invoice"))}</b>
+          <s>${esc(L("一次可以選好幾期,匯入即歸檔","several periods at once; filed as they import"))}</s></div>
+        <div class="harw">→</div>
+        <div class="hstep"><i>📄</i><b>${esc(L("下載模板、填好倒回來","Download the template, fill it, bring it back"))}</b>
+          <s>${esc(L("一個追蹤號一列,綠色那幾欄是要填的","one tracking number per row; the green columns are yours"))}</s></div>
+        <div class="harw">→</div>
+        <div class="hstep"><i>⚖️</i><b>${esc(L("看結果","Read the result"))}</b>
+          <s>${esc(L("該補收多少、這一批賺多少","what to re-bill, and what the batch made"))}</s></div>
+      </div>`;
+  box.innerHTML=`<div class="homeboard">${hero}${rb}${hist}</div>
+    <div class="hacts">
+      <button class="act" data-go="files">📁 ${esc(L("UPS 帳單匯入","UPS Invoice Import"))}</button>
+      <button class="act ghost" data-go="wmsdata">📄 ${esc(L("WMS / TMS 匯入","WMS / TMS Import"))}</button>
+      <button class="act ghost" data-go="analysis">📈 ${esc(L("儀表板","Dashboard"))}</button>
+    </div>${mid}`;
+  box.querySelectorAll("[data-run]").forEach(b=>{ b.onclick=()=>{
+    if(typeof reconOpenRun==="function")
+      reconOpenRun(b.dataset.run,false).catch(e=>toast(String((e&&e.message)||e),false));
+  }; });
+  box.querySelectorAll("[data-go]").forEach(b=>{ b.onclick=()=>showTab(b.dataset.go); });
+}
 /* 一個 IndexedDB 整批抄到另一個。來源不存在就當 0 期,不建立空的資料庫。 */
 function idbCopyDatabase(fromName,toName){
   return new Promise(res=>{
@@ -8713,6 +8850,7 @@ function showTab(p){
     s.classList.toggle("on", s.id==="p-"+p));
   const mainEl=document.querySelector("main"); if(mainEl) mainEl.classList.toggle("home", p==="home");
   sceneShow(p==="home");
+  if(p==="home" && typeof renderHome==="function") try{ renderHome(); }catch(e){}
   if(p==="admin"&&ME&&ME.role==="admin"){ loadLoginHistory(); loadUsers(); }
   if(p==="cus"&&typeof renderCustomers==="function") renderCustomers();
   if(p==="analysis"&&typeof renderAnalysis==="function") renderAnalysis();
@@ -8733,13 +8871,15 @@ function showSetCards(which){
   const show=(id,on)=>{ const e=$("#"+id); if(e) e.hidden=!on; };
   if(which==="cus"||which===""){ show("cusCard",true); }
   if(which==="setting"||which==="sys"){
-    /* 1. 層級設定:層級表+費率設定檔(載檔蓋到誰,取決於正在編哪一層,
-       兩張卡本來就該站在一起)。3. 系統設定:全帳號的東西 —— 燃油適用
-       與啟用/停用。 */
+    /* 費率層級那一頁只留層級表本身。其餘全部是「一般設定」—— 它們和你正在
+       編哪一層無關(設定檔、追蹤 API、燃油適用、啟用停用、接舊帳號的資料),
+       擺在層級頁只會讓人以為那些東西也分層。 */
     show("cardLvl",      which==="setting");
-    show("cardCfgFile",  which==="setting");
+    show("cardCfgFile",  which==="sys");
+    show("cardTrkApi",   which==="sys");
     show("cardFuelElig", which==="sys");
     show("cardOnOff",    which==="sys");
+    const ch=$("#claimHost"); if(ch) ch.hidden=(which!=="sys");
     const h=$("#setHead");
     if(h) h.textContent = which==="sys"
       ? L("一般設定","General settings")
@@ -13160,10 +13300,8 @@ function bindPagePreviews(){
 /* 04 標題上的層級名,跟右上角選單同一份資料 */
 function fillLvlSync(){
   const e=$("#fillLvlName");
-  if(e) e.textContent=rlName((rlStore()||{}).active)||"";
+  if(e) e.textContent=rlNameOrNone((rlStore()||{}).active);
 }
-/* 「有哪些項目」和「一項多少錢」是兩頁的事。以前那句話只是告訴你要自己走過去。 */
-$("#bFillCat") && ($("#bFillCat").onclick=()=>showTab("cat"));
 
 /* 日期挑選器。桌面版是自己畫的月曆,不是系統控制項 ——
    瀏覽器原生的 date input 每個系統長得都不一樣,對不上這套外觀。 */
@@ -21549,7 +21687,6 @@ const I18N={
   "hd.ratefill":["渠道與附加費費率","Channel & Surcharge Rates"],
   "lb.rfnow":["正在編價","Pricing"],
   "hint.rfshort":["這一頁只填錢。有哪些項目由目錄決定。","This page only sets the money. Which items exist is decided in the catalog."],
-  "btn.fillcat":["到目錄增減項目","Add or remove items"],
   "btn.fillprev":["預覽本層費率","Preview this level's rates"],
   "hd.baserate":["渠道基本運費","Channel base rates"],
   "hd.demrate":["Demand 附加費費率","Demand surcharge rates"],
