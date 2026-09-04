@@ -16492,7 +16492,7 @@ function dashWmsAgg(){
     cost:cents(t.cost||0), chargeable:cents(t.chargeable!=null?t.chargeable:total+((r.rebill&&r.rebill.grand)||0)),
     profit:cents(t.profit!=null?t.profit:0)};
 }
-/* 成本拆解那三欄要能互相比對,就得站在同一批單子上。WMS / TMS 匯進來的
+/* 成本拆解那兩欄要能互相比對,就得站在同一批單子上。WMS / TMS 匯進來的
    通常只是這一期的一部分,拿它跟整批帳單並排,左邊幾百萬、右邊幾百塊,
    三個圓餅講的不是同一件事。有對帳在畫面上的時候,重算側與 UPS 側都只
    算這一份對到的追蹤號 —— 匯進來哪些,就只產出哪些。 */
@@ -17801,8 +17801,6 @@ function renderDashboard(){
       +`<text class="phole" x="75" y="88" text-anchor="middle" font-size="10" opacity=".7">${esc(centerSmall)}</text>`
       +`</svg><div class="plegend"><table>${rows}</table></div></div>`;
   };
-  /* 只有真的沒有歸類的錢才進「未歸類代碼」—— 不重算的那一份已經自成一塊。 */
-  const uAmt=d.unknownNet;
   /* 兩張餅共用同一組分類,才對得起來。改判與未知固定用自己的顏色。 */
   const RECLCOL=RECLCOL2;
   const pieItems=(obj,extraUnknown,unkBy)=>{
@@ -17878,13 +17876,14 @@ function renderDashboard(){
       +`</div>`;
   };
   const wmsAgg=dashWmsAgg();
-  /* 有對帳在畫面上就只拿這一份涵蓋到的單子畫,三欄才在同一個基準上。 */
+  /* 有對帳在畫面上就只拿這一份涵蓋到的單子畫,兩欄才在同一個基準上。 */
   const sc=wmsAgg?dashPieScoped():null;
   const compHTML=(sc?`<p class="hint" style="margin:0 0 10px">${esc(L(
-      "只計 "+wmsAgg.src+" 匯入涵蓋、且對到這期帳單的 "+sc.n.toLocaleString()+" 筆 —— 三欄站在同一批單子上才比得起來。整批帳單的金額在上面的數字帶。",
-      "Covers only the "+sc.n.toLocaleString()+" shipment(s) the "+wmsAgg.src+" import matched to this invoice, so the three columns stand on the same set. The figures for the whole invoice are in the strip above."))}</p>`:"")
+      "只計 "+wmsAgg.src+" 匯入涵蓋、且對到這期帳單的 "+sc.n.toLocaleString()+" 筆 —— 兩欄站在同一批單子上才比得起來。整批帳單的金額在上面的數字帶。",
+      "Covers only the "+sc.n.toLocaleString()+" shipment(s) the "+wmsAgg.src+" import matched to this invoice, so both columns stand on the same set. The figures for the whole invoice are in the strip above."))}</p>`:"")
     +`<div class="pie2">`
-    +oneP(sc?sc.buckets:d.buckets, sc?0:uAmt, L("重算","REPRICED"), sc?sc.repriced:d.repriced, sc?sc.unknownBy:d.unknownBy)
+    /* 「重算」那一欄拿掉了:重算金額只是參考,不是向誰收的錢,擺在
+       UPS 實收旁邊會被讀成一組可以相減的數字。 */
     +oneP(sc?sc.upsBuckets:(d.upsBuckets||{}), 0, L("UPS 帳單","UPS BILLED"), sc?sc.billed:d.billed, sc?sc.upsUnknownBy:d.upsUnknownBy)
     +(wmsAgg?(()=>{ const ch=Object.assign({},wmsAgg.buckets);
         const RBK=L("應補收","To re-bill");
@@ -17934,19 +17933,19 @@ function renderDashboard(){
     ${wmsAgg?`<div class="dflow">
       <div class="dcell"><div class="dk">${L("應收合計","Chargeable")}</div>
         <div class="dv">${money(wmsAgg.chargeable)}</div>
-        <div class="dsub">${esc(wmsAgg.src)+" "+money(wmsAgg.total)+L(" + 補收 "," + re-bill ")+money(wmsAgg.rebill)}</div></div>
+        <div class="dsub">${esc(wmsAgg.src)+" "+money(wmsAgg.total)+L(" + 應補收 "," + to re-bill ")+money(wmsAgg.rebill)}</div></div>
       <div class="dcell dop" data-op="−"><div class="dk">UPS</div>
         <div class="dv">${money(wmsAgg.cost)}</div></div>
       <div class="dcell dop" data-op="="><div class="dk">${L("毛利","Profit")}</div>
         <div class="dv ${wmsAgg.profit<0?"neg":"pos"}">${money(wmsAgg.profit)}</div></div>
       <div class="dcell dapart"><div class="dk">${L("對帳筆數","Reconciled rows")}</div>
         <div class="dv">${wmsAgg.n}</div></div>
-    </div>`:`<div class="dempty" style="padding:14px 18px;margin-bottom:12px">${L("毛利要等對帳:匯入 WMS / TMS 檔之後,這裡才會有「實收 + 補收 − UPS」。",
-        "Profit waits for the reconciliation: import the WMS / TMS file and this line shows billed + difference − UPS.")}</div>`}
+    </div>`:`<div class="dempty" style="padding:14px 18px;margin-bottom:12px">${L("毛利要等對帳:匯入 WMS / TMS 檔之後,這裡才會有「實收 + 應補收 − UPS」。",
+        "Profit waits for the reconciliation: import the WMS / TMS file and this line shows billed + to re-bill − UPS.")}</div>`}
     <div class="dcard">
       <div class="ch"><h3>${L("費用組成","Cost breakdown")}</h3>
         <button class="act ghost" id="bPerXls" style="padding:3px 11px;font-size:12px">${
-          L("重算報表…","Reprice report…")}</button></div>
+          L("利潤報表…","Profit report…")}</button></div>
       ${compHTML}
     </div>
     <div class="dcard" style="margin-top:12px">
