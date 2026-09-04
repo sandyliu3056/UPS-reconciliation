@@ -915,10 +915,10 @@ tr.blocked{opacity:.72}
 .pie.pieflat .plegend{width:100%}
 .pie.pieflat .plegend table{width:100%}
 .pie2{display:grid;grid-template-columns:repeat(auto-fit,minmax(345px,1fr));gap:20px}
-.pcap{font-size:11.5px;font-weight:700;letter-spacing:1.2px;color:var(--muted);
-  margin:0 0 10px;padding-bottom:5px;border-bottom:1.5px solid var(--line);
+.pcap{font-size:14.5px;font-weight:700;letter-spacing:1.4px;color:var(--ink);
+  margin:0 0 10px;padding-bottom:6px;border-bottom:1.5px solid var(--line);
   display:flex;align-items:baseline}
-.pcap b{margin-left:auto;color:var(--accent);font-family:Consolas,monospace;font-size:13.5px}
+.pcap b{margin-left:auto;color:var(--accent);font-family:Consolas,monospace;font-size:16px}
 .pnote{font-size:11px;color:var(--muted);line-height:1.55;margin-top:9px;max-width:46ch}
 .phole{font-family:Consolas,monospace;fill:var(--accent)}
 .plegend{flex:1 1 280px;min-width:0}
@@ -17867,35 +17867,42 @@ function renderDashboard(){
        圓餅畫七塊,其餘全部進「其他」,但圖例一項都不會少。 */
     const TOP=7;
     const kidsOf=k=>kids[k]||[];
-    const out=[];
+    /* 排序要準:整份清單嚴格照金額大到小 ——「其他」「改判」「未歸類」也
+       各算一塊,插進它們金額該在的位置,不再固定墊底。折疊的細項跟著
+       自己的主列走。 */
+    const blocks=[];
     ent.slice(0,TOP).forEach(([c,v],i)=>{
       const col=PIE[i%PIE.length];
-      out.push([dashLabel(c),v,col]);
-      for(const [kk,kv] of kidsOf(c)) out.push([dashLabel(kk),kv,col,"fold"]);
+      const rows=[[dashLabel(c),v,col]];
+      for(const [kk,kv] of kidsOf(c)) rows.push([dashLabel(kk),kv,col,"fold"]);
+      blocks.push({v, rows});
     });
     const rest=ent.slice(TOP);
     if(rest.length){
-      out.push([L(`其他 ${rest.length} 項`,`Other (${rest.length})`),
-                rest.reduce((a,[,v])=>a+v,0), OTHERCOL]);
+      const sum=rest.reduce((a,[,v])=>a+v,0);
+      const rows=[[L(`其他 ${rest.length} 項`,`Other (${rest.length})`), sum, OTHERCOL]];
       for(const [c,v] of rest){
-        out.push([dashLabel(c),v,OTHERCOL,"fold"]);
-        for(const [kk,kv] of kidsOf(c)) out.push([dashLabel(kk),kv,OTHERCOL,"fold"]);
+        rows.push([dashLabel(c),v,OTHERCOL,"fold"]);
+        for(const [kk,kv] of kidsOf(c)) rows.push([dashLabel(kk),kv,OTHERCOL,"fold"]);
       }
+      blocks.push({v:sum, rows});
     }
     const rc=toNum(obj[DASH_RECLASS]);
-    if(Math.abs(rc)>0.005) out.push([L("改判 AHS/大包裹","Reclassified AHS/LP"),rc,RECLCOL]);
+    if(Math.abs(rc)>0.005) blocks.push({v:rc, rows:[[L("改判 AHS/大包裹","Reclassified AHS/LP"),rc,RECLCOL]]});
     const uk=toNum(obj[DASH_UNKNOWN])+toNum(extraUnknown);
     if(Math.abs(uk)>0.005){
-      out.push([L("未歸類代碼","Unclassified codes"),uk,MISSCOL]);
+      const rows=[[L("未歸類代碼","Unclassified codes"),uk,MISSCOL]];
       /* 「未知 $7.65」講不出任何可以行動的事。把它拆回實際的帳單代碼,
          才知道要去代碼查詢頁查哪一個。折在底下,和 DAS、其他同一個做法。 */
       for(const [c,v] of Object.entries(unkBy||{}).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])))
         if(Math.abs(v)>0.005)
           /* 查得到名字的就把名字寫出來 —— 只給三個字母,讀的人還是得再查一次。
              這裡不要先 esc:pieBlock 自己會跳脫,跳兩次會把 & 變成 &amp;amp;。 */
-          out.push([CODE_REF[c]?c+" · "+CODE_REF[c]:c, v, MISSCOL, "fold"]);
+          rows.push([CODE_REF[c]?c+" · "+CODE_REF[c]:c, v, MISSCOL, "fold"]);
+      blocks.push({v:uk, rows});
     }
-    return out;
+    blocks.sort((a,b)=>Math.abs(b.v)-Math.abs(a.v));
+    return blocks.flatMap(b=>b.rows);
   };
   const oneP=(obj,extra,cap,sum,unkBy)=>{
     const it=pieItems(obj,extra,unkBy);
