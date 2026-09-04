@@ -14515,7 +14515,7 @@ function reconRun(list){
     const feesDesc={};               /* 每一欄在帳單上的原文描述,補收時開給客戶看 */
     const feesKnown=new Set();       /* 重算真的算過的費用:合約沒費率的不在裡面 */
     const invDates=new Set();        /* 對到的帳單期別日期,匯出明細第一欄 */
-    let upsWt=0, wtN=0, upsId=null, fuelPct=null, sccRate=null, zoneRate=null, zoneNote="", zoneAcc=null;
+    let upsWt=0, wtN=0, upsId=null, fuelPct=null, sccRate=null, zoneRate=null, zoneNote="", zoneAcc=null, zoneOld="", zoneNew="";
     let usedArch=false;
     for(const t of e.trks){
       const s=byTrk.get(t);
@@ -14547,6 +14547,7 @@ function reconRun(list){
         {
           const zU=normZone(String(priced.zoneUsed||""))||"", zO=normZone(String(s.zone||""))||"";
           if(zU && zO && zU!==zO){
+            zoneOld=zO; zoneNew=zU;   /* 退還列的 Zone 欄要寫原本的 Zone */
             const svcZ=guessService(s.service);
             const wZ=Math.min(150, Math.max(0, toNum(priced.bw&&priced.bw.billable)));
             if(wZ>0){
@@ -14626,7 +14627,7 @@ function reconRun(list){
              zone:String(e.zone||""), upsZone, zoneMis,
              chan, sysChan, chanMis, chanUnknown,
              wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"", arch:usedArch,
-             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
+             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc, zoneOld, zoneNew}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
              name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
              amt:e.amt, cost:cents(cost), rep:block?null:cents(rep)};
@@ -14741,10 +14742,12 @@ function reconRun(list){
        照運費更正的慣例收一筆稽核費(同單已因 SCC 收過、或帳單上已有稽核費行的
        不重複)。同單另有重量更正(SCC)時運費walk那一條路,不重複。 */
     if((F.zoneRate!=null && cents(F.zoneRate)>0.004) || F.zoneAcc){
-      const zn=F.zoneNote||"";
-      const zdOf=nm=>((desc[nm]||[]).filter(d2=>/ZONE ADJUSTMENT/i.test(d2)).join(" / "));
+      /* 呈現:敘述用全句「Zone corrected from 2 to 6 — reversed / rebilled」;
+         退還列 Zone 欄寫原本的 Zone,補收列寫更正後的,對帳單一眼分得出一負一正。 */
+      const zOldTxt=String(F.zoneOld||""), zNewTxt=String(F.zoneNew||"");
+      const zn=(zOldTxt&&zNewTxt)?("Zone corrected from "+zOldTxt+" to "+zNewTxt):(F.zoneNote||"");
       const rep2=F.rep||{};
-      const swapPair=(nm,newAmt,zd)=>{
+      const swapPair=(nm,newAmt)=>{
         /* 退還照什麼名目收的就退什麼名目:自己的欄位、或合併欄。 */
         let bw2=(b&&b[nm]!=null)?b[nm]:null, bn=nm;
         if((bw2==null||Math.abs(toNum(bw2))<=0.004) && b && heads.has(nm) && b[heads.get(nm)]!=null){
@@ -14752,11 +14755,11 @@ function reconRun(list){
         }
         const billedAmt=bw2==null?0:cents(toNum(bw2));
         if(Math.abs(billedAmt)>0.004){
-          items.push(Object.assign({kind:"refund", charge:bn, desc:zn,
-            ups:0, billed:billedAmt, rate:0, amt:cents(-billedAmt), credit:0, creditFrom:[], wms:billedAmt, over:0}, base));
+          items.push(Object.assign({kind:"refund", charge:bn, desc:zn+" — reversed",
+            ups:0, billed:billedAmt, rate:0, amt:cents(-billedAmt), credit:0, creditFrom:[], wms:billedAmt, over:0},
+            base, zOldTxt?{zone:zOldTxt}:{}));
         }
-        items.push(Object.assign({kind:"zone", charge:nm,
-          desc:zn+(zd?" — "+zd:""),
+        items.push(Object.assign({kind:"zone", charge:nm, desc:zn+" — rebilled",
           ups:0, billed:0, rate:cents(newAmt), amt:cents(newAmt), credit:0, creditFrom:[]}, base));
       };
       let did=false;
@@ -14765,13 +14768,12 @@ function reconRun(list){
         const rB=cents(toNum(rep2["Base Rate"]||0));
         const bB=billedOf("Base Rate");
         if(rB>0.004 && bB!=null && Math.abs(bB)>0.004){
-          swapPair("Base Rate", rB, zdOf("Base Rate")); did=true;
+          swapPair("Base Rate", rB); did=true;
         }
       }
       if(!did && F.zoneRate!=null && cents(F.zoneRate)>0.004){
         /* 客戶沒收運費、或同單另有重量更正:退不了原收的,照差額開一項。 */
-        items.push(Object.assign({kind:"zone", charge:"Zone Adjustment",
-          desc:zn+((zdOf("Base Rate"))?" — "+zdOf("Base Rate"):""),
+        items.push(Object.assign({kind:"zone", charge:"Zone Adjustment", desc:zn,
           ups:0, billed:0, rate:cents(F.zoneRate), amt:cents(F.zoneRate), credit:0, creditFrom:[]}, base));
         did=true;
       }
@@ -14783,7 +14785,7 @@ function reconRun(list){
         const w=billedOf(nm);
         /* 客戶有收(自己欄或合併欄)才一退一收;沒收的走家族的漏收路,不重複。 */
         if(!(w!=null && Math.abs(w)>0.004)) continue;
-        swapPair(nm, nA, zdOf(nm)); did=true;
+        swapPair(nm, nA); did=true;
         /* 這一家族在下面的家族路不要再比一次:一退一收已經處理完。 */
         if(famOf.has(nm)) zoneDone.add("f"+famOf.get(nm));
       }
@@ -15644,15 +15646,18 @@ async function reconExport(){
      不合併儲存格、表頭不上色、日期 m/d/yyyy —— 這一頁是要貼進客戶帳單的,越素越好搬。 */
   const cusHead=["Transaction Date","Tracking Number","Order Number","Channel","Zone","Item","Description","Amount"]
     .map(n=>({v:n,t:"s",s:{bold:true,align:"left",border:true}}));
+  /* 金額帶 $:這一頁是客戶帳單,幣別要寫明。 */
+  const CUR="$#,##0.00";
+  const dc=v=>({v:cents(v||0),t:"n",s:{fmt:CUR}});
   for(const [code,list] of byCusItems){
     const sorted=list.filter(it=>Math.abs(it.amt)>0.004).sort((a,b)=>a.trk.localeCompare(b.trk)||b.total-a.total);
     if(!sorted.length) continue;
     const rows=[]; let sum=0;
     for(const it of sorted){
-      rows.push([dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"", it.charge, it.desc||"", dm(it.amt)]); sum=cents(sum+it.amt);
-      if(Math.abs(it.fuel)>0.004){ rows.push([dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"", "Fuel Surcharge", it.charge+" @ "+it.fuelPct+"%", dm(it.fuel)]); sum=cents(sum+it.fuel); }
+      rows.push([dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"", it.charge, it.desc||"", dc(it.amt)]); sum=cents(sum+it.amt);
+      if(Math.abs(it.fuel)>0.004){ rows.push([dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"", "Fuel Surcharge", it.charge+" @ "+it.fuelPct+"%", dc(it.fuel)]); sum=cents(sum+it.fuel); }
     }
-    rows.push(["","","","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:MONEY,bold:true}}]);
+    rows.push(["","","","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:CUR,bold:true}}]);
     cusSheets.push({name:sheetName(code), rows:[cusHead,...rows], cols:[12,22,20,20,7,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
   }
 
