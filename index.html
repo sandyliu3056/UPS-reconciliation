@@ -1065,6 +1065,22 @@ tr.blocked{opacity:.72}
   letter-spacing:.9px;text-transform:uppercase;padding:6px 12px}
 .bkdov .tablewrap{border-radius:0}
 /* 卡片自己已有深色標題條,裡面的表頭改淺 —— 兩條深色帶疊在一起太重。 */
+/* 整筆(不分帳單期)的那幾個數字自己一條 —— 它們和帳單期沒有關係,
+   當成表格的一欄就會出現一整欄的破折號,那是把「不適用」畫成資料。 */
+.bkdsum{margin-top:10px;border:1.5px solid var(--accent);border-radius:10px;overflow:hidden}
+.bkdsum-hd{background:var(--stripe);color:var(--accent);font-size:11px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;padding:6px 12px;border-bottom:1px solid var(--line)}
+.bkdsum-row{display:flex;flex-wrap:wrap;background:var(--panel)}
+.bkdsum-c{flex:1 1 130px;min-width:130px;padding:9px 15px;position:relative}
+.bkdsum-c + .bkdsum-c{border-left:1px solid var(--line)}
+.bkdsum-c .k{display:block;font-size:11px;color:var(--muted);letter-spacing:.04em;margin-bottom:3px}
+.bkdsum-c .v{font-family:Consolas,monospace;font-size:16px;font-weight:700;color:var(--ink)}
+.bkdsum-c .v.neg{color:var(--neg)}
+.bkdsum-c[data-op]::before{content:attr(data-op);position:absolute;left:-8px;top:50%;
+  transform:translateY(-50%);width:16px;height:16px;line-height:15px;text-align:center;
+  font-size:11px;font-weight:700;background:var(--panel);color:var(--accent);
+  border:1px solid var(--line);border-radius:50%;z-index:1}
+.bkdsum-note{padding:7px 15px 9px;font-size:11px;color:var(--muted);line-height:1.6}
 .bkdov table thead th{background:var(--stripe);color:var(--accent);
   border-bottom:2px solid var(--accent);font-size:11.5px;letter-spacing:.4px}
 /* 宣告價值級距的設定狀態:一顆看得見的徽章,不再是一行灰字。 */
@@ -10811,17 +10827,15 @@ function openBreakdown(){
      與毛利率(毛利 ÷(實收 + 應補收))。 */
   H.push(`<div class="bkdov"><div class="bkdov-hd">${L("各期總覽","Invoice overview")}</div>`);
   H.push(`<div class="tablewrap" style="margin:0"><table style="width:100%">`);
-  const pfTip=L(wsrc+" 實收 + 應補收 − UPS 實收",wsrc+" billed + To re-bill − UPS billed");
+  /* 這張表只放「分得了期」的數字:哪一期、重算多少、UPS 收多少。向客戶實收、
+     應補收、毛利是整筆的量(rebill 跟帳單期沒有關係),擺在表格裡每一期都得
+     寫「—」;它們改放在表格底下那一條。 */
   H.push(`<thead><tr><th>Invoice</th><th>${L("帳單日期","Invoice date")}</th>`
     +`<th class="num">Reprice</th>`
-    +`<th class="num">${L("UPS 實收","UPS billed")}</th>`
-    +`<th class="num">${L(wsrc+" 實收",wsrc+" billed")}</th>`
-    +`<th class="num">${L("應補收","To re-bill")}</th>`
-    +`<th class="num" title="${pfTip}">${L("毛利","Profit")}</th>`
-    +`<th class="num" title="${pfTip}">${L("毛利率","Margin")}</th></tr></thead><tbody>`);
+    +`<th class="num">${L("UPS 實收","UPS billed")}</th></tr></thead><tbody>`);
   let tRe=0,tUp=0,tWm=0,tRb=0,anyWm=false,anyRb=false,allPriced=true,bi=0;
   if(!pk.length)
-    H.push(`<tr><td colspan="8" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
+    H.push(`<tr><td colspan="4" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
       "No package lines for this tracking number, only account-level charges. See below.")}</td></tr>`);
   for(const o of pk){
     const rp=(BKD_NOLVL||!o.r||o.r.total==null)?null:o.r.total;
@@ -10830,38 +10844,40 @@ function openBreakdown(){
     tUp+=up;
     if(o.wms){ tWm+=o.wms.amt; anyWm=true;
       if(Math.abs(o.wms.rebill||0)>0.004){ tRb+=o.wms.rebill; anyRb=true; } }
-    /* 跨期合併時,TMS 實收與應補收是「整個追蹤號」的量,掛在任何單期列上
-       都會配錯邊(單期的 UPS 對整票的實收,毛利率會爆到 81%)——
-       各期列一律「—」,四個數只在合計列出現。單期票照常逐列顯示。 */
-    const perRow=pk.length===1;
-    const rev=(perRow&&o.wms)?cents(o.wms.amt+(o.wms.rebill||0)):null;
-    const pf=rev==null?null:cents(rev-up);
-    const mg=(pf!=null&&Math.abs(rev)>0.004)?(pf/rev*100):null;
     H.push(`<tr class="bkdjump" data-bi="${bi++}" title="${
         L("點一下跳到該期明細","Click to jump to this invoice's detail")}">`
       +`<td class="mono">${esc2(o.inv)}</td><td>${esc2(nd(o.invDate)||o.invDate)}</td>`
       +`<td class="num">${rp==null?"—":money2(rp)}</td>`
-      +`<td class="num">${money2(up)}</td>`
-      +`<td class="num">${(perRow&&o.wms)?money2(o.wms.amt):"—"}</td>`
-      +`<td class="num">${(perRow&&o.wms&&Math.abs(o.wms.rebill||0)>0.004)?money2(o.wms.rebill):"—"}</td>`
-      +`<td class="num${pf!=null&&pf<-0.0001?" bkdneg":""}">${pf==null?"—":money2(pf)}</td>`
-      +`<td class="num${mg!=null&&mg<0?" bkdneg":""}">${mg==null?"—":mg.toFixed(1)+"%"}</td></tr>`);
+      +`<td class="num">${money2(up)}</td></tr>`);
   }
   H.push(`</tbody>`);
+  const tRev=cents(tWm+tRb), tPf=cents(tRev-tUp);
+  const tMg=(anyWm&&Math.abs(tRev)>0.004)?(tPf/tRev*100):null;
   if(pk.length>1){
     const TF="border-top:2px solid var(--accent);background:var(--select);font-weight:700";
-    const tRev=cents(tWm+tRb), tPf=cents(tRev-tUp);
-    const tMg=(anyWm&&Math.abs(tRev)>0.004)?(tPf/tRev*100):null;
     H.push(`<tfoot><tr><td style="${TF}">${L("合計","Total")}</td>`
       +`<td style="${TF}"></td>`
       +`<td class="num" style="${TF}">${allPriced?money2(tRe):"—"}</td>`
-      +`<td class="num" style="${TF}">${money2(tUp)}</td>`
-      +`<td class="num" style="${TF}">${anyWm?money2(tWm):"—"}</td>`
-      +`<td class="num" style="${TF}">${anyRb?money2(tRb):"—"}</td>`
-      +`<td class="num${anyWm&&tPf<-0.0001?" bkdneg":""}" style="${TF}">${anyWm?money2(tPf):"—"}</td>`
-      +`<td class="num${tMg!=null&&tMg<0?" bkdneg":""}" style="${TF}">${tMg==null?"—":tMg.toFixed(1)+"%"}</td></tr></tfoot>`);
+      +`<td class="num" style="${TF}">${money2(tUp)}</td></tr></tfoot>`);
   }
   H.push(`</table></div></div>`);
+  /* 整筆的那一組數字:一個算式看完 —— 向客戶實收 + 應補收 − UPS 實收 = 毛利。
+     沒有對到 WMS / TMS 的追蹤號就不畫,空的算式沒有意義。 */
+  if(anyWm){
+    const c=(k,v,op,neg)=>`<div class="bkdsum-c"${op?` data-op="${op}"`:""}>`
+      +`<span class="k">${esc2(k)}</span>`
+      +`<span class="v${neg?" neg":""}">${v}</span></div>`;
+    H.push(`<div class="bkdsum"><div class="bkdsum-hd">${
+        L("整筆合計 · 不分帳單期","Whole tracking · all invoices")}</div><div class="bkdsum-row">`
+      +c(L(wsrc+" 實收",wsrc+" billed"), money2(tWm))
+      +c(L("應補收","To re-bill"), anyRb?money2(tRb):money2(0), "+")
+      +c(L("UPS 實收","UPS billed"), money2(tUp), "−")
+      +c(L("毛利","Profit"), money2(tPf), "=", tPf<-0.0001)
+      +c(L("毛利率","Margin"), tMg==null?"—":tMg.toFixed(1)+"%", "", tMg!=null&&tMg<0)
+      +`</div><div class="bkdsum-note">${L(
+        "向客戶實收與應補收是整個追蹤號的金額,和帳單期沒有關係 —— 所以不放在上面那張按期別排的表裡。",
+        "What the client was billed and what is still to re-bill belong to the whole tracking number, not to any one invoice period, so they are not shown per period above.")}</div></div>`);
+  }
   /* 同一個追蹤號跨兩期(原件一期、更正一期)時,兩張卡各自只有半筆帳:向客戶
      實收與應補收掛在第一期,而造成補收的那張更正在第二期 —— 兩邊都對不起來。
      期別留在上面那張總覽表(要看哪一期收了什麼都在那裡),底下把整個追蹤號
@@ -18220,8 +18236,23 @@ function prSheetInvoice(){
       kv2(L("應收合計("+wab.src+" 實收 + 應補收)","Chargeable ("+wab.src+" billed + re-bill)"), cents(wab.chargeable||0), MONEY2),
       kv2(L("對帳毛利(應收合計 − UPS)","Reconciliation profit (Chargeable − UPS)"), cents(wab.profit||0), MONEY2),
       kv2(L("對帳毛利率","Reconciliation margin"), (wab.chargeable?(wab.profit/Math.abs(wab.chargeable)):0), PCT2)];
-    return {sheets:[{name:L("本批次摘要","Summary"), rows, cols:[{w:30},{w:34}], freeze:{r:1,c:0}}],
-            accts:accs, key:"Batch", last:String(run.invDate||"")};
+    /* 摘要那一列「帳單上沒有 5」會讓人問:是哪五筆?自己一頁列出來 ——
+       客戶、單號、追蹤號、日期、向客戶收多少、從哪一批帶進來的。 */
+    const off=(typeof RECON!=="undefined"&&RECON&&RECON.res&&RECON.res.notOnInv)||[];
+    const sheets=[{name:L("本批次摘要","Summary"), rows, cols:[{w:30},{w:34}], freeze:{r:1,c:0}}];
+    if(off.length){
+      const cTxt=o=>o.carried?((o.carried.invDate||"")+(o.carried.inv?" "+o.carried.inv:"")).trim():"";
+      const oh=["Customer Code","Customer Name","Order Number","Tracking Number","Transaction Date",
+                "Channel","Zone","Billed Weight","Billed to client","Carried from"]
+        .map(v=>({v:v,t:"s",s:{bold:true,fill:HEAD2,align:"left",wrap:true,border:true}}));
+      const oRows=off.map(o=>[String(o.cus||""),String(o.name||""),String(o.order||""),
+        (o.trks||[]).join(", "), String(o.date||""), String(o.chan||""), String(o.zone||""),
+        (o.wt===""||o.wt==null)?"":{v:toNum(o.wt),t:"n"},
+        {v:cents(o.amt||0),t:"n",s:{fmt:MONEY2}}, cTxt(o)]);
+      sheets.push({name:L("帳單上沒有","Not on invoice"), rows:[oh].concat(oRows),
+        cols:[16,22,20,24,12,20,8,12,15,26].map(w=>({w:w})), freeze:{r:1,c:0}, ignoreTextNumbers:true});
+    }
+    return {sheets:sheets, accts:accs, key:"Batch", last:String(run.invDate||"")};
   }
   const d=DASH_LAST||dashAgg();
   if(!d) return null;
