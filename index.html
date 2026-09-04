@@ -4988,6 +4988,22 @@ function priceShipment(cfg, s, force){
       && l.detail==="SCC" && isFreightLine(l) && l.zone);
     if(sccRow) zone=sccRow.zone;
   }
+  /* 同一期的 ZONE 調整(SHP 與 ADJ 在同一筆):更正後的 Zone 在 ADJ 的 ZONE
+     行上,但不是每一行 —— 沖銷行掛舊 Zone、重開行掛新 Zone,連運費差額那一行
+     都還掛著舊 Zone(實帳單 000000586Y51286 的 1Z...298326:AHL −4.50 @002、
+     AHL +5.77 @006、FSC @006、FRT +0.61 @002)。所以取「和原 Zone 不同」的
+     那一個,有正額行以正額行為準 —— 整筆照更正後的 Zone 計價,少了這一段,
+     Zone 2 改 6 的單子會一直用 Zone 2 的費率算。 */
+  if(!zRow && !s.pureAdj){
+    const zl=(s.allLines||[]).filter(l=>l.layer==="ADJ"
+        && String(l.detail||"").toUpperCase()==="ZONE" && l.zone
+        && normZone(l.zone)!==normZone(s.zone));
+    if(zl.length){
+      const pos=zl.filter(l=>toNum(l.net)>0.004);
+      const uniq=new Set(zl.map(l=>normZone(l.zone)));
+      if(pos.length||uniq.size===1) zone=(pos[0]||zl[0]).zone;
+    }
+  }
 
   /* 運費。跨期更正單同時帶著 C(更正後,Package Dimensions)與
      A(原始,Detail Keyed Dimensions)兩組尺寸時,UPS 收的是差額,
@@ -11133,6 +11149,15 @@ function bkdSection(r, wms, name0){
       const parts=[zOf(z), (w!=null&&String(w).trim()!==""&&toNum(w)>0)?esc2(w)+" lb":""].filter(Boolean);
       return parts.length?`<div class="bkdside-meta">${parts.join("  ·  ")}</div>`:"";
     };
+    const zuN=(typeof normZone==="function"&&normZone(String(res.zoneUsed||"")))||"";
+    const zsN=(typeof normZone==="function"&&normZone(String(res.s.zone||"")))||"";
+    const upsW=res.s.billedUPS||res.s.billed;
+    /* Zone 被 UPS 更正過的,UPS 側寫成「Zone 2 → 6」—— 原單和更正各在哪一個
+       Zone,一行講完;重算側照更正後的。 */
+    const upsMeta=(zuN&&zsN&&zuN!==zsN)
+      ? `<div class="bkdside-meta">${"Zone "+esc2(zsN)+" → "+esc2(zuN)
+          +((upsW!=null&&String(upsW).trim()!==""&&toNum(upsW)>0)?"  ·  "+esc2(upsW)+" lb":"")}</div>`
+      : null;
     const U=[]; let usub=0; let lastLbl=null;
     for(const g of groups){
       const glbl=segName(g.layer);
@@ -11234,7 +11259,7 @@ function bkdSection(r, wms, name0){
       +`<span class="bkdmeta">${meta.map(m=>`<span class="mp">${m}</span>`).join("")}</span></div>`
       +`<div class="bkdcols${wms?(Rc?" four":" three"):""}">`
       +`<div class="bkdside ups"><div class="bkdside-lbl">${L("UPS 實收","UPS billed")}</div>`
-      +`<div class="bkdside-body">${sideMeta(res.s.zone, res.s.billedUPS||res.s.billed)}<table>${U.join("")}</table>`
+      +`<div class="bkdside-body">${upsMeta||sideMeta(res.s.zone, res.s.billedUPS||res.s.billed)}<table>${U.join("")}</table>`
       +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(usub)}</span></div></div></div>`
       +`<div class="bkdside rp"><div class="bkdside-lbl">${L("重新計價","Reprice")}`
       +(BKD_LVL?`<span class="bkdlvl">${esc2(L("層級 ","Level ")+BKD_LVL)}</span>`:"")+`</div>`
