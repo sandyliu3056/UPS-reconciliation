@@ -52,18 +52,6 @@ function cards(){
   return out;
 }
 
-/* Demand 與尺寸門檻本來被包在 DIM 除數那張卡裡面。搬到跟它同層 ——
-   不然藏 DIM 除數會連著把它們一起藏掉。 */
-function unnest(){
-  var p=document.getElementById("p-ratefill"); if(!p) return;
-  var c=cards(), dim=c["hd.dimf"];
-  if(!dim) return;
-  ["hd.rulesforce","hd.demrate"].forEach(function(k){
-    var el=c[k];
-    if(el&&el.parentNode===dim) p.appendChild(el);
-  });
-}
-
 function mountTabs(){
   var row=document.querySelector('#rateSide .setnav-tabs[data-g="fill"]');
   if(!row||row.dataset.split) return;
@@ -96,7 +84,6 @@ function paint(which){
 
 function boot(){
   if(typeof SET_GROUPS==="undefined"||typeof RATE_TABS==="undefined") return;
-  unnest();
   mountTabs();
 
   /* 補進她原本那幾張表。SET_GROUPS 是 const,但物件本身可以改;

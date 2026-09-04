@@ -36,8 +36,8 @@ const shown=()=>KEYS.filter(k=>{ const c=card(k); return c&&!c.hidden; });
 console.log('\n[0] \u5957\u4e4b\u524d');
 ok(!!P(), '\u627e\u5230 p-ratefill');
 ok(KEYS.every(k=>!!card(k)), '\u4e03\u5f35\u9762\u677f\u90fd\u5728');
-ok(card("hd.demrate").parentNode===card("hd.dimf"),
-   'Demand \u672c\u4f86\u5305\u5728 DIM \u9664\u6578\u90a3\u5f35\u5361\u88e1\uff08markup \u5c11\u4e86\u4e00\u500b\u7d50\u675f\u6a19\u7c64\uff09');
+ok(card("hd.demrate").parentNode===P(),
+   'Demand \u76f4\u63a5\u5c31\u5728\u540c\u5c64\uff08markup \u5df2\u88dc\u56de\u7d50\u675f\u6a19\u7c64\uff0c\u4e0d\u518d\u9760 unnest\uff09');
 
 W.eval(fs.readFileSync(path.join(ROOT,'src/tabs.js'),'utf8'));
 

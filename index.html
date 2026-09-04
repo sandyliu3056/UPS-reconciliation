@@ -2163,7 +2163,7 @@ label:has(#newChanOn){display:none !important}
       <span id="accCount" style="color:var(--muted);font-size:12.5px"></span>
     </div>
     <div class="row" style="margin-bottom:8px">
-      <button class="act" id="bCustomAcc" data-i18n="btn.customacc">Custom Surcharges…</button>
+      <button class="act" id="bCustomAcc2" data-i18n="btn.customacc">Custom Surcharges…</button>
       <button class="act" id="bSaveRates" data-i18n="btn.saverates">Save Rates</button>
       <span id="saveNote" class="savenote"></span>
       <button class="act ghost" id="bRemoveTicked" data-i18n="btn.removeticked">Remove Ticked</button>
@@ -2213,6 +2213,7 @@ label:has(#newChanOn){display:none !important}
       <button class="act ghost" id="bChanDim" data-i18n="btn.chandim">Bulk set by channel</button>
       <button class="act" id="bSaveDim" data-i18n="btn.save">Save</button>
       <span class="savenote"></span>
+    </div>
   </div>
 
   <div class="lf sketch">
@@ -10254,10 +10255,13 @@ $("#bRemoveTicked") && ($("#bRemoveTicked").onclick=()=>{
   CFG=readConfig(CFG.raw); DIRTY=true; renderConfigTabs();
   setStatus((LANG?"Removed ":"已移除 ")+ticked.length+(LANG?" rate row(s)":" 列費率"));
 });
-$("#bCustomAcc") && ($("#bCustomAcc").onclick=()=>{
-  dynLoad();
-  $("#dynBg").classList.add("on");
-});
+/* 這顆按鈕出現在兩頁:03 附加費管理與 04 費率填寫。id 不能重複 —— 以前兩顆
+   同名,querySelector 只綁得到第一顆,04 那顆按了沒反應。 */
+for(const bid of ["bCustomAcc","bCustomAcc2"])
+  $("#"+bid) && ($("#"+bid).onclick=()=>{
+    dynLoad();
+    $("#dynBg").classList.add("on");
+  });
 $("#bDynX")     && ($("#bDynX").onclick    =()=>$("#dynBg").classList.remove("on"));
 $("#bDynClose") && ($("#bDynClose").onclick=()=>$("#dynBg").classList.remove("on"));
 $("#dynBg")     && ($("#dynBg").onclick=e=>{ if(e.target.id==="dynBg") $("#dynBg").classList.remove("on"); });
@@ -22695,18 +22699,6 @@ function cards(){
   return out;
 }
 
-/* Demand 與尺寸門檻本來被包在 DIM 除數那張卡裡面。搬到跟它同層 ——
-   不然藏 DIM 除數會連著把它們一起藏掉。 */
-function unnest(){
-  var p=document.getElementById("p-ratefill"); if(!p) return;
-  var c=cards(), dim=c["hd.dimf"];
-  if(!dim) return;
-  ["hd.rulesforce","hd.demrate"].forEach(function(k){
-    var el=c[k];
-    if(el&&el.parentNode===dim) p.appendChild(el);
-  });
-}
-
 function mountTabs(){
   var row=document.querySelector('#rateSide .setnav-tabs[data-g="fill"]');
   if(!row||row.dataset.split) return;
@@ -22739,7 +22731,6 @@ function paint(which){
 
 function boot(){
   if(typeof SET_GROUPS==="undefined"||typeof RATE_TABS==="undefined") return;
-  unnest();
   mountTabs();
 
   /* 補進她原本那幾張表。SET_GROUPS 是 const,但物件本身可以改;
