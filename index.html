@@ -7248,6 +7248,14 @@ function rlEnsure(){
   }
   if(!o.cfg||typeof o.cfg!=="object") o.cfg={};
   if(!o.list.some(x=>x.id===o.active)) o.active=(o.list[0]||{}).id||"L1";
+  /* 停在被隱藏的那一層時,換到第一個看得到的層 —— 有別層可換才換。 */
+  if(typeof rlHidden==="function"){
+    const cur=o.list.find(x=>x.id===o.active);
+    if(cur&&rlHidden(cur)){
+      const first=o.list.find(x=>!rlHidden(x));
+      if(first) o.active=first.id;
+    }
+  }
   /* 搬家:分家之前存下來的層級可能還帶著自己的一份客戶名單。清掉,以現用
      那一層的為準 —— 留著只會是兩份對不起來的資料,而且白佔空間。 */
   for(const id of Object.keys(o.cfg)){
@@ -7270,6 +7278,20 @@ function rlNextId(o){
   let n=2;
   while(o.list.some(x=>x.id==="L"+n)) n++;
   return "L"+n;
+}
+/* 隱藏舊的「預設 / Default」層級。
+   它是早期版本自動建出來的一層,不是任何人決定過的合約,卻會出現在每一個
+   下拉選單裡等著被選錯。使用者要它從畫面上消失。
+   只從「選單與清單」拿掉,不從資料拿掉 —— 還指到它的客戶照樣算得出價
+   (reconResolve 讀的是 o.list,少一筆就會變成「層級已刪除」而整批擋下來)。
+   要它回來:把下面這個正規表示式改掉就好。 */
+const LVL_HIDE=/^\s*(default|預設)\s*$/i;
+const rlHidden=e=>!!(e&&LVL_HIDE.test(String(e.name||"")));
+/* 給畫面用的清單:藏起來的那幾層不列。正在編的那一層永遠留著 —— 不然
+   選單上會是一個對不到任何選項的值,看起來像壞掉。 */
+function rlPickList(o,keepId){
+  const l=((o||rlStore()||{}).list)||[];
+  return l.filter(e=>!rlHidden(e)||e.id===keepId);
 }
 function rlName(id){
   const o=rlStore(); if(!o) return "";
@@ -7536,7 +7558,8 @@ function renderLevels(){
   const total=o.list.reduce((a,e)=>a+rlSize(e.id),0);
   const lq=(($("#lvlSearch")||{}).value||"").trim().toLowerCase();
   const sort=(($("#lvlSort")||{}).value)||"created";
-  let list=o.list.filter(e=>!lq||String(e.name||"").toLowerCase().includes(lq));
+  const hidden=o.list.filter(e=>rlHidden(e)&&e.id!==o.active).length;
+  let list=rlPickList(o,o.active).filter(e=>!lq||String(e.name||"").toLowerCase().includes(lq));
   if(sort==="name") list=list.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name)));
   else if(sort==="size") list=list.slice().sort((a,b)=>rlSize(b.id)-rlSize(a.id));
   tb.innerHTML=list.map(e=>{
@@ -7551,8 +7574,10 @@ function renderLevels(){
             L("刪除","Delete")}</button>`}
       </td></tr>`;
   }).join("");
-  lvlMsg(L("共 "+o.list.length+" 層,合計 "+rlHuman(total)+"。",
-           o.list.length+" level(s), "+rlHuman(total)+" in total."), true);
+  lvlMsg(L("共 "+(o.list.length-hidden)+" 層,合計 "+rlHuman(total)+"。"
+           +(hidden?"(另有 "+hidden+" 層已隱藏,費率仍在運作)":""),
+           (o.list.length-hidden)+" level(s), "+rlHuman(total)+" in total."
+           +(hidden?" ("+hidden+" hidden; their rates still work)":"")), true);
 }
 function bindLevels(){
   $("#bLvlNew") && ($("#bLvlNew").onclick=async()=>{
@@ -7695,7 +7720,7 @@ function openCusEdit(code){
   $("#ceName") && ($("#ceName").value=c.name||"");
   const sel=$("#ceLevel");
   if(sel){
-    const list=((rlStore()||{}).list)||[];
+    const list=rlPickList(null,c.level);
     /* 指到一個已經被刪掉的層級時也要選得回原值,不然開一次視窗就被清空。 */
     const gone=c.level&&!list.some(e=>e.id===c.level);
     sel.innerHTML=`<option value="">${esc(L("未指定","Not set"))}</option>`
@@ -8921,7 +8946,7 @@ function editLvlSync(p){
   const o=(typeof rlStore==="function")?rlStore():null;
   wrap.hidden=!(per&&o&&o.list&&o.list.length);
   if(wrap.hidden) return;
-  sel.innerHTML=o.list.map(e=>
+  sel.innerHTML=rlPickList(o,o.active).map(e=>
     `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("");
   sel.value=o.active;
   if(typeof fillLvlSync==="function") fillLvlSync();
