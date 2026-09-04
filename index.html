@@ -174,18 +174,24 @@ table,table *,input,select,.tablewrap{filter:none !important}
 .setnav-tabs button[aria-selected=true]{
   background:var(--panel);font-weight:700;opacity:1;padding-bottom:7px}
 .setnav-tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-/* 「正在編輯哪一層」。這一格決定底下每一頁在編誰,所以要一直看得見。 */
+/* 「正在編輯哪一層」。這一格決定底下每一頁改的是誰的費率 —— 改錯一層,
+   整本費率就寫到別的客戶身上,而且當下看不出來。所以它不是一行小字:
+   排在整條列的最前面(眼睛從左邊開始讀),深底淺字,是這條列上最響的一塊。 */
 .setnav-lvl{
-  margin-left:auto;display:flex;align-items:center;gap:7px;
-  font-size:11.5px;color:var(--accent);padding-bottom:6px;white-space:nowrap;
+  display:flex;align-items:center;gap:9px;margin:0 6px 4px 0;
+  padding:5px 12px;border-radius:10px;white-space:nowrap;
+  background:var(--accent);border:2px solid var(--accent);
+  box-shadow:0 2px 0 rgba(0,0,0,.18);
+  font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--tab);
 }
 .setnav-lvl select{
-  font:inherit;font-size:12px;font-weight:600;
+  font:inherit;font-size:14px;font-weight:700;letter-spacing:0;text-transform:none;
   background:var(--panel);color:var(--accent);
-  border:1.5px solid var(--accent);border-radius:6px;padding:3px 8px;cursor:pointer;
+  border:2px solid var(--panel);border-radius:7px;padding:3px 10px;cursor:pointer;
   max-width:230px;
 }
-.setnav-lvl select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.setnav-lvl select:focus-visible{outline:2px solid var(--panel);outline-offset:2px}
 .setnav-lvl[hidden]{display:none}
 main{min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 14px 0}
 
@@ -1397,7 +1403,8 @@ html.ink #who{font-size:13px}
 html.ink button.act,html.ink a.act{font-size:15px}
 html.ink button.act.sm,html.ink a.act.sm{font-size:13.5px}
 html.ink .setnav-tabs button{font-size:13.5px}
-html.ink .setnav-lvl,html.ink .setnav-lvl select{font-size:12.5px}
+html.ink .setnav-lvl{font-size:12.5px}
+html.ink .setnav-lvl select{font-size:15px}
 
 /* 內文也手寫時才補字級。「手寫標題」那一段內文還是原本的黑體,
    補了反而整頁跳一下。 */
@@ -1676,6 +1683,11 @@ label:has(#newChanOn){display:none !important}
      再往下是那一層的各種規則。右邊那個選單是「現在編的是哪一層」——
      底價、附加費、尺寸、渠道、Demand 都吃它,換一層就是換一整本費率。 -->
 <div class="setnav" id="rateSide" hidden>
+  <!-- 「正在編輯哪一層」排在編號列前面:先知道在改誰,才輪到改哪一頁。 -->
+  <label class="setnav-lvl" id="editLvlWrap">
+    <span data-i18n="lbl.editing">Editing rate level</span>
+    <select id="editLvl"></select>
+  </label>
   <div class="setnav-tabs" data-g="general">
     <button data-r="setting" data-i18n="rt.levels">1. Level Setup</button>
     <button data-r="code2"   data-i18n="rt.chgcode">2. Charge Codes</button>
@@ -1692,10 +1704,6 @@ label:has(#newChanOn){display:none !important}
   <div class="setnav-tabs" data-g="fill" hidden>
     <button data-r="ratefill" data-i18n="rt.ratefill">1. Rate Entry</button>
   </div>
-  <label class="setnav-lvl" id="editLvlWrap">
-    <span data-i18n="lbl.editing">Editing</span>
-    <select id="editLvl"></select>
-  </label>
 </div>
 
 <main>
@@ -21497,7 +21505,7 @@ const I18N={
   "opt.anabilled":["向客戶收","Billed"],
   "nav.work":["每月作業","Monthly"],
   "nav.admin":["設定","Setup"],
-  "lbl.editing":["正在編輯","Editing"],
+  "lbl.editing":["正在編輯費率層級","Editing rate level"],
   "hd.setting":["費率層級與底價","Rate levels & base rates"],
   "hint.setting":["重新計價的一般行為設定,改動會存到你的帳號。","General repricing behaviour. Changes are saved to your account."],
   "hd.resisrc":["🔄 住宅／商業判定來源","🔄 Residential / Commercial Classification"],
