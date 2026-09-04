@@ -11221,6 +11221,7 @@ function bkdSection(r, wms, name0){
                      : it.kind==="short"?L("短收","Short-billed")
                      : it.kind==="audit"?L("稽核費","Audit fee")
                      : it.kind==="refund"?L("退還","Refund")
+                     : it.kind==="zone"?L("Zone 更正","Zone correction")
                      : it.kind==="miss"?L("漏收","Not billed"):"";
       const rbFuel=cents((wms.items||[]).reduce((a,it)=>a+(it.fuel||0),0));
       const pct=((wms.items||[]).find(it=>it.fuel>0.004)||{}).fuelPct;
@@ -14482,7 +14483,7 @@ function reconRun(list){
     const feesDesc={};               /* 每一欄在帳單上的原文描述,補收時開給客戶看 */
     const feesKnown=new Set();       /* 重算真的算過的費用:合約沒費率的不在裡面 */
     const invDates=new Set();        /* 對到的帳單期別日期,匯出明細第一欄 */
-    let upsWt=0, wtN=0, upsId=null, fuelPct=null, sccRate=null;
+    let upsWt=0, wtN=0, upsId=null, fuelPct=null, sccRate=null, zoneRate=null, zoneNote="";
     let usedArch=false;
     for(const t of e.trks){
       const s=byTrk.get(t);
@@ -14508,6 +14509,24 @@ function reconRun(list){
         const priced=priceShipment(cfg,s);
         if(priced.channel) sysChans.add(String(priced.channel));
         if(priced.zoneUsed||s.zone) upsZones.add(normZoneKey(priced.zoneUsed||s.zone));
+        /* ZONE 更正:UPS 把 Zone 改判(例如 2 → 6),客戶原本照舊 Zone 收的運費
+           就短了。補收 = 客戶自己費率在「更正後 Zone」與「原 Zone」的運費差,
+           計費重照重算採用的(與運費更正同一個 150 磅上限)。 */
+        {
+          const zU=normZone(String(priced.zoneUsed||""))||"", zO=normZone(String(s.zone||""))||"";
+          if(zU && zO && zU!==zO){
+            const svcZ=guessService(s.service);
+            const wZ=Math.min(150, Math.max(0, toNum(priced.bw&&priced.bw.billable)));
+            if(wZ>0){
+              const a=lookupBaseRate(cfg,svcZ,!!priced.residential,priced.zoneUsed,wZ);
+              const b2=lookupBaseRate(cfg,svcZ,!!priced.residential,s.zone,wZ);
+              if(!a.missing && !b2.missing){
+                zoneRate=cents((zoneRate||0)+(toNum(a.rate)-toNum(b2.rate)));
+                zoneNote="Zone "+zO+" → "+zU;
+              }
+            }
+          }
+        }
         /* 帳單的計費重量:一件一件加,UPS 每件都是整磅。 */
         if(priced.bw && priced.bw.billable!=null){ upsWt+=Math.ceil(toNum(priced.bw.billable)); wtN++; }
         rep+=cents(toNum(priced.total));
@@ -14557,7 +14576,7 @@ function reconRun(list){
              zone:String(e.zone||""), upsZone, zoneMis,
              chan, sysChan, chanMis, chanUnknown,
              wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"", arch:usedArch,
-             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
+             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
              name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
              amt:e.amt, cost:cents(cost), rep:block?null:cents(rep)};
@@ -14643,6 +14662,7 @@ function reconRun(list){
     /* 運費 + 更正:重算算的是最後的運費,UPS 的更正不能再加一次。更正 UPS 有收、
        客戶端沒補收時,應補收 = 客戶費率的最後運費 − 已收的運費;沒有重算(沒層級)
        就照 UPS 的更正金額。算出來沒有多的就不列 —— 運費已經收夠了。 */
+    let auditPushed=Object.keys(upsF).some(c=>/audit fee/i.test(c));
     const SCC="Shipping Charge Correction";
     if(upsF[SCC]>0.004){
       const wS=billedOf(SCC);
@@ -14655,10 +14675,26 @@ function reconRun(list){
           items.push(Object.assign({kind:"miss", charge:SCC, desc:(desc[SCC]||[]).join(" / "),
             ups:cents(upsF[SCC]), billed:0, rate, amt, credit:0, creditFrom:[]}, base));
           /* 每一筆更正收一筆稽核費;帳單上已經有稽核費那一行的,走一般的未收邏輯,不重複。 */
-          if(REBILL_SCC_AUDIT_FEE>0 && !Object.keys(upsF).some(c=>/audit fee/i.test(c)))
+          if(REBILL_SCC_AUDIT_FEE>0 && !auditPushed){
+            auditPushed=true;
             items.push(Object.assign({kind:"audit", charge:"Shipping Charge Correction Audit Fee", desc:"",
               ups:0, billed:0, rate:REBILL_SCC_AUDIT_FEE, amt:REBILL_SCC_AUDIT_FEE, credit:0, creditFrom:[]}, base));
+          }
         }
+      }
+    }
+    /* ZONE 更正的補收:客戶費率在更正後與原 Zone 的運費差,含燃油;照運費
+       更正的慣例收一筆稽核費(同一單已因 SCC 收過、或帳單上已有稽核費行的
+       不重複)。 */
+    if(F.zoneRate!=null && cents(F.zoneRate)>0.004){
+      const zd=((desc["Base Rate"]||[]).filter(d=>/ZONE ADJUSTMENT/i.test(d)).join(" / "));
+      items.push(Object.assign({kind:"zone", charge:"Zone Adjustment",
+        desc:(F.zoneNote||"")+(zd?((F.zoneNote?" — ":"")+zd):""),
+        ups:0, billed:0, rate:cents(F.zoneRate), amt:cents(F.zoneRate), credit:0, creditFrom:[]}, base));
+      if(REBILL_SCC_AUDIT_FEE>0 && !auditPushed){
+        auditPushed=true;
+        items.push(Object.assign({kind:"audit", charge:"Shipping Charge Correction Audit Fee", desc:F.zoneNote||"",
+          ups:0, billed:0, rate:REBILL_SCC_AUDIT_FEE, amt:REBILL_SCC_AUDIT_FEE, credit:0, creditFrom:[]}, base));
       }
     }
     for(const [k,cols] of buckets){
@@ -14753,7 +14789,7 @@ function reconRun(list){
      帳單上 UPS 自己的燃油比例。 */
   const dynMap=(CFG&&CFG.raw&&CFG.raw.dynamic_surcharge_mapping)||{};
   const fuelOn=name=>{
-    if(name==="Base Rate"||name==="Shipping Charge Correction") return true;
+    if(name==="Base Rate"||name==="Shipping Charge Correction"||name==="Zone Adjustment") return true;
     for(const d of Object.values(dynMap)) if(String(d.name||"").trim()===name) return d.fuel_eligible!==false;
     /* 其餘照「附加費燃油適用範圍」那一頁:NPF / SCF 這種預設不收的,勾了才收。 */
     let bk=bucketsOf(name);
@@ -15177,7 +15213,7 @@ function renderRebill(){
   const dash=`<span class="empty">—</span>`;
   const tb=$("#tRebill")&&$("#tRebill").tBodies[0];
   /* 畫面上只放費用名稱和一個標籤;帳單原文和「抵已收」的細節滑上去看,匯出的 To re-bill 也都有。 */
-  const tagOf=it=>it.kind==="refund"?L("退還","Refund"):it.kind==="swap"?L("改收","Substituted"):it.kind==="short"?L("短收","Short-billed"):it.kind==="audit"?L("稽核費","Audit fee"):it.unset?L("費率未設定","Rate not set"):(it.rate===0?L("合約無此項","No contract rate"):L("漏收","Not billed"));
+  const tagOf=it=>it.kind==="zone"?L("Zone 更正","Zone correction"):it.kind==="refund"?L("退還","Refund"):it.kind==="swap"?L("改收","Substituted"):it.kind==="short"?L("短收","Short-billed"):it.kind==="audit"?L("稽核費","Audit fee"):it.unset?L("費率未設定","Rate not set"):(it.rate===0?L("合約無此項","No contract rate"):L("漏收","Not billed"));
   const chgCell=it=>`${esc(it.charge)} <span class="chggrp">${esc(tagOf(it))}</span>`;
   const chgTip=it=>esc([it.desc?L("UPS 名目:","UPS: ")+it.desc:"",
     L("客戶端實收 ","billed to the client ")+money(it.wms)
@@ -15449,7 +15485,7 @@ async function reconExport(){
 
   /* ---- To re-bill:補收清單,和畫面上同一份 —— 一個追蹤號一項費用一列。 ---- */
   const rb=r.rebill||{items:[]};
-  const typeOf=it=>it.kind==="refund"?"Refund":it.kind==="swap"?"Substituted":it.kind==="short"?"Short-billed":it.kind==="audit"?"Audit fee":it.unset?"Rate not set":(it.rate===0?"No contract rate":"Not billed");
+  const typeOf=it=>it.kind==="zone"?"Zone correction":it.kind==="refund"?"Refund":it.kind==="swap"?"Substituted":it.kind==="short"?"Short-billed":it.kind==="audit"?"Audit fee":it.unset?"Rate not set":(it.rate===0?"No contract rate":"Not billed");
   const rbHead=[["Customer Code","EFE3CB"],["Customer Name","EFE3CB"],["Order Number","EFE3CB"],
     ["Tracking Number","EFE3CB"],["Invoice Date","EFE3CB"],["Charge","EFE3CB"],["UPS Description","EFE3CB"],
     ["Type","EFE3CB"],["Less Billed As","EFE3CB"],
