@@ -15087,7 +15087,7 @@ function reconRun(list){
           /* 每一筆更正收一筆稽核費;帳單上已經有稽核費那一行的,走一般的未收邏輯,不重複。 */
           if(AUD_FEE>0 && !auditPushed){
             auditPushed=true;
-            items.push(Object.assign({kind:"audit", charge:"Shipping Charge Correction Audit Fee", desc:"",
+            items.push(Object.assign({kind:"audit", charge:AUDIT_FEE_NAME, desc:"",
               ups:0, billed:0, rate:AUD_FEE, amt:AUD_FEE, credit:0, creditFrom:[]}, base));
           }
         }
@@ -15149,7 +15149,7 @@ function reconRun(list){
       }
       if(did && AUD_FEE>0 && !auditPushed){
         auditPushed=true;
-        items.push(Object.assign({kind:"audit", charge:"Shipping Charge Correction Audit Fee", desc:zn,
+        items.push(Object.assign({kind:"audit", charge:AUDIT_FEE_NAME, desc:zn,
           ups:0, billed:0, rate:AUD_FEE, amt:AUD_FEE, credit:0, creditFrom:[]}, base));
       }
     }
@@ -15254,6 +15254,8 @@ function reconRun(list){
   const dynMap=(CFG&&CFG.raw&&CFG.raw.dynamic_surcharge_mapping)||{};
   const fuelOn=name=>{
     if(name==="Base Rate"||name==="Shipping Charge Correction"||name==="Zone Adjustment") return true;
+    /* 稽核費對不到任何費率桶,以前因此永遠是 0。它現在有自己的開關。 */
+    if(name===AUDIT_FEE_NAME) return fuelOnFor(AUDIT_FEE_NAME);
     for(const d of Object.values(dynMap)) if(String(d.name||"").trim()===name) return d.fuel_eligible!==false;
     /* 其餘照「附加費燃油適用範圍」那一頁:NPF / SCF 這種預設不收的,勾了才收。 */
     let bk=bucketsOf(name);
@@ -19262,7 +19264,13 @@ const BULK_LAB={dim_factor:["DIM 除數","DIM factor"],
    收得到錢也吃得到燃油。 */
 /* 預設不收燃油的費用(ACC_CODE_MAP 標 nofuel 或 skip 的:NPF、SCF):畫面上要明確勾
    起來才收,勾起來寫 true;其他費用沒設就是收。 */
+/* 稽核費是我們自己加的一筆,不是 UPS 帳單上的代碼,所以它不在 ACC_CODE_MAP
+   裡,以前也就不會出現在燃油適用那一頁 —— 想設也設不到,而預設是不收燃油。
+   把它當成一個費用項目列進去,預設維持不收(進 FUEL_DEFAULT_OFF),
+   要收的人自己勾。 */
+const AUDIT_FEE_NAME="Shipping Charge Correction Audit Fee";
 const FUEL_DEFAULT_OFF=new Set(Object.values(ACC_CODE_MAP).filter(m=>m&&m.fee&&(m.nofuel||m.skip)).map(m=>m.fee));
+FUEL_DEFAULT_OFF.add(AUDIT_FEE_NAME);
 function fuelOnFor(fee){
   const m=(CFG&&CFG.raw&&CFG.raw.accessorial_fuel_eligible)||{};
   return FUEL_DEFAULT_OFF.has(fee) ? m[fee]===true : m[fee]!==false;
@@ -19277,6 +19285,7 @@ function allFeeTypes(){
   }
   out.add("AHS Weight"); out.add("AHS Dimension");
   out.add("AHS Packaging"); out.add("Large Package");
+  out.add(AUDIT_FEE_NAME);
   for(const c in ((CFG&&CFG.raw.dynamic_surcharge_mapping)||{})){
     const d=CFG.raw.dynamic_surcharge_mapping[c];
     if(d && d.enabled!==false && String(d.name||"").trim())
@@ -19290,6 +19299,8 @@ function allFeeTypes(){
    基礎運費不在這裡 —— fuelBase 是 (base + accTotal - nonFuelSum),運費
    無條件計入燃油底,沒有開關,也不該有。 */
 const AF_GROUPS=[
+  {zh:"更正", en:"Corrections",
+   fees:["Shipping Correction Fee","Missing PLD Fee","Shipping Charge Correction Audit Fee"]},
   {zh:"額外處理與大件", en:"Additional Handling & Large Package",
    fees:["AHS Weight","AHS Dimension","AHS Packaging","Large Package",
          "Over Maximum Size Surcharge"]},
