@@ -1250,7 +1250,7 @@ main.home{display:flex;flex-direction:column}
 main.home #app{flex:1 0 auto;display:flex;flex-direction:column;min-height:0}
 main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
 #p-home .sceneBox{margin-top:auto}
-#p-home #scene{height:clamp(190px,26vh,300px)}
+#p-home #scene{height:clamp(200px,26vh,300px)}
 /* 那一幕本來是一塊直接切在頁面底部的畫布,上緣是硬邊。把它收成一塊:
    上緣圓角、壓一條和主色同一族的細線、底下一層淺淺的陰影,和頁面上其他
    卡片講同一種話。 */
@@ -22951,7 +22951,9 @@ function drawDock(g,W,H,t){
 
   /* ---- 招牌:掛在門型架上,架子跨過天秤上方。
          橫樑要高過金勾(秤頂 -24),留一段空檔才不會擠在一起。 ---- */
-  const gx0=sx-10, gx1=bcx+74, gy=FLR-132;
+  /* 招牌頂端 = gy-38。畫布不夠高的時候把整組往下壓,不然它會被切在上緣 ——
+     切一半的招牌看起來像壞圖,不是像設計。 */
+  const gx0=sx-10, gx1=bcx+74, gy=Math.max(FLR-132, 48);
   g.lineWidth=2.4;
   skLine(g,gx0,FLR-10,gx0,gy,80); skLine(g,gx1,FLR-10,gx1,gy,81);
   skLine(g,gx0,gy,gx1,gy,82);
