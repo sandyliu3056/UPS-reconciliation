@@ -14488,7 +14488,10 @@ function reconRun(list){
       const s=byTrk.get(t);
       if(!s){ missTrk.push(t); continue; }
       if(s.__arch) usedArch=true;
-      if(s.zone) upsZones.add(normZoneKey(s.zone));
+      /* Zone 欄要放的是最後成立的 Zone —— ZONE 更正過的單子,原單的 2 已經
+         不是收費依據;計價那一步會判出更正後的 Zone,這裡先不收,計完再收。
+         沒有層級、沒計價的才直接用帳單上的。 */
+      if(s.zone && !cfg) upsZones.add(normZoneKey(s.zone));
       for(const l of (s.allLines||[])){ const d=l.invDate?(normYmd(l.invDate)||String(l.invDate)):""; if(d){ invDates.add(d); break; } }
       cost+=toNum(s.upsTotal);
       /* 帳單上的識別欄(尺寸、重量、Zone、渠道),匯出明細照 Consolidated 列。 */
@@ -14504,6 +14507,7 @@ function reconRun(list){
       try{
         const priced=priceShipment(cfg,s);
         if(priced.channel) sysChans.add(String(priced.channel));
+        if(priced.zoneUsed||s.zone) upsZones.add(normZoneKey(priced.zoneUsed||s.zone));
         /* 帳單的計費重量:一件一件加,UPS 每件都是整磅。 */
         if(priced.bw && priced.bw.billable!=null){ upsWt+=Math.ceil(toNum(priced.bw.billable)); wtN++; }
         rep+=cents(toNum(priced.total));
@@ -15400,7 +15404,12 @@ async function reconExport(){
     const fees=o.fees||{rep:{},ups:{}}, billed=o.billedFees||null, u=o.ups||{};
     const row=[dcell(o.invDate), dcell(o.date), o.cus, lvl(o), o.order, (o.trks||[]).join(", "),
                o.ref1||"", o.ref2||"", dimTxt(u.dimsC), dimTxt(u.dimsA),
-               u.entered==null?"":{v:toNum(u.entered),t:"n"}, u.billed==null?"":{v:toNum(u.billed),t:"n"},
+               u.entered==null?"":{v:toNum(u.entered),t:"n"},
+               /* 計費重與 Zone 都照重算實際採用的(ZONE 更正、最低計費重之後的
+                  最後狀態)—— 旁邊的 Repriced 金額就是拿它們算的,兩邊才對得上;
+                  沒計價的退回帳單原單。 */
+               (o.upsWt!==""&&o.upsWt!=null)?{v:toNum(o.upsWt),t:"n"}
+                 :(u.billed==null?"":{v:toNum(u.billed),t:"n"}),
                zoneCell(o.upsZone||u.zone||""), u.chan||""];
     let tS=0, tW=0;
     /* 運費更正:重算算的是更正後的最後運費,拆不出「原運費」和「更正」兩段。
