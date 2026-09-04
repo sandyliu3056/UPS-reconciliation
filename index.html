@@ -16653,18 +16653,23 @@ const DASH_RECLASS="__reclass__", DASH_UNKNOWN="__unknown__", DASH_WMS_REST="__w
 /* 對帳涵蓋的追蹤號集合:儀表板各卡片(費用組成、渠道、Zone、異常)都站在
    同一批單子上才對得起來。沒有對帳在畫面上回 null,各卡照整批帳單。 */
 function dashScopeKeep(){
-  const r=(typeof RECON!=="undefined")&&RECON&&RECON.res;
-  if(!r||!(r.orders||[]).length) return null;
+  const list=(typeof dashOrders==="function")?dashOrders():[];
+  if(!list.length) return null;
   const keep=new Set();
-  for(const o of r.orders) for(const t of (o.trks||[])) if(t) keep.add(reconTrk(t));
+  for(const o of list) for(const t of (o.trks||[])) if(t) keep.add(reconTrk(t));
   return keep.size?keep:null;
 }
-function dashWmsAgg(){
+/* all===true:不理篩選,回整批 —— 報表匯出走這一條,檔案裡的「本批次」
+   永遠是整批,不會因為畫面上正篩著誰而變成半批。 */
+function dashWmsAgg(all){
   const r=(typeof RECON!=="undefined")&&RECON&&RECON.res;
   if(!r||!(r.orders||[]).length) return null;
+  const list=(all===true||typeof dashOrders!=="function")?r.orders:dashOrders();
+  if(!list.length) return null;
+  const cut=(all!==true)&&(typeof dashCutActive==="function")&&dashCutActive();
   const buckets={}; let total=0, itemised=0;
   const keyOf=n=>{ const sy=sysNamesOfAud(n); return sy.length===1?sy[0]:n; };
-  for(const o of r.orders){
+  for(const o of list){
     total+=toNum(o.amt);
     for(const [k,v] of Object.entries(o.billedFees||{})){
       const x=toNum(v); if(Math.abs(x)<0.005) continue;
@@ -16674,9 +16679,17 @@ function dashWmsAgg(){
   const rest=cents(total-itemised);
   if(Math.abs(rest)>=0.005) buckets[DASH_WMS_REST]=rest;
   const t=r.tot||{};
-  return {src:RECON_SRC, buckets, total:cents(total), n:r.orders.length, rebill:cents((r.rebill&&r.rebill.grand)||0),
+  /* 沒篩的時候照整批那一組數(和報表、對帳頁同源);篩過就從留下來的單重算,
+     不能拿整批的合計去配半批的實收。 */
+  if(!cut) return {src:RECON_SRC, buckets, total:cents(total), n:list.length,
+    rebill:cents((r.rebill&&r.rebill.grand)||0),
     cost:cents(t.cost||0), chargeable:cents(t.chargeable!=null?t.chargeable:total+((r.rebill&&r.rebill.grand)||0)),
     profit:cents(t.profit!=null?t.profit:0)};
+  const cost=cents(list.reduce((a,o)=>a+toNum(o.cost),0));
+  const rebill=dashRebillOf(list);
+  const chargeable=cents(cents(total)+rebill);
+  return {src:RECON_SRC, buckets, total:cents(total), n:list.length, rebill, cost, chargeable,
+    profit:cents(chargeable-cost)};
 }
 /* 成本拆解那兩欄要能互相比對,就得站在同一批單子上。WMS / TMS 匯進來的
    通常只是這一期的一部分,拿它跟整批帳單並排,左邊幾百萬、右邊幾百塊,
@@ -17668,6 +17681,7 @@ function dashBarHTML(){
           odd+" filed entr"+(odd>1?"ies":"y")+" had no invoice-shaped number — usually a file that imported with the wrong columns. Not listed here; clear them from Invoice History → Stored Invoices.")}</div>`:""}
       </div>
     </div>
+    ${typeof dashCutFilters==="function"?dashCutFilters():""}
     ${hint}
     <span class="dchips" id="dashChips">${chips.map(([k,v])=>
       `<span class="dchip">${esc(k)} <b>${esc(v)}</b></span>`).join("")}</span>
@@ -17745,8 +17759,16 @@ function wireDashPickFilters(){
   const c=$("#dfClear");
   if(c) c.onclick=()=>{ DASH_F.acct=""; DASH_F.range=""; renderDashboard(); };
 }
+function wireDashCut(){
+  const w=(id,k)=>{ const e=$("#"+id); if(e) e.onchange=()=>{
+    DASH_CUT_F[k]=e.value; renderDashboard(); }; };
+  w("dcPer","per"); w("dcLvl","lvl"); w("dcCus","cus");
+  const c=$("#dcClear");
+  if(c) c.onclick=()=>{ DASH_CUT_F={per:"",lvl:"",cus:""}; renderDashboard(); };
+}
 function wireDashBar(){
   wireDashPickFilters();
+  wireDashCut();
   const btn=$("#dashSel"), menu=$("#dashMenu");
   if(!btn||!menu) return;
   const shown=()=>[...menu.querySelectorAll(".dmi")].filter(b=>!b.hidden);
@@ -17856,79 +17878,83 @@ function renderDashAll(body){
     if(el) el.textContent=L("算不出來:","Could not compute: ")+String((e&&e.message)||e);
   });
 }
-/* ---- 換個切法看同一批對帳 -------------------------------------------
-   同一份匯入批次,要能按帳單期別、客戶層級、客戶代碼三種方式各看一次。
-   應補收是「整筆」(整個追蹤號)的金額,和帳單期沒有關係 —— 所以它跟著
-   那一筆單走:單分在哪一組,補收就算在哪一組,絕不拆到兩期去。 */
-let DASH_CUT="per";
-function dashCutRows(mode){
-  const r=RECON&&RECON.res;
-  if(!r||!r.orders||!r.orders.length) return null;
-  const rbByTrk=new Map();
-  for(const it of ((r.rebill&&r.rebill.items)||[])){
+/* ---- 篩選:同一批對帳,只看其中一段 -----------------------------------
+   期別、客戶層級、客戶代碼三個條件同時成立才留(and),空的就是不限。
+   篩完之後整頁跟著窄下去 —— 上面那條數字帶、費用組成、渠道、Zone 都只算
+   剩下的那幾筆,不是只有某一張表變。
+   應補收是「整筆」(整個追蹤號)的金額,和帳單期沒有關係 —— 它跟著那一筆
+   單走:單留下來,補收就留下來,不會被拆到兩期去。 */
+let DASH_CUT_F={per:"",lvl:"",cus:""};
+function dashCutActive(){ return !!(DASH_CUT_F.per||DASH_CUT_F.lvl||DASH_CUT_F.cus); }
+function dashAllOrders(){
+  const r=(typeof RECON!=="undefined")&&RECON&&RECON.res;
+  return (r&&r.orders)||[];
+}
+const DASH_CUT_NONE="\u0000none";       /* 「這一欄是空的」那一組的值 */
+function dashCutHit(v,pick){
+  if(!pick) return true;
+  return pick===DASH_CUT_NONE ? String(v||"")==="" : String(v||"")===pick;
+}
+function dashOrders(){
+  const all=dashAllOrders();
+  if(!dashCutActive()) return all;
+  return all.filter(o=>
+    dashCutHit(o.invDate,DASH_CUT_F.per)
+    && dashCutHit(o.level,DASH_CUT_F.lvl)
+    && dashCutHit(o.cus,DASH_CUT_F.cus));
+}
+/* 補收照追蹤號歸戶,一個追蹤號只算一次。 */
+function dashRebillByTrk(){
+  const r=(typeof RECON!=="undefined")&&RECON&&RECON.res;
+  const m=new Map();
+  for(const it of ((r&&r.rebill&&r.rebill.items)||[])){
     const k=reconTrk(it.trk||""); if(!k) continue;
     const v=toNum(it.total!=null?it.total:(toNum(it.amt)+toNum(it.fuel)));
-    rbByTrk.set(k, cents((rbByTrk.get(k)||0)+v));
+    m.set(k, cents((m.get(k)||0)+v));
   }
-  const nameOf=o=> mode==="per" ? (o.invDate||L("沒有帳單日","No invoice date"))
-                 : mode==="lvl" ? anaLvlName(o.level)
-                 : (o.cus||L("未指定客戶","No customer"));
-  const g=new Map(), used=new Set();
-  const bump=(k,f)=>{ let a=g.get(k); if(!a){ a={k,n:0,amt:0,cost:0,rebill:0}; g.set(k,a); } f(a); };
-  for(const o of r.orders) bump(nameOf(o), a=>{
-    a.n++; a.amt+=toNum(o.amt); a.cost+=toNum(o.cost);
-    for(const t of (o.trks||[])){ const k=reconTrk(t);
-      if(rbByTrk.has(k)&&!used.has(k)){ used.add(k); a.rebill+=rbByTrk.get(k); } }
-  });
-  /* 補收對不到任何一筆單的(那個追蹤號整筆不在這期帳單上)自成一組 ——
-     不然各組加起來會和上面那條數字帶對不起來,那比少一組更難解釋。 */
-  let left=0;
-  for(const [k,v] of rbByTrk) if(!used.has(k)) left=cents(left+v);
-  if(Math.abs(left)>0.004) bump(L("未對到帳單","Not matched to an invoice"), a=>{ a.rebill+=left; });
-  return [...g.values()].map(a=>{
-    a.amt=cents(a.amt); a.cost=cents(a.cost); a.rebill=cents(a.rebill);
-    a.chargeable=cents(a.amt+a.rebill); a.profit=cents(a.chargeable-a.cost);
-    a.margin=a.chargeable?a.profit/Math.abs(a.chargeable)*100:null;
-    return a;
-  }).sort((x,y)=>Math.abs(y.chargeable)-Math.abs(x.chargeable));
+  return m;
 }
-function dashCutHTML(){
-  const rows=dashCutRows(DASH_CUT);
-  if(!rows||!rows.length) return "";
-  const TABS=[["per",L("帳單期別","Invoice period")],["lvl",L("客戶層級","Rate level")],
-              ["cus",L("客戶代碼","Customer code")]];
-  const m=v=>`<td>${money(v)}</td>`;
-  const tot=rows.reduce((a,x)=>({n:a.n+x.n, amt:a.amt+x.amt, rebill:a.rebill+x.rebill,
-      chargeable:a.chargeable+x.chargeable, cost:a.cost+x.cost, profit:a.profit+x.profit}),
-      {n:0,amt:0,rebill:0,chargeable:0,cost:0,profit:0});
-  const tm=tot.chargeable?tot.profit/Math.abs(tot.chargeable)*100:null;
-  const src=((typeof dashWmsAgg==="function"&&dashWmsAgg())||{}).src||"WMS / TMS";
-  const cur=TABS.find(t=>t[0]===DASH_CUT)||TABS[0];
-  return `<div class="dcard" style="margin-top:12px">
-    <div class="ch"><h3>${L("批次拆解","Batch breakdown")}</h3>
-      <span class="cnote">${L("同一批,換個切法","the same batch, cut three ways")}</span>
-      <span class="fseg" style="margin-left:auto">${TABS.map(([k,t])=>
-        `<button type="button" class="fsegb${DASH_CUT===k?" on":""}" data-cut="${k}">${esc(t)}</button>`).join("")}</span></div>
-    <div class="tablewrap" style="max-height:none;overflow-x:auto">
-    <table class="atbl"><thead><tr>
-      <th>${esc(cur[1])}</th><th>${L("筆數","Rows")}</th><th>${esc(src)}</th>
-      <th>${L("應補收","To re-bill")}</th><th>${L("應收合計","Chargeable")}</th><th>UPS</th>
-      <th>${L("毛利","Profit")}</th><th>${L("毛利率","Margin")}</th>
-    </tr></thead><tbody>${rows.map(x=>`<tr>
-      <td class="ak">${esc(x.k)}</td><td>${x.n.toLocaleString()}</td>
-      ${m(x.amt)}${m(x.rebill)}${m(x.chargeable)}${m(x.cost)}
-      <td class="${x.profit<0?"neg":"pos"}">${money(x.profit)}</td>
-      <td>${x.margin==null?"—":anaPct(x.margin)}</td></tr>`).join("")}</tbody>
-    <tfoot><tr><td class="ak">${L("合計 "+rows.length+" 組",
-        "Total · "+rows.length+" group"+(rows.length===1?"":"s"))}</td>
-      <td>${tot.n.toLocaleString()}</td>
-      ${m(cents(tot.amt))}${m(cents(tot.rebill))}${m(cents(tot.chargeable))}${m(cents(tot.cost))}
-      <td class="${tot.profit<0?"neg":"pos"}">${money(cents(tot.profit))}</td>
-      <td>${tm==null?"—":anaPct(tm)}</td></tr></tfoot></table></div>
-    <div class="dfoot">${L(
-      "應補收是整筆的金額,跟著那一筆單算在同一組 —— 它和帳單期沒有關係,不會被拆到兩期去。",
-      "To re-bill is a whole-tracking amount and stays with its own row's group — it does not belong to an invoice period and is never split across two.")}</div>
-  </div>`;
+function dashRebillOf(list){
+  const rb=dashRebillByTrk(); const used=new Set(); let sum=0;
+  for(const o of list) for(const t of (o.trks||[])){
+    const k=reconTrk(t);
+    if(rb.has(k)&&!used.has(k)){ used.add(k); sum=cents(sum+rb.get(k)); }
+  }
+  return sum;
+}
+/* 三個下拉。選項照整批(不是照篩過的)列,不然選了一個就回不去。 */
+function dashCutFilters(){
+  const all=dashAllOrders();
+  if(!all.length) return "";
+  const uniq=(f,lab)=>{
+    const m=new Map();
+    for(const o of all){ const raw=String(f(o)||"");
+      const k=raw||DASH_CUT_NONE;
+      if(!m.has(k)) m.set(k,{k, n:0, t:lab(o,raw)}); m.get(k).n++; }
+    return [...m.values()].sort((x,y)=>String(x.t).localeCompare(String(y.t)));
+  };
+  const pers=uniq(o=>o.invDate, (o,k)=>k||L("沒有帳單日","No invoice date"));
+  const lvls=uniq(o=>o.level,   (o,k)=>anaLvlName(k));
+  const cuss=uniq(o=>o.cus,     (o,k)=>k||L("未指定客戶","No customer"));
+  const opt=(v,cur,txt,n)=>`<option value="${esc(v)}"${v===cur?" selected":""}>${esc(txt)}${
+    n!=null?" ("+n+")":""}</option>`;
+  const sel=(id,lab,list,cur,allTxt)=>list.length<2?"":
+    `<label class="fsel"><span>${esc(lab)}</span><span class="selw"><select id="${id}">`
+    +opt("",cur,allTxt)+list.map(x=>opt(x.k,cur,x.t,x.n)).join("")
+    +`</select></span></label>`;
+  const clr=dashCutActive()
+    ? `<button class="act ghost" id="dcClear" style="padding:4px 11px;font-size:12px"
+        title="${esc(L("清除這一批的篩選","Clear the filters on this batch"))}">${
+        L("清除篩選","Clear filters")}</button>`
+    : "";
+  const n=dashOrders().length;
+  const note=dashCutActive()
+    ? `<span class="dhint">${L("篩選後 "+n+" / "+all.length+" 筆",
+        n+" of "+all.length+" rows")}</span>` : "";
+  return sel("dcPer",L("帳單期別","Invoice period"),pers,DASH_CUT_F.per,L("全部期別","All periods"))
+    +sel("dcLvl",L("客戶層級","Rate level"),lvls,DASH_CUT_F.lvl,L("全部層級","All levels"))
+    +sel("dcCus",L("客戶代碼","Customer code"),cuss,DASH_CUT_F.cus,L("全部客戶","All customers"))
+    +clr+note;
 }
 /* ---- 全部批次:每一份對帳並排 --------------------------------------
    數字全部取自存好的那一份對帳摘要,不重算 —— 這一頁是拿來比批次的,
@@ -18012,6 +18038,17 @@ function renderDashboard(){
   DASH_BUSY=false;
   try{
   if(DASH_ALL){ renderDashBatches(body); return; }
+  /* 篩到一筆都不剩:底下的卡片會退回「整批帳單」的數字,看起來像篩選沒有
+     作用。直接說這個條件下沒有資料。 */
+  if(typeof dashCutActive==="function" && dashCutActive() && !dashOrders().length){
+    body.innerHTML=`<div class="dhead">
+      <div><div class="dtitle">${L("儀表板","Dashboard")}</div>
+      <div class="dsub">${L("這一批","this batch")}</div></div></div>`
+      +dashBarHTML()
+      +`<div class="dempty">${L("這個條件下沒有資料。","Nothing matches this filter.")}</div>`;
+    wireDashBar();
+    return;
+  }
   const d=dashAgg();
   DASH_LAST=d;
   if(!d){
@@ -18274,7 +18311,6 @@ function renderDashboard(){
         <div class="dv">${wmsAgg.n}</div></div>
     </div>`:`<div class="dempty" style="padding:14px 18px;margin-bottom:12px">${L("毛利要等對帳:匯入 WMS / TMS 檔之後,這裡才會有「實收 + 應補收 − UPS」。",
         "Profit waits for the reconciliation: import the WMS / TMS file and this line shows billed + to re-bill − UPS.")}</div>`}
-    ${dashCutHTML()}
     <div class="dcard">
       <div class="ch"><h3>${L("費用組成","Cost breakdown")}</h3>
         <button class="act ghost" id="bPerXls" style="padding:3px 11px;font-size:12px">${
@@ -18299,9 +18335,6 @@ function renderDashboard(){
   if(gx) gx.onclick=openGap;
   const px=$("#bPerXls");
   if(px) px.onclick=()=>openProfitReport("inv");
-  body.querySelectorAll("[data-cut]").forEach(b=>{
-    b.onclick=()=>{ DASH_CUT=b.dataset.cut; renderDashboard(); };
-  });
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     body.querySelectorAll(".bfill,.zfill,.seg,.cmpfill").forEach(el=>{
       if(el.dataset.w!=null) el.style.width=el.dataset.w+"%"; });
@@ -18340,7 +18373,7 @@ function prSheetInvoice(){
      對帳的數字,不再拿目前載入的某一期去配整批的應收(那兩個對不起來)。 */
   const run=(typeof RECON_RUN_KEY!=="undefined"&&RECON_RUN_KEY&&RECON_RUNS)
     ?(RECON_RUNS||[]).find(x=>x.key===RECON_RUN_KEY):null;
-  const wab=(typeof dashWmsAgg==="function")&&dashWmsAgg();
+  const wab=(typeof dashWmsAgg==="function")&&dashWmsAgg(true);
   if(run&&wab){
     const HEAD2="E8E2D6", RED2="C00000";
     const MONEY2="$#,##0.00", PCT2="0.0%", INT2="#,##0";
