@@ -14505,7 +14505,7 @@ function reconRun(list){
     const feesDesc={};               /* 每一欄在帳單上的原文描述,補收時開給客戶看 */
     const feesKnown=new Set();       /* 重算真的算過的費用:合約沒費率的不在裡面 */
     const invDates=new Set();        /* 對到的帳單期別日期,匯出明細第一欄 */
-    let upsWt=0, wtN=0, upsId=null, fuelPct=null, sccRate=null, zoneRate=null, zoneNote="";
+    let upsWt=0, wtN=0, upsId=null, fuelPct=null, sccRate=null, zoneRate=null, zoneNote="", zoneAcc=null;
     let usedArch=false;
     for(const t of e.trks){
       const s=byTrk.get(t);
@@ -14546,6 +14546,24 @@ function reconRun(list){
                 zoneRate=cents((zoneRate||0)+(toNum(a.rate)-toNum(b2.rate)));
                 zoneNote="Zone "+zO+" → "+zU;
               }
+            }
+            /* Zone 更正把哪幾種按 Zone 計費的附加費也重開了(帳單的 ZONE 行上
+               有它們的代碼):各查新舊 Zone 的客戶費率,補收時一正一負開列。 */
+            const zbk=new Set();
+            for(const l of (s.allLines||[])){
+              if(String(l.layer||"")!=="ADJ"||String(l.detail||"").toUpperCase()!=="ZONE") continue;
+              const c=String(l.code||"").toUpperCase();
+              if(AHS_DIM.has(c)) zbk.add("AHS Dimension");
+              else if(AHS_WT.has(c)) zbk.add("AHS Weight");
+              else if(AHS_PKG.has(c)) zbk.add("AHS Packaging");
+              else if(LPS_CODE.has(c)) zbk.add("Large Package");
+            }
+            for(const bk of zbk){
+              const q=[];
+              const nA=toNum(accLookup(cfg,bk,priced.channel,priced.zoneUsed,q,!!priced.residential));
+              if(!(nA>0.004)) continue;   /* 新 Zone 沒設費率就不開,不替人猜 */
+              zoneAcc=zoneAcc||{};
+              zoneAcc[bk]=cents((zoneAcc[bk]||0)+nA);
             }
           }
         }
@@ -14598,7 +14616,7 @@ function reconRun(list){
              zone:String(e.zone||""), upsZone, zoneMis,
              chan, sysChan, chanMis, chanUnknown,
              wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"", arch:usedArch,
-             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
+             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
              name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
              amt:e.amt, cost:cents(cost), rep:block?null:cents(rep)};
@@ -14680,11 +14698,13 @@ function reconRun(list){
       const k=famOf.has(c)?"f"+famOf.get(c):c;
       (buckets.get(k)||buckets.set(k,[]).get(k)).push(c);
     }
-    const base={ln:o.ln, cus:o.cus, order:o.order, trk:o.trks.join(", "), invDate:o.invDate||""};
+    const base={ln:o.ln, cus:o.cus, order:o.order, trk:o.trks.join(", "), invDate:o.invDate||"",
+                zone:String(o.upsZone||o.zone||""), chan:String(o.sysChan||o.chan||"")};
     /* 運費 + 更正:重算算的是最後的運費,UPS 的更正不能再加一次。更正 UPS 有收、
        客戶端沒補收時,應補收 = 客戶費率的最後運費 − 已收的運費;沒有重算(沒層級)
        就照 UPS 的更正金額。算出來沒有多的就不列 —— 運費已經收夠了。 */
     let auditPushed=Object.keys(upsF).some(c=>/audit fee/i.test(c));
+    const zoneDone=new Set();   /* Zone 更正已一退一收處理掉的家族 */
     const SCC="Shipping Charge Correction";
     if(upsF[SCC]>0.004){
       const wS=billedOf(SCC);
@@ -14705,22 +14725,67 @@ function reconRun(list){
         }
       }
     }
-    /* ZONE 更正的補收:客戶費率在更正後與原 Zone 的運費差,含燃油;照運費
-       更正的慣例收一筆稽核費(同一單已因 SCC 收過、或帳單上已有稽核費行的
-       不重複)。 */
-    if(F.zoneRate!=null && cents(F.zoneRate)>0.004){
-      const zd=((desc["Base Rate"]||[]).filter(d=>/ZONE ADJUSTMENT/i.test(d)).join(" / "));
-      items.push(Object.assign({kind:"zone", charge:"Zone Adjustment",
-        desc:(F.zoneNote||"")+(zd?((F.zoneNote?" — ":"")+zd):""),
-        ups:0, billed:0, rate:cents(F.zoneRate), amt:cents(F.zoneRate), credit:0, creditFrom:[]}, base));
-      if(REBILL_SCC_AUDIT_FEE>0 && !auditPushed){
+    /* ZONE 更正的補收,一正一負開在帳單上:退還客戶照舊 Zone 收的那一筆(負數),
+       照更正後 Zone 的客戶費率全額補收(正數)—— 運費一組、被重開的按 Zone 計費
+       附加費(額外處理、大包裹)各一組;客戶那筆沒收過的照全額補、不退。
+       照運費更正的慣例收一筆稽核費(同單已因 SCC 收過、或帳單上已有稽核費行的
+       不重複)。同單另有重量更正(SCC)時運費walk那一條路,不重複。 */
+    if((F.zoneRate!=null && cents(F.zoneRate)>0.004) || F.zoneAcc){
+      const zn=F.zoneNote||"";
+      const zdOf=nm=>((desc[nm]||[]).filter(d2=>/ZONE ADJUSTMENT/i.test(d2)).join(" / "));
+      const rep2=F.rep||{};
+      const swapPair=(nm,newAmt,zd)=>{
+        /* 退還照什麼名目收的就退什麼名目:自己的欄位、或合併欄。 */
+        let bw2=(b&&b[nm]!=null)?b[nm]:null, bn=nm;
+        if((bw2==null||Math.abs(toNum(bw2))<=0.004) && b && heads.has(nm) && b[heads.get(nm)]!=null){
+          bn=heads.get(nm); bw2=b[bn];
+        }
+        const billedAmt=bw2==null?0:cents(toNum(bw2));
+        if(Math.abs(billedAmt)>0.004){
+          items.push(Object.assign({kind:"refund", charge:bn, desc:zn,
+            ups:0, billed:billedAmt, rate:0, amt:cents(-billedAmt), credit:0, creditFrom:[], wms:billedAmt, over:0}, base));
+        }
+        items.push(Object.assign({kind:"zone", charge:nm,
+          desc:zn+(zd?" — "+zd:""),
+          ups:0, billed:0, rate:cents(newAmt), amt:cents(newAmt), credit:0, creditFrom:[]}, base));
+      };
+      let did=false;
+      const hasSCC=upsF[SCC]>0.004;
+      if(F.zoneRate!=null && cents(F.zoneRate)>0.004 && !hasSCC){
+        const rB=cents(toNum(rep2["Base Rate"]||0));
+        const bB=billedOf("Base Rate");
+        if(rB>0.004 && bB!=null && Math.abs(bB)>0.004){
+          swapPair("Base Rate", rB, zdOf("Base Rate")); did=true;
+        }
+      }
+      if(!did && F.zoneRate!=null && cents(F.zoneRate)>0.004){
+        /* 客戶沒收運費、或同單另有重量更正:退不了原收的,照差額開一項。 */
+        items.push(Object.assign({kind:"zone", charge:"Zone Adjustment",
+          desc:zn+((zdOf("Base Rate"))?" — "+zdOf("Base Rate"):""),
+          ups:0, billed:0, rate:cents(F.zoneRate), amt:cents(F.zoneRate), credit:0, creditFrom:[]}, base));
+        did=true;
+      }
+      for(const [bk,nA] of Object.entries(F.zoneAcc||{})){
+        /* 引擎桶名 → 系統欄名 → Consolidated 名:AHS Dimension →
+           Additional Handling Surcharge - Dimension。 */
+        const sysN=(typeof REPORT_COL_OF!=="undefined"&&REPORT_COL_OF[bk])||bk;
+        const nm=(typeof audNameOf==="function")?audNameOf(sysN,false,null):sysN;
+        const w=billedOf(nm);
+        /* 客戶有收(自己欄或合併欄)才一退一收;沒收的走家族的漏收路,不重複。 */
+        if(!(w!=null && Math.abs(w)>0.004)) continue;
+        swapPair(nm, nA, zdOf(nm)); did=true;
+        /* 這一家族在下面的家族路不要再比一次:一退一收已經處理完。 */
+        if(famOf.has(nm)) zoneDone.add("f"+famOf.get(nm));
+      }
+      if(did && REBILL_SCC_AUDIT_FEE>0 && !auditPushed){
         auditPushed=true;
-        items.push(Object.assign({kind:"audit", charge:"Shipping Charge Correction Audit Fee", desc:F.zoneNote||"",
+        items.push(Object.assign({kind:"audit", charge:"Shipping Charge Correction Audit Fee", desc:zn,
           ups:0, billed:0, rate:REBILL_SCC_AUDIT_FEE, amt:REBILL_SCC_AUDIT_FEE, credit:0, creditFrom:[]}, base));
       }
     }
     for(const [k,cols] of buckets){
       if(k===SCC) continue;
+      if(zoneDone.has(k)) continue;
       const upsCols=cols.filter(c=>upsF[c]>0.004);
       if(!upsCols.length) continue;
       const isFam=k[0]==="f";
@@ -15557,18 +15622,18 @@ async function reconExport(){
   };
   /* 給客戶看的對帳單,一位客戶一頁。金額 0 的(費率未設定、合約無此項)不上。
      不合併儲存格、表頭不上色、日期 m/d/yyyy —— 這一頁是要貼進客戶帳單的,越素越好搬。 */
-  const cusHead=["Transaction Date","Tracking Number","Order Number","Item","Description","Amount"]
+  const cusHead=["Transaction Date","Tracking Number","Order Number","Channel","Zone","Item","Description","Amount"]
     .map(n=>({v:n,t:"s",s:{bold:true,align:"left",border:true}}));
   for(const [code,list] of byCusItems){
-    const sorted=list.filter(it=>it.amt>0.004).sort((a,b)=>a.trk.localeCompare(b.trk)||b.total-a.total);
+    const sorted=list.filter(it=>Math.abs(it.amt)>0.004).sort((a,b)=>a.trk.localeCompare(b.trk)||b.total-a.total);
     if(!sorted.length) continue;
     const rows=[]; let sum=0;
     for(const it of sorted){
-      rows.push([dcell(it.invDate), it.trk, it.order, it.charge, it.desc||"", dm(it.amt)]); sum=cents(sum+it.amt);
-      if(it.fuel>0.004){ rows.push([dcell(it.invDate), it.trk, it.order, "Fuel Surcharge", it.charge+" @ "+it.fuelPct+"%", dm(it.fuel)]); sum=cents(sum+it.fuel); }
+      rows.push([dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"", it.charge, it.desc||"", dm(it.amt)]); sum=cents(sum+it.amt);
+      if(Math.abs(it.fuel)>0.004){ rows.push([dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"", "Fuel Surcharge", it.charge+" @ "+it.fuelPct+"%", dm(it.fuel)]); sum=cents(sum+it.fuel); }
     }
-    rows.push(["","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:MONEY,bold:true}}]);
-    cusSheets.push({name:sheetName(code), rows:[cusHead,...rows], cols:[12,22,20,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
+    rows.push(["","","","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:MONEY,bold:true}}]);
+    cusSheets.push({name:sheetName(code), rows:[cusHead,...rows], cols:[12,22,20,20,7,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
   }
 
   /* ---- WMS / TMS 有、這期帳單上沒有的追蹤號:另外一頁,照模板的綠色欄
