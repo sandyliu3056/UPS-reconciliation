@@ -16091,34 +16091,26 @@ function renderAnalysis(){
 async function anaExport(){
   const r=RECON&&RECON.res;
   if(!r||!r.cus||!r.cus.length) return;
-  const HD=n=>({v:n,t:"s",s:{bold:true,fill:"351C15",color:"FFFFFF",align:"left",wrap:true}});
-  const M={fmt:"#,##0.00"}, P={fmt:"0.00"};
-  const m=v=>v==null?"":{v,t:"n",s:M};
-  const pc=v=>v==null?"":{v:+v.toFixed(2),t:"n",s:P};
-  const t=r.tot;
-  const why=b=>b===RL_NONE?"NOT PRICED — no rate level assigned"
-             :b===RL_GONE?"NOT PRICED — rate level deleted":"";
-  const cusRows=[["Customer Code","Customer Name","Rate Level","Repricing Status","Orders",
-    "Packages","WMS / TMS","Difference","UPS","Profit","Margin %","Reprice",
-    "WMS / TMS vs Reprice","UPS vs Reprice"].map(HD)]
+  /* 一張「Profit Analysis」,照使用者指定的樣子,一欄不多:
+     Date、客戶、層級、件數、實收、補收、UPS、毛利、毛利率。
+     與 reprice 有關的欄位、By Charge 頁、合計列都拿掉了。 */
+  const HD=n=>({v:n,t:"s",s:{bold:true,fill:"351C15",color:"FFFFFF",align:"left",wrap:true,border:true}});
+  const m=v=>({v:cents(v||0),t:"n",s:{fmt:"$#,##0.00"}});
+  const pc=v=>v==null?"":{v:v/100,t:"n",s:{fmt:"0.00%"}};
+  const dates=[...new Set((r.orders||[]).map(o=>normYmd(o.invDate)||"").filter(Boolean))].sort();
+  const d0=dates[dates.length-1]||"";
+  const dcell=(()=>{ const mm=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d0);
+    if(!mm) return "";
+    const n=Math.floor((Date.UTC(+mm[1],+mm[2]-1,+mm[3])-Date.UTC(1899,11,30))/86400000);
+    return {v:n,t:"n",s:{fmt:"m/d/yyyy"}}; })();
+  const rows=[["Date","Customer Code","Customer Name","Rate Level","Packages",
+    "WMS / TMS","Rebill","UPS","Profit","Margin %"].map(HD)]
    .concat(r.cus.slice().sort((x,y)=>y.profit-x.profit).map(a=>[
-     a.code, a.name, a.block?"":anaLvlName(a.level), why(a.block), a.orders, a.pkgs,
-     m(a.amt), m(a.rebill||0), m(a.cost), m(a.profit), pc(a.margin), m(a.rep), m(a.pgap), m(a.gap)]))
-   .concat([["TOTAL","","","",t.orders,t.pkgs,m(t.amt),m(t.rebill||0),m(t.cost),m(t.profit),
-     pc(t.margin),m(t.rep),m(t.pgap),m(t.gap)]]);
-  const chgName=n=>n===RECON_UNKNOWN?"Unrecognised codes":n;
-  const chgRows=[["Charge","Your Code","System Code","WMS / TMS","Reprice",
-    "UPS","WMS / TMS vs Reprice","Reprice vs UPS"].map(HD)]
-   .concat((r.chg||[]).map(o=>[chgName(o.name),
-     o.name===RECON_UNKNOWN?"":chgCodeOf(o.name),
-     o.name===RECON_UNKNOWN?"":chgUpsCodes(o.name).join(" "),
-     m(o.billed), m(o.rep), m(o.ups), m(o.pgap), m(o.gap)]));
+     dcell, a.code, a.name, a.block?"":anaLvlName(a.level), a.orders,
+     m(a.amt), m(a.rebill||0), m(a.cost), m(a.profit), pc(a.margin)]));
   await xlWrite([
-    {name:"By Client", rows:cusRows, freeze:{r:1,c:0}, filter:"A1:M1",
-     cols:[{w:16},{w:26},{w:20},{w:30},{w:9},{w:11},{w:17},{w:16},{w:13},{w:11},
-           {w:14},{w:19},{w:19}]},
-    {name:"By Charge", rows:chgRows, freeze:{r:1,c:0}, filter:"A1:H1",
-     cols:[{w:40},{w:14},{w:20},{w:17},{w:14},{w:16},{w:19},{w:19}]}
+    {name:"Profit Analysis", rows, freeze:{r:1,c:0}, filter:"A1:J1",
+     cols:[{w:12},{w:15},{w:24},{w:15},{w:10},{w:14},{w:13},{w:13},{w:13},{w:11}]}
   ], "Profit_Analysis.xlsx");
   toast(L("毛利分析已匯出。","Profit analysis exported."), true);
 }
@@ -18050,10 +18042,7 @@ function prSheetInvoice(){
     kv(L("帳單日","Invoice date"), serial(invDate), DATE),
     kv(L("UPS 帳號","UPS account"), acct),
     kv(L("貨件數","Shipments"), d.n, INT),
-    kv(L("重算","Reprice"), cents(d.repriced), MONEY),
     kv("UPS", cents(d.billed), MONEY),
-    kv(L("重算差額","Reprice − UPS"), cents(profit), MONEY),
-    kv(L("差額率","Variance %"), d.repriced?profit/Math.abs(d.repriced):0, PCT),
     kv(L("帳戶層費用","Account charges"), cents(d.account), MONEY, true)];
   /* 有對帳在畫面上時,摘要也要有它:實收、應補收、應收合計、對帳毛利 ——
      和儀表板那一條同一份數字(dashWmsAgg),檔案和畫面對不起來的報表沒人信。 */
