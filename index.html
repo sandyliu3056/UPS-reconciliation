@@ -11757,8 +11757,21 @@ function consColsOf(shipList, opts){
 function looksLikeInvoiceNo(v){ return /^\d{4}/.test(String(v||"").trim()); }
 async function histExportAll(onProgress){
   const all=HISTROWS||[];
-  const rows=all.filter(l=>looksLikeInvoiceNo(l&&l.invoice));
+  let rows=all.filter(l=>looksLikeInvoiceNo(l&&l.invoice));
   const junk=all.length-rows.length;
+  /* 視窗上篩了帳號或期間,匯出就照同一份篩選:畫面列出哪幾期,檔案裡就只有
+     那幾期 —— 篩了帳號還倒出全部,等於篩選只是裝飾。 */
+  const stFiltered=!!(typeof ST_F!=="undefined" && (ST_F.acct||ST_F.range));
+  if(stFiltered){
+    const keys=new Set(stFilter(Object.entries(histInv())
+      .filter(([k])=>looksLikeInvKey(k))).map(([k])=>String(k).trim()));
+    rows=rows.filter(l=>keys.has(String(l.invoice||"").trim()));
+    if(!rows.length){
+      toast(L("目前的帳號/期間篩選下沒有可匯出的資料。",
+              "Nothing to export under the current account/period filter."), false);
+      return;
+    }
+  }
   if(!rows.length && all.length){
     toast(L("歷史庫裡沒有帳單列 —— 存進去的可能不是 UPS 帳單檔",
             "No invoice lines in the library — what was filed may not be UPS invoice files"), false);
@@ -11887,18 +11900,24 @@ async function histExportAll(onProgress){
      "Charge Classification","UPS Note","Amount"], acctRows));
   if(sumRows.length) sheets.push(sheet("Summary",
     ["Invoice Number","Type","Amount"], sumRows));
-  await xlWrite(sheets,"UPS_Invoice_Audit.xlsx",onProgress);
+  const fname="UPS_Invoice_Audit"
+    +(stFiltered&&ST_F.acct?"_"+String(ST_F.acct).replace(/[^A-Za-z0-9_-]+/g,""):"")
+    +".xlsx";
+  await xlWrite(sheets,fname,onProgress);
   /* 跳過的列要講出來,不能安靜地少。 */
   const skipped=junk
     ? L(`,跳過 ${junk.toLocaleString()} 列沒有期號的資料`,
         `, skipped ${junk.toLocaleString()} line(s) with no invoice number`)
+    : "";
+  const scope=stFiltered
+    ? L("(依視窗上的帳號/期間篩選)"," (filtered by the dialog's account/period)")
     : "";
   setStatus(L(`已匯出 ${cons.length.toLocaleString()} 個追蹤號、`
               +`${raw.length.toLocaleString()} 列帳單、`
               +`${acctRows.length.toLocaleString()} 列帳號層`,
               `Exported ${cons.length.toLocaleString()} shipments, `
               +`${raw.length.toLocaleString()} invoice lines, `
-              +`${acctRows.length.toLocaleString()} account charges`)+skipped);
+              +`${acctRows.length.toLocaleString()} account charges`)+scope+skipped);
   if(junk) toast(L(`跳過 ${junk.toLocaleString()} 列:期號欄不是期號,那些不是帳單資料`,
                    `Skipped ${junk.toLocaleString()} line(s): the invoice-number column does not hold one`),
                  true);
@@ -13970,11 +13989,16 @@ function reconAutoRun(){
   if(!rows||!rows.length||!CFG||!SHIPS||!SHIPS.length) return false;
   const wasPending=!!RECON.pending;
   const fname=RECON.fname||"";
-  reconRerunFrom(rows, true);
-  if(RECON) RECON.fname=fname;
-  if(wasPending) toast(L("帳單進來了,"+rows.length+" 筆已自動比對,結果在「3. 對帳分析」。",
-                         "Invoice loaded — "+rows.length+" row(s) compared automatically. See step 3, Reconciliation Analysis."),true);
-  renderRecon();
+  const go=()=>{
+    reconRerunFrom(rows, true);
+    if(RECON) RECON.fname=fname;
+    if(wasPending) toast(L("帳單進來了,"+rows.length+" 筆已自動比對,結果在「3. 對帳分析」。",
+                           "Invoice loaded — "+rows.length+" row(s) compared automatically. See step 3, Reconciliation Analysis."),true);
+    renderRecon();
+  };
+  /* 目前這期沒有的追蹤號先去歸檔找,找完才跑 —— 不然「不在帳單上」會先講一次錯的。 */
+  if(typeof reconFetchArchived==="function") reconFetchArchived(rows).then(go,go);
+  else go();
   return true;
 }
 function reconRerunFrom(rows, quiet){
@@ -14340,6 +14364,40 @@ async function reconTemplate(src){
 /* 帳單上認不出來的代碼也要有位置站。丟掉的話兩側加起來的數字對不上,而
    對不上的原因看不出來 —— 寧可列一行「未辨識」,讓人知道有這筆錢。 */
 const RECON_UNKNOWN="\u0000unknown";
+/* 模板有、目前載入的帳單上沒有的追蹤號:去系統歸檔的 raw invoice 裡找。
+   規則:只要在系統內任何一期帳單上,一律進對帳與合計;真的哪一期都沒有的
+   才留在 Not on Invoice。找到的貨件記在這個快取,reconRun 併進 byTrk;
+   同一追蹤號兩邊都有時以目前載入的為準。 */
+let RECON_XSHIPS=new Map();
+async function reconFetchArchived(list){
+  RECON_XSHIPS=new Map();
+  if(!list||!list.length) return 0;
+  const have=new Set((SHIPS||[]).map(x=>reconTrk(x.tracking)).filter(Boolean));
+  const need=new Set();
+  for(const e of list) for(const t of (e.trks||[])){
+    const k=reconTrk(t); if(k && !have.has(k)) need.add(k);
+  }
+  if(!need.size) return 0;
+  const all=await idbAllRows().catch(()=>[]);
+  if(!all.length) return 0;
+  const rows=all.filter(r=>r&&r.tracking&&need.has(reconTrk(r.tracking)));
+  if(!rows.length) return 0;
+  /* shipmentsOf 會動到 ACCT_LINES,借完要還;ORIG 只補缺的鍵,不動現有的。 */
+  const keepA=ACCT_LINES;
+  let ships=[];
+  try{ ships=shipmentsOf(rows); } finally { ACCT_LINES=keepA; }
+  const pure=new Set(ships.filter(x=>x.pureAdj).map(x=>x.tracking));
+  if(pure.size){
+    const ox=buildOriginals(all, pure);
+    if(!ORIG) ORIG={};
+    for(const t of Object.keys(ox)) if(!ORIG[t]) ORIG[t]=ox[t];
+  }
+  for(const x of ships){
+    const k=reconTrk(x.tracking);
+    if(k && !RECON_XSHIPS.has(k)){ x.__arch=true; RECON_XSHIPS.set(k,x); }
+  }
+  return RECON_XSHIPS.size;
+}
 function reconRun(list){
   /* 逐項:全部一份,每個客戶各一份。點客戶就是換一份來看。 */
   const chgAll=new Map(), chgBy=new Map();
@@ -14362,6 +14420,9 @@ function reconRun(list){
     const k=reconTrk(s.tracking);
     if(k && !byTrk.has(k)) byTrk.set(k,s);
   }
+  /* 歸檔期別找到的貨件:一樣進對帳。目前載入的優先。 */
+  if(typeof RECON_XSHIPS!=="undefined" && RECON_XSHIPS)
+    for(const [k,x] of RECON_XSHIPS) if(!byTrk.has(k)) byTrk.set(k,x);
   RECON_CFG.clear();
   const reg=cusReg();
   const byCode=new Map(reg.map(c=>[c.code,c]));
@@ -14389,9 +14450,11 @@ function reconRun(list){
     const feesKnown=new Set();       /* 重算真的算過的費用:合約沒費率的不在裡面 */
     const invDates=new Set();        /* 對到的帳單期別日期,匯出明細第一欄 */
     let upsWt=0, wtN=0, upsId=null, fuelPct=null, sccRate=null;
+    let usedArch=false;
     for(const t of e.trks){
       const s=byTrk.get(t);
       if(!s){ missTrk.push(t); continue; }
+      if(s.__arch) usedArch=true;
       if(s.zone) upsZones.add(normZoneKey(s.zone));
       for(const l of (s.allLines||[])){ const d=l.invDate?(normYmd(l.invDate)||String(l.invDate)):""; if(d){ invDates.add(d); break; } }
       cost+=toNum(s.upsTotal);
@@ -14456,7 +14519,7 @@ function reconRun(list){
              ups:upsId,
              zone:String(e.zone||""), upsZone, zoneMis,
              chan, sysChan, chanMis, chanUnknown,
-             wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"",
+             wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"", arch:usedArch,
              fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
              name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
@@ -14934,11 +14997,15 @@ function renderRecon(){
   if(cIn+cOff) warn.push(L(
     "自動帶入前期未對到帳單的 "+(cIn+cOff)+" 筆:這一期對到 "+cIn+" 筆,"+cOff+" 筆仍不在帳單上(留到下一期再對)。",
     (cIn+cOff)+" row(s) carried from earlier periods that were not on their invoice: "+cIn+" matched this invoice, "+cOff+" still not on it (kept for the next period)."));
+  const archN=(r.orders||[]).filter(o=>o.arch).length;
+  if(archN) warn.push(L(
+    "有 "+archN+" 筆不在目前載入的期別上,已自系統歸檔的其他期別帶入,照常計入對帳與合計。",
+    archN+" row(s) are not on the loaded invoice(s); their shipments were pulled from other archived periods and are reconciled as usual."));
   if(r.notOnInv && r.notOnInv.length){
     const offAmt=r.notOnInv.reduce((a,o)=>a+toNum(o.amt),0);
     warn.push(L(
-      RECON_SRC+" 有、這期帳單上沒有的 "+r.notOnInv.length+" 筆("+money(offAmt)+")不進對帳與合計;匯出時另放「Not on Invoice」一頁。",
-      r.notOnInv.length+" row(s) are in "+RECON_SRC+" but not on this invoice ("+money(offAmt)+"); they stay out of the reconciliation and the totals and go on their own Not on Invoice sheet when exported."));
+      RECON_SRC+" 有、但系統內任何一期帳單上都沒有的 "+r.notOnInv.length+" 筆("+money(offAmt)+")不進對帳與合計;匯出時另放「Not on Invoice」一頁。",
+      r.notOnInv.length+" row(s) are in "+RECON_SRC+" but on none of the invoices imported into the system ("+money(offAmt)+"); they stay out of the reconciliation and the totals and go on their own Not on Invoice sheet when exported."));
   }
   if(r.unmatched.length) warn.push(L(
     "有 "+r.unmatched.length+" 筆一票多件的單,部分追蹤號在這期帳單上找不到,那幾件的 UPS 成本算 0。",
@@ -15494,6 +15561,9 @@ async function reconAccept(p, fname){
   /* 前期沒對到帳單的先帶進來,再跑之前點名。等到跑完才說「這幾個沒算」,人已經在讀數字了。 */
   const carried=await reconCarryIn(p.rows);
   const all=p.rows.concat(carried);
+  /* 只要在系統內任何一期的 raw invoice 上,一律進對帳:目前載入的帳單沒有的
+     追蹤號,先去歸檔期別找齊再跑。 */
+  await reconFetchArchived(all).catch(()=>0);
   const pf=reconPreflight(all.map(r=>r.cus));
   const res=reconRun(all);
   RECON={issues:[], res, list:all, sumWarn:p.sumWarn||[], fname:fname||"", carried:carried.length};
