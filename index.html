@@ -2786,25 +2786,6 @@ label:has(#newChanOn){display:none !important}
     <div class="tiles" id="anaTiles"></div>
   </div>
 
-  <div class="lf sketch" id="anaCusCard" hidden>
-    <h3 class="display"><span class="em">👤</span><span data-i18n="hd.anacus">By client</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:74ch" data-i18n="hint.anacus">Sorted by profit, largest first. Margin is profit over what the client was billed — a big client on a thin margin can be worth less than a small one on a fat margin.</p>
-    <div class="row" style="margin-bottom:9px">
-      <span style="flex:1 1 auto"></span>
-      <span id="anaCusSum" class="affsum"></span>
-    </div>
-    <div class="tablewrap" style="max-height:56vh"><table id="tAnaCus"><thead><tr>
-      <th data-i18n="th.cuscode">Code</th>
-      <th data-i18n="th.cusname">Name</th>
-      <th data-i18n="th.cuslevel">Rate level</th>
-      <th class="num" data-i18n="th.reconorders">Orders</th>
-      <th class="num" data-i18n="th.reconbilled">WMS / TMS</th>
-      <th class="num" data-i18n="th.runrebill">Difference</th>
-      <th class="num" data-i18n="th.reconups">UPS</th>
-      <th class="num" data-i18n="th.reconprofit">Profit</th>
-      <th class="num" data-i18n="th.reconmargin">Margin</th>
-    </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
-  </div>
 </section>
 
 
@@ -16074,7 +16055,7 @@ function renderAnalysis(){
   const has=!!(r&&r.cus&&r.cus.length);
   const show=(id,on)=>{ const e=$("#"+id); if(e) e.hidden=!on; };
   show("anaEmpty",!has);
-  ["anaSumCard","anaCusCard"].forEach(id=>show(id,has));
+  show("anaSumCard",has);
   if(!has) return;
   const t=r.tot;
   const sign=v=>`<span class="mny ${v<0?"neg":(v>0?"pos":"")}">${money(v)}</span>`;
@@ -16102,44 +16083,8 @@ function renderAnalysis(){
     <div class="sub">${esc(sub)||"&nbsp;"}</div></div>`).join("");
 
 
-  /* 依客戶。排序讓人自己選:大客戶薄毛利和小客戶厚毛利,哪一個要先看
-     不是這一頁該替人決定的。 */
-  const key=ANA_SORT;
-  const rows=r.cus.slice().sort((x,y)=>{
-    const a=x[key], b=y[key];
-    if(a==null&&b==null) return 0;
-    if(a==null) return 1;
-    if(b==null) return -1;
-    return b-a;
-  });
-  const lvlName=anaLvlName;
-  const cb=$("#tAnaCus")&&$("#tAnaCus").tBodies[0];
-  if(cb) cb.innerHTML=rows.map(a=>
-    `<tr><td class="mono">${esc(a.code)}</td>
-      <td>${esc(a.name||a.code)}</td>
-      <td>${a.level?esc(lvlName(a.level)):`<span class="empty">—</span>`}</td>
-      <td class="num">${a.orders}</td>
-      <td class="num">${money(a.amt)}</td>
-      <td class="num">${money(a.rebill||0)}</td>
-      <td class="num">${money(a.cost)}</td>
-      <td class="num">${sign(a.profit)}</td>
-      <td class="num">${pcCell(a.margin)}</td></tr>`).join("");
-  const cf=$("#tAnaCus")&&$("#tAnaCus").tFoot;
-  if(cf) cf.innerHTML=`<tr><td colspan="3"><b>${esc(L("合計","Total"))}</b></td>
-      <td class="num"><b>${t.orders}</b></td>
-      <td class="num"><b>${money(t.amt)}</b></td>
-      <td class="num"><b>${money(t.rebill||0)}</b></td>
-      <td class="num"><b>${money(t.cost)}</b></td>
-      <td class="num"><b>${sign(t.profit)}</b></td>
-      <td class="num"><b>${pcCell(t.margin)}</b></td></tr>`;
-  const sum=$("#anaCusSum");
-  if(sum){
-    const best=rows.reduce((m,a)=>(m==null||a.profit>m.profit)?a:m,null);
-    sum.textContent = best
-      ? L("毛利最高:"+(best.name||best.code)+" "+money(best.profit),
-          "Top by profit: "+(best.name||best.code)+" "+money(best.profit))
-      : "";
-  }
+  /* 依客戶的表拿掉了:一個客戶時全是重複,數字都在上面的數字卡;
+     逐客戶的細目留在匯出的分析檔。 */
 }
 /* 匯出的每一個數字都取自 renderAnalysis() 用的那一份,不重算 —— 螢幕上和
    檔案裡對不起來的報表,沒有人會再相信第二次。 */
@@ -22926,7 +22871,7 @@ document.addEventListener("keydown",function(e){
 /* ── 3. 表頭排序 ───────────────────────────────────────────────────────
    只給看數字的那幾張:誰的毛利最低、哪一筆差最多,現在得自己一列一列找。
    排序只動畫面上的列,不碰任何金額;重畫之後回到原本的順序。 */
-var SORT_IDS=["tRecon","tReconChg","tAnaCus",
+var SORT_IDS=["tRecon","tReconChg",
               "tChan","tAccMgr","tHist","tRate"];
 /* 缺值(—、not set、空白)不參與比大小:不管往哪個方向排,永遠沉底。 */
 var MISS_RE=/^(—|–|-|not set|not loaded|未設定|未載入|n\/a)?$/i;
@@ -23022,7 +22967,7 @@ function armSort(t){
    十一到十三欄的表往右捲之後,看到一排數字卻不知道是誰的。
    第一欄釘住,身分就一直在。tHist 不釘:那張表首欄是期號,同一頁幾乎同值,
    釘住只會蓋掉資料。 */
-var PIN_IDS=["tRecon","tReconChg","tSize","tAnaCus","tAnaLvl"];
+var PIN_IDS=["tRecon","tReconChg","tSize"];
 
 function arm(){
   SORT_IDS.forEach(function(id){ var t=document.getElementById(id);

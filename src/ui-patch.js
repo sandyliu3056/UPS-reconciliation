@@ -76,7 +76,7 @@ document.addEventListener("keydown",function(e){
 /* ── 3. 表頭排序 ───────────────────────────────────────────────────────
    只給看數字的那幾張:誰的毛利最低、哪一筆差最多,現在得自己一列一列找。
    排序只動畫面上的列,不碰任何金額;重畫之後回到原本的順序。 */
-var SORT_IDS=["tRecon","tReconChg","tAnaCus","tAnaLvl",
+var SORT_IDS=["tRecon","tReconChg",
               "tChan","tAccMgr","tHist","tRate"];
 /* 缺值(—、not set、空白)不參與比大小:不管往哪個方向排,永遠沉底。 */
 var MISS_RE=/^(—|–|-|not set|not loaded|未設定|未載入|n\/a)?$/i;
@@ -171,7 +171,7 @@ function armSort(t){
 /* ── 4. 首欄凍結 ───────────────────────────────────────────────────────
    十一到十三欄的表往右捲之後,看到一排數字卻不知道是誰的。
    第一欄釘住,身分就一直在。 */
-var PIN_IDS=["tRecon","tReconChg","tSize","tAnaCus","tAnaLvl"];
+var PIN_IDS=["tRecon","tReconChg","tSize"];
 
 function arm(){
   SORT_IDS.forEach(function(id){ var t=document.getElementById(id);

@@ -89,8 +89,8 @@ if(df){ let z=0; df.oninput=()=>z++;
   ok(z===1, '#dashFind \u4e0d\u5728\u540d\u55ae\u88e1\uff0c\u7dad\u6301\u5373\u6642'); }
 
 console.log('\n[3] \u8868\u982d\u6392\u5e8f');
-const t=D.getElementById('tAnaCus');
-ok(!!t&&t.classList.contains('sortable'), 'tAnaCus \u5df2\u6302\u4e0a\u6392\u5e8f');
+const t=D.getElementById('tRecon');
+ok(!!t&&t.classList.contains('sortable'), 'tRecon \u5df2\u6302\u4e0a\u6392\u5e8f');
 const tb=t.tBodies[0];
 tb.innerHTML=`
  <tr><td>C003</td><td>\u4e19</td><td>L1</td><td class="num">5</td><td class="num">$1,200.00</td><td class="num">$0.00</td><td class="num">$900.00</td><td class="num">$300.00</td><td class="num">25.0%</td></tr>
@@ -117,14 +117,14 @@ th[0].dispatchEvent(new W.MouseEvent('click',{bubbles:true}));
 ok(tb.rows.length===1&&tb.rows[0].cells[0].className==='empty', '\u7a7a\u72c0\u614b\u4e0d\u53d7\u5f71\u97ff');
 
 console.log('\n[4] \u9996\u6b04\u51cd\u7d50');
-const pin=['tRecon','tReconChg','tSize','tAnaCus'];
+const pin=['tRecon','tReconChg','tSize'];
 pin.forEach(id=>{ const e=D.getElementById(id);
   ok(!!e&&e.classList.contains('pinfirst'), id+' \u5df2\u91d8\u4f4f\u9996\u6b04'); });
 { const e=D.getElementById('tHist');
   ok(!!e&&!e.classList.contains('pinfirst'), 'tHist \u4e0d\u91d8\u9996\u6b04'); }
 
 console.log('\n[5] \u6c92\u6709\u640d\u5230\u539f\u672c\u7684\u6771\u897f');
-ok(D.querySelectorAll('table').length===33, '\u8868\u683c\u6578\u91cf\uff0833\uff09');
+ok(D.querySelectorAll('table').length===32, '\u8868\u683c\u6578\u91cf\uff0832\uff09');
 ok(D.querySelectorAll('.modalbg').length===27, '\u8996\u7a97\u6578\u91cf\uff0827\uff09');
 ok(D.querySelectorAll('[data-i18n]').length>0, 'i18n \u6a19\u8a18\u9084\u5728');
 
