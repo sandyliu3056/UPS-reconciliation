@@ -11007,37 +11007,40 @@ async function bkdXlsx(){
               hc(L("毛利","Profit"),HEAD),hc(L("毛利率","Margin"),HEAD)]];
   const sumMerges=[{s:{r:0,c:0},e:{r:0,c:7}}];
   let tUp=0,tRe=0,tWm=0,tRb=0,anyWm=false,anyRb=false,allPriced=true;
-  /* 只有帳戶層的期別不進比較表 —— 它們集中在明細頁最後一段。 */
+  /* 只有帳戶層的期別不進比較表 —— 它們集中在明細頁最後一段。
+     毛利 = 實收 + 應補收 − UPS 實收;重算只是參考,不進毛利。 */
   const pk=out.filter(o=>o.pkgN!==0);
   for(const o of pk){
     const up=cents(o.r?o.r.s.upsTotal:o.ups||0);
     const re=(o.r&&!BKD_NOLVL)?cents(o.r.total||0):null;
     if(re==null) allPriced=false; else tRe+=re;
     tUp+=up;
-    const df=(re==null)?null:cents(re-up);
     const sd=serial(o.invDate);
     const wm=o.wms?cents(o.wms.amt):null;
     const rb=(o.wms&&Math.abs(o.wms.rebill||0)>0.004)?cents(o.wms.rebill):null;
     if(wm!=null){ tWm+=wm; anyWm=true; }
     if(rb!=null){ tRb+=rb; anyRb=true; }
+    const rev=wm==null?null:cents(wm+(rb||0));
+    const df=rev==null?null:cents(rev-up);
     sum.push([c(o.inv,"","left"),
       sd==null?c(o.invDate||"","","right"):c(sd,DATE,"right"),
       c(up,MONEY,"right",UPSB), re==null?c("—","","right",REPB):c(re,MONEY,"right",REPB),
       wm==null?c("—","","right",WMSB):c(wm,MONEY,"right",WMSB),
       rb==null?c("—","","right",WMSB):c(rb,MONEY,"right",WMSB),
       df==null?c("—","","right"):c(df,MONEY,"right"),
-      (df==null||Math.abs(re)<1e-9)?c("—","","right"):c(df/Math.abs(re),PCT,"right")]);
+      (df==null||Math.abs(rev)<1e-9)?c("—","","right"):c(df/Math.abs(rev),PCT,"right")]);
   }
   if(pk.length>1){
-    const td=allPriced?cents(tRe-tUp):null;
+    const tRev=cents(tWm+tRb);
+    const td=anyWm?cents(tRev-tUp):null;
     sum.push([c(L("合計","Total"),"","left",FOOT,true), c("","",  "right",FOOT,true),
       c(cents(tUp),MONEY,"right",FOOT,true),
       allPriced?c(cents(tRe),MONEY,"right",FOOT,true):c("—","","right",FOOT,true),
       anyWm?c(cents(tWm),MONEY,"right",FOOT,true):c("—","","right",FOOT,true),
       anyRb?c(cents(tRb),MONEY,"right",FOOT,true):c("—","","right",FOOT,true),
       td==null?c("—","","right",FOOT,true):c(td,MONEY,"right",FOOT,true),
-      (td==null||Math.abs(tRe)<1e-9)?c("—","","right",FOOT,true)
-        :c(td/Math.abs(tRe),PCT,"right",FOOT,true)]);
+      (td==null||Math.abs(tRev)<1e-9)?c("—","","right",FOOT,true)
+        :c(td/Math.abs(tRev),PCT,"right",FOOT,true)]);
   }
 
   /* ---- 明細 ---- */
