@@ -55,7 +55,7 @@ setTimeout(()=>{
   ok(!/General Setting(?!s)/.test(D.getElementById('tabs').textContent), '\u5074\u6b04\u4e0a\u6c92\u6709\u820a\u7684 General Setting');
   ok(/General Settings/.test(D.getElementById('tabs').textContent), '\u5074\u6b04\u4e0a\u6709 General Settings');
   const navTxt=D.getElementById('tabs').textContent;
-  ['Customer Management','Channel & Surcharge Catalog','Channel & Surcharge Rates','WMS / TMS Import','UPS Invoice Import']
+  ['Customer Management','Channel & Surcharge Catalog','Rate Maintenance','WMS / TMS Import','UPS Invoice Import']
     .forEach(n=>ok(navTxt.indexOf(n)>=0, '\u5074\u6b04\uff1a'+n));
   const sub=D.getElementById('rateSide').textContent;
   ['1. Rate Levels','2. Charge Code Mapping','1. General Settings','1. Customer Directory','2. Surcharge Catalog','3. Demand Periods',

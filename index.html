@@ -2218,7 +2218,7 @@ label:has(#newChanOn){display:none !important}
   </div>
 </section>
 
-<!-- ==================== 04 渠道與附加費費率(分層) ==================== -->
+<!-- ==================== 04 費率維護(分層) ==================== -->
 <section class="page" id="p-ratefill">
   <div class="lf sketch">
     <h3 class="display"><span class="em">💵</span><span data-i18n="hd.ratefill">Channel &amp; Surcharge Rates</span>
@@ -6414,8 +6414,8 @@ async function prefetchAddressClass(ships){
   if((gr.resi_source||"system")!=="api") return 0;      /* 系統模式:完全不打 */
   const url=String(gr.resi_api_url||"").trim();
   if(!url){
-    API_NOTE=L("已選取「連動 API」,但未填寫代理端點,本期全數以系統設定判定。端點於「01 General Setting → 3. 系統設定」填寫。",
-               "\u201cLinked API\u201d is selected with no proxy endpoint; this period is classified entirely by System Configuration. The endpoint is set under 01 General Setting → 3. System.");
+    API_NOTE=L("已選取「連動 API」,但未填寫代理端點,本期全數以系統設定判定。端點於「一般設定 → 追蹤 API」填寫。",
+               "\u201cLinked API\u201d is selected with no proxy endpoint; this period is classified entirely by System Configuration. The endpoint is set under General Settings → Tracking API.");
     return 0; }
   /* 收齊不重複的地址,對回追蹤號 */
   const groups=new Map();
@@ -12582,8 +12582,8 @@ function renderReady(okCfg, okInv){
     +L("這個帳號還沒有費率,所以「處理帳單」是灰的。",
        "This account has no rates yet, so Process Invoice is greyed out.")
     +`</b> `
-    +L("費率隨帳號儲存。請至「01 General Setting → 1. 層級設定」載入該層的費率設定檔(或於「04 渠道與附加費費率」匯入基本運費表),再按「儲存設定」,按鈕就會亮。",
-       "Rates are stored per account. Load the level's rate configuration file under 01 General Setting → 1. Level Setup (or import base-rate tables under 04 Channel & Surcharge Rates), then press Save Settings and the button lights up.")
+    +L("費率隨帳號儲存。請至「一般設定」載入該層的費率設定檔(或於「費率維護」匯入基本運費表),再按「儲存設定」,按鈕就會亮。",
+       "Rates are stored per account. Load the level's rate configuration file under General Settings (or import base-rate tables under Rate Maintenance), then press Save Settings and the button lights up.")
     +`</div>`;
 }
 
@@ -13205,8 +13205,8 @@ function chanPrevHTML(lvlId){
   return pvLvlSelect("pvChanLvl")
     +pvTable([L("渠道","Channel"),"Zones",L("已匯入的基本運費","Base rates loaded")],rows)
     +`<p class="hint" style="margin:9px 0 0">${
-      L("完整費率表請至「04 渠道與附加費費率 → 檢視已載費率」。",
-        "Full tables: 04 Channel & Surcharge Rates → View loaded rates.")}</p>`;
+      L("完整費率表請至「費率維護 → 檢視已載費率」。",
+        "Full tables: Rate Maintenance → View loaded rates.")}</p>`;
 }
 function accPrevHTML(lvlId){
   const raw=lvlRawOf(lvlId)||{};
@@ -14348,8 +14348,8 @@ async function trackUps(){
       body:JSON.stringify({numbers:rows.map(x=>x.t)})});
     let j=null; try{ j=await r.json(); }catch(e){}
     if(r.status===401){
-      if(note) note.textContent=L("代理不認得這個呼叫者:請重新登入,或到「01 General Setting → 3. 系統設定 → 追蹤 API」按「測試連線」看是哪一段。",
-                                  "The proxy does not recognise this caller: sign in again, or press Test connection under 01 General Setting → 3. System → Tracking API.");
+      if(note) note.textContent=L("代理不認得這個呼叫者:請重新登入,或到「一般設定 → 追蹤 API」按「測試連線」看是哪一段。",
+                                  "The proxy does not recognise this caller: sign in again, or press Test connection under General Settings → Tracking API.");
       return;
     }
     if(r.status===503){
@@ -15783,9 +15783,9 @@ function renderRecon(){
     cm.length+" row(s) priced on a different channel than the system determined: "
       +cm.slice(0,8).map(o=>o.order+" ("+o.chan+" → "+o.sysChan+")").join(", ")+(cm.length>8?" …":"")+"."));
   if(cu.length) warn.push(L(
-    "有 "+cu.length+" 筆寫了系統沒有的渠道:"+[...new Set(cu.map(o=>o.chan))].join(", ")+"。要用的話到「04 渠道與附加費費率」新增,或匯入時勾選新增。",
+    "有 "+cu.length+" 筆寫了系統沒有的渠道:"+[...new Set(cu.map(o=>o.chan))].join(", ")+"。要用的話到「費率維護」新增,或匯入時勾選新增。",
     cu.length+" row(s) name a channel the system does not have: "+[...new Set(cu.map(o=>o.chan))].join(", ")
-      +". Add it under 04 Channel & Surcharge Rates, or tick Add on import."));
+      +". Add it under Rate Maintenance, or tick Add on import."));
   const sw=(RECON&&RECON.sumWarn)||[];
   if(sw.length){
     const show=sw.slice(0,6).map(w=>w.order+" ("+(w.diff>0?"+":"")+money(w.diff)+")").join(", ");
@@ -15937,11 +15937,11 @@ function renderRebill(){
       "應補收 "+money(chgSum)+(refSum>0.004?" · 應退還 "+money(refSum):"")
         +" · 淨額 "+money(grand)+" · 其中燃油附加費 "+money(totFuel)
         +(totOver>0.004?" · 溢收(應退還)"+money(totOver):"")+" · "+items.length+" 項 · "+cusN+" 個客戶 · 逐筆金額在匯出的活頁簿裡"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":"")
-        +(unset?" · "+unset+" 項費率未設定(到 04 渠道與附加費費率設好再匯一次)":""),
+        +(unset?" · "+unset+" 項費率未設定(到「費率維護」設好再匯一次)":""),
       "To re-bill "+money(chgSum)+(refSum>0.004?" · to refund "+money(refSum):"")
         +" · net "+money(grand)+" · fuel surcharge within it "+money(totFuel)
         +(totOver>0.004?" · over-collected (owed back) "+money(totOver):"")+" · "+items.length+" item(s) · "+cusN+" customer(s) · the figures are in the exported workbook"+(skip?" · "+skip+" row(s) without itemised charges not listed":"")
-        +(unset?" · "+unset+" item(s) with no rate set (set them under 04 Channel & Surcharge Rates and import again)":""));
+        +(unset?" · "+unset+" item(s) with no rate set (set them under Rate Maintenance and import again)":""));
   }
   const tc=$("#tRebillCus")&&$("#tRebillCus").tBodies[0];
   if(tc) tc.innerHTML=((rb&&rb.byCus)||[]).map(a=>`<tr><td class="mono">${esc(a.code)}</td><td>${esc(a.name)}</td>
@@ -16453,8 +16453,8 @@ async function reconPreviewImport(file){
     uiPreviewClose();
     const n=add?reconAddChannels(unkChan):0;
     reconAccept(p, r.fname);
-    if(n) toast(L("已新增 "+n+" 條渠道,基本運費請到「04 渠道與附加費費率」匯入。",
-                  "Added "+n+" channel(s) — import their base rates under 04 Channel & Surcharge Rates."), true);
+    if(n) toast(L("已新增 "+n+" 條渠道,基本運費請到「費率維護」匯入。",
+                  "Added "+n+" channel(s) — import their base rates under Rate Maintenance."), true);
   };
   const x=$("#pvCancel");
   if(x) x.onclick=()=>{ uiPreviewClose(); reconMsg(L("已取消,什麼都沒有匯入。","Cancelled — nothing was imported."),true); };
@@ -21702,7 +21702,7 @@ const I18N={
   "th.zonescale":["級距","Zone scale"],
   "th.lvlfilled":["已設費率層級","Levels priced"],
   "hint.acczone":["依 Zone 級距的附加費沿用各渠道自己的 Zone —— 與基本運費同一套 Zone,只是費率不同。","Zone-scaled surcharges reuse each channel's own zones — the same zones as the base rates, only the rates differ."],
-  "hd.ratefill":["渠道與附加費費率","Channel & Surcharge Rates"],
+  "hd.ratefill":["費率維護","Rate Maintenance"],
   "lb.rfnow":["正在編價","Pricing"],
   "hint.rfshort":["這一頁只填錢。有哪些項目由目錄決定。","This page only sets the money. Which items exist is decided in the catalog."],
   "btn.fillprev":["預覽本層費率","Preview this level's rates"],
@@ -21847,7 +21847,7 @@ const I18N={
     "Press Save Settings to write it to the account."],
   "lb.cfgnow":["目前使用的設定檔","Configuration in use"],
   "btn.cfgload":["載入設定檔…","Load Configuration File…"],
-  "hint.cfgwhere":["載入或更換請至「01 General Setting → 1. 層級設定」。","Load or replace it under 01 General Setting → 1. Level Setup."],
+  "hint.cfgwhere":["載入或更換請至「一般設定」。","Load or replace it under General Settings."],
   "btn.login":["登入","Sign in"],
   "btn.logout":["登出","Sign out"], "cap.theme":["Theme","Theme"], "cap.clock":["Clock","Clock"],
   "hd.signin":["登入","Sign in"],
@@ -23961,10 +23961,11 @@ else boot();
    03 是「有哪些」(目錄)、04 是「收多少」(費率),兩者用字分開。 */
 var RENAME={
   /* 左欄 */
+  "nav.recon":  ["日常作業",           "Operations"],
   "tab.general":["計價設定",           "Pricing Configuration"],
   "tab.rate":   ["客戶管理",           "Customer Management"],
   "tab.cat":    ["渠道與附加費目錄",   "Channel & Surcharge Catalog"],
-  "tab.fill":   ["渠道與附加費費率",   "Channel & Surcharge Rates"],
+  "tab.fill":   ["費率維護",           "Rate Maintenance"],
   "tab.wmsdata":["WMS / TMS 匯入",     "WMS / TMS Import"],
   "tab.files":  ["UPS 帳單匯入",       "UPS Invoice Import"],
   /* 01 */
