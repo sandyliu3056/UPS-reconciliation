@@ -592,8 +592,6 @@ tbody tr:nth-child(even){background:var(--stripe)}
 tbody tr:hover{background:color-mix(in srgb, var(--select) 45%, transparent)}
 td.num,th.num{text-align:right}
 td.neg{color:var(--neg)}
-#chgCard table th,#chgCard table td{padding:3px 9px;line-height:1.45}
-#chgCard table td{font-size:12px}
 #p-recon .mny.neg{color:var(--neg)}
 #p-recon .mny.pos{color:var(--run2)}
 #p-recon tfoot td{border-top:2px solid var(--line);background:var(--stripe)}
@@ -2791,33 +2789,11 @@ label:has(#newChanOn){display:none !important}
 </section>
 
 <!-- ==================== Code Lookup ==================== -->
-<!-- 費用代碼:對照表本身就攤在頁面上 —— 37 列、Your code 一欄空著,這頁
-     在幹嘛不用另外教。上方一句話講清楚用途與界線(不影響金額),工具列
-     一條:搜尋、計數、匯出/匯入/說明。之前試過教學式的三行說明加步驟卡,
-     看起來不像正式系統;表格才是這一頁的內容。 -->
+<!-- UPS 代碼查詢:一本字典。對帳靠追蹤號與模板欄位,不靠代碼,所以這頁
+     只剩參考用途 —— 帳單冒出不認得的代碼(儀表板的「未歸類代碼」)時,
+     來這裡查它是什麼。原本上面還有一張「自訂代碼對照」卡,實務用不到,
+     整卡退役;既有的自訂代碼資料照舊生效(畫面標示與報表 Your Code 欄)。 -->
 <section class="page" id="p-code">
-  <div class="lf sketch" id="chgCard">
-    <h3 class="display"><span class="em">🏷</span><span data-i18n="hd.chgcode">Charge code mapping</span></h3>
-    <p class="hint" style="margin:0 0 10px;max-width:88ch" data-i18n="hint.chgcode">Assigns each charge your own code and name, used for on-screen labels and the Your Code column of exported reports — amounts are never affected. Maintain the table in Excel: export, fill in, import back.</p>
-    <div class="row" style="margin-bottom:9px">
-      <label class="inlab" style="margin-left:0" data-i18n="lb.search">Search</label>
-      <input id="chgSearch" class="cell" style="width:190px;text-align:left">
-      <span id="chgCount" class="affsum"></span>
-      <span style="flex:1 1 auto"></span>
-      <button class="act ghost sm" id="bChgExport" data-i18n="btn.chgexport">Export codes</button>
-      <button class="act ghost sm" id="bChgImport" data-i18n="btn.chgimport">Import codes</button>
-      <a class="act ghost sm" href="doc/Charge_Codes_Guide.pdf" download
-         style="text-decoration:none" data-i18n="btn.chgpdf">Guide (PDF)</a>
-      <input type="file" id="fChgImport" accept=".csv,.txt,.xlsx,.xls" style="display:none">
-    </div>
-    <div class="tablewrap" style="max-height:min(56vh,500px)"><table id="tChg"><thead><tr>
-      <th data-i18n="th.chgname">Charge</th>
-      <th data-i18n="th.chgups">System code</th>
-      <th data-i18n="th.chgmine">Your code</th>
-      <th data-i18n="th.chgmyname">Your name</th>
-      <th data-i18n="th.chgsrc">Source</th>
-    </tr></thead><tbody></tbody></table></div>
-  </div>
   <div class="lf sketch">
     <h3 class="display"><span class="em">🔎</span><span data-i18n="hd.code">UPS Charge Code Lookup</span></h3>
     <p class="hint" data-i18n="hint.code"></p>
@@ -7914,33 +7890,6 @@ function renderCustomers(){
     :`<tr><td colspan="4" class="empty">${reg.length
        ? L("沒有符合的客戶。","No matching client.")
        : L("還沒有客戶。按「新增客戶」,或用「匯入名單」整批匯入。","No customers yet. Use Add customer, or Import list for a whole file.")}</td></tr>`;
-  renderChgCodes();
-}
-function renderChgCodes(){
-  if(!CFG) return;
-  chgEnsure();
-  const q=(($("#chgSearch")||{}).value||"").trim().toLowerCase();
-  const all=chgCatalog();
-  const list=all.filter(c=>!q||c.name.toLowerCase().includes(q)
-    ||String(chgCodeOf(c.name)).toLowerCase().includes(q));
-  const m=chgCodes();
-  const tb=$("#tChg")&&$("#tChg").tBodies[0];
-  if(tb) tb.innerHTML=list.map(c=>{
-    const o=m[c.name]||{};
-    const ups=chgUpsCodes(c.name);
-    const mine=String(o.code||"").trim(), myname=String(o.name||"").trim();
-    /* 空格印「—」,正式報表的作法 —— 三十七列每格一句「未設定」只會變成雜訊。
-       設好的代碼放粗,那是要對外送出去的東西;設定進度由工具列的計數講。 */
-    return `<tr><td>${esc(c.name)}</td>
-      <td class="mono">${ups.length?esc(ups.join(" · ")):'<span class="empty">—</span>'}</td>
-      <td class="mono">${mine?"<b>"+esc(mine)+"</b>":'<span class="empty">—</span>'}</td>
-      <td>${myname?esc(myname):'<span class="empty">—</span>'}</td>
-      <td class="empty">${esc(T("chg.src."+c.src)||c.src)}</td></tr>`;
-  }).join("")||`<tr><td colspan="5" class="empty">—</td></tr>`;
-  const done=all.filter(c=>chgCodeOf(c.name)).length;
-  const txt=L("已設定 "+done+" / "+all.length,
-    done+" / "+all.length+" assigned");
-  const cnt=$("#chgCount"); if(cnt) cnt.textContent=txt;
 }
 function showCusTab(which){
   CUS_TAB=CUS_PANE[which]?which:"cus";
@@ -7990,63 +7939,7 @@ function bindCustomers(){
       okText:L("刪除","Delete")})) return;
     cusSaveAnd(()=>{ CFG.raw.customers=cusReg().filter(c=>c.code!==code); });
   });
-  $("#chgSearch") && ($("#chgSearch").oninput=()=>renderChgCodes());
-  $("#bChgExport") && ($("#bChgExport").onclick=exportChgCodes);
-  $("#bChgImport") && ($("#bChgImport").onclick=()=>$("#fChgImport").click());
-  $("#fChgImport") && ($("#fChgImport").onchange=e=>{
-    const f=e.target.files&&e.target.files[0];
-    if(f) importChgCodes(f);
-    e.target.value="";
-  });
   showCusTab("cus");
-}
-/* 匯回代碼表。只認 Charge 和 Your Code / Your Name 三欄,對不到名稱的列
-   逐一列出來 —— 安靜地略過等於「我改了但沒生效」,那最難查。 */
-function importChgCodes(f){
-  readWorkbookRows(f).then(bk=>{
-    const name=bk.order.find(n=>(bk.sheets[n]||[]).length>1);
-    const rows=name?bk.sheets[name]:[];
-    if(!rows.length) throw new Error(L("這個檔是空的","that file is empty"));
-    const head=sheetHeader(rows);
-    const ci=head.indexOf("Charge"), cc=head.indexOf("Your Code"), cn=head.indexOf("Your Name");
-    if(ci<0||cc<0) throw new Error(L("找不到 Charge 或 Your Code 欄","no Charge or Your Code column"));
-    if(!chgEnsure()) return;
-    const known=new Set(chgCatalog().map(c=>c.name));
-    const m=CFG.raw.charge_codes;
-    let set=0; const miss=[];
-    for(const r of rows.slice(1)){
-      const n=String(r[ci]==null?"":r[ci]).trim();
-      if(!n) continue;
-      if(!known.has(n)){ miss.push(n); continue; }
-      const code=String((cc>=0?r[cc]:"")||"").trim();
-      const nm=String((cn>=0?r[cn]:"")||"").trim();
-      const o=m[n]||(m[n]={});
-      if(code) o.code=code; else delete o.code;
-      if(nm) o.name=nm; else delete o.name;
-      if(!o.code&&!o.name) delete m[n];
-      set++;
-    }
-    CFG=readConfig(CFG.raw); DIRTY=true; saveSettings(); renderChgCodes();
-    setStatus(L("已匯入 "+set+" 列","Imported "+set+" row(s)"));
-    if(miss.length) toast(L(
-      "有 "+miss.length+" 列的費用名稱對不到系統裡的任何一項,已略過:"+miss.slice(0,3).join("、")
-        +(miss.length>3?" …":""),
-      miss.length+" row(s) name a charge this tool does not have and were skipped: "
-        +miss.slice(0,3).join(", ")+(miss.length>3?" …":"")), false);
-    else toast(L("代碼表已匯入並儲存。","Charge codes imported and saved."), true);
-  }).catch(e=>{
-    const msg=(e&&e.message)||String(e||"");
-    setStatus(L("匯入失敗:","Import failed: ")+msg);
-    toast(L("匯入失敗:","Import failed: ")+msg, false);
-  });
-}
-function exportChgCodes(){
-  const aoa=[["Charge","System Code","Your Code","Your Name","Source"],
-    ...chgCatalog().map(c=>{ const o=chgCodes()[c.name]||{};
-      return [c.name, chgUpsCodes(c.name).join(" "), o.code||"", o.name||"", c.src]; })];
-  saveSheet(aoa,"Charge Codes","UPS_Charge_Codes.xlsx",-1)
-    .then(ok=>setStatus(ok?L("代碼表已匯出","Charge codes exported")
-                          :L("已取消存檔","Save cancelled")));
 }
 /* ---- 費率:每個帳號自己的一列 ---- */
 let CFG_SYNC=0;                 /* 最後一次寫回成功的時間,0 = 還沒寫過 */
@@ -8867,7 +8760,6 @@ function showTab(p){
   if(p==="home" && typeof renderHome==="function") try{ renderHome(); }catch(e){}
   if(p==="admin"&&ME&&ME.role==="admin"){ loadLoginHistory(); loadUsers(); }
   if(p==="cus"&&typeof renderCustomers==="function") renderCustomers();
-  if(p==="code"&&typeof renderChgCodes==="function") renderChgCodes();
   if(p==="analysis"&&typeof renderAnalysis==="function") renderAnalysis();
   if(p==="analysis"&&typeof renderDashboard==="function") renderDashboard();
   /* 層級表以前只有動過才重畫,所以載入設定之後第一次進來是一張空表。
@@ -21525,7 +21417,6 @@ const I18N={
   "ct.cusreg":["客戶","Customers"],
   "ct.chgcode":["費用代碼","Charge codes"],
   "ct.recon":["對帳","Reconciliation"],
-  "btn.chgpdf":["說明文件(PDF)","Guide (PDF)"],
   "hd.reconchg":["逐項比對","By charge"],
   "hd.rebill":["補收清單","To re-bill"],
   "hint.rebill":["UPS 有收、WMS / TMS 沒向客戶收的項目,一項一列,金額大的在前;名稱用 UPS 的細項名,底下帶帳單上的原文,可以直接開給客戶。「應補收」用客戶自己的費率(重算有算這一項就用它),合約沒有費率或 UPS 才有的項目照 UPS 實收。燃油最後算:應補收 × 這一筆客戶的燃油 %,只算 UPS 本來就加燃油的項目。補收完利潤才準;完整的比對收在下面。",
@@ -21599,18 +21490,7 @@ const I18N={
   "btn.tickunassigned":["全選未指定","Tick unassigned"],
   "btn.assign":["指定","Assign"],
   "btn.cusexport":["匯出待指定清單","Export unassigned list"],
-  "hd.chgcode":["費用代碼對照","Charge code mapping"],
-  "hint.chgcode":["為每項費用指定對外的自訂代碼與名稱(維護方式:匯出 → 填寫 → 匯回);未設定者沿用內部名稱,不影響任何金額。",
-    "Assigns each charge an outbound code and name of your own (maintained via export → fill in → import back); unset items keep the internal name — amounts are never affected."],
   "th.chgname":["費用項目","Charge"],
-  "th.chgups":["UPS 代碼","UPS codes"],
-  "th.chgmine":["自訂代碼","Your code"],
-  "th.chgmyname":["自訂名稱","Your name"],
-  "th.chgsrc":["來源","Source"],
-  "btn.chgexport":["匯出代碼表","Export codes"],
-  "btn.chgimport":["匯入代碼表","Import codes"],
-  "chg.src.base":["內建","Built in"],
-  "chg.src.dyn":["自訂附加費","Custom surcharge"],
   "lb.assignto":["一次指定所選給","Assign selected to"],
   "cus.field.ACCOUNT":["UPS 帳號","UPS account"],
   "cus.field.REF1":["參考號 1","Reference 1"],
@@ -21726,7 +21606,7 @@ const I18N={
   "rt.size":["5. 尺寸規則","5. Size Rules"],
   "rt.chan":["1. 渠道管理","1. Channels"],
   "rt.demand":["3. Demand Surcharge","3. Demand Surcharge"],
-  "rt.chgcode":["2. 費用代碼設置","2. Charge Codes"],
+  "rt.chgcode":["2. UPS 代碼查詢","2. UPS Code Lookup"],
   "rt.sys":["1. 一般設定","1. General Settings"],
   "hd.analysis":["毛利分析","Profit analysis"],
   "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",
@@ -23966,7 +23846,7 @@ var RENAME={
   "tab.files":  ["UPS 帳單匯入",       "UPS Invoice Import"],
   /* 01 */
   "rt.levels":  ["1. 費率層級",        "1. Rate Levels"],
-  "rt.chgcode": ["2. 費用代碼對照",    "2. Charge Code Mapping"],
+  "rt.chgcode": ["2. UPS 代碼查詢",    "2. UPS Code Lookup"],
   "rt.sys":     ["1. 一般設定",        "1. General Settings"],
   "tab.sys":    ["一般設定",          "General Settings"],
   /* 02 */
