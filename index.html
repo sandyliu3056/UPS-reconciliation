@@ -7929,21 +7929,17 @@ function renderChgCodes(){
     const o=m[c.name]||{};
     const ups=chgUpsCodes(c.name);
     const mine=String(o.code||"").trim(), myname=String(o.name||"").trim();
-    /* 沒設過的整列調淡 —— 一眼看得出還有多少沒建檔,而不是掃過三十七列
-       空格子。設過的把代碼放粗,那才是要對外送出去的東西。 */
-    return `<tr${mine||myname?"":' style="opacity:.62"'}><td>${esc(c.name)}</td>
-      <td class="mono">${ups.length?esc(ups.join(" · "))
-        :`<span class="empty">${L("無單一代碼","no single code")}</span>`}</td>
-      <td class="mono">${mine?"<b>"+esc(mine)+"</b>"
-        :`<span class="empty">${L("未設定","not set")}</span>`}</td>
-      <td>${myname?esc(myname)
-        :`<span class="empty">${L("沿用內部名稱","keeps the internal name")}</span>`}</td>
+    /* 空格印「—」,正式報表的作法 —— 三十七列每格一句「未設定」只會變成雜訊。
+       設好的代碼放粗,那是要對外送出去的東西;設定進度由工具列的計數講。 */
+    return `<tr><td>${esc(c.name)}</td>
+      <td class="mono">${ups.length?esc(ups.join(" · ")):'<span class="empty">—</span>'}</td>
+      <td class="mono">${mine?"<b>"+esc(mine)+"</b>":'<span class="empty">—</span>'}</td>
+      <td>${myname?esc(myname):'<span class="empty">—</span>'}</td>
       <td class="empty">${esc(T("chg.src."+c.src)||c.src)}</td></tr>`;
   }).join("")||`<tr><td colspan="5" class="empty">—</td></tr>`;
   const done=all.filter(c=>chgCodeOf(c.name)).length;
-  const txt=L(
-    "共 "+all.length+" 項,已設代碼 "+done+" 項",
-    all.length+" charges, "+done+" with a code");
+  const txt=L("已設定 "+done+" / "+all.length,
+    done+" / "+all.length+" assigned");
   const cnt=$("#chgCount"); if(cnt) cnt.textContent=txt;
 }
 function showCusTab(which){
@@ -21507,14 +21503,14 @@ const I18N={
   "btn.exportaccall":["匯出全部渠道範本","Export All Channels Template"],
   "btn.importacc":["匯入附加費範本","Import Accessorials Template"],
   "hd.code":["UPS 收費代碼查詢","UPS Charge Code Lookup"],
-  "hint.code":["UPS 的代碼字典 —— 查每個收費代碼代表哪一種費用。「掃描已載入帳單」只列這批帳單實際出現的代碼與次數,儀表板的「未歸類代碼」就從這裡查;「顯示完整參考表」列出全部。上面那張卡是你們的代碼,這一張是 UPS 的。",
-    "UPS’s code dictionary — which charge each code stands for. Scan Loaded Invoice lists only the codes actually present in the loaded invoices, with counts — the dashboard’s Unclassified codes point here; Show Full Reference lists everything. The card above holds your codes; this one holds UPS’s."],
+  "hint.code":["UPS 收費代碼參考。「掃描已載入帳單」列出本批帳單實際出現的代碼與筆數,儀表板的「未歸類代碼」可在此查對;「顯示完整參考表」列出完整字典。",
+    "UPS charge code reference. Scan Loaded Invoice lists the codes present in the loaded invoices with counts — the dashboard’s Unclassified codes can be checked here; Show Full Reference lists the complete dictionary."],
   "btn.scaninv":["掃描已載入帳單","Scan Loaded Invoice"],
   "btn.fullref":["顯示完整參考表","Show Full Reference"],
   "btn.clearsearch":["清除","Clear"],
   "lb.search":["搜尋","Search"], "lb.show":["顯示","Show"],
   "th.code":["代碼","Code"],
-  "th.meaning2":["附加費 / 意義","Surcharge / Meaning"],
+  "th.meaning2":["說明","Description"],
   "th.ininv":["在帳單中","In Invoice"],
   "th.count":["筆數","Count"],
   "hd.dim":["生效中的 DIM 除數","DIM Factors in Force"],
@@ -21604,12 +21600,12 @@ const I18N={
   "btn.assign":["指定","Assign"],
   "btn.cusexport":["匯出待指定清單","Export unassigned list"],
   "hd.chgcode":["費用代碼對照","Charge code mapping"],
-  "hint.chgcode":["為每項費用指定自己的代碼與名稱,用於畫面標示與匯出報表的 Your Code 欄 —— 不影響任何金額。整批維護走 Excel:匯出、填寫、匯回。",
-    "Assigns each charge your own code and name, used for on-screen labels and the Your Code column of exported reports — amounts are never affected. Maintain the table in Excel: export, fill in, import back."],
-  "th.chgname":["費用(系統內部名稱)","Charge (internal name)"],
-  "th.chgups":["系統代碼","System code"],
-  "th.chgmine":["你的代碼","Your code"],
-  "th.chgmyname":["你的名稱","Your name"],
+  "hint.chgcode":["為每項費用指定對外的自訂代碼與名稱(維護方式:匯出 → 填寫 → 匯回);未設定者沿用內部名稱,不影響任何金額。",
+    "Assigns each charge an outbound code and name of your own (maintained via export → fill in → import back); unset items keep the internal name — amounts are never affected."],
+  "th.chgname":["費用項目","Charge"],
+  "th.chgups":["UPS 代碼","UPS codes"],
+  "th.chgmine":["自訂代碼","Your code"],
+  "th.chgmyname":["自訂名稱","Your name"],
   "th.chgsrc":["來源","Source"],
   "btn.chgexport":["匯出代碼表","Export codes"],
   "btn.chgimport":["匯入代碼表","Import codes"],
