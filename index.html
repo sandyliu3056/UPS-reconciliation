@@ -7666,7 +7666,9 @@ function cusEditTitle(k){
   if(h){ h.dataset.i18n=hk; h.textContent=T(hk); }
 }
 /* 新增:同一個視窗,空白開。層級預設落在現在編輯的那一層 —— 多半就是要指
-   的那一層,而且它是看得見的,不是背後偷偷指定。 */
+   的那一層,而且它是看得見的,不是背後偷偷指定。
+   選單裡沒有「未指定」:沒層級的客戶整批擋在計價外,不給這個選項;
+   隱藏的層級(Default)照 rlPickList 的規則不列。 */
 function openCusNew(){
   if(!cusEnsure()) return;
   CUS_EDIT=""; CUS_NEW=true;
@@ -7675,10 +7677,10 @@ function openCusNew(){
   $("#ceName") && ($("#ceName").value="");
   const sel=$("#ceLevel");
   if(sel){
-    const o=rlStore(), list=(o&&o.list)||[];
-    sel.innerHTML=`<option value="">${esc(L("未指定","Not set"))}</option>`
-      +list.map(e=>`<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("");
+    const o=rlStore(), list=rlPickList(o,null);
+    sel.innerHTML=list.map(e=>`<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("");
     sel.value=(o&&o.active)||"";
+    if(sel.selectedIndex<0) sel.selectedIndex=0;
   }
   cusEditNote("");
   $("#cusEditBg") && $("#cusEditBg").classList.add("on");
@@ -7693,12 +7695,13 @@ function openCusEdit(code){
   const sel=$("#ceLevel");
   if(sel){
     const list=rlPickList(null,c.level);
-    /* 指到一個已經被刪掉的層級時也要選得回原值,不然開一次視窗就被清空。 */
+    /* 指到一個已經被刪掉的層級時也要選得回原值,不然開一次視窗就被清空。
+       還沒指定層級的舊客戶:選單落在現用層級,按儲存那一下才真的指過去。 */
     const gone=c.level&&!list.some(e=>e.id===c.level);
-    sel.innerHTML=`<option value="">${esc(L("未指定","Not set"))}</option>`
-      +list.map(e=>`<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("")
+    sel.innerHTML=list.map(e=>`<option value="${esc(e.id)}">${esc(e.name)}</option>`).join("")
       +(gone?`<option value="${esc(c.level)}">${esc(cusLevelLabel(c.level))}</option>`:"");
-    sel.value=c.level||"";
+    sel.value=c.level||((rlStore()||{}).active)||"";
+    if(sel.selectedIndex<0) sel.selectedIndex=0;
   }
   cusEditNote("");
   $("#cusEditBg") && $("#cusEditBg").classList.add("on");
