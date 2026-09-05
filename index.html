@@ -1992,7 +1992,7 @@ label:has(#newChanOn){display:none !important}
   </div>
   <div class="lf sketch" id="reconTplCard">
     <h3 class="display"><span class="em">📄</span><span data-i18n="hd.recon">WMS / TMS data</span></h3>
-    <!-- 第一列:來源 → 模板 → 匯入 → 預覽,一條線就是整個流程。 -->
+    <!-- 第一列:來源 → 模板(只出現選中那一邊的)→ 匯入 → 預覽,一條線就是整個流程。 -->
     <div class="row">
       <label class="inlab" style="margin-left:0" data-i18n="lb.datasrc">Data source</label>
       <span class="seg" id="reconSrcSeg" role="group">
@@ -2000,7 +2000,7 @@ label:has(#newChanOn){display:none !important}
         <button type="button" data-src="TMS" aria-pressed="false">TMS</button>
       </span>
       <button class="act ghost sm" id="bReconTplW" data-i18n="btn.recontplw">WMS template</button>
-      <button class="act ghost sm" id="bReconTplT" data-i18n="btn.recontplt">TMS template</button>
+      <button class="act ghost sm" id="bReconTplT" data-i18n="btn.recontplt" hidden>TMS template</button>
       <button class="act" id="bReconImp" data-i18n="btn.reconimp">Import filled</button>
       <button class="act ghost sm eye" id="bReconPrev" data-i18n="btn.datapv">👁 Preview</button>
       <span style="flex:1 1 auto"></span>
@@ -15443,10 +15443,11 @@ function reconSrcPaint(){
   const src=(typeof RECON_SRC!=="undefined"&&RECON_SRC==="TMS")?"TMS":"WMS";
   document.querySelectorAll("#reconSrcSeg button").forEach(x=>
     x.setAttribute("aria-pressed", String(x.dataset.src===src)));
-  /* 選到的那一份模板用實心鈕,另一份留白 —— 一眼看得出按哪一顆。 */
+  /* 模板鈕跟著來源走:選哪一邊,就只出現那一邊的模板鈕 —— 兩顆並排
+     等於要人自己再選一次來源。 */
   for(const [id,s2] of [["#bReconTplW","WMS"],["#bReconTplT","TMS"]]){
     const b=document.getElementById(id.slice(1));
-    if(b) b.className="act sm"+(s2===src?"":" ghost");
+    if(b){ b.hidden=(s2!==src); b.className="act sm"; }
   }
   const hd=document.querySelector('#reconTplCard [data-i18n="hd.recon"]');
   if(hd) hd.textContent=L(src+" 資料", src+" data");
