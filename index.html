@@ -19254,13 +19254,14 @@ function addFuelRange(){
     s[c].sort((a,b)=>String(a.start).localeCompare(String(b.start)));
   }
   CFG=readConfig(CFG.raw); DIRTY=true; renderFuelRows();
-  /* 加完就把整列清空,包含折數 —— 留著上一段的數字,下一段很容易照著按下去
-     就送出,而且畫面上分不出那是「還沒送出的」還是「剛剛加過的」。加了什麼
-     寫在底下那一行,要對照看得到。 */
+  /* 加完就把整列清空 —— 日期、%、折數、勾選的渠道都歸零:留著上一段的
+     數字,下一段很容易照著按下去就送出,而且畫面上分不出那是「還沒送出的」
+     還是「剛剛加過的」。加了什麼寫在底下那一行,要對照看得到。 */
   $("#fuelFrom").value=""; $("#fuelTo").value=""; $("#fuelPct").value="";
   const fold=$("#fuelPctFold");
   if(fold&&fold.options.length) fold.selectedIndex=0;
   fuelEffPaint();
+  document.querySelectorAll("#fuelChans .fchan:checked").forEach(c=>c.checked=false);
   fuelNote((LANG?"Added: ":"已新增:")+(_eff!==null?_effTitle
     :(LANG?pct+"%":pct+"%"))+(LANG?"  ·  "+chans.length+" channel(s)":"  ·  "+chans.length+" 個渠道"), true);
   setStatus((LANG?"Added a range to ":"已新增區間到 ")+chans.length
