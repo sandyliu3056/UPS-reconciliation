@@ -2244,6 +2244,7 @@ label:has(#newChanOn){display:none !important}
       <label class="inlab" style="margin-left:0" data-i18n="lb.clicus">Client</label>
       <span class="foldwrap"><select id="cliCus" class="fold" style="min-width:280px"></select></span>
       <button class="act" id="bCliXls" data-i18n="btn.clixls">Download invoice (Excel)</button>
+      <button class="act" id="bCliPdf" data-i18n="btn.clipdf">Generate Client Invoice</button>
       <span id="cliSum" class="affsum"></span>
     </div>
     <div id="cliEmpty" class="note plain" hidden></div>
@@ -11610,6 +11611,7 @@ $("#bkdMax") && ($("#bkdMax").onclick=()=>{
 $("#bkdBg") && ($("#bkdBg").onclick=e=>{ if(e.target.id==="bkdBg") $("#bkdBg").classList.remove("on"); });
 $("#trkSearch") && ($("#trkSearch").onkeydown=e=>{ if(e.key==="Enter") renderHist(); });
 $("#bCliXls") && ($("#bCliXls").onclick=()=>{ cliExport().catch(e=>toast(String((e&&e.message)||e),false)); });
+$("#bCliPdf") && ($("#bCliPdf").onclick=()=>{ cliPdf().catch(e=>toast(String((e&&e.message)||e),false)); });
 $("#bHistRefresh") && ($("#bHistRefresh").onclick=()=>{ renderHist();
   setStatus(LANG?"Refreshed":"已重新整理"); });
 /* 已匯入的帳單開成一個視窗。原本是一大塊換行文字塞在頁面中間,
@@ -20843,9 +20845,9 @@ function renderCode(){
 /* ---- 對帳第 4 步:客戶請款單 --------------------------------------
    數字全部來自 RECON.res.rebill.items(應補收清單),一毛都不重算:
    每一項一列(金額不含燃油),燃油另立一列;稽核費(沒有追蹤號)壓底。
-   尺寸兩欄照客戶正本的擺法:Key DIM 欄一律放帳單採用的尺寸(有更正用
-   更正後 dimsC,沒有就用申報 dimsA),Corrected DIM 欄只在真的改過尺寸
-   (兩個都有且不同)時放原申報值,其餘留白。 */
+   尺寸兩欄:Key DIM 欄一律放申報尺寸(dimsA,帳單上只有一組尺寸時就放
+   那一組),Corrected DIM 欄只在 UPS 真的改了尺寸(兩個都有且不同)時
+   放更正後的 dimsC,其餘留白。 */
 let CLI_CUS="";
 function cliDimsOf(trk){
   const t=String(trk||"").trim(); if(!t) return {c:"",a:""};
@@ -20862,7 +20864,7 @@ function cliData(code){
   for(const it of items){
     const isAudit=(it.charge===AUDIT_FEE_NAME)||it.kind==="audit";
     const d=isAudit?{c:"",a:""}:cliDimsOf(it.trk);
-    const da=d.c||d.a, dc=(d.c&&d.a&&d.a!==d.c)?d.a:"";
+    const da=d.a||d.c, dc=(d.c&&d.a&&d.a!==d.c)?d.c:"";
     const push=(desc,amt)=>{
       if(Math.abs(amt)<0.005) return;
       (isAudit?audit:rows).push({trk:isAudit?"":String(it.trk||""), desc, aud:isAudit,
@@ -20901,12 +20903,14 @@ function renderClinv(){
       empty.textContent=L("目前這份對帳沒有應補收項目 —— 先在第 3 步開一份有補收的對帳,再回來這裡。",
                           "The open reconciliation has no re-bill items. Open a batch with re-bill under step 3, then come back."); }
     const b=$("#bCliXls"); if(b) b.disabled=true;
+    const bp=$("#bCliPdf"); if(bp) bp.disabled=true;
     const sum=$("#cliSum"); if(sum) sum.textContent="";
     return;
   }
   if(empty) empty.hidden=true;
   if(body) body.hidden=false;
   const b=$("#bCliXls"); if(b) b.disabled=false;
+  const bp=$("#bCliPdf"); if(bp) bp.disabled=false;
   if(!list.some(([c])=>c===CLI_CUS)) CLI_CUS=list[0][0];
   if(sel){
     sel.innerHTML=list.map(([c,a])=>{
@@ -20982,6 +20986,110 @@ async function cliExport(){
     pic:{b64:CLI_LOGO_B64, ext:"jpeg",
          from:{c:0,co:0,r:0,ro:10887}, to:{c:5,co:503465,r:8,ro:51285},
          cx:12055929, cy:1999827}}], fname);
+  toast(ok?L("已匯出 "+fname,"Exported "+fname):L("已取消存檔","Save cancelled"), ok);
+}
+/* ---- Generate Client Invoice(PDF) --------------------------------
+   跟 Excel 同一套版式,直接產成可寄給客戶的 PDF:信頭圖、CLIENT/DATE 與
+   NOTE/INVOICE 兩列、表頭帶一條底線、A 欄 Adjustments 群組標籤、稽核費
+   自成一段、Total 標籤與合計錯開兩列。手寫 PDF 1.4:內容全是英數,用內建
+   Helvetica 就夠;信頭 JPEG 以 DCTDecode 原檔直嵌。單一直式頁,寬度照
+   客戶正本 PDF(1214.69pt),高度隨列數。 */
+const PDF_WD=(()=>{ /* Helvetica 每字寬(千分之一 em),右對齊要靠它 */
+  const m={}, put=(cs,w)=>{ for(const c of cs) m[c]=w; };
+  put(" ,.:;/I!ft",278); put("ijl",222); put("-()r",333); put("cksvxyzJ",500);
+  put("0123456789$#abdeghnopquL",556); put("FTZ",611); put("ABEKPVXYS",667);
+  put("CDHNRUw",722); put("GOQ",778); put("Mm",833); put("W",944);
+  return m; })();
+function pdfW(s,sz){ let w=0; for(const ch of String(s)) w+=(PDF_WD[ch]||556); return w*sz/1000; }
+async function cliPdf(){
+  if(!CLI_CUS) return;
+  const d=cliData(CLI_CUS);
+  const main=d.rows.filter(r=>!r.aud), auds=d.rows.filter(r=>r.aud);
+  const today=new Date(), pd2=n=>String(n).padStart(2,"0");
+  const dt=pd2(today.getMonth()+1)+"-"+pd2(today.getDate())+"-"+String(today.getFullYear()).slice(-2);
+  /* 幾何:欄位位置照 Excel 的六欄欄寬等比放大;信頭圖比例照它在正本裡
+     被擺出來的樣子(EMU 的長寬比),不是原始像素比。 */
+  const PW=1214.69, ML=64, MR=64, MT=56, MB=64, UW=PW-ML-MR, RGT=ML+UW;
+  const CWU=[17.140625,39.42578125,70.7109375,23.42578125,22.42578125,22.5703125];
+  const cwTot=CWU.reduce((a,b)=>a+b,0);
+  const CX=[]; { let ax=ML; for(const w of CWU){ CX.push(ax); ax+=w/cwTot*UW; } }
+  const IMG_H=UW/(12055929/1999827);
+  const F0=16, FD=15, LP=30, RP=28;
+  const nRows=main.length+(auds.length?1+auds.length:0);
+  const PH=MT+IMG_H+28+F0+LP+(LP+12)+40+nRows*RP+2*RP+MB;
+  const C=[];
+  const es=s=>String(s==null?"":s).replace(/[^\x20-\xFF]/g,"?")
+    .replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");
+  const tx=(x,yy,s,bold,sz)=>{ if(String(s??"")!=="")
+    C.push("BT /"+(bold?"F2":"F1")+" "+sz+" Tf "+x.toFixed(2)+" "+yy.toFixed(2)
+      +" Td ("+es(s)+") Tj ET"); };
+  const txr=(xr,yy,s,bold,sz)=>tx(xr-pdfW(String(s),sz),yy,s,bold,sz);
+  const money2=v=>{ const t="$"+Math.abs(cents(v)).toLocaleString("en-US",
+      {minimumFractionDigits:2,maximumFractionDigits:2});
+    return v<0?"("+t+")":t; };
+  const mtx=(x,yy,v,bold,sz)=>{ if(v<0){ C.push("1 0 0 rg"); tx(x,yy,money2(v),bold,sz);
+      C.push("0 0 0 rg"); } else tx(x,yy,money2(v),bold,sz); };
+  C.push("q "+UW.toFixed(2)+" 0 0 "+IMG_H.toFixed(2)+" "+ML.toFixed(2)+" "
+    +(PH-MT-IMG_H).toFixed(2)+" cm /Im1 Do Q");
+  let y=PH-MT-IMG_H-28-F0;
+  tx(CX[0],y,"CLIENT:",1,F0); tx(CX[1],y,d.name+" - "+CLI_CUS,0,F0);
+  tx(CX[4],y,"DATE:",1,F0);   txr(RGT,y,dt,0,F0);
+  y-=LP;
+  tx(CX[0],y,"NOTE:",1,F0);   tx(CX[1],y,"SHIPPING CORRECTION CHARGES",0,F0);
+  tx(CX[4],y,"INVOICE:",1,F0); txr(RGT,y,d.no,0,F0);
+  y-=LP+12;
+  tx(CX[1],y,"Tracking",1,F0); tx(CX[2],y,"Description",1,F0);
+  tx(CX[3],y,"Corrected DIM",1,F0); tx(CX[4],y,"Key DIM",1,F0); tx(CX[5],y,"Total",1,F0);
+  C.push("0.75 w 0 0 0 RG "+ML.toFixed(2)+" "+(y-8).toFixed(2)+" m "
+    +RGT.toFixed(2)+" "+(y-8).toFixed(2)+" l S");
+  y-=40;
+  main.forEach((r,i)=>{
+    if(!i) tx(CX[0],y,"Adjustments",1,FD);
+    tx(CX[1],y,r.trk,0,FD); tx(CX[2],y,r.desc,0,FD);
+    tx(CX[3],y,r.dc,0,FD);  tx(CX[4],y,r.da,0,FD); mtx(CX[5],y,r.amt,0,FD);
+    y-=RP;
+  });
+  if(auds.length){ y-=RP;
+    for(const r of auds){ tx(CX[2],y,r.desc,0,FD); mtx(CX[5],y,r.amt,0,FD); y-=RP; } }
+  tx(CX[0],y,"Total",1,F0);
+  y-=RP;
+  mtx(CX[5],y,d.total,1,F0);
+  /* 組 PDF:物件、xref、trailer。位移全部照實算,Adobe 對 xref 很挑。 */
+  const enc=new TextEncoder();
+  const bin=atob(CLI_LOGO_B64); const img=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) img[i]=bin.charCodeAt(i);
+  const content=enc.encode(C.join("\n"));
+  const objs=[];
+  objs[1]="<< /Type /Catalog /Pages 2 0 R >>";
+  objs[2]="<< /Type /Pages /Kids [3 0 R] /Count 1 >>";
+  objs[3]="<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+PW+" "+PH.toFixed(2)+"]"
+    +" /Resources << /Font << /F1 5 0 R /F2 6 0 R >> /XObject << /Im1 7 0 R >> >>"
+    +" /Contents 4 0 R >>";
+  objs[4]={head:"<< /Length "+content.length+" >>\nstream\n", bin:content, tail:"\nendstream"};
+  objs[5]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+  objs[6]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
+  objs[7]={head:"<< /Type /XObject /Subtype /Image /Width 2078 /Height 315"
+    +" /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "
+    +img.length+" >>\nstream\n", bin:img, tail:"\nendstream"};
+  const parts=[]; let off=0;
+  const push=b=>{ parts.push(b); off+=b.length; };
+  push(enc.encode("%PDF-1.4\n")); push(new Uint8Array([0x25,0xE2,0xE3,0xCF,0xD3,0x0A]));
+  const xref=[];
+  for(let i=1;i<objs.length;i++){
+    xref[i]=off;
+    push(enc.encode(i+" 0 obj\n"));
+    const o=objs[i];
+    if(typeof o==="string") push(enc.encode(o));
+    else{ push(enc.encode(o.head)); push(o.bin); push(enc.encode(o.tail)); }
+    push(enc.encode("\nendobj\n"));
+  }
+  const xs=off;
+  let X="xref\n0 "+objs.length+"\n0000000000 65535 f \n";
+  for(let i=1;i<objs.length;i++) X+=String(xref[i]).padStart(10,"0")+" 00000 n \n";
+  X+="trailer\n<< /Size "+objs.length+" /Root 1 0 R >>\nstartxref\n"+xs+"\n%%EOF";
+  push(enc.encode(X));
+  const fname="Shipping_Adjustments_"+CLI_CUS+"_"+(d.ym||"")+".pdf";
+  const ok=await dlBlob(new Blob(parts,{type:"application/pdf"}),fname);
   toast(ok?L("已匯出 "+fname,"Exported "+fname):L("已取消存檔","Save cancelled"), ok);
 }
 function renderHist(){
@@ -21906,8 +22014,9 @@ const I18N={
   "tx.clinote":["SHIPPING CORRECTION CHARGES","SHIPPING CORRECTION CHARGES"],
   "th.clidesc":["項目","Description"],
   "th.total":["Total","Total"],
-  "th.dimc":["原申報尺寸","Corrected DIM"],
-  "th.dima":["計費尺寸","Key DIM"],
+  "th.dimc":["更正後尺寸","Corrected DIM"],
+  "th.dima":["申報尺寸","Key DIM"],
+  "btn.clipdf":["產生客戶請款單","Generate Client Invoice"],
   "rt.sys":["1. 一般設定","1. General Settings"],
   "hd.analysis":["毛利分析","Profit analysis"],
   "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",

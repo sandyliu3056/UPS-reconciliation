@@ -96,7 +96,7 @@ ok(D.querySelectorAll('.sketch').length===60&&D.querySelectorAll('.sketch-soft')
    '60 個 .sketch、16 個 .sketch-soft 都在');
 ok(D.querySelectorAll('table').length===32&&D.querySelectorAll('.modalbg').length===26,
    '\u8868\u683c 32\u3001\u8996\u7a97 26');
-ok(D.querySelectorAll('[data-i18n]').length===598, 'i18n 標記 598 個(客戶請款單上線)');
+ok(D.querySelectorAll('[data-i18n]').length===599, 'i18n 標記 599 個(請款單 PDF 按鈕上線)');
 
 console.log('\n[8] \u7d19\u7684\u984f\u8272');
 ok(/--paper-mask:url\(/.test(face), '\u6709\u4e00\u5f35\u5c08\u9580\u7576\u906e\u7f69\u7684\u5642\u9ede');
