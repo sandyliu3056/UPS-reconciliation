@@ -11234,11 +11234,14 @@ function openBreakdown(){
     /* 整單一張卡:UPS 各件同名的行加總、重算各件相加、客戶那兩欄是整單的。 */
     const wmsAny=(pkOk.find(o=>o.wms)||{}).wms||null;
     if(pkOk.length){
-      H.push(`<div class="bkdinv" id="bkdInv0"><span class="no">${L("整單合計","Whole order")}</span>`
+      /* 標題:有單號就用單號當主標,追蹤號列在旁邊,右邊標「整單 · N 件」。 */
+      const n=orderTrks.length;
+      H.push(`<div class="bkdinv" id="bkdInv0"><span class="no">${
+          (w0&&w0.order)?L("單號 ","Order ")+esc2(w0.order):L("整單合計","Whole order")}</span>`
         +`<span class="dt">${orderTrks.map(esc2).join("  ·  ")}</span>`
-        +`<span class="tag">${L(orderTrks.length+" 件",orderTrks.length+" packages")}</span></div>`);
+        +`<span class="tag">${L("整單 · "+n+" 件","Whole order · "+n+" packages")}</span></div>`);
       H.push(`<div class="bkdchap">`+bkdSection(bkdOrderMerge(pkOk), wmsAny,
-               L("整單 · "+orderTrks.length+" 件","Whole order · "+orderTrks.length+" packages"))+`</div>`);
+               L("整單合計 · "+n+" 件相加","All "+n+" packages combined"))+`</div>`);
     }
     /* 逐件:各件自己的 UPS 與重算。客戶那兩欄是整單的,只在上面那張卡。 */
     orderTrks.forEach((tt,pi)=>{
