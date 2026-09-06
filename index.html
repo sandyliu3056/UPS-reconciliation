@@ -21011,7 +21011,7 @@ async function cliPdf(){
   const CX=[]; { let ax=ML; for(const w of CWU){ CX.push(ax); ax+=w/cwTot*UW; } }
   const IMG_H=UW/(12055929/1999827);
   const F0=16, FD=15, LP=30, RP=28;
-  const PH=MT+IMG_H+28+F0+LP+(LP+12)+40+d.rows.length*RP+2*RP+MB;
+  const PH=MT+IMG_H+28+F0+LP+(LP+12)+40+d.rows.length*RP+3*RP+MB;
   const C=[];
   const es=s=>String(s==null?"":s).replace(/[^\x20-\xFF]/g,"?")
     .replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");
@@ -21044,6 +21044,7 @@ async function cliPdf(){
     tx(CX[3],y,r.dc,0,FD);  tx(CX[4],y,r.da,0,FD); mtx(CX[5],y,r.amt,0,FD);
     y-=RP;
   });
+  y-=RP;                                   /* 資料後空一列,跟 Excel 一樣 */
   tx(CX[0],y,"Total",1,F0);
   y-=RP;
   mtx(CX[5],y,d.total,1,F0);
