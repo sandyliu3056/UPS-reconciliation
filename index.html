@@ -1082,6 +1082,23 @@ tr.blocked{opacity:.72}
 .srcpill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.5px;padding:1px 9px;border-radius:999px;
   border:1px solid var(--line);background:var(--select);color:var(--ink)}
 .srcpill.TMS{background:transparent}
+/* 跑帳單的小卡車:手繪線條、車身微晃、輪子轉、路面的虛線往後跑。 */
+.invrun{display:flex;align-items:center;gap:14px;margin:10px 0 2px;padding:10px 14px;border:1.5px dashed var(--line);border-radius:10px;background:color-mix(in srgb, var(--select) 55%, transparent)}
+.invrun svg{width:126px;height:58px;flex:none;overflow:visible}
+.invrun .cap{font-size:12.5px;color:var(--muted)}
+.invrun .cap b{display:block;font-size:13.5px;color:var(--ink);margin-bottom:2px}
+@keyframes invTruckBob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-2px) rotate(-.6deg)}}
+@keyframes invWheel{to{transform:rotate(360deg)}}
+@keyframes invRoad{to{stroke-dashoffset:-26}}
+@keyframes invBox{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.invrun .truck{animation:invTruckBob .55s ease-in-out infinite;transform-origin:50% 100%}
+.invrun .wheel{transform-box:fill-box;transform-origin:center;animation:invWheel .6s linear infinite}
+.invrun .box{animation:invBox .55s ease-in-out infinite}
+.invrun .road{stroke-dasharray:14 12;animation:invRoad .7s linear infinite}
+@media (prefers-reduced-motion:reduce){ .invrun *{animation:none!important} }
+#invArchCard #invArchN{margin-left:10px}
+.bkdtag.pkg{background:var(--select);border-color:var(--accent)}
+#tInvArch td.cloud{white-space:nowrap}
 .bkdinv{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   margin:20px 0 10px;padding:7px 12px;background:var(--select);
   border-left:6px solid var(--accent);border-radius:0 8px 8px 0;
@@ -1903,6 +1920,21 @@ label:has(#newChanOn){display:none !important}
       <input type="file" id="fInv" accept=".csv,.txt,.xlsx,.xls" multiple>
     </div>
     <div class="readyrow" id="filesReady"></div>
+    <!-- 跑帳單的時候看得到還在跑:小卡車載著箱子往前開,底下的字就是狀態列的進度。 -->
+    <div class="invrun" id="invRunning" hidden>
+      <svg viewBox="0 0 120 56" aria-hidden="true">
+        <g class="truck">
+          <path d="M6 36 h62 v-20 h-52 q-6 0 -8 6 z" fill="var(--select)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M68 24 h20 l10 8 v4 h-30 z" fill="var(--accent)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>
+          <rect x="72" y="26" width="10" height="6" fill="#fff" stroke="var(--ink)" stroke-width="1.5"/>
+          <rect class="box" x="30" y="7" width="14" height="9" fill="var(--accent)" stroke="var(--ink)" stroke-width="1.5"/>
+          <g class="wheel"><circle cx="24" cy="40" r="6" fill="var(--ink)"/><circle cx="24" cy="40" r="2.5" fill="var(--select)"/></g>
+          <g class="wheel"><circle cx="84" cy="40" r="6" fill="var(--ink)"/><circle cx="84" cy="40" r="2.5" fill="var(--select)"/></g>
+        </g>
+        <path class="road" d="M0 50 H120" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div class="cap"><b data-i18n="tx.invrun">Processing invoices — still running…</b><span id="invRunCap"></span></div>
+    </div>
     <p class="hint" style="margin:6px 0 0" data-i18n="hint.invmulti">Select several invoice files at once to import them in one go; each period is filed to history and the batch is reconciled together.</p>
     <div id="invNote"></div>
     <div class="row" style="margin-top:14px">
@@ -1910,6 +1942,23 @@ label:has(#newChanOn){display:none !important}
     </div>
     <div id="apiNote"></div>
     <div id="cfgNote"></div>
+  </div>
+
+  <!-- 系統裡有哪些期的帳單,一眼看完:每一期都進對帳,再匯一次同一期就是整期取代。 -->
+  <div class="lf sketch" id="invArchCard">
+    <h3 class="display"><span class="em">🗄️</span><span data-i18n="hd.invarch">Archived invoices</span>
+      <span class="pill" id="invArchN"></span></h3>
+    <p class="hint" style="margin:0 0 10px;max-width:84ch" data-i18n="hint.invarch">Every UPS invoice period the system holds, most recent first. All of them take part in reconciliation; importing a period again replaces it. Cloud shows whether the period is backed up to the account.</p>
+    <div class="tablewrap" style="max-height:40vh"><table id="tInvArch"><thead><tr>
+      <th data-i18n="th.invno">Invoice</th>
+      <th data-i18n="th.iacct">Account</th>
+      <th data-i18n="th.invdate">Invoice date</th>
+      <th class="num" data-i18n="th.rows">Lines</th>
+      <th class="num" data-i18n="th.trk">Tracking</th>
+      <th data-i18n="th.tplwhen">Imported</th>
+      <th data-i18n="th.cloud">Cloud</th>
+    </tr></thead><tbody></tbody></table></div>
+    <div id="invArchEmpty" class="note plain" hidden></div>
   </div>
 
   <div class="lf sketch" id="sumBox" style="display:none" hidden>
@@ -8240,6 +8289,7 @@ async function histCloudPull(){
     list=data;
   }catch(e){ return 0; }
   const inv=histInv();
+  HIST_CLOUD=new Set(list.map(r=>String(r.invoice)));
   /* 「我有沒有這一期」不能只問 localStorage 的索引:明細在 IndexedDB,
      兩邊是會分家的 —— 瀏覽器空間吃緊時會清掉 IndexedDB 卻留著 localStorage,
      寫到一半關分頁也一樣。索引說有、明細不在,雲端那份就要抓回來。 */
@@ -11555,7 +11605,8 @@ async function bkdXlsx(){
                    :L("漏收","Not billed");
         for(const it of wms.items){
           if(!(Math.abs(it.amt)>0.004)) continue;
-          push(o.inv,nm,3,it.charge+"("+tag(it)+")",cents(it.amt));
+          const pk=(wms.whole&&wms.pieces>1)?(()=>{ const i=(wms.trks||[]).findIndex(t=>reconTrk(t)===reconTrk(it.trk)); return i>=0?" · "+L("第 "+(i+1)+" 件","pkg "+(i+1)):""; })():"";
+          push(o.inv,nm,3,it.charge+"("+tag(it)+")"+pk,cents(it.amt));
         }
         const rbF=cents(wms.items.reduce((a,it)=>a+(it.fuel||0),0));
         if(Math.abs(rbF)>0.004) push(o.inv,nm,3,L("燃油附加費","Fuel surcharge"),rbF);
@@ -11754,11 +11805,13 @@ function bkdSection(r, wms, name0){
       const pct=((wms.items||[]).find(it=>it.fuel>0.004)||{}).fuelPct;
       /* 說明和項目名一樣(或只是它的一部分)就不重複印 —— 整齊為先。 */
       const nk=x=>String(x||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+      /* 整單模式下每一項是某一件的:標出第幾件,同名的項目才看得出是不同的件。 */
+      const pkgNo=it=>{ if(!(wms.whole&&wms.pieces>1)) return ""; const i=(wms.trks||[]).findIndex(t=>reconTrk(t)===reconTrk(it.trk)); return i>=0?`<span class="bkdtag pkg">${L("第 "+(i+1)+" 件","pkg "+(i+1))}</span>`:""; };
       for(const it of (wms.items||[])){
         if(!(Math.abs(it.amt)>0.004)) continue;
         const tg=tagOf(it);
         const showD=it.desc && !nk(it.charge).includes(nk(it.desc));
-        extra.push(`<tr><td>${esc2(it.charge)}`
+        extra.push(`<tr><td>${esc2(it.charge)}`+pkgNo(it)
           +(tg?`<span class="bkdtag">${esc2(tg)}</span>`:"")
           +(showD?`<span class="bkdsub">${esc2(it.desc)}</span>`:"")
           +`</td><td class="num">${money(it.amt)}</td></tr>`);
@@ -15281,14 +15334,30 @@ function reconSplitByPiece(items, feesByLn){
     if(ts.length<2){ out.push(it); continue; }
     const fees=feesByLn.get(String(it.ln))||new Map();
     const isAud=/audit/i.test(it.charge||""), key=norm(it.charge);
+    /* 稽核費是「每一筆更正一筆」:跟著被更正的那一件走(看 SCC 那一欄),
+       UPS 自己有開稽核費行的也算;沒有更正欄才退回比例。 */
     let w=ts.map(t=>{ const f=fees.get(reconTrk(t))||{}; let sum=0;
       for(const [c,v] of Object.entries(f)){
-        if(/audit/i.test(c)!==isAud) continue;
+        const aud=/audit/i.test(c);
+        if(isAud){ if(aud||/correction/i.test(c)) sum+=Math.abs(toNum(v)); continue; }
+        if(aud) continue;
         const ct=norm(c);
         if(c===it.charge || (key.length&&key.every(k=>ct.includes(k)))) sum+=Math.abs(toNum(v));
       }
       return sum; });
     let tot=w.reduce((a,b)=>a+b,0);
+    if(isAud){
+      /* 稽核費永遠不拆:找不到被更正的那一件,就掛在有 SCC 項目的那一件,
+         再不然掛第一件 —— 沒有更正就不該有稽核費,所以絕不按比例攤。 */
+      if(!(tot>0)){
+        const sccT=items.find(x=>x!==it&&String(x.ln)===String(it.ln)&&/correction/i.test(x.charge||"")&&!/audit/i.test(x.charge||""));
+        const pick=sccT?String(sccT.trk||"").split(/[,;\s]+/).filter(Boolean)[0]:ts[0];
+        w=ts.map(t=>reconTrk(t)===reconTrk(pick||ts[0])?1:0); tot=1;
+      }else{
+        /* 幾件都有更正時給更正金額最大的那一件,一筆就是一筆。 */
+        const mx=Math.max(...w); w=w.map(x=>x===mx?1:0); tot=w.reduce((a,b)=>a+b,0); if(tot>1){ const i=w.indexOf(1); w=w.map((x,j)=>j===i?1:0); tot=1; }
+      }
+    }
     if(!(tot>0)){ w=ts.map(t=>Object.values(fees.get(reconTrk(t))||{}).reduce((a,v)=>a+Math.abs(toNum(v)),0)); tot=w.reduce((a,b)=>a+b,0); }
     if(!(tot>0)){ w=ts.map(()=>1); tot=ts.length; }
     const use=ts.map((t,i)=>[t,w[i]]).filter(([,x])=>x>0);
@@ -20205,7 +20274,20 @@ function codeKnown(code, cls, dyn){
   return false;
 }
 /* ---- 產生報表 ---- */
+/* 跑帳單的動畫:開跑就露出,底下的字每 0.3 秒抄一次狀態列;收工就藏起來。 */
+let INV_RUN_T=null;
+function invRunShow(on){
+  const el=$("#invRunning"); if(!el) return;
+  el.hidden=!on;
+  if(INV_RUN_T){ clearInterval(INV_RUN_T); INV_RUN_T=null; }
+  if(on){
+    const cap=$("#invRunCap"), st=$("#status");
+    const tick=()=>{ if(cap&&st) cap.textContent=st.textContent||""; };
+    tick(); INV_RUN_T=setInterval(tick,300);
+  }
+}
 $("#bRun").onclick=async ()=>{
+  invRunShow(true);
   setStatus(L("讀取中…","Reading…"));
   /* 跑的時候按鈕先關掉:一批二十張帳單要跑幾十秒,這期間再按一次就是兩份
      同時在解析,記憶體加倍。 */
@@ -20256,7 +20338,7 @@ $("#bRun").onclick=async ()=>{
     $("#cfgNote").innerHTML=`<div class="note warn"><b>`
       +L("讀不動這張帳單。","Could not read that invoice.")+`</b> ${esc(e.message)}</div>`;
     setStatus(L("失敗","Failed"));
-  }finally{ ready(); }
+  }finally{ invRunShow(false); ready(); }
 };
 $("#bRunOk") && ($("#bRunOk").onclick=runClose);
 $("#bRunX") && ($("#bRunX").onclick=runClose);
@@ -21491,7 +21573,34 @@ async function cliPdf(){
   const ok=await dlBlob(new Blob(parts,{type:"application/pdf"}),fname);
   toast(ok?L("已匯出 "+fname,"Exported "+fname):L("已取消存檔","Save cancelled"), ok);
 }
+/* 已歸檔帳單清單:讀 localStorage 的索引就夠,不碰明細。雲端那一欄看
+   histCloudPull 上次拿到的清單(HIST_CLOUD);沒同步過就寫「—」。 */
+let HIST_CLOUD=null;
+function renderInvArch(){
+  const tb=$("#tInvArch")&&$("#tInvArch").tBodies[0]; if(!tb) return;
+  const inv=histInv();
+  const keys=Object.keys(inv).sort((a,b)=>{
+    const da=normYmd(inv[a].date)||"", db=normYmd(inv[b].date)||"";
+    return db<da?-1:db>da?1:(String(inv[b].at||"")<String(inv[a].at||"")?-1:1); });
+  const n=$("#invArchN"); if(n) n.textContent=keys.length?L(keys.length+" 期",keys.length+" period"+(keys.length>1?"s":"")):"";
+  const empty=$("#invArchEmpty");
+  if(!keys.length){
+    tb.innerHTML="";
+    if(empty){ empty.hidden=false; empty.textContent=L("還沒有帳單。用上面的「Browse → Process Invoice」匯入第一期。",
+                                                      "No invoices yet. Import the first period with Browse → Process Invoice above."); }
+    return;
+  }
+  if(empty) empty.hidden=true;
+  const when=at=>{ const m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(String(at||"")); return m?m[1]+"-"+m[2]+"-"+m[3]+" "+m[4]+":"+m[5]:String(at||""); };
+  const cloud=k=>HIST_CLOUD==null?"—":(HIST_CLOUD.has(String(k))?"✓":L("尚未","not yet"));
+  tb.innerHTML=keys.map(k=>{ const e=inv[k]||{};
+    return `<tr><td class="mono">${esc(k)}</td><td class="mono">${esc(e.acct||"")}</td><td>${esc(normYmd(e.date)||e.date||"")}</td>
+      <td class="num">${(+e.rows||0).toLocaleString()}</td><td class="num">${(+e.trk||0).toLocaleString()}</td>
+      <td>${esc(when(e.at))}${e.how==="cloud"?` <span class="pill">${esc(L("雲端","cloud"))}</span>`:""}</td>
+      <td class="cloud">${cloud(k)}</td></tr>`; }).join("");
+}
 function renderHist(){
+  renderInvArch();
   const src=HISTROWS&&HISTROWS.length?HISTROWS:(ROWS||[]);
   const invs=new Set(), trks=new Set();
   let minD="", maxD="";
@@ -22229,6 +22338,13 @@ const I18N={
   "hint.tplhist":["每一份收下的 WMS / TMS 檔一列,新的在前,帶匯入時間。「明細」看那一次進了哪些列、有沒有對到帳單;「載入」把那一份對帳叫回畫面上。",
     "Every accepted WMS / TMS file, most recent first, with the time it was imported. Detail shows the rows that came in and whether each was matched to the invoice; Load brings that reconciliation back on screen."],
   "th.tplwhen":["匯入時間","Imported"],
+  "hd.invarch":["已歸檔帳單","Archived invoices"],
+  "hint.invarch":["系統裡的每一期 UPS 帳單,最新在前。每一期都進對帳;同一期再匯一次就是整期取代。「雲端」表示這一期已備份到帳號。",
+                  "Every UPS invoice period the system holds, most recent first. All of them take part in reconciliation; importing a period again replaces it. Cloud shows whether the period is backed up to the account."],
+  "th.iacct":["帳號","Account"],
+  "th.invdate":["帳單日期","Invoice date"],
+  "th.cloud":["雲端","Cloud"],
+  "tx.invrun":["帳單處理中 —— 還在跑…","Processing invoices — still running…"],
   "th.tplfile":["檔名","File"],
   "th.tplsrc":["來源","Source"],
   "lb.trkorder":["追蹤號 / 單號","Tracking / order no."],
