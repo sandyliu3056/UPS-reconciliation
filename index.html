@@ -2244,8 +2244,8 @@ label:has(#newChanOn){display:none !important}
     <div class="row" style="margin-bottom:10px">
       <label class="inlab" style="margin-left:0" data-i18n="lb.clicus">Client</label>
       <span class="foldwrap"><select id="cliCus" class="fold" style="min-width:280px"></select></span>
-      <button class="act" id="bCliXls" data-i18n="btn.clixls">Download invoice (Excel)</button>
-      <button class="act" id="bCliPdf" data-i18n="btn.clipdf">Generate Client Invoice</button>
+      <button class="act" id="bCliXls" data-i18n="btn.clixls">Generate Client Invoice (Excel)</button>
+      <button class="act" id="bCliPdf" data-i18n="btn.clipdf">Generate Client Invoice (PDF)</button>
       <span id="cliSum" class="affsum"></span>
     </div>
     <div id="cliEmpty" class="note plain" hidden></div>
@@ -6174,6 +6174,7 @@ function idbPutInvoices(rows){
   }
   const keys=Object.keys(by);
   if(!keys.length) return Promise.resolve(0);
+  idbRowsInvalidate();
   return idbTx("readwrite").then(st=>new Promise((res,rej)=>{
     let done=0;
     for(const k of keys){
@@ -6181,18 +6182,28 @@ function idbPutInvoices(rows){
       rq.onsuccess=()=>{ if(++done===keys.length) res(keys.length); };
       rq.onerror=()=>rej(rq.error);
     }
-  }));
+  })).finally(idbRowsInvalidate);
 }
+/* 整個歷史庫解碼一次就好。登入那一刻有四條路都要「全部的列」(還原、認領
+   檢查、跨期對照表、原件預取),以前各解各的,歷史越大登入越慢 —— 五萬列就
+   要兩秒多。現在解一次、共用同一份;讀取端拿到淺複本,誰寫進資料庫就作廢。 */
+let IDB_ROWS_P=null, IDB_ROWS_FOR="";
+function idbRowsInvalidate(){ IDB_ROWS_P=null; IDB_ROWS_FOR=""; }
 function idbAllRows(){
-  return idbTx("readonly").then(st=>new Promise((res,rej)=>{
-    const rq=st.getAll();
-    rq.onsuccess=()=>{
-      const out=[];
-      for(const rec of (rq.result||[])) out.push(...hrowDecode(rec));
-      res(out);
-    };
-    rq.onerror=()=>rej(rq.error);
-  }));
+  const key=idbName();
+  if(!IDB_ROWS_P || IDB_ROWS_FOR!==key){
+    IDB_ROWS_FOR=key;
+    IDB_ROWS_P=idbTx("readonly").then(st=>new Promise((res,rej)=>{
+      const rq=st.getAll();
+      rq.onsuccess=()=>{
+        const out=[];
+        for(const rec of (rq.result||[])) out.push(...hrowDecode(rec));
+        res(out);
+      };
+      rq.onerror=()=>rej(rq.error);
+    })).catch(e=>{ if(IDB_ROWS_FOR===key) idbRowsInvalidate(); throw e; });
+  }
+  return IDB_ROWS_P.then(rows=>rows.slice());
 }
 /* 只列期號,不解碼明細 —— 「這一期的明細到底在不在這個瀏覽器」要用它問,
    問索引(localStorage)是不準的,兩邊會分家。 */
@@ -6212,6 +6223,7 @@ function idbRowsFor(key){
   })).catch(()=>[]);
 }
 function idbClear(){
+  idbRowsInvalidate();
   return idbTx("readwrite").then(st=>new Promise((res,rej)=>{
     const rq=st.clear(); rq.onsuccess=()=>res(true); rq.onerror=()=>rej(rq.error);
   }));
@@ -6219,6 +6231,7 @@ function idbClear(){
 /* 刪掉指定期別的明細(一期一筆,key 就是期號)。 */
 function idbDeleteInvoices(keys){
   if(!keys||!keys.length) return Promise.resolve(0);
+  idbRowsInvalidate();
   return idbTx("readwrite").then(st=>new Promise((res,rej)=>{
     let done=0;
     for(const k of keys){
@@ -8579,6 +8592,7 @@ function renderHome(){
 }
 /* 一個 IndexedDB 整批抄到另一個。來源不存在就當 0 期,不建立空的資料庫。 */
 function idbCopyDatabase(fromName,toName){
+  idbRowsInvalidate();
   return new Promise(res=>{
     let exists=true;
     const rq=indexedDB.open(fromName);
@@ -8615,8 +8629,9 @@ function claimLegacy(){
   /* 只有主帳號會收。子帳號在別人的機器上登入一次,就把整台機器的帳單
      歷史吸進自己名下 —— 那正是分帳號要避免的事。 */
   if(!ME||ME.role!=="admin") return Promise.resolve([]);
-  return idbAllRows().then(mine=>{
-    if(mine.length) return mine;                 /* 已經有自己的歷史了 */
+  return idbKeys().catch(()=>[]).then(ks=>{
+    const mine=[];
+    if(ks.length) return mine;                   /* 已經有自己的歷史了 —— 只看期號,不解碼明細 */
     return legacyRows().then(old=>{
       if(!old.length) return mine;
       fileInvoices(old,"legacy");
@@ -22159,13 +22174,13 @@ const I18N={
   "hint.clinv":["把這一份對帳的應補收清單,排成可直接寄給客戶的更正費用請款單 —— 選客戶、看預覽、下載 Excel。金額就是補收清單那一組,這一頁不重算任何錢。",
     "Turns the open reconciliation's re-bill list into a client-ready adjustments invoice — pick the client, check the preview, download the Excel. Amounts are exactly the re-bill items; nothing is recalculated here."],
   "lb.clicus":["客戶","Client"],
-  "btn.clixls":["下載請款單(Excel)","Download invoice (Excel)"],
+  "btn.clixls":["產生客戶請款單(Excel)","Generate Client Invoice (Excel)"],
   "tx.clinote":["SHIPPING CORRECTION CHARGES","SHIPPING CORRECTION CHARGES"],
   "th.clidesc":["項目","Description"],
   "th.total":["Total","Total"],
   "th.dimc":["更正後尺寸","Corrected DIM"],
   "th.dima":["申報尺寸","Key DIM"],
-  "btn.clipdf":["產生客戶請款單","Generate Client Invoice"],
+  "btn.clipdf":["產生客戶請款單(PDF)","Generate Client Invoice (PDF)"],
   "rt.sys":["1. 一般設定","1. General Settings"],
   "hd.analysis":["毛利分析","Profit analysis"],
   "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",
@@ -23777,7 +23792,7 @@ function histLoad(){
   /* 上一個帳號的連線要關掉。留著的話那個資料庫刪不掉(deleteDatabase 會
      一直卡在 blocked),而且連線也不該跨帳號留著。 */
   try{ if(IDB_DB) IDB_DB.close(); }catch(e){}
-  IDB_DB=null; IDB=null; IDB_FOR="";
+  IDB_DB=null; IDB=null; IDB_FOR=""; idbRowsInvalidate();
   try{
     const hv=localStorage.getItem(histKey());
     if(hv){
