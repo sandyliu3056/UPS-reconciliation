@@ -2001,21 +2001,18 @@ label:has(#newChanOn){display:none !important}
   </div>
   <div class="lf sketch" id="reconTplCard">
     <h3 class="display"><span class="em">📄</span><span data-i18n="hd.recon">WMS / TMS data</span></h3>
-    <!-- 第一列:來源 → 模板(只出現選中那一邊的)→ 匯入 → 預覽,一條線就是整個流程。 -->
+    <!-- 第一列:兩顆模板鈕並排 → 一個匯入入口(WMS、TMS 都收,可一次多檔)→ 預覽。
+         檔案自己講它是哪一邊,不必先選來源。 -->
     <div class="row">
-      <label class="inlab" style="margin-left:0" data-i18n="lb.datasrc">Data source</label>
-      <span class="seg" id="reconSrcSeg" role="group">
-        <button type="button" data-src="WMS" aria-pressed="true">WMS</button>
-        <button type="button" data-src="TMS" aria-pressed="false">TMS</button>
-      </span>
+      <label class="inlab" style="margin-left:0" data-i18n="lb.datasrc">Templates</label>
       <button class="act ghost sm" id="bReconTplW" data-i18n="btn.recontplw">WMS template</button>
-      <button class="act ghost sm" id="bReconTplT" data-i18n="btn.recontplt" hidden>TMS template</button>
-      <button class="act" id="bReconImp" data-i18n="btn.reconimp">Import filled</button>
+      <button class="act ghost sm" id="bReconTplT" data-i18n="btn.recontplt">TMS template</button>
+      <button class="act" id="bReconImp" data-i18n="btn.reconimp">Import filled files</button>
       <button class="act ghost sm eye" id="bReconPrev" data-i18n="btn.datapv">👁 Preview</button>
       <span style="flex:1 1 auto"></span>
       <a class="act ghost sm" href="doc/WMS_TMS_Template_Guide.pdf" download
          style="text-decoration:none" data-i18n="btn.tplpdf">Guide (PDF)</a>
-      <input type="file" id="fRecon" accept=".xlsx,.xls,.csv,.txt" style="display:none">
+      <input type="file" id="fRecon" accept=".xlsx,.xls,.csv,.txt" multiple style="display:none">
     </div>
 
     <!-- 兩張並排:左邊是「進來了什麼」,右邊是「欄位怎麼對」。
@@ -2035,11 +2032,11 @@ label:has(#newChanOn){display:none !important}
 
     <!-- 四步流程:一眼看懂路怎麼走。 -->
     <div class="steps">
-      <span class="step"><i>🗄️</i><span class="stx"><b data-i18n="st.src">Choose source</b><s data-i18n="st.src2">WMS or TMS</s></span></span>
+      <span class="step"><i>⬇️</i><span class="stx"><b data-i18n="st.src">Download templates</b><s data-i18n="st.src2">WMS or TMS, from the loaded invoice</s></span></span>
       <span class="arrow">→</span>
-      <span class="step"><i>⬇️</i><span class="stx"><b data-i18n="st.dl">Download template</b><s data-i18n="st.dl2">Fill one order per row</s></span></span>
+      <span class="step"><i>✍️</i><span class="stx"><b data-i18n="st.dl">Fill it in</b><s data-i18n="st.dl2">One tracking number per row</s></span></span>
       <span class="arrow">→</span>
-      <span class="step"><i>📥</i><span class="stx"><b data-i18n="st.imp">Import the file</b><s data-i18n="st.imp2">Preview before commit</s></span></span>
+      <span class="step"><i>📥</i><span class="stx"><b data-i18n="st.imp">Import the files</b><s data-i18n="st.imp2">Both kinds, one button, preview first</s></span></span>
       <span class="arrow">→</span>
       <span class="step"><i>⚖️</i><span class="stx"><b data-i18n="st.res">Read the results</b><s data-i18n="st.res2">07 Reconciliation Analysis</s></span></span>
     </div>
@@ -6195,6 +6192,15 @@ function idbAllRows(){
     rq.onerror=()=>rej(rq.error);
   }));
 }
+/* 只列期號,不解碼明細 —— 「這一期的明細到底在不在這個瀏覽器」要用它問,
+   問索引(localStorage)是不準的,兩邊會分家。 */
+function idbKeys(){
+  return idbTx("readonly").then(st=>new Promise((res,rej)=>{
+    const rq=st.getAllKeys();
+    rq.onsuccess=()=>res((rq.result||[]).map(String));
+    rq.onerror=()=>rej(rq.error);
+  }));
+}
 /* 只取一期的明細。store 的 keyPath 就是期號,所以直接 get。 */
 function idbRowsFor(key){
   return idbTx("readonly").then(st=>new Promise((res,rej)=>{
@@ -6231,6 +6237,12 @@ function histInv(){
 /* 把一批帳單列歸檔。同一期號再進來就整期取代,不是疊上去 ——
    桌面版 store_frame() 是先 DELETE 該期再 INSERT,同一份檔案匯兩次
    不該把每一列變成兩列。 */
+/* 還在路上的歷史明細寫入。有任何一筆沒寫完,關分頁前瀏覽器會先問一聲 ——
+   不問的話,匯完馬上關掉的那一期就只剩索引沒有明細。 */
+const HIST_WRITES=new Set();
+function histWriteGuard(){
+  window.onbeforeunload = HIST_WRITES.size ? ()=>"" : null;
+}
 function fileInvoices(rows, how){
   const inv=histInv();
   const seen={};
@@ -6251,13 +6263,22 @@ function fileInvoices(rows, how){
   let stored=true;
   try{ localStorage.setItem(histInvKey(), JSON.stringify(inv)); }
   catch(e){ stored=false; }
-  /* 明細另外進 IndexedDB。寫失敗不影響索引,只是重新整理後查不到明細。 */
-  idbPutInvoices(rows).catch(e=>{
-    console.warn("history detail not stored:", e && e.message);
-  });
+  /* 明細另外進 IndexedDB。這筆寫入要看得住,不能射後不理:寫完之前關分頁
+     或登出,明細就沒落盤,而索引已經記了這一期 —— 下次登入看起來就是
+     「歸檔了卻是空的」。所以還在寫的時候擋 beforeunload、登出前等它寫完;
+     寫失敗要跳紅字讓人看見,不能只留在 console。 */
+  const done=idbPutInvoices(rows)
+    .catch(e=>{
+      console.warn("history detail not stored:", e && e.message);
+      toast(L("這一期的明細沒有存進瀏覽器("+String((e&&e.message)||e)+")。索引已記下 —— 重新匯入同一份檔案即可補回明細。",
+              "This period's detail rows were NOT stored in this browser ("+String((e&&e.message)||e)+"). The index was recorded — re-import the same file to restore the rows."), false);
+      return null;
+    })
+    .finally(()=>{ HIST_WRITES.delete(done); histWriteGuard(); });
+  HIST_WRITES.add(done); histWriteGuard();
   /* 同一批也送上雲端,跟著帳號走。histCloudPush 自己會檢查登入與鑰匙。 */
   try{ histCloudPush(rows); }catch(e){}
-  return {added, replaced, stored, count:Object.keys(seen).length};
+  return {added, replaced, stored, count:Object.keys(seen).length, done};
 }
 /* 舊的期別存進索引時還沒有記帳號,畫面上只能從期號推。
    明細其實就在本機的 IndexedDB 裡,每一列都帶著帳號號碼 —— 還原明細的時候
@@ -8175,10 +8196,16 @@ async function histCloudPull(){
     list=data;
   }catch(e){ return 0; }
   const inv=histInv();
+  /* 「我有沒有這一期」不能只問 localStorage 的索引:明細在 IndexedDB,
+     兩邊是會分家的 —— 瀏覽器空間吃緊時會清掉 IndexedDB 卻留著 localStorage,
+     寫到一半關分頁也一樣。索引說有、明細不在,雲端那份就要抓回來。 */
+  let here=null;
+  try{ here=new Set(await idbKeys()); }catch(e){ here=null; }
   const want=list.filter(r=>{
     const mine=inv[r.invoice];
     const at=String((r.meta&&r.meta.at)||"");
-    return !mine || (at && at>String(mine.at||""));
+    const lost=!!(here && mine && !here.has(String(r.invoice)));
+    return !mine || lost || (at && at>String(mine.at||""));
   });
   let got=0;
   for(const r of want){
@@ -8644,6 +8671,17 @@ function restoreHistoryDetail(){
       setStatus((LANG?"Synced ":"已從帳號同步 ")+got
         +(LANG?" invoice(s) from this account":" 期帳單歷史"));
     });
+  })
+  /* 最後對一次帳:索引裡有、明細卻不在這個瀏覽器、雲端也沒補到的期別,
+     講出來。以前這種期別就是無聲地空著,人只看到「歸檔了卻沒有東西」。 */
+  .then(()=>idbKeys().catch(()=>null))
+  .then(ks=>{
+    if(!ks) return;
+    const here=new Set(ks);
+    const gone=Object.keys(histInv()).filter(k=>!here.has(String(k)));
+    if(gone.length) setStatus(L(
+      gone.length+" 期只剩索引、明細不在這個瀏覽器(雲端也沒補到)—— 重新匯入原檔即可補回:"+gone.join("、"),
+      gone.length+" archived period(s) have an index entry but no detail rows in this browser — re-import those files to restore them: "+gone.join(", ")));
   })
   .catch(()=>{});
 }
@@ -13941,7 +13979,7 @@ function reconRunSave(rows,res,fname){
     n:own.length, rows:own, pending, matched, sum};
   RECON_RUN_KEY=key;
   try{ localStorage.setItem(reconLastKey(), key); }catch(e){}
-  idbRunPut(run).then(()=>{ RECON_RUNS=null; renderReconRuns(); }).catch(()=>{});
+  return idbRunPut(run).then(()=>{ RECON_RUNS=null; renderReconRuns(); }).catch(()=>{});
 }
 /* 前期沒對到帳單的列自動帶進這一期:每一份存過的對帳都留了 pending;
    這一期檔案裡已經有的、或在任何一期已經對到過的追蹤號不帶。帶進來的列標 carried。 */
@@ -13977,7 +14015,13 @@ async function reconCarryIn(rows){
 async function reconSiblingRows(rows, src){
   const cur=(src||RECON_SRC)==="TMS"?"TMS":"WMS", other=cur==="TMS"?"WMS":"TMS";
   const invs=reconInvKeys(); if(!invs.length) return {rows:[], fname:"", src:other, dup:0};
-  const run=await idbRunGet(reconRunKey(other, invs)).catch(()=>null);
+  let run=await idbRunGet(reconRunKey(other, invs)).catch(()=>null);
+  /* 存檔還沒落地(剛匯完馬上再匯下一個)就拿畫面上另一邊的列 —— 同一組帳單才算。 */
+  if(!run||!(run.rows||[]).length){
+    const curInv=String(RECON_RUN_KEY||"").split("|")[1]||"";
+    const mem=((RECON&&RECON.list)||[]).filter(r=>((r.src||RECON_SRC)==="TMS"?"TMS":"WMS")===other);
+    if(curInv===invs.join("+") && mem.length) run={rows:mem, fname:((RECON&&RECON.srcFiles)||{})[other]||""};
+  }
   if(!run||!(run.rows||[]).length) return {rows:[], fname:"", src:other, dup:0};
   const have=new Set(); for(const r of rows||[]) for(const t of (r.trks||[])) have.add(reconTrk(t));
   const out=[]; let dup=0;
@@ -15601,26 +15645,11 @@ function reconView(mode){
    不知道自己現在站在哪一邊。這裡把選到的那一邊寫在畫面上:抬頭、要下載
    哪一份模板、匯入鈕、以及欄位說明裡的欄名。 */
 function reconSrcPaint(){
+  /* 兩顆模板鈕永遠並排、匯入不分邊(檔案自己講它是哪一邊),畫面上沒有東西
+     要跟著來源換了。名字留著,切換來源的那幾條路徑都還叫它。 */
   const src=(typeof RECON_SRC!=="undefined"&&RECON_SRC==="TMS")?"TMS":"WMS";
   document.querySelectorAll("#reconSrcSeg button").forEach(x=>
     x.setAttribute("aria-pressed", String(x.dataset.src===src)));
-  /* 模板鈕跟著來源走:選哪一邊,就只出現那一邊的模板鈕 —— 兩顆並排
-     等於要人自己再選一次來源。 */
-  for(const [id,s2] of [["#bReconTplW","WMS"],["#bReconTplT","TMS"]]){
-    const b=document.getElementById(id.slice(1));
-    if(b){ b.hidden=(s2!==src); b.className="act sm"; }
-  }
-  const hd=document.querySelector('#reconTplCard [data-i18n="hd.recon"]');
-  if(hd) hd.textContent=L(src+" 資料", src+" data");
-  const imp=document.getElementById("bReconImp");
-  if(imp) imp.textContent=L("匯入填好的 "+src+" 檔", "Import filled "+src+" file");
-  for(const [k,zh,en] of [
-      ["mp.chk","渠道 · Zone · 計費重 - "+src, "Channel · Zone · Billed Weight - "+src],
-      ["mp.chg","<費用名稱> - "+src, "<charge> - "+src],
-      ["mp.amt","Total Amount - "+src, "Total Amount - "+src]]){
-    const el=document.querySelector('#reconTplCard [data-i18n="'+k+'"]');
-    if(el) el.textContent=L(zh,en);
-  }
 }
 function reconMsg(m,ok){
   /* 兩個入口各有一條狀態列,訊息兩邊都寫 —— 人站在哪一邊都看得到。 */
@@ -15645,7 +15674,9 @@ function uiPreview(title, html){
   PV_S=1; uiPreviewApply();
   bg.classList.add("on");
 }
-function uiPreviewClose(){ const bg=$("#pvBg"); if(bg) bg.classList.remove("on"); }
+let PV_ONCLOSE=null;   /* 一次性:預覽被關掉(✕、點背景、取消)時通知等著它的人 */
+function uiPreviewClose(){ const bg=$("#pvBg"); if(bg) bg.classList.remove("on");
+  const f=PV_ONCLOSE; PV_ONCLOSE=null; if(f) f(); }
 function bindPreview(){
   $("#pvIn")  && ($("#pvIn").onclick =()=>{ PV_S=Math.min(2,+(PV_S+.25).toFixed(2)); uiPreviewApply(); });
   $("#pvOut") && ($("#pvOut").onclick=()=>{ PV_S=Math.max(.5,+(PV_S-.25).toFixed(2)); uiPreviewApply(); });
@@ -16439,7 +16470,7 @@ async function reconAccept(p, fname){
   const res=reconRun(all);
   RECON={issues:[], res, list:all, sumWarn:p.sumWarn||[], fname:fname||"", carried:carried.length, srcFiles};
   const kept=reconRowsSave(all);
-  reconRunSave(all,res,fname);
+  await reconRunSave(all,res,fname);
   reconRerunBtn();
   /* 檔一收下就把人帶到結果那一側 —— 匯入在 03,答案在 05,不讓人自己找。 */
   if(RECON_VIEW==="data" && typeof showTab==="function") showTab("cus");
@@ -16474,12 +16505,25 @@ async function reconImport(file){
             "That is a "+RECON_SRC+" file — the source is now "+RECON_SRC+"."), true);
 }
 /* 規格書的 Preview-first:先看見,確認了才寫入。 */
+/* 一個入口收兩種:一次選幾個檔就依序一個一個預覽、確認、匯入 —— WMS 和 TMS
+   混著選也行,每個檔自己講它是哪一邊,第二個進來時自動和第一個合併。
+   取消或關掉預覽就跳過那一個,後面的照常。 */
+async function reconImportFiles(files){
+  const list=(files||[]).filter(Boolean);
+  let done=0;
+  for(const f of list){ const ok=await reconPreviewImport(f); if(ok) done++; }
+  if(list.length>1) toast(L("已依序處理 "+list.length+" 個檔,匯入 "+done+" 個。",
+                            "Processed "+list.length+" files in turn; "+done+" imported."), done>0);
+  return done;
+}
+/* 回傳的 promise 在「確認匯入並寫完」或「取消/關掉」時才落定,多檔排隊靠它。 */
 async function reconPreviewImport(file){
   const r=await reconRead(file);
-  if(r.err!==undefined && r.p===undefined){ if(r.err) reconMsg(r.err,false); return; }
+  if(r.err!==undefined && r.p===undefined){ if(r.err) reconMsg(r.err,false); return false; }
   const p=r.p;
   if(p.err){ uiPreview(L("匯入預覽","Import preview"),
-    `<div class="note warn" style="margin:0">${esc(p.err)}</div>`); return; }
+    `<div class="note warn" style="margin:0">${esc(p.err)}</div>`);
+    return new Promise(res=>{ PV_ONCLOSE=()=>res(false); }); }
   const rows=p.rows||[];
   const itemized=rows.filter(x=>x.chg).length;
   const sw=(p.sumWarn||[]).length;
@@ -16521,17 +16565,22 @@ async function reconPreviewImport(file){
      ${bad? `<span class="note warn" style="margin:0">${esc(L("有退回列,整份不能匯入 —— 修正後重新選檔。","Rejected rows block the import — fix the file and choose it again."))}</span>`
           : `<button class="act" id="pvConfirm">${esc(L("確認匯入","Confirm import"))}</button>`}</div>`;
   uiPreview(L("匯入預覽","Import preview"), head+issues+chanNote+table+foot);
-  const c=$("#pvConfirm");
-  if(c) c.onclick=()=>{
-    const add=$("#pvAddChan")&&$("#pvAddChan").checked;
-    uiPreviewClose();
-    const n=add?reconAddChannels(unkChan):0;
-    reconAccept(p, r.fname);
-    if(n) toast(L("已新增 "+n+" 條渠道,基本運費請到「費率維護」匯入。",
-                  "Added "+n+" channel(s) — import their base rates under Rate Maintenance."), true);
-  };
-  const x=$("#pvCancel");
-  if(x) x.onclick=()=>{ uiPreviewClose(); reconMsg(L("已取消,什麼都沒有匯入。","Cancelled — nothing was imported."),true); };
+  return new Promise(res=>{
+    PV_ONCLOSE=()=>res(false);
+    const c=$("#pvConfirm");
+    if(c) c.onclick=async()=>{
+      const add=$("#pvAddChan")&&$("#pvAddChan").checked;
+      PV_ONCLOSE=null; uiPreviewClose();
+      const n=add?reconAddChannels(unkChan):0;
+      let ok=false;
+      try{ ok=!!(await reconAccept(p, r.fname)); } finally{ res(ok); }
+      if(n) toast(L("已新增 "+n+" 條渠道,基本運費請到「費率維護」匯入。",
+                    "Added "+n+" channel(s) — import their base rates under Rate Maintenance."), true);
+    };
+    const x=$("#pvCancel");
+    if(x) x.onclick=()=>{ PV_ONCLOSE=null; uiPreviewClose();
+      reconMsg(L("已取消,什麼都沒有匯入。","Cancelled — nothing was imported."),true); res(false); };
+  });
 }
 
 /* --------------------------------------------------------------------
@@ -16727,10 +16776,10 @@ function bindRecon(){
   $("#bReconRerun") && ($("#bReconRerun").onclick=analyse);
   $("#bReconRun2") && ($("#bReconRun2").onclick=analyse);
   $("#fRecon") && ($("#fRecon").onchange=e=>{
-    const f=e.target.files&&e.target.files[0];
+    const files=[...(e.target.files||[])];
     e.target.value="";
-    /* 畫面上的匯入一律先預覽,看過才寫入 —— 規格書的 Preview-first。 */
-    reconPreviewImport(f).catch(err=>reconMsg(String(err&&err.message||err),false));
+    /* 畫面上的匯入一律先預覽,看過才寫入 —— 規格書的 Preview-first;多檔依序。 */
+    reconImportFiles(files).catch(err=>reconMsg(String(err&&err.message||err),false));
   });
   bindPreview();
   $("#reconScope") && ($("#reconScope").onchange=e=>{
@@ -21981,7 +22030,7 @@ const I18N={
   "hint.recon":["模板是空白的,只有欄位:版式照稽核中心的 Consolidated Invoice,一個追蹤號一列,帳單上有收的每一項費用都有一欄。同仁填綠色欄(客戶代碼、單號、向客戶收的金額)。檔案受理後逐項三方比對;欄位規範詳見填寫說明(PDF)。","The template is blank — columns only. The layout follows the Audit Center's Consolidated Invoice, one tracking number per row, with a column for every charge UPS billed on this batch. Fill the green columns: client code, order number and what was billed to the client. Every charge is compared three ways on acceptance; column rules are in the guide."],
   "lb.tpl":["模板","Template"],
   "btn.tplpdf":["填寫說明(PDF)","Guide (PDF)"],
-  "lb.datasrc":["資料來源","Data source"],
+  "lb.datasrc":["模板","Templates"],
   "btn.tpldl":["下載模板","Download template"],
   "btn.datapv":["👁 預覽","👁 Preview"],
   "btn.respv":["👁 預覽報表","👁 Preview report"],
@@ -22002,17 +22051,17 @@ const I18N={
   "mp.amt":["Total Amount - WMS / TMS","Total Amount - WMS / TMS"],
   "mp.amt2":["必填;該件向客戶計收之總額,應等於各費用欄合計。","Required; the total billed to the client for the package, which should equal the sum of the charge columns."],
   "mp.note":["黃色與深棕色欄位為帳單資料,僅供對照,系統不讀取。","Yellow and dark-brown columns carry invoice data for reference only and are not read."],
-  "st.src":["選擇來源","Choose source"],
-  "st.src2":["WMS 或 TMS","WMS or TMS"],
-  "st.dl":["下載模板","Download template"],
-  "st.dl2":["以載入的帳單為基準","Built from the loaded invoice"],
-  "st.imp":["匯入檔案","Import the file"],
-  "st.imp2":["先預覽,確認才寫入","Preview before commit"],
+  "st.src":["下載模板","Download templates"],
+  "st.src2":["WMS、TMS 各一顆,以載入的帳單為基準","WMS or TMS, from the loaded invoice"],
+  "st.dl":["填寫","Fill it in"],
+  "st.dl2":["一個追蹤號一列","One tracking number per row"],
+  "st.imp":["導入檔案","Import the files"],
+  "st.imp2":["兩種同一入口、可多選;先預覽再寫入","Both kinds, one button, preview first"],
   "st.res":["讀取結果","Read the results"],
   "st.res2":["3. 對帳分析","3. Reconciliation Analysis"],
   "btn.recontplw":["WMS 模板","WMS template"],
   "btn.recontplt":["TMS 模板","TMS template"],
-  "btn.reconimp":["導入模板","Import template"],
+  "btn.reconimp":["導入模板","Import filled files"],
   "btn.reconxls":["匯出對帳結果","Export reconciliation"],
   "btn.reconrerun":["分析","Analyse"],
   "hd.reconiss":["不能收的資料列","Rows that could not be accepted"],
@@ -23751,6 +23800,12 @@ step("auth",()=>{
 
   $("#bLogout").onclick=async()=>{
     logAdd("sign out","");
+    /* 歸檔明細還在寫就等它寫完(最多五秒)再登出 —— 匯完馬上登出的那一期,
+       才不會只剩索引沒有明細。 */
+    if(HIST_WRITES.size){
+      setStatus(L("歷史明細寫入中,稍等…","Finishing the history write…"));
+      await Promise.race([Promise.all([...HIST_WRITES]), new Promise(r=>setTimeout(r,5000))]);
+    }
     /* 登出就是登出:兩份都清掉,不然下次開站又自己登進來。 */
     try{ sessionStorage.removeItem(LOCAL_SESSION_KEY);
          localStorage.removeItem(LOCAL_REMEMBER_KEY); }catch(e){}
