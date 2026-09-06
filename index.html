@@ -15266,6 +15266,47 @@ async function reconFetchArchived(list){
   }
   return RECON_XSHIPS.size;
 }
+/* 補收項目按件拆分。weights 來源:該件 UPS 帳單上同一項目(欄名相同,或項目名
+   的字都出現在欄名裡;稽核費只認稽核費那一欄)的金額;整張單沒有任何一件有
+   這一項時,退回各件 UPS 總額的比例;連總額都沒有才平均。分不到的件不列。
+   金額、燃油、UPS、實收各自按比例切,最後一件補餘數;每件的 total 由自己的
+   金額加燃油算,加總剛好等於原來的。 */
+const RECON_SPLIT_STOP=new Set(["surcharge","fee","fees","charge","charges","the","of","and","a","an"]);
+function reconSplitByPiece(items, feesByLn){
+  const norm=s=>String(s||"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").split(/\s+/).filter(w=>w&&!RECON_SPLIT_STOP.has(w));
+  const NUM=["ups","billed","rate","amt","credit","fuel","over","wms"];
+  const out=[];
+  for(const it of items){
+    const ts=String(it.trk||"").split(/[,;\s]+/).filter(Boolean);
+    if(ts.length<2){ out.push(it); continue; }
+    const fees=feesByLn.get(String(it.ln))||new Map();
+    const isAud=/audit/i.test(it.charge||""), key=norm(it.charge);
+    let w=ts.map(t=>{ const f=fees.get(reconTrk(t))||{}; let sum=0;
+      for(const [c,v] of Object.entries(f)){
+        if(/audit/i.test(c)!==isAud) continue;
+        const ct=norm(c);
+        if(c===it.charge || (key.length&&key.every(k=>ct.includes(k)))) sum+=Math.abs(toNum(v));
+      }
+      return sum; });
+    let tot=w.reduce((a,b)=>a+b,0);
+    if(!(tot>0)){ w=ts.map(t=>Object.values(fees.get(reconTrk(t))||{}).reduce((a,v)=>a+Math.abs(toNum(v)),0)); tot=w.reduce((a,b)=>a+b,0); }
+    if(!(tot>0)){ w=ts.map(()=>1); tot=ts.length; }
+    const use=ts.map((t,i)=>[t,w[i]]).filter(([,x])=>x>0);
+    const acc={}; NUM.forEach(k=>acc[k]=0);
+    use.forEach(([t,x],i)=>{
+      const last=i===use.length-1, f=x/tot;
+      const c=Object.assign({}, it, {trk:t, pieces:ts.length, creditFrom:(it.creditFrom||[]).slice()});
+      for(const k of NUM){
+        if(typeof it[k]!=="number") continue;
+        const v=last?cents(it[k]-acc[k]):cents(it[k]*f);
+        c[k]=v; acc[k]=cents(acc[k]+v);
+      }
+      c.total=cents((c.amt||0)+(c.fuel||0));
+      out.push(c);
+    });
+  }
+  return out;
+}
 function reconRun(list){
   /* 逐項:全部一份,每個客戶各一份。點客戶就是換一份來看。 */
   const chgAll=new Map(), chgBy=new Map();
@@ -15320,6 +15361,7 @@ function reconRun(list){
     const invDates=new Set();        /* 對到的帳單期別日期,匯出明細第一欄 */
     let upsWt=0, wtN=0, upsId=null, fuelPct=null, sccRate=null, zoneRate=null, zoneNote="", zoneAcc=null, zoneOld="", zoneNew="";
     let usedArch=false;
+    const pieceFees=new Map();       /* 每一件各自的 UPS 費用(照 Consolidated 分欄),補收拆件用 */
     for(const t of e.trks){
       const s=byTrk.get(t);
       if(!s){ missTrk.push(t); continue; }
@@ -15334,6 +15376,7 @@ function reconRun(list){
       if(!upsId) upsId=consIdentityOf(s.allLines||[]);
       /* UPS 收多少不需要費率表:每一行照 Consolidated 的分欄歸位,先收下。 */
       const cf=consFeesOf(s.allLines||[]);
+      pieceFees.set(reconTrk(t), cf.fees||{});
       for(const k of Object.keys(cf.codeCol)) if(!codeCol[k]) codeCol[k]=cf.codeCol[k];
       for(const [col,v] of Object.entries(cf.fees)) feesUps[col]=cents((feesUps[col]||0)+v);
       for(const [col,ds] of Object.entries(cf.descs||{})){ const a=feesDesc[col]||(feesDesc[col]=[]); for(const d of ds) if(!a.includes(d)) a.push(d); }
@@ -15425,7 +15468,7 @@ function reconRun(list){
     /* 計費重量只記錄、不核對:帳單上的是合約計費重量,向客戶收的重量本來
        就不必一樣。兩個數字並排放在匯出的 Orders 分頁,給人參考。 */
     const o={ln:e.ln, order:e.order, cus:e.cus, date:e.date||(upsId&&upsId.date)||"", carried:e.carried||null,
-             src:(e.src||RECON_SRC)==="TMS"?"TMS":"WMS", sib:!!e.sib,
+             src:(e.src||RECON_SRC)==="TMS"?"TMS":"WMS", sib:!!e.sib, pieceFees,
              trks:e.trks.slice(), ref1:e.ref1||(upsId&&upsId.ref1)||"", ref2:e.ref2||(upsId&&upsId.ref2)||"",
              ups:upsId,
              zone:String(e.zone||""), upsZone, zoneMis,
@@ -15742,6 +15785,14 @@ function reconRun(list){
        還要收的、一邊是收多了的,加起來的合計沒有意義。 */
     if(it.wms==null) it.wms=it.billed;
     if(it.over==null) it.over=0;
+  }
+  /* 一票多件:補收項目拆成每件一筆 —— 哪一件的 UPS 帳單有這一項就算哪一件
+     (按各件該項目的 UPS 金額比例);帳單上分不出來的才按各件 UPS 總額比例。
+     從這裡起,後面的表、匯出、請款單都是一個追蹤號一列,合計一毛不變。 */
+  {
+    const feesByLn=new Map(orders.concat(notOnInv).map(o=>[String(o.ln), o.pieceFees||new Map()]));
+    const split=reconSplitByPiece(items, feesByLn);
+    items.splice(0, items.length, ...split);
   }
   items.sort((a,b)=>b.total-a.total||a.cus.localeCompare(b.cus)||a.order.localeCompare(b.order));
   const byCusR=new Map(), byChgR=new Map();
