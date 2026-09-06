@@ -2102,6 +2102,7 @@ label:has(#newChanOn){display:none !important}
     <div class="tablewrap" style="max-height:56vh"><table id="tRebill"><thead><tr>
       <th data-i18n="th.cuscode">Code</th>
       <th data-i18n="th.cusname">Name</th>
+      <th data-i18n="th.tplsrc">Source</th>
       <th data-i18n="th.rebillorder">Order Number</th>
       <th data-i18n="th.rebilltrk">Tracking Number</th>
       <th data-i18n="th.chgname">Charge</th>
@@ -2115,6 +2116,7 @@ label:has(#newChanOn){display:none !important}
       <div class="tablewrap" style="max-height:40vh"><table id="tRebillCus"><thead><tr>
         <th data-i18n="th.cuscode">Code</th>
         <th data-i18n="th.cusname">Name</th>
+        <th data-i18n="th.tplsrc">Source</th>
         <th class="num" data-i18n="th.reconorders">Rows</th>
         <th class="num" data-i18n="th.rebillitems">Items</th>
         <th class="num" data-i18n="th.rebillamt">To re-bill</th>
@@ -2143,6 +2145,7 @@ label:has(#newChanOn){display:none !important}
     <div class="tablewrap" style="max-height:56vh"><table id="tRecon"><thead><tr>
       <th data-i18n="th.cuscode">Code</th>
       <th data-i18n="th.cusname">Name</th>
+      <th data-i18n="th.tplsrc">Source</th>
       <th data-i18n="th.cuslevel">Rate level</th>
       <th class="num" data-i18n="th.reconorders">Rows</th>
       <th class="num" data-i18n="th.reconpkgs">Packages</th>
@@ -11050,7 +11053,7 @@ function openBreakdown(){
   if(!wmsUsed) for(const o of pk){
     if(o.r){ o.wms=bkdWmsOf(t); if(o.wms){ wmsUsed=true; } break; }
   }
-  const wsrc=(typeof RECON_SRC!=="undefined"&&RECON_SRC)||"WMS";
+  const wsrc=(typeof reconSrcLabel==="function")?reconSrcLabel():((typeof RECON_SRC!=="undefined"&&RECON_SRC)||"WMS");
   /* 總覽:重算、UPS 實收、向客戶實收並排,最後兩欄是毛利(實收 + 應補收 − UPS)
      與毛利率(毛利 ÷(實收 + 應補收))。 */
   H.push(`<div class="bkdov"><div class="bkdov-hd">${L("各期總覽","Invoice overview")}</div>`);
@@ -11204,7 +11207,7 @@ function bkdWmsOf(trk){
     String(it.trk||"").split(/[,;\s]+/).some(x=>reconTrk(x)===k));
   const rebill=cents(items.reduce((a,it)=>a+toNum(it.total),0));
   const over=cents(items.reduce((a,it)=>a+toNum(it.over),0));
-  return {src:RECON_SRC, rows, amt, order:o.order, cus:o.cus, name:o.name,
+  return {src:o.src||RECON_SRC, rows, amt, order:o.order, cus:o.cus, name:o.name,
           zone:o.zone||"", wt:o.wt||"",
           pieces, share, orderAmt:cents(toNum(o.amt)), rebill, over,
           /* 補收不能只給一個總數 —— 要收客戶的錢,得說得出是哪幾項。 */
@@ -13907,20 +13910,35 @@ function reconRunSave(rows,res,fname){
     invs=[...si].sort(); xdates=[...sd].sort();
   }
   if(!invs.length||!res||!rows||!rows.length) return;
+  /* 另一邊來源掛上來看的列(sib)不存進這一份:存的是這個檔自己的列
+     (含前期帶入的),摘要數字也只算自己的。 */
+  const own=rows.filter(r=>!r.sib);
+  if(!own.length) return;
+  const hasSib=own.length!==rows.length;
   const key=reconRunKey(RECON_SRC,invs);
   /* 帳單上沒有的那幾列留著,下一期自動帶入再對一次;對到過的追蹤號記下來,以後不再帶。 */
-  const pendTrk=new Set(); for(const o of (res.notOnInv||[])) for(const t of (o.trks||[])) pendTrk.add(reconTrk(t));
-  const pending=rows.filter(r=>(r.trks||[]).length && (r.trks||[]).every(t=>pendTrk.has(reconTrk(t))));
-  const matched=[]; for(const o of (res.orders||[])) if(o.found>0) for(const t of (o.trks||[])) matched.push(reconTrk(t));
+  const pendTrk=new Set(); for(const o of (res.notOnInv||[])) if(!o.sib) for(const t of (o.trks||[])) pendTrk.add(reconTrk(t));
+  const pending=own.filter(r=>(r.trks||[]).length && (r.trks||[]).every(t=>pendTrk.has(reconTrk(t))));
+  const matched=[]; for(const o of (res.orders||[])) if(!o.sib && o.found>0) for(const t of (o.trks||[])) matched.push(reconTrk(t));
   let dates=[...new Set((ROWS||[]).map(r=>normYmd(r.invDate)||"").filter(Boolean))].sort();
   if(!dates.length) dates=xdates;
-  const t=res.tot||{};
+  let sum;
+  if(!hasSib){
+    const t=res.tot||{};
+    sum={orders:t.orders||0, amt:t.amt||0, cost:t.cost||0, profit:t.profit||0,
+         margin:t.margin==null?null:t.margin, cus:(res.cus||[]).length,
+         rebill:(res.rebill&&res.rebill.grand)||0, offInv:(res.notOnInv||[]).length};
+  }else{
+    const os=(res.orders||[]).filter(o=>!o.sib);
+    const amt=cents(os.reduce((a,o)=>a+toNum(o.amt),0)), cost=cents(os.reduce((a,o)=>a+toNum(o.cost),0));
+    const rebill=cents(((res.rebill&&res.rebill.items)||[]).filter(it=>!it.sib).reduce((a,it)=>a+toNum(it.total),0));
+    const chargeable=cents(amt+rebill), profit=cents(chargeable-cost);
+    sum={orders:os.length, amt, cost, profit, margin:chargeable?profit/Math.abs(chargeable)*100:null,
+         cus:new Set(os.map(o=>o.cus)).size, rebill, offInv:(res.notOnInv||[]).filter(o=>!o.sib).length};
+  }
   const run={key, src:RECON_SRC==="TMS"?"TMS":"WMS", invoices:invs, invDate:dates[dates.length-1]||"",
     when:Date.now(), fname:fname||"", by:(typeof ME!=="undefined"&&ME&&(ME.name||ME.user))||"",
-    n:rows.length, rows, pending, matched,
-    sum:{orders:t.orders||0, amt:t.amt||0, cost:t.cost||0, profit:t.profit||0,
-         margin:t.margin==null?null:t.margin, cus:(res.cus||[]).length,
-         rebill:(res.rebill&&res.rebill.grand)||0, offInv:(res.notOnInv||[]).length}};
+    n:own.length, rows:own, pending, matched, sum};
   RECON_RUN_KEY=key;
   try{ localStorage.setItem(reconLastKey(), key); }catch(e){}
   idbRunPut(run).then(()=>{ RECON_RUNS=null; renderReconRuns(); }).catch(()=>{});
@@ -13934,18 +13952,56 @@ async function reconCarryIn(rows){
   const out=[], seen=new Set();
   /* 同一期重新匯入不帶自己上一次的 pending(那些列本來就在這一份檔裡);別的期都帶。 */
   const selfKey=reconRunKey(RECON_SRC, reconInvKeys());
+  /* 同一組帳單另一邊來源(WMS ↔ TMS)的存檔也不帶:那一份整份會由
+     reconSiblingRows 掛上來看,它的 pending 列已經在裡面。 */
+  const sibKey=reconRunKey(RECON_SRC==="TMS"?"WMS":"TMS", reconInvKeys());
   for(const run of runs.slice().sort((a,b)=>(b.when||0)-(a.when||0))){
-    if(run.key===selfKey) continue;
+    if(run.key===selfKey||run.key===sibKey) continue;
     for(const r of (run.pending||[])){
       const ts=(r.trks||[]).map(reconTrk); if(!ts.length) continue;
       if(ts.some(t=>have.has(t)||matched.has(t)||seen.has(t))) continue;
       ts.forEach(t=>seen.add(t));
       const c=Object.assign({}, r); delete c.carried;
+      if(!c.src) c.src=(run.src==="TMS")?"TMS":"WMS";
       c.carried={key:run.key, invDate:run.invDate||"", src:run.src||"", inv:(run.invoices||[]).join(", ")};
       out.push(c);
     }
   }
   return out;
+}
+/* ---- WMS 與 TMS 同時掛在一份對帳上 ----------------------------------
+   兩邊各匯各的檔、各存各的一份(存檔仍然一檔一份),但畫面上、分析頁、客戶
+   請款單看的是「同一組帳單」兩邊合起來的一份:匯入或開啟其中一邊時,把另一
+   邊同一組帳單的存檔列掛上來一起比。掛上來的列標 sib,不會再被存進這一份;
+   同一個追蹤號兩邊都有時,以手上這一份(這次匯入或這次開啟的)為準。 */
+async function reconSiblingRows(rows, src){
+  const cur=(src||RECON_SRC)==="TMS"?"TMS":"WMS", other=cur==="TMS"?"WMS":"TMS";
+  const invs=reconInvKeys(); if(!invs.length) return {rows:[], fname:"", src:other, dup:0};
+  const run=await idbRunGet(reconRunKey(other, invs)).catch(()=>null);
+  if(!run||!(run.rows||[]).length) return {rows:[], fname:"", src:other, dup:0};
+  const have=new Set(); for(const r of rows||[]) for(const t of (r.trks||[])) have.add(reconTrk(t));
+  const out=[]; let dup=0;
+  for(const r of run.rows){
+    const ts=(r.trks||[]).map(reconTrk);
+    if(ts.length && ts.some(t=>have.has(t))){ dup++; continue; }
+    out.push(Object.assign({}, r, {src:(r.src||run.src)==="TMS"?"TMS":"WMS", sib:true}));
+  }
+  return {rows:out, fname:run.fname||"", src:other, dup};
+}
+/* 畫面上要寫 WMS 還是 TMS:看手上這份對帳的列,兩邊都有就寫 WMS / TMS。 */
+function reconSrcLabel(){
+  const rows=(RECON&&RECON.list)||[];
+  const has=new Set(rows.map(r=>(r.src||RECON_SRC)==="TMS"?"TMS":"WMS"));
+  const s=["WMS","TMS"].filter(k=>has.has(k));
+  return s.length?s.join(" / "):((RECON_SRC==="TMS")?"TMS":"WMS");
+}
+/* 存檔清單上哪幾份是「目前這份」:開著的那一份,和它掛上來的另一邊。 */
+function reconRunIsCurrent(r){
+  if(!RECON_RUN_KEY||!r) return false;
+  if(r.key===RECON_RUN_KEY) return true;
+  const i=RECON_RUN_KEY.indexOf("|"); if(i<0) return false;
+  const other=RECON_RUN_KEY.slice(0,i)==="TMS"?"WMS":"TMS";
+  return r.key===other+RECON_RUN_KEY.slice(i) && ((RECON&&RECON.list)||[]).some(x=>x.sib);
 }
 function reconSrcSet(src){
   RECON_SRC=src==="TMS"?"TMS":"WMS";
@@ -13976,17 +14032,22 @@ async function reconOpenRun(key, quiet){
     renderSummary(); renderRate(); renderCode(); renderHist();
   }
   reconSrcSet(run.src);
-  reconRerunFrom(run.rows, true);
-  if(RECON) RECON.fname=run.fname||"";
+  /* 另一邊同一組帳單的存檔一起開:兩份都匯過,開哪一份看到的都是合併的。 */
+  const sib=await reconSiblingRows(run.rows, run.src);
+  const srcFiles={}; srcFiles[(run.src==="TMS")?"TMS":"WMS"]=run.fname||"";
+  if(sib.rows.length) srcFiles[sib.src]=sib.fname||"";
+  const srcTxt=run.src+(sib.rows.length?" + "+sib.src:"");
+  reconRerunFrom((run.rows||[]).concat(sib.rows), true, run.fname||"");
+  if(RECON){ RECON.fname=run.fname||""; RECON.srcFiles=srcFiles; }
   RECON_RUN_KEY=key;
   try{ localStorage.setItem(reconLastKey(), key); }catch(e){}
   renderRecon();
   if(typeof renderAnalysis==="function") renderAnalysis();
   renderDashboard();
   renderReconRuns();
-  if(!quiet) toast(L("已開啟 "+invs.join(", ")+" 的對帳("+run.src+")。","Opened the "+run.src+" reconciliation for "+invs.join(", ")+"."),true);
-  else setStatus(L("上次的對帳已載回:"+invs.join(", ")+"("+run.src+")",
-                   "Last reconciliation restored: "+invs.join(", ")+" ("+run.src+")"));
+  if(!quiet) toast(L("已開啟 "+invs.join(", ")+" 的對帳("+srcTxt+")。","Opened the "+srcTxt+" reconciliation for "+invs.join(", ")+"."),true);
+  else setStatus(L("上次的對帳已載回:"+invs.join(", ")+"("+srcTxt+")",
+                   "Last reconciliation restored: "+invs.join(", ")+" ("+srcTxt+")"));
   return true;
 }
 /* 兩個地方列同一份清單:08 一張卡(有數字、能開能刪),07 還沒有結果時的空狀態(只有開)。 */
@@ -14007,7 +14068,7 @@ function renderReconRuns(){
     if(card){
       card.hidden=!runs.length;
       const tb=$("#tReconRuns")&&$("#tReconRuns").tBodies[0];
-      if(tb) tb.innerHTML=runs.map(r=>{ const s=r.sum||{}, cur=r.key===RECON_RUN_KEY;
+      if(tb) tb.innerHTML=runs.map(r=>{ const s=r.sum||{}, cur=reconRunIsCurrent(r);
         return `<tr${cur?' class="cur"':""}><td title="${esc(runMetaOf(r))}">${esc(runLabelOf(r))}</td>
           <td>${esc(r.src)}</td><td>${esc(r.invDate||"—")}</td><td class="num">${r.n||0}</td>
           <td class="num">${money(s.amt||0)}</td><td class="num">${money(s.cost||0)}</td>
@@ -14052,7 +14113,7 @@ function renderTplHist(list){
   card.hidden=!(runs.length && RECON_VIEW==="data");
   const tb=$("#tTplHist")&&$("#tTplHist").tBodies[0];
   if(!tb) return;
-  tb.innerHTML=runs.map(r=>{ const s=r.sum||{}, cur=r.key===RECON_RUN_KEY;
+  tb.innerHTML=runs.map(r=>{ const s=r.sum||{}, cur=reconRunIsCurrent(r);
     return `<tr${cur?' class="cur"':""}><td>${esc(tplWhen(r.when))}</td>
       <td class="mono">${r.fname?esc(r.fname):`<span class="empty">—</span>`}</td>
       <td>${esc(r.src||"")}</td><td>${esc(r.invDate||"—")}</td>
@@ -14517,7 +14578,7 @@ function reconAutoRun(){
   else go();
   return true;
 }
-function reconRerunFrom(rows, quiet){
+function reconRerunFrom(rows, quiet, fname0){
   if(!rows||!rows.length) return false;
   if(!CFG){ reconMsg(L("請先載入費率設定。","Load a rate configuration first."),false); return false; }
   if((!SHIPS||!SHIPS.length) && !(typeof RECON_XSHIPS!=="undefined"&&RECON_XSHIPS&&RECON_XSHIPS.size)){
@@ -14526,7 +14587,8 @@ function reconRerunFrom(rows, quiet){
     return false; }
   const pf=reconPreflight(rows.map(r=>r.cus));
   const res=reconRun(rows);
-  const fname=(RECON&&RECON.fname)||"";
+  /* 開存檔時檔名由呼叫端給:不然這裡拿到的是上一份還開著的檔名,存回去就掛錯名。 */
+  const fname=fname0!=null?fname0:((RECON&&RECON.fname)||"");
   /* 各項合計的檢查直接從列重建 —— 靠上一輪留下的話,重新整理回來就沒了。 */
   const sw=[];
   for(const r2 of rows){
@@ -14535,7 +14597,7 @@ function reconRerunFrom(rows, quiet){
     const diff=cents(r2.amt-sum);
     if(Math.abs(diff)>0.004) sw.push({ln:r2.ln, order:r2.order, sum, amt:r2.amt, diff});
   }
-  RECON={issues:[], res, list:rows, sumWarn:sw, fname};
+  RECON={issues:[], res, list:rows, sumWarn:sw, fname, srcFiles:(RECON&&RECON.srcFiles)||null};
   reconRunSave(rows,res,fname);
   renderRecon(); reconRerunBtn();
   const head=quiet?L("已用留著的 "+rows.length+" 筆重新比對。",
@@ -15130,6 +15192,7 @@ function reconRun(list){
     /* 計費重量只記錄、不核對:帳單上的是合約計費重量,向客戶收的重量本來
        就不必一樣。兩個數字並排放在匯出的 Orders 分頁,給人參考。 */
     const o={ln:e.ln, order:e.order, cus:e.cus, date:e.date||(upsId&&upsId.date)||"", carried:e.carried||null,
+             src:(e.src||RECON_SRC)==="TMS"?"TMS":"WMS", sib:!!e.sib,
              trks:e.trks.slice(), ref1:e.ref1||(upsId&&upsId.ref1)||"", ref2:e.ref2||(upsId&&upsId.ref2)||"",
              ups:upsId,
              zone:String(e.zone||""), upsZone, zoneMis,
@@ -15146,8 +15209,9 @@ function reconRun(list){
     if(offInv){ notOnInv.push(o); continue; }
     orders.push(o);
     let a=perCus.get(e.cus);
-    if(!a){ a={code:e.cus, name:o.name, level:o.level, block,
+    if(!a){ a={code:e.cus, name:o.name, level:o.level, block, srcs:{},
                orders:0, pkgs:0, found:0, amt:0, cost:0, rep:0}; perCus.set(e.cus,a); }
+    a.srcs[o.src]=1;
     a.orders++; a.pkgs+=o.pkgs; a.found+=o.found;
     a.amt+=o.amt; a.cost+=o.cost; if(!block) a.rep+=o.rep;
   }
@@ -15166,6 +15230,7 @@ function reconRun(list){
     }
   }
   const cus=[...perCus.values()].map(a=>{
+    a.src=Object.keys(a.srcs||{}).sort().join(" / "); delete a.srcs;
     a.amt=cents(a.amt); a.cost=cents(a.cost);
     a.rep=a.block?null:cents(a.rep);
     a.profit=cents(a.amt-a.cost);
@@ -15218,6 +15283,7 @@ function reconRun(list){
       (buckets.get(k)||buckets.set(k,[]).get(k)).push(c);
     }
     const base={ln:o.ln, cus:o.cus, order:o.order, trk:o.trks.join(", "), invDate:o.invDate||"",
+                src:o.src||"", sib:!!o.sib,
                 zone:String(o.upsZone||o.zone||""), chan:String(o.sysChan||o.chan||"")};
     /* 運費 + 更正:重算算的是最後的運費,UPS 的更正不能再加一次。更正 UPS 有收、
        客戶端沒補收時,應補收 = 客戶費率的最後運費 − 已收的運費;沒有重算(沒層級)
@@ -15455,7 +15521,7 @@ function reconRun(list){
     /* 補收與多收分開算:一邊是還要向客戶收的,一邊是收多了該退的,
        加在一起會互相抵銷,看起來就像兩邊都沒事。 */
     over:cents(items.reduce((a,i)=>a+(i.over||0),0)),
-    byCus:cus.map(a=>{ const r=byCusR.get(a.code)||{}; return {code:a.code, name:a.name, rows:a.orders,
+    byCus:cus.map(a=>{ const r=byCusR.get(a.code)||{}; return {code:a.code, name:a.name, src:a.src||"", rows:a.orders,
                        items:r.items||0, amt:r.amt||0, fuel:r.fuel||0, total:r.total||0}; })
           .sort((x,y)=>y.total-x.total||y.rows-x.rows),
     byChg:[...byChgR.values()].sort((x,y)=>y.total-x.total)};
@@ -15619,7 +15685,10 @@ function renderRecon(){
   if(empty && !empty.hidden) renderReconRuns();
   /* 03 的訂單資料小卡:進來了什麼、算過了沒,四行講完。 */
   const rows=(RECON&&RECON.list)||[];
-  $("#rdFile")   && ($("#rdFile").textContent=(RECON&&RECON.fname)||"—");
+  /* 兩邊都掛著時把兩個檔都寫出來 —— 這一格回答的是「現在比的是什麼」。 */
+  const sf=(RECON&&RECON.srcFiles)||null, both=sf?["WMS","TMS"].filter(k=>sf[k]):[];
+  $("#rdFile")   && ($("#rdFile").textContent=both.length>1
+      ? both.map(k=>k+": "+sf[k]).join("   ·   ") : ((RECON&&RECON.fname)||"—"));
   $("#rdOrders") && ($("#rdOrders").textContent=rows.length?String(rows.length):"—");
   $("#rdItems")  && ($("#rdItems").textContent=rows.length?String(rows.filter(o=>o.chg).length):"—");
   $("#rdState")  && ($("#rdState").innerHTML = RECON&&RECON.res
@@ -15650,6 +15719,7 @@ function renderRecon(){
   const tb=$("#tRecon")&&$("#tRecon").tBodies[0];
   if(tb) tb.innerHTML=r.cus.map(a=>
     `<tr${a.block?' class="blocked"':""}><td class="mono">${esc(a.code)}</td><td>${esc(a.name)}</td>
+      <td>${esc(a.src||"")}</td>
       <td>${a.block
             ? `<span class="lvlbad">${esc(a.block===RL_NONE
                 ? L("未指派","Not assigned") : L("層級已刪除","Level deleted"))}</span>`
@@ -15663,9 +15733,9 @@ function renderRecon(){
       <td class="num">${mny(a.rep)}</td>
       <td class="num">${a.pgap==null?dash:sign(a.pgap)}</td>
       <td class="num">${a.gap==null?dash:sign(a.gap)}</td></tr>`).join("")
-    ||`<tr><td colspan="12" class="empty">—</td></tr>`;
+    ||`<tr><td colspan="13" class="empty">—</td></tr>`;
   const tf=$("#tRecon")&&$("#tRecon").tFoot;
-  if(tf) tf.innerHTML=`<tr><td colspan="3"><b>${esc(L("合計","Total"))}</b></td>
+  if(tf) tf.innerHTML=`<tr><td colspan="4"><b>${esc(L("合計","Total"))}</b></td>
       <td class="num"><b>${r.tot.orders}</b></td>
       <td class="num"><b>${r.tot.found===r.tot.pkgs?r.tot.pkgs:r.tot.found+" / "+r.tot.pkgs}</b></td>
       <td class="num"><b>${money(r.tot.amt)}</b></td>
@@ -15702,8 +15772,8 @@ function renderRecon(){
   if(r.notOnInv && r.notOnInv.length){
     const offAmt=r.notOnInv.reduce((a,o)=>a+toNum(o.amt),0);
     warn.push(L(
-      RECON_SRC+" 有、但系統內任何一期帳單上都沒有的 "+r.notOnInv.length+" 筆("+money(offAmt)+")不進對帳與合計;匯出時另放「Not on Invoice」一頁。",
-      r.notOnInv.length+" row(s) are in "+RECON_SRC+" but on none of the invoices imported into the system ("+money(offAmt)+"); they stay out of the reconciliation and the totals and go on their own Not on Invoice sheet when exported."));
+      reconSrcLabel()+" 有、但系統內任何一期帳單上都沒有的 "+r.notOnInv.length+" 筆("+money(offAmt)+")不進對帳與合計;匯出時另放「Not on Invoice」一頁。",
+      r.notOnInv.length+" row(s) are in "+reconSrcLabel()+" but on none of the invoices imported into the system ("+money(offAmt)+"); they stay out of the reconciliation and the totals and go on their own Not on Invoice sheet when exported."));
     /* 為什麼找不到,講得出來的都講:搜了幾列幾期、哪幾期只有索引沒有明細、
        追蹤號寫法差異的樣本。 */
     const ai=(typeof RECON_ARCH_INFO!=="undefined")&&RECON_ARCH_INFO;
@@ -15901,13 +15971,13 @@ function renderRebill(){
   /* 畫面上最多列 300 筆就好:真正一個月的補收清單可以有幾千筆,全部塞進
      DOM 整頁都會跟著鈍;要做事的人開的本來就是匯出的活頁簿。 */
   const CAPR=300;
-  if(tb) tb.innerHTML=items.slice(0,CAPR).map(it=>`<tr><td class="mono">${esc(it.cus)}</td><td>${esc(cusNameOf(it.cus))}</td>
+  if(tb) tb.innerHTML=items.slice(0,CAPR).map(it=>`<tr><td class="mono">${esc(it.cus)}</td><td>${esc(cusNameOf(it.cus))}</td><td>${esc(it.src||"")}</td>
       <td class="mono">${esc(it.order)}</td><td class="mono">${esc(it.trk)}</td>
       <td title="${chgTip(it)}">${chgCell(it)}</td></tr>`).join("")
-    +(items.length>CAPR?`<tr><td colspan="5" class="empty">${L(
+    +(items.length>CAPR?`<tr><td colspan="6" class="empty">${L(
         "畫面只列前 "+CAPR+" 筆;全部 "+items.length+" 筆都在匯出的活頁簿裡。",
         "Showing the first "+CAPR+" of "+items.length+" items — the full list is in the exported workbook.")}</td></tr>`:"")
-    ||`<tr><td colspan="5" class="empty">${esc(rb&&rb.noItem
+    ||`<tr><td colspan="6" class="empty">${esc(rb&&rb.noItem
         ? L("模板沒有逐項費用欄,列不出漏收的項目。","The file has no itemised charge columns, so missed charges cannot be listed.")
         : L("沒有漏收的項目。","Nothing to re-bill."))}</td></tr>`;
   /* 補收與退還是兩個方向的錢,分開講:UPS 改收別的費用時,客戶原本收的那一項
@@ -15935,12 +16005,12 @@ function renderRebill(){
         +(unset?" · "+unset+" item(s) with no rate set (set them under Rate Maintenance and import again)":""));
   }
   const tc=$("#tRebillCus")&&$("#tRebillCus").tBodies[0];
-  if(tc) tc.innerHTML=((rb&&rb.byCus)||[]).map(a=>`<tr><td class="mono">${esc(a.code)}</td><td>${esc(a.name)}</td>
+  if(tc) tc.innerHTML=((rb&&rb.byCus)||[]).map(a=>`<tr><td class="mono">${esc(a.code)}</td><td>${esc(a.name)}</td><td>${esc(a.src||"")}</td>
       <td class="num">${a.rows}</td><td class="num">${a.items}</td><td class="num">${money(a.amt)}</td>
       <td class="num">${a.fuel?money(a.fuel):dash}</td><td class="num"><b>${money(a.total)}</b></td></tr>`).join("")
-    ||`<tr><td colspan="7" class="empty">${dash}</td></tr>`;
+    ||`<tr><td colspan="8" class="empty">${dash}</td></tr>`;
   const tcf=$("#tRebillCus")&&$("#tRebillCus").tFoot;
-  if(tcf) tcf.innerHTML=(rb&&rb.byCus&&rb.byCus.length)?`<tr><td colspan="2"><b>${esc(L("合計","Total"))}</b></td>
+  if(tcf) tcf.innerHTML=(rb&&rb.byCus&&rb.byCus.length)?`<tr><td colspan="3"><b>${esc(L("合計","Total"))}</b></td>
       <td class="num"><b>${r.tot.orders}</b></td><td class="num"><b>${all.length}</b></td><td class="num"><b>${money(rb.total)}</b></td>
       <td class="num"><b>${money(rb.fuel||0)}</b></td><td class="num"><b>${money(rb.grand||rb.total)}</b></td></tr>`:"";
   const tg=$("#tRebillChg")&&$("#tRebillChg").tBodies[0];
@@ -16043,7 +16113,7 @@ async function reconExport(){
           的更正併成一組比(重算算的是最後的運費),旁邊另列更正的 UPS 金額與補收
           金額給人看。沒有值的寫 0;只有表頭上色;不凍結、不加篩選。
           費用照 Consolidated 的順序;模板填了合併欄的檔照組列。 ---- */
-  const src=(RECON_SRC==="TMS")?"TMS":"WMS";
+  const src=reconSrcLabel();
   const gs=(r.groups||[]).map(g=>RECON_GROUPS[g]).filter(Boolean);
   const headOf=new Map();                       /* 細項 → 它屬於哪一個合併欄 */
   for(const g of gs) for(const f of g.fees) headOf.set(f,g.head);
@@ -16088,7 +16158,7 @@ async function reconExport(){
     return cents((F.ups||{})[c]||0); };
   const idNames=["Invoice Date","Transaction Date","Customer Code","Customer Level","Order Number","Tracking Number",
     "Shipment Reference Number 1","Shipment Reference Number 2","Package Dimensions","Detail Keyed Dim",
-    "Entered Weight","Billed Weight","Zone","Shipping Channel"];
+    "Entered Weight","Billed Weight","Zone","Shipping Channel","Source"];
   /* 表頭兩列:第一列一項費用一格(合併),不上色、置中;第二列是那一項底下的
      WMS / Repriced / Difference 三欄(Difference = WMS − Repriced,實收減應收),
      只有這一列上色。UPS 原始金額不列,那是稽核的事。識別欄上下合併成一格。 */
@@ -16118,7 +16188,7 @@ async function reconExport(){
                   最後狀態)—— 旁邊的 Repriced 金額就是拿它們算的,兩邊才對得上;
                   沒計價的退回帳單原單。 */
                (o.upsWt!==""&&o.upsWt!=null)?wt0(o.upsWt):wt0(u.billed),
-               zoneCell(o.upsZone||u.zone||""), u.chan||""];
+               zoneCell(o.upsZone||u.zone||""), u.chan||"", o.src||""];
     let tS=0, tW=0;
     /* 運費更正:重算算的是更正後的最後運費,拆不出「原運費」和「更正」兩段。
        有更正的那一列,Base Rate 視同出貨時已收足(Repriced = WMS 收的,差額 0),
@@ -16148,7 +16218,7 @@ async function reconExport(){
     if(anyCarried) row.push(carriedTxt(o));
     return row;
   });
-  const dWidths=[12,12,16,16,20,22,22,22,16,16,10,10,7,26]
+  const dWidths=[12,12,16,16,20,22,22,22,16,16,10,10,7,26,9]
     .concat(charges.flatMap(()=>[14,14,14]),[14,14,14],anyCarried?[26]:[]);
   const detailSheet={name:"Detail", rows:[h1,h2,...dRows], merges, freeze:{r:2,c:0},
     cols:dWidths.map(w=>({w})), ignoreTextNumbers:true};
@@ -16303,7 +16373,12 @@ async function reconRead(file){
     RECON_SRC=src;
     if(typeof reconSrcPaint==="function") reconSrcPaint();
   }
-  return {p:reconParse(rows), fname:(file&&file.name)||"", srcSwitched:src&&src===RECON_SRC?src:""};
+  const p=reconParse(rows);
+  /* 每一列記下它是哪一邊的檔:WMS 與 TMS 可以同時掛在一份對帳上,列自己
+     要說得出來源,畫面、匯出、存檔才分得開。 */
+  const tag=(src||RECON_SRC)==="TMS"?"TMS":"WMS";
+  for(const r of (p.rows||[])) r.src=tag;
+  return {p, fname:(file&&file.name)||"", srcSwitched:src&&src===RECON_SRC?src:""};
 }
 /* 解析結果寫進系統。回傳 true 代表收下了。 */
 async function reconAccept(p, fname){
@@ -16342,7 +16417,11 @@ async function reconAccept(p, fname){
   }
   /* 前期沒對到帳單的先帶進來,再跑之前點名。等到跑完才說「這幾個沒算」,人已經在讀數字了。 */
   const carried=await reconCarryIn(p.rows);
-  const all=p.rows.concat(carried);
+  /* 另一邊來源同一組帳單的存檔掛上來:兩份都匯了,後面看到的就是合併的一份。 */
+  const sib=await reconSiblingRows(p.rows.concat(carried));
+  const all=p.rows.concat(carried, sib.rows);
+  const srcFiles={}; srcFiles[(RECON_SRC==="TMS")?"TMS":"WMS"]=fname||"";
+  if(sib.rows.length) srcFiles[sib.src]=sib.fname||"";
   /* 只要在系統內任何一期的 raw invoice 上,一律進對帳:目前載入的帳單沒有的
      追蹤號,先去歸檔期別找齊再跑。 */
   await reconFetchArchived(all).catch(()=>0);
@@ -16358,7 +16437,7 @@ async function reconAccept(p, fname){
   }
   const pf=reconPreflight(all.map(r=>r.cus));
   const res=reconRun(all);
-  RECON={issues:[], res, list:all, sumWarn:p.sumWarn||[], fname:fname||"", carried:carried.length};
+  RECON={issues:[], res, list:all, sumWarn:p.sumWarn||[], fname:fname||"", carried:carried.length, srcFiles};
   const kept=reconRowsSave(all);
   reconRunSave(all,res,fname);
   reconRerunBtn();
@@ -16366,8 +16445,12 @@ async function reconAccept(p, fname){
   if(RECON_VIEW==="data" && typeof showTab==="function") showTab("cus");
   else renderRecon();
   if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
-  const carryNote=carried.length?L("(另自動帶入前期未對到帳單的 "+carried.length+" 筆)",
-                                   " (plus "+carried.length+" row(s) carried from earlier periods that were not on their invoice)"):"";
+  const carryNote=(carried.length?L("(另自動帶入前期未對到帳單的 "+carried.length+" 筆)",
+                                   " (plus "+carried.length+" row(s) carried from earlier periods that were not on their invoice)"):"")
+    +(sib.rows.length?L("(另掛上同一組帳單的 "+sib.src+" 檔 "+sib.rows.length+" 筆"
+                          +(sib.dup?",重複的 "+sib.dup+" 個追蹤號以這次匯入為準":"")+")",
+                        " (plus "+sib.rows.length+" row(s) from the "+sib.src+" file for the same invoices"
+                          +(sib.dup?"; "+sib.dup+" duplicated tracking number(s) follow this import":"")+")"):"");
   if(pf.blocked)
     reconMsg(L("已對帳 "+p.rows.length+" 筆"+skipNote+carryNote+",其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
                "Reconciled "+p.rows.length+" row(s)"+skipNote+carryNote+"; "+pf.blocked
