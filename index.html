@@ -1061,12 +1061,16 @@ tr.blocked{opacity:.72}
 .bkdtrk .lbl{font-size:11px;letter-spacing:1.2px;color:#f0e2c9;opacity:.8}
 .bkdtrk .no{font-family:Consolas,monospace;font-size:21px;font-weight:700;
   letter-spacing:1px;color:#fff;word-break:break-all}
-.bkdorder{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:-4px 0 12px;font-size:12.5px;color:var(--muted)}
+/* 整單抬頭直排:第一行幾件與單號,每一件各一行(追蹤號 · 計費重),說明壓底。 */
+.bkdorder{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin:-4px 0 12px;font-size:12.5px;color:var(--muted)}
+.bkdorder .hd{display:flex;align-items:center;gap:10px}
 .bkdorder .tag{font-weight:700;color:var(--ink);background:var(--select);border:1px solid var(--line);border-radius:999px;padding:2px 10px}
 .bkdorder .k{font-weight:700;color:var(--ink)}
-.bkdorder .pc{background:rgba(255,255,255,.55);border:1px solid var(--line);border-radius:6px;padding:2px 8px;color:var(--ink);font-size:12.5px}
+.bkdorder .pcs{display:flex;flex-direction:column;gap:4px;margin-left:2px}
+.bkdorder .pc{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.55);border:1px solid var(--line);border-radius:6px;padding:3px 10px 3px 6px;color:var(--ink);font-size:13px}
+.bkdorder .pc .i{display:inline-block;min-width:18px;text-align:center;font-size:11px;font-weight:700;color:var(--muted);background:var(--select);border-radius:999px;padding:1px 0}
 .bkdorder .pc.me{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-weight:700}
-.bkdorder .hint{flex-basis:100%;font-size:12px;line-height:1.5}
+.bkdorder .hint{font-size:12px;line-height:1.5;max-width:92ch}
 .bkdinv.piece{margin-top:18px}
 .bkdinv{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   margin:20px 0 10px;padding:7px 12px;background:var(--select);
@@ -11142,9 +11146,9 @@ function openBreakdown(){
   /* 整單抬頭:幾件、單號、每一件的追蹤號與計費重(正在看的那一件標起來)。 */
   const pieceW=tt=>{ const o=out.find(x=>x.trk===tt&&x.r); const r=o&&o.r;
     const w=r&&(r.s.billedUPS||r.s.billed); return (w!=null&&toNum(w)>0)?" · "+esc2(w)+" lb":""; };
-  if(isOrder) H.push(`<div class="bkdorder"><span class="tag">${L("整單 "+orderTrks.length+" 件","Order of "+orderTrks.length+" packages")}</span>`
-    +(w0&&w0.order?`<span class="k">${L("單號 ","Order ")+esc2(w0.order)}</span>`:"")
-    +orderTrks.map(x=>`<span class="pc mono${x===t?" me":""}">${esc2(x)}${pieceW(x)}</span>`).join("")
+  if(isOrder) H.push(`<div class="bkdorder"><div class="hd"><span class="tag">${L("整單 "+orderTrks.length+" 件","Order of "+orderTrks.length+" packages")}</span>`
+    +(w0&&w0.order?`<span class="k">${L("單號 ","Order ")+esc2(w0.order)}</span>`:"")+`</div>`
+    +`<div class="pcs">`+orderTrks.map((x,i)=>`<span class="pc mono${x===t?" me":""}"><span class="i">${i+1}</span>${esc2(x)}${pieceW(x)}</span>`).join("")+`</div>`
     +`<span class="hint">${L("模板那一列是整張訂單,所以三邊都以整單比:UPS 與重算是各件相加,客戶實收是真實金額、不分攤;各件的明細在下方。",
         "The template row is the whole order, so all three sides compare the whole order: UPS and the reprice are the packages added up, and what the client was billed is the real amount, not a share. Each package follows below.")}</span></div>`);
   /* 對帳那一列掛在本期(載入中的帳單)第一張卡上;同一個追蹤號跨兩期(原件
