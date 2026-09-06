@@ -1082,19 +1082,25 @@ tr.blocked{opacity:.72}
 .srcpill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.5px;padding:1px 9px;border-radius:999px;
   border:1px solid var(--line);background:var(--select);color:var(--ink)}
 .srcpill.TMS{background:transparent}
-/* 跑帳單的小卡車:手繪線條、車身微晃、輪子轉、路面的虛線往後跑。 */
-.invrun{display:flex;align-items:center;gap:14px;margin:10px 0 2px;padding:10px 14px;border:1.5px dashed var(--line);border-radius:10px;background:color-mix(in srgb, var(--select) 55%, transparent)}
-.invrun svg{width:126px;height:58px;flex:none;overflow:visible}
+/* 跑帳單的小貨車:手繪線條的圓角車廂、金色腰帶、圓滾滾的輪子;車身微晃、
+   輪子轉、車頂的小包裹跟著跳、後面噴小雲朵和速度線、路面的虛線往後跑。 */
+.invrun{display:flex;align-items:center;gap:16px;margin:10px 0 2px;padding:8px 14px;border:1.5px dashed var(--line);border-radius:10px;background:color-mix(in srgb, var(--select) 55%, transparent)}
+.invrun svg{width:164px;height:70px;flex:none;overflow:visible}
 .invrun .cap{font-size:12.5px;color:var(--muted)}
 .invrun .cap b{display:block;font-size:13.5px;color:var(--ink);margin-bottom:2px}
-@keyframes invTruckBob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-2px) rotate(-.6deg)}}
+@keyframes invTruckBob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-1.5px) rotate(-.5deg)}}
 @keyframes invWheel{to{transform:rotate(360deg)}}
 @keyframes invRoad{to{stroke-dashoffset:-26}}
-@keyframes invBox{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes invBox{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-2.5px) rotate(2deg)}}
+@keyframes invPuff{0%{transform:translate(0,0) scale(.4);opacity:0}25%{opacity:.9}100%{transform:translate(-16px,-9px) scale(1.25);opacity:0}}
+@keyframes invZip{0%{transform:translateX(0);opacity:0}30%{opacity:.8}100%{transform:translateX(-14px);opacity:0}}
 .invrun .truck{animation:invTruckBob .55s ease-in-out infinite;transform-origin:50% 100%}
 .invrun .wheel{transform-box:fill-box;transform-origin:center;animation:invWheel .6s linear infinite}
-.invrun .box{animation:invBox .55s ease-in-out infinite}
+.invrun .box{transform-box:fill-box;transform-origin:50% 100%;animation:invBox .55s ease-in-out infinite}
 .invrun .road{stroke-dasharray:14 12;animation:invRoad .7s linear infinite}
+.invrun .puff{transform-box:fill-box;transform-origin:center;animation:invPuff 1.4s ease-out infinite}
+.invrun .puff.p2{animation-delay:.45s}.invrun .puff.p3{animation-delay:.9s}
+.invrun .zip{animation:invZip .8s ease-out infinite}.invrun .zip.z2{animation-delay:.3s}
 @media (prefers-reduced-motion:reduce){ .invrun *{animation:none!important} }
 #invArchCard #invArchN{margin-left:10px}
 .bkdtag.pkg{background:var(--select);border-color:var(--accent)}
@@ -1922,16 +1928,37 @@ label:has(#newChanOn){display:none !important}
     <div class="readyrow" id="filesReady"></div>
     <!-- 跑帳單的時候看得到還在跑:小卡車載著箱子往前開,底下的字就是狀態列的進度。 -->
     <div class="invrun" id="invRunning" hidden>
-      <svg viewBox="0 0 120 56" aria-hidden="true">
-        <g class="truck">
-          <path d="M6 36 h62 v-20 h-52 q-6 0 -8 6 z" fill="var(--select)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>
-          <path d="M68 24 h20 l10 8 v4 h-30 z" fill="var(--accent)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>
-          <rect x="72" y="26" width="10" height="6" fill="#fff" stroke="var(--ink)" stroke-width="1.5"/>
-          <rect class="box" x="30" y="7" width="14" height="9" fill="var(--accent)" stroke="var(--ink)" stroke-width="1.5"/>
-          <g class="wheel"><circle cx="24" cy="40" r="6" fill="var(--ink)"/><circle cx="24" cy="40" r="2.5" fill="var(--select)"/></g>
-          <g class="wheel"><circle cx="84" cy="40" r="6" fill="var(--ink)"/><circle cx="84" cy="40" r="2.5" fill="var(--select)"/></g>
-        </g>
-        <path class="road" d="M0 50 H120" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/>
+      <svg viewBox="0 0 150 64" aria-hidden="true">
+      <!-- 手繪小貨車:圓角車廂、金色腰帶、圓滾滾的大輪子;後面噴小雲朵、車頂載著一個小包裹。 -->
+      <g class="zip"><path d="M3 20 h15" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round" opacity=".5"/></g>
+      <g class="zip z2"><path d="M7 30 h11" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round" opacity=".5"/></g>
+      <g class="puff p1"><path d="M15 46 a4 4 0 0 1 5 -4.5 a3.5 3.5 0 0 1 6.5 1.5 a3 3 0 0 1 -1 6 h-8 a3.2 3.2 0 0 1 -2.5 -3z" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.6" stroke-linejoin="round"/></g>
+      <g class="puff p2"><path d="M15 46 a4 4 0 0 1 5 -4.5 a3.5 3.5 0 0 1 6.5 1.5 a3 3 0 0 1 -1 6 h-8 a3.2 3.2 0 0 1 -2.5 -3z" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.6" stroke-linejoin="round"/></g>
+      <g class="puff p3"><path d="M15 46 a4 4 0 0 1 5 -4.5 a3.5 3.5 0 0 1 6.5 1.5 a3 3 0 0 1 -1 6 h-8 a3.2 3.2 0 0 1 -2.5 -3z" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.6" stroke-linejoin="round"/></g>
+      <g class="truck">
+      <!-- 車頂的小包裹 -->
+      <g class="box">
+      <rect x="50" y="5" width="16" height="12" rx="2.2" fill="var(--select)" stroke="var(--ink)" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="M58 5 v12 M50 11 h16" stroke="var(--ink)" stroke-width="1.3" stroke-linecap="round" opacity=".8"/>
+      </g>
+      <!-- 車廂 -->
+      <path d="M30 20 q0 -4 4 -4 h58 q4 0 4 4 v24 h-66 z" fill="var(--accent)" stroke="var(--ink)" stroke-width="2.2" stroke-linejoin="round"/>
+      <!-- 金色腰帶、後門縫 -->
+      <path d="M30 31 h66" stroke="var(--tab)" stroke-width="4.5"/>
+      <path d="M41 16.5 v27" stroke="var(--select)" stroke-width="1.3" opacity=".5" stroke-linecap="round"/>
+      <path d="M34 25 h4 M34 38 h4" stroke="var(--select)" stroke-width="1.3" opacity=".5" stroke-linecap="round"/>
+      <!-- 駕駛座:圓弧擋風玻璃、車門把手、大燈 -->
+      <path d="M96 22 h12 q6.5 0 9.5 5.5 l5 8.5 q1 2 1 4 v4 h-27.5 z" fill="var(--accent)" stroke="var(--ink)" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M99.5 25 h8.5 q4.5 0 7 4.5 l3 5.5 h-18.5 z" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="M100.5 39 h5" stroke="var(--select)" stroke-width="1.6" stroke-linecap="round" opacity=".9"/>
+      <circle cx="121" cy="40" r="2.5" fill="var(--tab)" stroke="var(--ink)" stroke-width="1.4"/>
+      <!-- 底盤、保險桿 -->
+      <path d="M28 44 h97" stroke="var(--ink)" stroke-width="2.8" stroke-linecap="round"/>
+      <!-- 輪子:黑輪胎、奶油色輪轂、金色輪心,一根十字輻條看得出在轉 -->
+      <g class="wheel"><circle cx="47" cy="47" r="8" fill="var(--ink)"/><circle cx="47" cy="47" r="4.6" fill="var(--select)"/><path d="M47 42.4 v9.2 M42.4 47 h9.2" stroke="var(--ink)" stroke-width="1.4" stroke-linecap="round"/><circle cx="47" cy="47" r="1.5" fill="var(--tab)"/></g>
+      <g class="wheel"><circle cx="106" cy="47" r="8" fill="var(--ink)"/><circle cx="106" cy="47" r="4.6" fill="var(--select)"/><path d="M106 42.4 v9.2 M101.4 47 h9.2" stroke="var(--ink)" stroke-width="1.4" stroke-linecap="round"/><circle cx="106" cy="47" r="1.5" fill="var(--tab)"/></g>
+      </g>
+      <path class="road" d="M2 59 H148" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" opacity=".8"/>
       </svg>
       <div class="cap"><b data-i18n="tx.invrun">Processing invoices — still running…</b><span id="invRunCap"></span></div>
     </div>
