@@ -8007,8 +8007,24 @@ function cfgPull(){
   return AUTH.from("user_settings").select("config,config_name")
     .eq("user_id",ME.id).maybeSingle()
     .then(({data,error})=>{
-      if(error||!data||!data.config){ restoreConfig(); return false; }
-      applyConfig(JSON.stringify(data.config),
+      const cloud=data&&data.config;
+      const hasCloud=!error&&cloud&&typeof cloud==="object"&&Object.keys(cloud).length>0;
+      if(!hasCloud){
+        /* 雲端沒有這一列(或列是空的):回本機快取。快取裡有真資料 ——
+           有客戶、或層級不只種子那一個 —— 就順手推回帳號:昨天雲端寫入
+           默默失敗、今天換電腦看不到的那種洞,下次在原電腦開站自動補上。 */
+        const had=restoreConfig();
+        const raw=had&&CFG&&CFG.raw;
+        if(raw&&(((raw.customers||[]).length)
+              ||(((raw.rate_levels||{}).list||[]).length>1))){
+          cfgPush(JSON.stringify(raw), CFG_LABEL||(LANG?"saved settings":"已儲存的設定"))
+            .then(ok=>{ if(ok) toast(LANG
+              ?"Cloud copy was missing — this computer's settings were synced back to the account."
+              :"帳號上沒有設定,已把這台電腦上的那份同步回帳號。", true); });
+        }
+        return false;
+      }
+      applyConfig(JSON.stringify(cloud),
         data.config_name||(LANG?"saved settings":"已儲存的設定"));
       CFG_SYNC=Date.now();
       setStatus((LANG?"Rates loaded for ":"已載入費率:")+ME.name);
@@ -9132,10 +9148,11 @@ function restoreConfig(){
   /* 名稱可以掉,內容不能掉。舊版的 saveSettings() 只寫了內容沒寫名稱,
      這裡如果堅持兩個都要,那些人存過的設定會被預設值蓋掉。 */
   if(t){ n=n||(LANG?"saved settings":"已儲存的設定");
-    applyConfig(t,n); setStatus((LANG?"Loaded saved settings: ":"已載入記住的設定:")+n); return; }
+    applyConfig(t,n); setStatus((LANG?"Loaded saved settings: ":"已載入記住的設定:")+n); return true; }
   applyConfig(JSON.stringify(DEFAULT_CONFIG),
               LANG?"defaults":"預設值", false);
   setStatus("");
+  return false;
 }
 
 /* 讀完一定要把 input.value 清空,否則再選同一個檔案時 value 沒變,
