@@ -11290,9 +11290,9 @@ function openBreakdown(){
     if(pkOk.length){
       /* 標題:有單號就用單號當主標,追蹤號列在旁邊,右邊標「整單 · N 件」。 */
       const n=orderTrks.length;
+      /* 追蹤號上面的直排已經逐件列過,這一行不再重複:單號 + 幾件就好。 */
       H.push(`<div class="bkdinv" id="bkdInv0"><span class="no">${
           (w0&&w0.order)?L("單號 ","Order ")+esc2(w0.order):L("整單合計","Whole order")}</span>`
-        +`<span class="dt">${orderTrks.map(esc2).join("  ·  ")}</span>`
         +`<span class="tag">${L("整單 · "+n+" 件","Whole order · "+n+" packages")}</span></div>`);
       H.push(`<div class="bkdchap">`+bkdSection(bkdOrderMerge(pkOk), wmsAny,
                L("整單合計 · "+n+" 件相加","All "+n+" packages combined"))+`</div>`);
