@@ -1314,6 +1314,7 @@ main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
   margin:2px 0 12px;max-width:760px;font-size:13.5px}
 #clinvCard .clihead .k{color:var(--muted);font-weight:700;letter-spacing:.5px}
 #clinvCard .clihead b{color:var(--ink)}
+#clinvCard .clihead input.cell{width:100%;max-width:340px;text-align:left;font-weight:600;font-size:13px}
 @media (max-width:900px){ .homeboard{grid-template-columns:1fr}
   .hrow{grid-template-columns:1fr auto}
   .hrow .hd{display:none} }
@@ -2249,11 +2250,12 @@ label:has(#newChanOn){display:none !important}
     </div>
     <div id="cliEmpty" class="note plain" hidden></div>
     <div id="cliBody" hidden>
+      <!-- 四格都能改:改完的字直接進 Excel 與 PDF;每個客戶各記各的,切回來還在。 -->
       <div class="clihead">
-        <span class="k">CLIENT</span><b id="cliVCus"></b>
-        <span class="k">DATE</span><b id="cliVDate"></b>
-        <span class="k">NOTE</span><b data-i18n="tx.clinote">SHIPPING CORRECTION CHARGES</b>
-        <span class="k">INVOICE</span><b id="cliVNo"></b>
+        <span class="k">CLIENT</span><input class="cell" id="cliVCus" spellcheck="false">
+        <span class="k">DATE</span><input class="cell" id="cliVDate" spellcheck="false">
+        <span class="k">NOTE</span><input class="cell" id="cliVNote" spellcheck="false">
+        <span class="k">INVOICE</span><input class="cell" id="cliVNo" spellcheck="false">
       </div>
       <div class="tablewrap" style="max-height:56vh"><table id="tClinv"><thead><tr>
         <th data-i18n="th.trk">Tracking</th>
@@ -20978,7 +20980,8 @@ function renderCode(){
    數字全部來自 RECON.res.rebill.items(應補收清單),一毛都不重算:
    每一項一列(金額不含燃油),燃油另立一列。排法跟對帳匯出的客戶分頁
    同一套:依追蹤號、同一票內金額大到小 —— 稽核費帶著它的追蹤號排在
-   那一票裡,不另起一段。
+   那一票裡,不另起一段。一票多件的訂單追蹤號一個一列:第一列帶費用與
+   金額,其餘的列只有追蹤號和它自己的尺寸,金額不重複也不拆分。
    尺寸兩欄:Key DIM 欄一律放申報尺寸(dimsA,帳單上只有一組尺寸時就放
    那一組),Corrected DIM 欄只在 UPS 真的改了尺寸(兩個都有且不同)時
    放更正後的 dimsC,其餘留白。 */
@@ -20996,15 +20999,18 @@ function cliData(code){
   const items=((R&&R.rebill&&R.rebill.items)||[]).filter(it=>it.cus===code)
     .sort((a,b)=>String(a.trk||"").localeCompare(String(b.trk||""))||(b.total||0)-(a.total||0));
   const rows=[]; let total=0;
+  const dimsOf=t=>{ const d=cliDimsOf(t); return {da:d.a||d.c, dc:(d.c&&d.a&&d.a!==d.c)?d.c:""}; };
   for(const it of items){
-    const d=cliDimsOf(it.trk);
-    const da=d.a||d.c, dc=(d.c&&d.a&&d.a!==d.c)?d.c:"";
+    const ts=String(it.trk||"").split(/,\s*/).filter(Boolean);
+    const lead=ts[0]||"", d0=dimsOf(lead);
     const push=(desc,amt)=>{
       if(Math.abs(amt)<0.005) return;
-      rows.push({trk:String(it.trk||""), desc, dc, da, amt:cents(amt)});
+      rows.push({trk:lead, desc, dc:d0.dc, da:d0.da, amt:cents(amt)});
       total=cents(total+amt);
     };
     push(it.charge, it.amt);
+    /* 其餘的件:各自一列,只有追蹤號與尺寸。 */
+    for(const t of ts.slice(1)){ const dd=dimsOf(t); rows.push({trk:t, desc:"", dc:dd.dc, da:dd.da, amt:null, cont:true}); }
     if(Math.abs(it.fuel||0)>=0.005) push("Fuel Surcharge", it.fuel);
   }
   const name=(((R&&R.orders)||[]).find(o=>o.cus===code)||{}).name
@@ -21022,6 +21028,28 @@ function cliCusList(){
     const a=m.get(it.cus)||{total:0,n:0}; a.total=cents(a.total+(it.total||0)); a.n++; m.set(it.cus,a);
   }
   return [...m.entries()].sort((x,y)=>y[1].total-x[1].total);
+}
+/* 抬頭四格的改寫,每個客戶各記各的(這次開站期間)。沒改的格用預設值。 */
+const CLI_EDIT={};
+function cliHead(d){
+  const e=CLI_EDIT[CLI_CUS]||{};
+  const today=new Date(), pd=n=>String(n).padStart(2,"0");
+  const def={cus:d.name+" - "+CLI_CUS,
+             date:pd(today.getMonth()+1)+"-"+pd(today.getDate())+"-"+String(today.getFullYear()).slice(-2),
+             note:"SHIPPING CORRECTION CHARGES", no:d.no};
+  const out={};
+  for(const k of Object.keys(def)) out[k]=(e[k]!=null&&String(e[k]).trim()!=="")?String(e[k]).trim():def[k];
+  return out;
+}
+/* Excel 的 DATE 是真日期值:認 mm-dd-yy、mm-dd-yyyy、yyyy-mm-dd;認不得的就照字存。 */
+function cliDateCell(sv){
+  const t=String(sv||"").trim(); let y=0,m=0,d=0;
+  let mm=/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2}|\d{4})$/.exec(t);
+  if(mm){ m=+mm[1]; d=+mm[2]; y=+mm[3]; if(y<100) y+=2000; }
+  else{ mm=/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/.exec(t); if(mm){ y=+mm[1]; m=+mm[2]; d=+mm[3]; } }
+  if(!y||!m||!d||m>12||d>31) return {v:t,t:"s",s:{sz:14,align:"right"}};
+  const ser=Math.floor((Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000);
+  return {v:ser,t:"n",s:{sz:14,fmt:"mm-dd-yy",align:"right"}};
 }
 function renderClinv(){
   const card=$("#clinvCard"); if(!card) return;
@@ -21046,17 +21074,16 @@ function renderClinv(){
   if(sel){
     sel.innerHTML=list.map(([c,a])=>{
       const nm=(((RECON&&RECON.res&&RECON.res.orders)||[]).find(o=>o.cus===c)||{}).name||"";
-      return `<option value="${esc(c)}">${esc(c+(nm?" — "+nm:"")+"("+money(a.total)+")")}</option>`;
+      return `<option value="${esc(c)}">${esc(c+(nm?" — "+nm:""))}</option>`;
     }).join("");
     sel.value=CLI_CUS;
     sel.onchange=()=>{ CLI_CUS=sel.value; renderClinv(); };
   }
   const d=cliData(CLI_CUS);
-  const today=new Date(), pd=n=>String(n).padStart(2,"0");
-  $("#cliVCus")&&($("#cliVCus").textContent=d.name+" - "+CLI_CUS);
-  $("#cliVDate")&&($("#cliVDate").textContent=
-    pd(today.getMonth()+1)+"-"+pd(today.getDate())+"-"+String(today.getFullYear()).slice(-2));
-  $("#cliVNo")&&($("#cliVNo").textContent=d.no);
+  const h=cliHead(d), code=CLI_CUS;
+  const setIn=(id,k)=>{ const el=$(id); if(!el) return; el.value=h[k];
+    el.oninput=()=>{ (CLI_EDIT[code]=CLI_EDIT[code]||{})[k]=el.value; }; };
+  setIn("#cliVCus","cus"); setIn("#cliVDate","date"); setIn("#cliVNote","note"); setIn("#cliVNo","no");
   const sum=$("#cliSum");
   if(sum) sum.textContent=L(d.rows.length+" 列,合計 "+money(d.total),
                             d.rows.length+" line(s), total "+money(d.total));
@@ -21064,7 +21091,7 @@ function renderClinv(){
   if(tb) tb.innerHTML=d.rows.map(r=>`<tr>
       <td class="mono">${esc(r.trk)}</td><td>${esc(r.desc)}</td>
       <td class="mono">${esc(r.dc)}</td><td class="mono">${esc(r.da)}</td>
-      <td class="num${r.amt<0?" neg":""}">${money(r.amt)}</td></tr>`).join("")
+      <td class="num${r.amt<0?" neg":""}">${r.amt==null?"":money(r.amt)}</td></tr>`).join("")
     ||`<tr><td colspan="5" class="empty">—</td></tr>`;
   const tf=$("#tClinv")&&$("#tClinv").tFoot;
   if(tf) tf.innerHTML=`<tr><td colspan="4" style="font-weight:700">Total</td>
@@ -21082,9 +21109,7 @@ async function cliExport(){
      「Total」標籤與合計金額分佔兩列(正本就是這樣錯開的)。
      全檔 14 號字;金額格式含紅色負數、靠左;DATE 是真日期值(mm-dd-yy)。
      正本合計格是 =SUM() 公式,這支寫檔器不做公式,直接寫算好的數。 */
-  const today=new Date();
-  const dser=Math.floor((Date.UTC(today.getFullYear(),today.getMonth(),today.getDate())
-                         -Date.UTC(1899,11,30))/86400000);
+  const h=cliHead(d);
   const MONEY="\"$\"#,##0.00_);[Red]\\(\"$\"#,##0.00\\)";
   const lab=v=>({v,t:"s",s:{sz:14,bold:true}});
   const txt=v=>({v:String(v==null?"":v),t:"s",s:{sz:14}});
@@ -21093,11 +21118,10 @@ async function cliExport(){
   const mny=v=>({v:cents(v),t:"n",s:{sz:14,fmt:MONEY,align:"left"}});
   const rows=[
     [],[],[],[],[],[],[],[],
-    [lab("CLIENT:"),txt(d.name+" - "+CLI_CUS),null,null,lab("DATE:"),
-     {v:dser,t:"n",s:{sz:14,fmt:"mm-dd-yy",align:"right"}}],
-    [lab("NOTE:"),txt("SHIPPING CORRECTION CHARGES"),null,null,lab("INVOICE:"),rt(d.no)],
+    [lab("CLIENT:"),txt(h.cus),null,null,lab("DATE:"),cliDateCell(h.date)],
+    [lab("NOTE:"),txt(h.note),null,null,lab("INVOICE:"),rt(h.no)],
     [hd(""),hd("Tracking"),hd("Description"),hd("Corrected DIM"),hd("Key DIM"),hd("Total")],
-    ...d.rows.map((r,i)=>[i?null:lab("Adjustments"),txt(r.trk),txt(r.desc),txt(r.dc),txt(r.da),mny(r.amt)]),
+    ...d.rows.map((r,i)=>[i?null:lab("Adjustments"),txt(r.trk),txt(r.desc),txt(r.dc),txt(r.da),r.amt==null?null:mny(r.amt)]),
     [],
     [lab("Total")],
     [null,null,null,null,null,{v:cents(d.total),t:"n",s:{sz:14,fmt:MONEY,bold:true,align:"left"}}]
@@ -21109,7 +21133,7 @@ async function cliExport(){
   const rowH={10:34.9}; rowH[rows.length-3]=19.5;
   /* 欄寬抄正本的原值(Excel 存檔時的量法很怪,照抄才會顯示得一樣寬)。
      信頭圖的錨定與 EMU 尺寸照正本 drawing1.xml 的數字。 */
-  const ok=await xlWrite([{name:d.no.slice(0,31)||"Invoice", rows,
+  const ok=await xlWrite([{name:h.no.slice(0,31)||"Invoice", rows,
     cols:[{w:17.140625},{w:39.42578125},{w:70.7109375},{w:23.42578125},{w:22.42578125},{w:22.5703125}],
     filter:"A11:F"+lastData, rowH,
     pic:{b64:CLI_LOGO_B64, ext:"jpeg",
@@ -21132,9 +21156,7 @@ const PDF_WD=(()=>{ /* Helvetica 每字寬(千分之一 em),右對齊要靠它 *
 function pdfW(s,sz){ let w=0; for(const ch of String(s)) w+=(PDF_WD[ch]||556); return w*sz/1000; }
 async function cliPdf(){
   if(!CLI_CUS) return;
-  const d=cliData(CLI_CUS);
-  const today=new Date(), pd2=n=>String(n).padStart(2,"0");
-  const dt=pd2(today.getMonth()+1)+"-"+pd2(today.getDate())+"-"+String(today.getFullYear()).slice(-2);
+  const d=cliData(CLI_CUS), h=cliHead(d);
   /* 幾何:欄位位置照 Excel 的六欄欄寬等比放大;信頭圖比例照它在正本裡
      被擺出來的樣子(EMU 的長寬比),不是原始像素比。 */
   const PW=1214.69, ML=64, MR=64, MT=56, MB=64, UW=PW-ML-MR, RGT=ML+UW;
@@ -21159,11 +21181,11 @@ async function cliPdf(){
   C.push("q "+UW.toFixed(2)+" 0 0 "+IMG_H.toFixed(2)+" "+ML.toFixed(2)+" "
     +(PH-MT-IMG_H).toFixed(2)+" cm /Im1 Do Q");
   let y=PH-MT-IMG_H-28-F0;
-  tx(CX[0],y,"CLIENT:",1,F0); tx(CX[1],y,d.name+" - "+CLI_CUS,0,F0);
-  tx(CX[4],y,"DATE:",1,F0);   txr(RGT,y,dt,0,F0);
+  tx(CX[0],y,"CLIENT:",1,F0); tx(CX[1],y,h.cus,0,F0);
+  tx(CX[4],y,"DATE:",1,F0);   txr(RGT,y,h.date,0,F0);
   y-=LP;
-  tx(CX[0],y,"NOTE:",1,F0);   tx(CX[1],y,"SHIPPING CORRECTION CHARGES",0,F0);
-  tx(CX[4],y,"INVOICE:",1,F0); txr(RGT,y,d.no,0,F0);
+  tx(CX[0],y,"NOTE:",1,F0);   tx(CX[1],y,h.note,0,F0);
+  tx(CX[4],y,"INVOICE:",1,F0); txr(RGT,y,h.no,0,F0);
   y-=LP+12;
   tx(CX[1],y,"Tracking",1,F0); tx(CX[2],y,"Description",1,F0);
   tx(CX[3],y,"Corrected DIM",1,F0); tx(CX[4],y,"Key DIM",1,F0); tx(CX[5],y,"Total",1,F0);
@@ -21173,7 +21195,8 @@ async function cliPdf(){
   d.rows.forEach((r,i)=>{
     if(!i) tx(CX[0],y,"Adjustments",1,FD);
     tx(CX[1],y,r.trk,0,FD); tx(CX[2],y,r.desc,0,FD);
-    tx(CX[3],y,r.dc,0,FD);  tx(CX[4],y,r.da,0,FD); mtx(CX[5],y,r.amt,0,FD);
+    tx(CX[3],y,r.dc,0,FD);  tx(CX[4],y,r.da,0,FD);
+    if(r.amt!=null) mtx(CX[5],y,r.amt,0,FD);
     y-=RP;
   });
   y-=RP;                                   /* 資料後空一列,跟 Excel 一樣 */
