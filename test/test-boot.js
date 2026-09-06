@@ -46,7 +46,7 @@ setTimeout(()=>{
   ok(!!D.getElementById('inkPaper'), '\u6574\u9762\u7684\u7d19\u5728');
 
   console.log('\n[4] \u5176\u4ed6\u88dc\u5f37');
-  ok(D.querySelectorAll('#rateSide .setnav-tabs[data-g=fill] button').length===4, '04 \u56db\u500b\u5b50\u9801');
+  ok(D.querySelectorAll('#rateSide .setnav-tabs[data-g=fill] button').length===5, '04 \u4e94\u500b\u5b50\u9801');
   const nav01=D.querySelector('#tabs button[data-p="general"] [data-i18n="tab.general"]');
   ok(!!nav01&&nav01.textContent.trim()==='Pricing Configuration',
      '01 \u6539\u540d\uff1a'+(nav01?nav01.textContent.trim():'?'));
@@ -59,7 +59,7 @@ setTimeout(()=>{
     .forEach(n=>ok(navTxt.indexOf(n)>=0, '\u5074\u6b04\uff1a'+n));
   const sub=D.getElementById('rateSide').textContent;
   ['1. Rate Levels','2. UPS Code Lookup','1. General Settings','1. Customer Directory','2. Surcharge Catalog','3. Demand Periods',
-   '1. Base Rates','2. Surcharge Rates','3. Dimensional Rules','4. Demand Rates']
+   '1. Base Rates','2. Fuel Surcharge','3. Surcharge Rates','4. Dimensional Rules','5. Demand Rates']
     .forEach(n=>ok(sub.indexOf(n)>=0, '\u5b50\u9801\uff1a'+n));
   ok(D.querySelectorAll('.mzwrap').length===12, '12 \u96bb\u90fd\u5728\u9801\u4e0a');
 

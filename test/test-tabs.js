@@ -52,25 +52,27 @@ ok(KEYS.every(k=>!!card(k)), '\u4e03\u5f35\u4e00\u5f35\u4e5f\u6c92\u5f04\u4e0d\u
 
 console.log('\n[2] \u7de8\u865f\u5217');
 const row=D.querySelector('#rateSide .setnav-tabs[data-g="fill"]');
-ok(!!row&&row.querySelectorAll("button[data-r]").length===4, '\u56db\u9846\u5b50\u9801\u6309\u9215');
-ok([...row.querySelectorAll("button")].map(b=>b.dataset.r).join()==="ratefill,rfacc,rfsize,rfdem",
+ok(!!row&&row.querySelectorAll("button[data-r]").length===5, '\u56db\u9846\u5b50\u9801\u6309\u9215');
+ok([...row.querySelectorAll("button")].map(b=>b.dataset.r).join()==="ratefill,rffuel,rfacc,rfsize,rfdem",
    '\u9806\u5e8f\uff1a\u904b\u8cbb \u2192 \u9644\u52a0\u8cbb \u2192 \u5c3a\u5bf8 \u2192 Demand');
 ok(row.querySelector("button").textContent.indexOf("1.")===0, '\u5e36\u7de8\u865f\uff0c\u8ddf 01\u300103 \u4e00\u81f4');
 
 console.log('\n[3] \u63a5\u9032\u5979\u539f\u672c\u90a3\u5e7e\u5f35\u8868');
-ok(W.SET_GROUPS.fill.length===4, 'SET_GROUPS.fill \u56db\u500b');
-ok(["rfacc","rfsize","rfdem"].every(k=>W.RATE_TABS.includes(k)),
+ok(W.SET_GROUPS.fill.length===5, 'SET_GROUPS.fill \u56db\u500b');
+ok(["rffuel","rfacc","rfsize","rfdem"].every(k=>W.RATE_TABS.includes(k)),
    'RATE_TABS \u90fd\u8a8d\u5f97 \u2014\u2014 showSetTab \u624d\u4e0d\u6703\u628a\u5b83\u5011\u9000\u56de\u9996\u9801');
-ok(["rfacc","rfsize","rfdem"].every(k=>W.RATE_PAGE[k]==="ratefill"),
+ok(["rffuel","rfacc","rfsize","rfdem"].every(k=>W.RATE_PAGE[k]==="ratefill"),
    '\u56db\u500b\u5b50\u9801\u540c\u4e00\u500b section');
-ok(["rfacc","rfsize","rfdem"].every(k=>W.RATE_PER_LEVEL.has(k)),
+ok(["rffuel","rfacc","rfsize","rfdem"].every(k=>W.RATE_PER_LEVEL.has(k)),
    '\u56db\u500b\u90fd\u662f\u6309\u5c64\u7684 \u2014\u2014 \u53f3\u4e0a\u89d2\u300c\u6b63\u5728\u7de8\u8f2f\u54ea\u4e00\u5c64\u300d\u4e0d\u6703\u6d88\u5931');
 
 console.log('\n[4] \u9732\u5c0d\u7684\u5361');
 const before=cardsRan;
 W.showSetCards("ratefill");
 ok(cardsRan===before+1, '\u5305\u4f4f\u4e86 showSetCards\uff0c\u539f\u672c\u90a3\u652f\u7167\u8dd1');
-ok(shown().join()==="hd.ratefill,hd.baserate,hd.fuel", '1. \u904b\u8cbb\uff1a\u9801\u9996 + \u904b\u8cbb\u8868 + \u71c3\u6cb9');
+ok(shown().join()==="hd.ratefill,hd.baserate", '1. \u904b\u8cbb\uff1a\u9801\u9996 + \u904b\u8cbb\u8868');
+W.showSetCards("rffuel");
+ok(shown().join()==="hd.ratefill,hd.fuel", '2. \u71c3\u6cb9\u81ea\u5df1\u4e00\u9801');
 W.showSetCards("rfacc");
 ok(shown().join()==="hd.ratefill,hd.acc", '2. \u9644\u52a0\u8cbb');
 W.showSetCards("rfsize");
@@ -91,8 +93,8 @@ ok(row.querySelector("button").textContent.indexOf("Base")>0, '\u63db\u56de\u82f
 console.log('\n[6] \u91cd\u8de1\u4e0d\u6703\u758a');
 W.eval(fs.readFileSync(path.join(ROOT,'src/tabs.js'),'utf8'));
 await new Promise(r=>W.setTimeout(r,20));
-ok(row.querySelectorAll("button[data-r]").length===4, '\u518d\u8dd1\u4e00\u6b21\u9084\u662f\u56db\u9846');
-ok(W.SET_GROUPS.fill.length===4, 'SET_GROUPS.fill \u4e5f\u6c92\u758a');
+ok(row.querySelectorAll("button[data-r]").length===5, '\u518d\u8dd1\u4e00\u6b21\u9084\u662f\u56db\u9846');
+ok(W.SET_GROUPS.fill.length===5, 'SET_GROUPS.fill \u4e5f\u6c92\u758a');
 
 console.log(`\n\u2500\u2500 ${pass} pass / ${fail} fail \u2500\u2500`);
 process.exit(fail?1:0);
