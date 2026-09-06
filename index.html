@@ -11,10 +11,11 @@
 <style>
 :root{
   --bg:#f4ecdc; --panel:#fffdf7; --tab:#ffb500; --accent:#351c15;
-  --text:#2b1a10; --line:#caa356; --select:#ffdd8f; --stripe:#f7f1e4;
+  --text:#2b1a10; --line:#d2b47e; --select:#f8e8bd; --stripe:#f7f1e4;
   --neg:#b3261e; --run:#351c15; --run-hover:#1f100b;
   --run2:#8a6104; --run2-hover:#6b4b03; --muted:#8a755a;
-  --rad:9px; --bw:2px; --bstyle:solid; --bcol:var(--accent);
+  --rad:9px; --bw:2px; --bstyle:solid;
+  --bcol:color-mix(in srgb, var(--accent) 76%, var(--line));
   --ink:var(--text);
   --resi:#8e3b5e; --resi-bg:#f7e7ee; --com:#1f5d86; --com-bg:#e4eef6;
   /* 兩塊帳本面板從主題調出來:UPS 側是拉向灰褐的主題深色,Reprice 側
@@ -1445,8 +1446,8 @@ table.pinfirst tbody tr:nth-child(odd):not(.stprev)>td:first-child{background:va
 /* 介面是全英文,所以字體堆疊也只留英文 —— 沒有中文要顯示,就不必掛
    楷體那一串備援。萬一真的出現中文,落回系統預設的無襯線,版面不會壞。 */
 :root{
-  --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='160' height='160' filter='url(%23g)' opacity='0.05'/></svg>");
-  --paper-tex:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.62 0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.55'/></feComponentTransfer></filter><rect width='180' height='180' filter='url(%23p)' opacity='0.17'/></svg>");
+  --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='160' height='160' filter='url(%23g)' opacity='0.035'/></svg>");
+  --paper-tex:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.62 0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.55'/></feComponentTransfer></filter><rect width='180' height='180' filter='url(%23p)' opacity='0.12'/></svg>");
   --paper-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.62 0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.62'/></feComponentTransfer></filter><rect width='180' height='180' filter='url(%23m)'/></svg>");
   --brush:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 10' preserveAspectRatio='none'><path d='M2 5.6C40 2.8 68 7.6 100 4.8 132 2.0 168 6.8 198 4.4L198 7.2C168 9.6 132 4.8 100 7.6 68 10.4 40 5.6 2 8.4Z' fill='%23000'/></svg>");
 }
@@ -1686,7 +1687,7 @@ label:has(#newChanOn){display:none !important}
 <svg class="defs" aria-hidden="true">
   <filter id="wobble"><feTurbulence type="fractalNoise" baseFrequency="0.014"
     numOctaves="3" seed="7" result="n"/><feDisplacementMap in="SourceGraphic"
-    in2="n" scale="1.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+    in2="n" scale="1.0" xChannelSelector="R" yChannelSelector="G"/></filter>
   <filter id="wobble-soft"><feTurbulence type="fractalNoise" baseFrequency="0.02"
     numOctaves="2" seed="13" result="n"/><feDisplacementMap in="SourceGraphic"
     in2="n" scale="0.8" xChannelSelector="R" yChannelSelector="G"/></filter>
