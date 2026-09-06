@@ -1309,6 +1309,11 @@ main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
 .hstart .hstx{flex:1 1 auto;min-width:0}
 .hstart .hstx b{display:block;font-size:14px;color:var(--ink)}
 .hstart .hstx s{display:block;text-decoration:none;font-size:12px;color:var(--muted);line-height:1.5}
+/* 客戶請款單的表頭:CLIENT / DATE / NOTE / INVOICE,兩欄一組。 */
+#clinvCard .clihead{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:6px 14px;
+  margin:2px 0 12px;max-width:760px;font-size:13.5px}
+#clinvCard .clihead .k{color:var(--muted);font-weight:700;letter-spacing:.5px}
+#clinvCard .clihead b{color:var(--ink)}
 @media (max-width:900px){ .homeboard{grid-template-columns:1fr}
   .hrow{grid-template-columns:1fr auto}
   .hrow .hd{display:none} }
@@ -1744,6 +1749,7 @@ label:has(#newChanOn){display:none !important}
   <button role="tab" aria-selected="false" data-p="files"   class="display" data-i18n="tab.files">Batch Invoice Import</button>
   <button role="tab" aria-selected="false" data-p="wmsdata" class="display" data-i18n="tab.wmsdata">WMS / TMS Data</button>
   <button role="tab" aria-selected="false" data-p="cus"     class="display" data-i18n="tab.cus">Reconciliation Analysis</button>
+  <button role="tab" aria-selected="false" data-p="clinv"   class="display" data-i18n="tab.clinv">Client Invoice</button>
   <button role="tab" aria-selected="false" data-p="setting" class="display" data-i18n="tab.setting">Rate levels</button>
   <button role="tab" aria-selected="false" data-p="rules"  class="display" data-i18n="tab.rules">Surcharge Setup</button>
   <button role="tab" aria-selected="false" data-p="chan"   class="display" data-i18n="tab.chan">Channels</button>
@@ -1855,6 +1861,7 @@ label:has(#newChanOn){display:none !important}
     <button data-step="files" aria-selected="true" data-i18n="rs.inv">1. UPS Invoice Import</button>
     <button data-step="wmsdata" aria-selected="false" data-i18n="rs.wms">2. WMS / TMS Import</button>
     <button data-step="cus" aria-selected="false" data-i18n="rs.res">3. Reconciliation Analysis</button>
+    <button data-step="clinv" aria-selected="false" data-i18n="rs.clinv">4. Client Invoice</button>
   </div>
   <div class="clockcard">
     <div class="clockbox">
@@ -1990,6 +1997,7 @@ label:has(#newChanOn){display:none !important}
     <button data-step="files" aria-selected="true" data-i18n="rs.inv">1. UPS Invoice Import</button>
     <button data-step="wmsdata" aria-selected="false" data-i18n="rs.wms">2. WMS / TMS Import</button>
     <button data-step="cus" aria-selected="false" data-i18n="rs.res">3. Reconciliation Analysis</button>
+    <button data-step="clinv" aria-selected="false" data-i18n="rs.clinv">4. Client Invoice</button>
   </div>
   <div class="lf sketch" id="reconTplCard">
     <h3 class="display"><span class="em">📄</span><span data-i18n="hd.recon">WMS / TMS data</span></h3>
@@ -2214,6 +2222,46 @@ label:has(#newChanOn){display:none !important}
       <th data-i18n="th.zones">Zones</th>
       <th class="num" data-i18n="th.lvlfilled">Levels priced</th>
     </tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<!-- ==================== 對帳第 4 步:客戶請款單 ====================
+     版式照她寄給客戶的那份 PDF:表頭 CLIENT / DATE / NOTE / INVOICE 編號
+     (代碼-ADJ-年月),表身一費一列(燃油各自成列)、稽核費壓底、最後 Total。
+     數字就是這一份對帳的應補收清單 —— 這頁不再算任何錢,只是把同一組數
+     排成可以直接寄出的樣子。 -->
+<section class="page" id="p-clinv">
+  <div class="subtabs reconsteps" role="tablist">
+    <button data-step="files" aria-selected="false" data-i18n="rs.inv">1. UPS Invoice Import</button>
+    <button data-step="wmsdata" aria-selected="false" data-i18n="rs.wms">2. WMS / TMS Import</button>
+    <button data-step="cus" aria-selected="false" data-i18n="rs.res">3. Reconciliation Analysis</button>
+    <button data-step="clinv" aria-selected="true" data-i18n="rs.clinv">4. Client Invoice</button>
+  </div>
+  <div class="lf sketch" id="clinvCard">
+    <h3 class="display"><span class="em">🧾</span><span data-i18n="hd.clinv">Client invoice</span></h3>
+    <p class="hint" style="margin:0 0 10px;max-width:88ch" data-i18n="hint.clinv">Turns the open reconciliation's re-bill list into a client-ready adjustments invoice — pick the client, check the preview, download the Excel. Amounts are exactly the re-bill items; nothing is recalculated here.</p>
+    <div class="row" style="margin-bottom:10px">
+      <label class="inlab" style="margin-left:0" data-i18n="lb.clicus">Client</label>
+      <span class="foldwrap"><select id="cliCus" class="fold" style="min-width:280px"></select></span>
+      <button class="act" id="bCliXls" data-i18n="btn.clixls">Download invoice (Excel)</button>
+      <span id="cliSum" class="affsum"></span>
+    </div>
+    <div id="cliEmpty" class="note plain" hidden></div>
+    <div id="cliBody" hidden>
+      <div class="clihead">
+        <span class="k">CLIENT</span><b id="cliVCus"></b>
+        <span class="k">DATE</span><b id="cliVDate"></b>
+        <span class="k">NOTE</span><b data-i18n="tx.clinote">SHIPPING CORRECTION CHARGES</b>
+        <span class="k">INVOICE</span><b id="cliVNo"></b>
+      </div>
+      <div class="tablewrap" style="max-height:56vh"><table id="tClinv"><thead><tr>
+        <th data-i18n="th.trk">Tracking</th>
+        <th data-i18n="th.clidesc">Description</th>
+        <th data-i18n="th.dimc">Corrected DIM</th>
+        <th data-i18n="th.dima">Key DIM</th>
+        <th class="num" data-i18n="th.total">Total</th>
+      </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
+    </div>
   </div>
 </section>
 
@@ -6583,9 +6631,9 @@ const ADMIN_ONLY=["admin"];
 /* 費率設定的六個內頁不再各佔一顆頂層頁籤 —— 它們現在掛在「Rate Configuration」
    底下那條列上。程式和頁面都原封不動,只是不從上排進去。
    「cus」不在這裡:那一顆是每月要用的對帳,留在上排。 */
-const HIDDEN_TABS=["setting","rules","chan","demand","code","ratefill","files","wmsdata","cus"];
+const HIDDEN_TABS=["setting","rules","chan","demand","code","ratefill","files","wmsdata","cus","clinv"];
 /* 對帳作業的三步:同一顆左欄按鈕底下的三個頁面。按鈕記的是上次停在哪一步。 */
-const RECON_STEPS=["files","wmsdata","cus"];
+const RECON_STEPS=["files","wmsdata","cus","clinv"];
 let RECON_LAST="files";
 let LOGIN_ROWS=[];
 
@@ -8784,6 +8832,7 @@ function showTab(p){
   if(p==="home" && typeof renderHome==="function") try{ renderHome(); }catch(e){}
   if(p==="admin"&&ME&&ME.role==="admin"){ loadLoginHistory(); loadUsers(); }
   if(p==="cus"&&typeof renderCustomers==="function") renderCustomers();
+  if(p==="clinv"&&typeof renderClinv==="function") renderClinv();
   if(p==="analysis"&&typeof renderAnalysis==="function") renderAnalysis();
   if(p==="analysis"&&typeof renderDashboard==="function") renderDashboard();
   /* 層級表以前只有動過才重畫,所以載入設定之後第一次進來是一張空表。
@@ -11560,6 +11609,7 @@ $("#bkdMax") && ($("#bkdMax").onclick=()=>{
 });
 $("#bkdBg") && ($("#bkdBg").onclick=e=>{ if(e.target.id==="bkdBg") $("#bkdBg").classList.remove("on"); });
 $("#trkSearch") && ($("#trkSearch").onkeydown=e=>{ if(e.key==="Enter") renderHist(); });
+$("#bCliXls") && ($("#bCliXls").onclick=()=>{ cliExport().catch(e=>toast(String((e&&e.message)||e),false)); });
 $("#bHistRefresh") && ($("#bHistRefresh").onclick=()=>{ renderHist();
   setStatus(LANG?"Refreshed":"已重新整理"); });
 /* 已匯入的帳單開成一個視窗。原本是一大塊換行文字塞在頁面中間,
@@ -20751,6 +20801,122 @@ function renderCode(){
     : `顯示 ${rows.length} 個,帳單裡 ${Object.keys(inInv).length} 個,未收錄 ${unk} 個`;
 }
 
+/* ---- 對帳第 4 步:客戶請款單 --------------------------------------
+   數字全部來自 RECON.res.rebill.items(應補收清單),一毛都不重算:
+   每一項一列(金額不含燃油),燃油另立一列;稽核費(沒有追蹤號)壓底。
+   尺寸抄該追蹤號帳單行上的 dimsC / dimsA —— 兩個都有且不同才佔兩欄。 */
+let CLI_CUS="";
+function cliDimsOf(trk){
+  const t=String(trk||"").trim(); if(!t) return {c:"",a:""};
+  const sgl=(SHIPS||[]).find(x=>x.tracking===t);
+  const ls=(sgl&&(sgl.allLines||sgl.lines))||[];
+  const c=String(((ls.find(l=>String(l.dimsC||"").trim())||{}).dimsC)||"").trim();
+  const a=String(((ls.find(l=>String(l.dimsA||"").trim())||{}).dimsA)||"").trim();
+  return {c,a};
+}
+function cliData(code){
+  const R=(typeof RECON!=="undefined")&&RECON&&RECON.res;
+  const items=((R&&R.rebill&&R.rebill.items)||[]).filter(it=>it.cus===code);
+  const rows=[], audit=[]; let total=0;
+  for(const it of items){
+    const isAudit=(it.charge===AUDIT_FEE_NAME)||it.kind==="audit";
+    const d=isAudit?{c:"",a:""}:cliDimsOf(it.trk);
+    const dc=d.c||d.a, da=(d.c&&d.a&&d.a!==d.c)?d.a:"";
+    const push=(desc,amt)=>{
+      if(Math.abs(amt)<0.005) return;
+      (isAudit?audit:rows).push({trk:isAudit?"":String(it.trk||""), desc,
+        dc:isAudit?"":dc, da:isAudit?"":da, amt:cents(amt)});
+      total=cents(total+amt);
+    };
+    push(it.charge, it.amt);
+    if(Math.abs(it.fuel||0)>=0.005) push("Fuel Surcharge", it.fuel);
+  }
+  /* 同一追蹤號的列排在一起,順序照原清單(金額大到小)。 */
+  const name=(((R&&R.orders)||[]).find(o=>o.cus===code)||{}).name
+           ||((cusReg().find(c2=>c2.code===code)||{}).name)||code;
+  /* 期別年月:這一批帳單日期的最新一個月。 */
+  const ds=[]; for(const o of ((R&&R.orders)||[]))
+    for(const t2 of String(o.invDate||"").split("/")){ const y=normYmd(t2.trim()); if(y) ds.push(y); }
+  const ym=(ds.sort().pop()||"").slice(0,7).replace("-","");
+  return {rows:rows.concat(audit), total:cents(total), name,
+          no:code+"-ADJ-"+(ym||""), ym};
+}
+function cliCusList(){
+  const R=(typeof RECON!=="undefined")&&RECON&&RECON.res;
+  const m=new Map();
+  for(const it of ((R&&R.rebill&&R.rebill.items)||[])){
+    const a=m.get(it.cus)||{total:0,n:0}; a.total=cents(a.total+(it.total||0)); a.n++; m.set(it.cus,a);
+  }
+  return [...m.entries()].sort((x,y)=>y[1].total-x[1].total);
+}
+function renderClinv(){
+  const card=$("#clinvCard"); if(!card) return;
+  const sel=$("#cliCus"), body=$("#cliBody"), empty=$("#cliEmpty");
+  const list=cliCusList();
+  if(!list.length){
+    if(sel) sel.innerHTML="";
+    if(body) body.hidden=true;
+    if(empty){ empty.hidden=false;
+      empty.textContent=L("目前這份對帳沒有應補收項目 —— 先在第 3 步開一份有補收的對帳,再回來這裡。",
+                          "The open reconciliation has no re-bill items. Open a batch with re-bill under step 3, then come back."); }
+    const b=$("#bCliXls"); if(b) b.disabled=true;
+    const sum=$("#cliSum"); if(sum) sum.textContent="";
+    return;
+  }
+  if(empty) empty.hidden=true;
+  if(body) body.hidden=false;
+  const b=$("#bCliXls"); if(b) b.disabled=false;
+  if(!list.some(([c])=>c===CLI_CUS)) CLI_CUS=list[0][0];
+  if(sel){
+    sel.innerHTML=list.map(([c,a])=>{
+      const nm=(((RECON&&RECON.res&&RECON.res.orders)||[]).find(o=>o.cus===c)||{}).name||"";
+      return `<option value="${esc(c)}">${esc(c+(nm?" — "+nm:"")+"("+money(a.total)+")")}</option>`;
+    }).join("");
+    sel.value=CLI_CUS;
+    sel.onchange=()=>{ CLI_CUS=sel.value; renderClinv(); };
+  }
+  const d=cliData(CLI_CUS);
+  const today=new Date(), pd=n=>String(n).padStart(2,"0");
+  $("#cliVCus")&&($("#cliVCus").textContent=d.name+" - "+CLI_CUS);
+  $("#cliVDate")&&($("#cliVDate").textContent=today.getFullYear()+"/"+(today.getMonth()+1)+"/"+today.getDate());
+  $("#cliVNo")&&($("#cliVNo").textContent=d.no);
+  const sum=$("#cliSum");
+  if(sum) sum.textContent=L(d.rows.length+" 列,合計 "+money(d.total),
+                            d.rows.length+" line(s), total "+money(d.total));
+  const tb=$("#tClinv")&&$("#tClinv").tBodies[0];
+  if(tb) tb.innerHTML=d.rows.map(r=>`<tr>
+      <td class="mono">${esc(r.trk)}</td><td>${esc(r.desc)}</td>
+      <td class="mono">${esc(r.dc)}</td><td class="mono">${esc(r.da)}</td>
+      <td class="num${r.amt<0?" neg":""}">${money(r.amt)}</td></tr>`).join("")
+    ||`<tr><td colspan="5" class="empty">—</td></tr>`;
+  const tf=$("#tClinv")&&$("#tClinv").tFoot;
+  if(tf) tf.innerHTML=`<tr><td colspan="4" style="font-weight:700">Total</td>
+      <td class="num" style="font-weight:700">${money(d.total)}</td></tr>`;
+}
+async function cliExport(){
+  if(!CLI_CUS) return;
+  const d=cliData(CLI_CUS);
+  const today=new Date();
+  const dt=today.getFullYear()+"/"+(today.getMonth()+1)+"/"+today.getDate();
+  const MONEY="$#,##0.00";
+  const lab=v=>({v,t:"s",s:{bold:true,align:"left"}});
+  const txt=v=>({v:String(v==null?"":v),t:"s"});
+  const hc=v=>({v,t:"s",s:{bold:true,border:true,fill:"FFF3E3C2",align:"left"}});
+  const nm2=v=>({v:cents(v),t:"n",s:{fmt:MONEY,align:"right"}});
+  const rows=[
+    [lab("CLIENT:"),txt(d.name+" - "+CLI_CUS),txt(""),lab("DATE:"),txt(dt)],
+    [lab("NOTE:"),txt(L("SHIPPING CORRECTION CHARGES","SHIPPING CORRECTION CHARGES")),txt(""),lab("INVOICE:"),txt(d.no)],
+    [],
+    [hc("Tracking"),hc("Description"),hc("Corrected DIM"),hc("Key DIM"),Object.assign(hc("Total"),{s:{bold:true,border:true,fill:"FFF3E3C2",align:"right"}})],
+    ...d.rows.map(r=>[txt(r.trk),txt(r.desc),txt(r.dc),txt(r.da),nm2(r.amt)]),
+    [{v:"Total",t:"s",s:{bold:true,border:true,align:"left"}},{v:"",t:"s",s:{border:true}},{v:"",t:"s",s:{border:true}},{v:"",t:"s",s:{border:true}},
+     {v:cents(d.total),t:"n",s:{fmt:MONEY,bold:true,border:true,align:"right"}}]
+  ];
+  const fname="Shipping_Adjustments_"+CLI_CUS+"_"+(d.ym||"")+".xlsx";
+  const ok=await xlWrite([{name:d.no.slice(0,31)||"Invoice", rows,
+    cols:[{w:22},{w:44},{w:17},{w:17},{w:12}], freeze:{r:4,c:0}}], fname);
+  toast(ok?L("已匯出 "+fname,"Exported "+fname):L("已取消存檔","Save cancelled"), ok);
+}
 function renderHist(){
   const src=HISTROWS&&HISTROWS.length?HISTROWS:(ROWS||[]);
   const invs=new Set(), trks=new Set();
@@ -21663,6 +21829,18 @@ const I18N={
   "rt.chan":["1. 渠道管理","1. Channels"],
   "rt.demand":["3. Demand Surcharge","3. Demand Surcharge"],
   "rt.chgcode":["2. UPS 代碼查詢","2. UPS Code Lookup"],
+  "tab.clinv":["客戶請款單","Client Invoice"],
+  "rs.clinv":["4. 客戶請款單","4. Client Invoice"],
+  "hd.clinv":["客戶請款單","Client invoice"],
+  "hint.clinv":["把這一份對帳的應補收清單,排成可直接寄給客戶的更正費用請款單 —— 選客戶、看預覽、下載 Excel。金額就是補收清單那一組,這一頁不重算任何錢。",
+    "Turns the open reconciliation's re-bill list into a client-ready adjustments invoice — pick the client, check the preview, download the Excel. Amounts are exactly the re-bill items; nothing is recalculated here."],
+  "lb.clicus":["客戶","Client"],
+  "btn.clixls":["下載請款單(Excel)","Download invoice (Excel)"],
+  "tx.clinote":["SHIPPING CORRECTION CHARGES","SHIPPING CORRECTION CHARGES"],
+  "th.clidesc":["項目","Description"],
+  "th.total":["Total","Total"],
+  "th.dimc":["更正後尺寸","Corrected DIM"],
+  "th.dima":["申報尺寸","Key DIM"],
   "rt.sys":["1. 一般設定","1. General Settings"],
   "hd.analysis":["毛利分析","Profit analysis"],
   "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",
@@ -21847,6 +22025,7 @@ function applyLang(){
      切了語言不重畫,它們會停在另一種語言 —— 而首頁正是最常停在那裡的一頁。 */
   if(typeof renderHome==="function"){ try{ renderHome(); }catch(e){} }
   if(typeof renderClaimCard==="function"){ try{ renderClaimCard(); }catch(e){} }
+  if(document.querySelector("#p-clinv.on")&&typeof renderClinv==="function"){ try{ renderClinv(); }catch(e){} }
   if(typeof renderDashboard==="function" && document.querySelector("#p-analysis.on")){
     try{ renderDashboard(); }catch(e){}
   }
