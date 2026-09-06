@@ -6206,7 +6206,7 @@ function idbPutInvoices(rows){
 /* 整個歷史庫解碼一次就好。登入那一刻有四條路都要「全部的列」(還原、認領
    檢查、跨期對照表、原件預取),以前各解各的,歷史越大登入越慢 —— 五萬列就
    要兩秒多。現在解一次、共用同一份;讀取端拿到淺複本,誰寫進資料庫就作廢。 */
-let IDB_ROWS_P=null, IDB_ROWS_FOR="";
+let IDB_ROWS_P=null, IDB_ROWS_FOR="", IDB_ROWS_PROGRESS=null;
 function idbRowsInvalidate(){ IDB_ROWS_P=null; IDB_ROWS_FOR=""; }
 function idbAllRows(){
   const key=idbName();
@@ -6214,13 +6214,22 @@ function idbAllRows(){
     IDB_ROWS_FOR=key;
     IDB_ROWS_P=idbTx("readonly").then(st=>new Promise((res,rej)=>{
       const rq=st.getAll();
-      rq.onsuccess=()=>{
-        const out=[];
-        for(const rec of (rq.result||[])) out.push(...hrowDecode(rec));
-        res(out);
-      };
+      rq.onsuccess=()=>res(rq.result||[]);
       rq.onerror=()=>rej(rq.error);
-    })).catch(e=>{ if(IDB_ROWS_FOR===key) idbRowsInvalidate(); throw e; });
+    })).then(async recs=>{
+      /* 一期一期解,每期之間讓出一次事件迴圈:幾十萬列的歷史要解好幾秒,整段
+         同步跑會把畫面凍住;讓出來的空檔剛好拿來寫進度。 */
+      const out=[]; let i=0;
+      for(const rec of recs){
+        const rows=hrowDecode(rec);
+        for(const r of rows) out.push(r);
+        if(++i<recs.length){
+          if(typeof IDB_ROWS_PROGRESS==="function"){ try{ IDB_ROWS_PROGRESS(i,recs.length); }catch(e){} }
+          await new Promise(r=>setTimeout(r));
+        }
+      }
+      return out;
+    }).catch(e=>{ if(IDB_ROWS_FOR===key) idbRowsInvalidate(); throw e; });
   }
   return IDB_ROWS_P.then(rows=>rows.slice());
 }
@@ -8189,6 +8198,13 @@ function histSync(){
     migrate:false
   };
 }
+/* 推一期上雲端;失敗就丟出去,讓呼叫端決定要記錄還是重試。 */
+async function histCloudPushOne(H, k, rows, inv){
+  const packed=await gzipText(JSON.stringify(rows));
+  const meta=Object.assign({z:packed.z}, (inv||histInv())[k]||{});
+  const {error}=await H.put(k, meta, packed.data);
+  if(error) throw new Error(error.message||String(error));
+}
 function histCloudPush(rows){
   const H=histSync(); if(!H) return;
   const by={};
@@ -8197,16 +8213,8 @@ function histCloudPush(rows){
     if(k) (by[k]=by[k]||[]).push(r);
   }
   const inv=histInv();
-  for(const k of Object.keys(by)){
-    (async()=>{
-      try{
-        const packed=await gzipText(JSON.stringify(by[k]));
-        const meta=Object.assign({z:packed.z}, inv[k]||{});
-        const {error}=await H.put(k, meta, packed.data);
-        if(error) console.warn("invoice history sync failed:", k, error.message);
-      }catch(e){ console.warn("invoice history sync failed:", k, e&&e.message); }
-    })();
-  }
+  for(const k of Object.keys(by))
+    histCloudPushOne(H, k, by[k], inv).catch(e=>console.warn("invoice history sync failed:", k, e&&e.message));
 }
 /* 刪除同步:本機刪了哪幾期,帳號雲端那份也跟著刪。失敗只記 console ——
    下次在別台電腦看到那期還在,重刪一次就好。 */
@@ -8241,21 +8249,45 @@ async function histCloudPull(){
     const lost=!!(here && mine && !here.has(String(r.invoice)));
     return !mine || lost || (at && at>String(mine.at||""));
   });
-  let got=0;
-  for(const r of want){
+  /* 幾十期要補的時候(新電腦、或本機被清掉)一期一期等太久:三路並行抓,
+     每抓完一期就報進度,人看得出它在動、還剩幾期。 */
+  let got=0, done=0; const total=want.length;
+  const one=async r=>{
     try{
       const {data,error}=await H.get(r.invoice);
       const row=Array.isArray(data)?data[0]:data;
-      if(error||!row||!row.data) continue;
+      if(error||!row||!row.data) return;
       const rows=JSON.parse(await gunzipText(row.meta&&row.meta.z, row.data));
-      if(!Array.isArray(rows)||!rows.length) continue;
+      if(!Array.isArray(rows)||!rows.length) return;
       await idbPutInvoices(rows);
       const m=row.meta||{};
       inv[r.invoice]={date:m.date||"", rows:m.rows||rows.length,
                       trk:m.trk||0, at:m.at||"", how:m.how||"cloud"};
       got++;
     }catch(e){ console.warn("invoice history fetch failed:", r.invoice); }
-  }
+    finally{
+      done++;
+      if(total>1) setStatus(L("從雲端同步帳單歷史 "+done+" / "+total+" 期…","Syncing invoice history from the cloud "+done+" / "+total+"…"));
+    }
+  };
+  const queue=want.slice(), workers=[];
+  for(let w=0; w<3 && queue.length; w++) workers.push((async()=>{ while(queue.length) await one(queue.shift()); })());
+  await Promise.all(workers);
+  /* 反向補推:本機有、雲端沒有的期別推上去。匯入當下推失敗的(斷線、或那時
+     雲端函式還沒建)以前就只活在那一台電腦裡;雲端有齊,任何一台登入都拿得到全部。 */
+  try{
+    const cloud=new Set(list.map(r=>String(r.invoice)));
+    const up=(here?[...here]:[]).filter(k=>!cloud.has(k));
+    let pushed=0;
+    for(const k of up){
+      const rows=await idbRowsFor(k);
+      if(!rows||!rows.length) continue;
+      try{ await histCloudPushOne(H, k, rows, inv); pushed++;
+           setStatus(L("補推帳單歷史到雲端 "+pushed+" / "+up.length+" 期…","Backing up invoice history to the cloud "+pushed+" / "+up.length+"…")); }
+      catch(e){ console.warn("invoice history backfill failed:", k, e&&e.message); }
+    }
+    if(pushed) setStatus(L("已把 "+pushed+" 期帳單歷史補推到雲端。","Backed up "+pushed+" invoice period(s) to the cloud."));
+  }catch(e){}
   if(got){
     HISTINV=inv;
     try{ localStorage.setItem(histInvKey(), JSON.stringify(inv)); }catch(e){}
@@ -8674,8 +8706,17 @@ function claimLegacy(){
 function restoreHistoryDetail(){
   if(HIST_RESTORED) return;
   HIST_RESTORED=true;
+  IDB_ROWS_PROGRESS=(i,n)=>setStatus(L("還原帳單歷史 "+i+" / "+n+" 期…","Restoring invoice history "+i+" / "+n+" periods…"));
   claimLocalIdentity().then(()=>claimLegacy()).then(()=>idbAllRows()).then(rows=>{
-    if(!rows.length) return;
+    IDB_ROWS_PROGRESS=null;
+    if(!rows.length){
+      /* 索引記得有幾期、明細卻一期都不在:這台瀏覽器把 IndexedDB 清掉了
+         (關閉時清除網站資料、或空間吃緊被回收)。講出來,接著從雲端補。 */
+      const idxN=Object.keys(histInv()).length;
+      if(idxN) setStatus(L("本機的帳單明細不在了(索引還記得 "+idxN+" 期)—— 正從雲端補回。每次登入都這樣的話,請把本站加入瀏覽器「關閉時清除網站資料」的例外。",
+        "The local invoice detail is gone (the index still lists "+idxN+" periods) — restoring from the cloud. If this happens at every sign-in, exempt this site from the browser's clear-site-data-on-exit setting."));
+      return;
+    }
     HISTROWS=rows;
     backfillAccounts(rows);
     /* 對照表是舊規則學的就重學。明細本來就在這裡,不必叫人重匯檔案。 */
@@ -8734,6 +8775,9 @@ function setMe(m){
     renderHist();
     if(m) cfgPull();
   }
+  /* 跟瀏覽器要「永久儲存」:拿到了,空間吃緊時就不會先把這個站的 IndexedDB
+     回收掉 —— 帳單歷史就存在那裡。要不到也沒關係,照常。 */
+  if(m){ try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{}); }catch(e){} }
   /* 本機那份立刻還原,不要等雲端 —— 搬家只擋住「讀雲端」那兩個動作,
      擋在這裡的話,登入後馬上匯入的檔案會被晚一步的還原蓋掉。 */
   if(m) restoreHistoryDetail();
@@ -21119,8 +21163,9 @@ function renderCode(){
    數字全部來自 RECON.res.rebill.items(應補收清單),一毛都不重算:
    每一項一列(金額不含燃油),燃油另立一列。排法跟對帳匯出的客戶分頁
    同一套:依追蹤號、同一票內金額大到小 —— 稽核費帶著它的追蹤號排在
-   那一票裡,不另起一段。一票多件的訂單追蹤號一個一列:第一列帶費用與
-   金額,其餘的列只有追蹤號和它自己的尺寸,金額不重複也不拆分。
+   那一票裡,不另起一段。一票多件的訂單追蹤號一個一列,每一列都有費用名稱
+   與金額:金額(含燃油、稽核費)按件數平均分攤,分不盡的一分錢放最後一件,
+   合計和系統算的一毛不差;尺寸各件用各件自己的。
    尺寸兩欄:Key DIM 欄一律放申報尺寸(dimsA,帳單上只有一組尺寸時就放
    那一組),Corrected DIM 欄只在 UPS 真的改了尺寸(兩個都有且不同)時
    放更正後的 dimsC,其餘留白。 */
@@ -21139,18 +21184,24 @@ function cliData(code){
     .sort((a,b)=>String(a.trk||"").localeCompare(String(b.trk||""))||(b.total||0)-(a.total||0));
   const rows=[]; let total=0;
   const dimsOf=t=>{ const d=cliDimsOf(t); return {da:d.a||d.c, dc:(d.c&&d.a&&d.a!==d.c)?d.c:""}; };
+  /* 平均分攤到 n 件:前 n−1 件無條件捨去到分,最後一件補足餘數,相加還是原數。 */
+  const splitEven=(v,n)=>{ const tot=cents(v); if(n<=1) return [tot];
+    const each=Math.trunc(tot*100/n)/100; const parts=[]; let acc=0;
+    for(let i=0;i<n-1;i++){ parts.push(each); acc=cents(acc+each); }
+    parts.push(cents(tot-acc)); return parts; };
   for(const it of items){
-    const ts=String(it.trk||"").split(/,\s*/).filter(Boolean);
-    const lead=ts[0]||"", d0=dimsOf(lead);
-    const push=(desc,amt)=>{
-      if(Math.abs(amt)<0.005) return;
-      rows.push({trk:lead, desc, dc:d0.dc, da:d0.da, amt:cents(amt)});
-      total=cents(total+amt);
-    };
-    push(it.charge, it.amt);
-    /* 其餘的件:各自一列,只有追蹤號與尺寸。 */
-    for(const t of ts.slice(1)){ const dd=dimsOf(t); rows.push({trk:t, desc:"", dc:dd.dc, da:dd.da, amt:null, cont:true}); }
-    if(Math.abs(it.fuel||0)>=0.005) push("Fuel Surcharge", it.fuel);
+    const ts=String(it.trk||"").split(/,\s*/).filter(Boolean); if(!ts.length) ts.push("");
+    const amts=splitEven(it.amt,ts.length), fuels=splitEven(it.fuel||0,ts.length);
+    ts.forEach((t,i)=>{
+      const dd=dimsOf(t);
+      const push=(desc,amt)=>{
+        if(Math.abs(amt)<0.005) return;
+        rows.push({trk:t, desc, dc:dd.dc, da:dd.da, amt:cents(amt)});
+        total=cents(total+amt);
+      };
+      push(it.charge, amts[i]);
+      if(Math.abs(it.fuel||0)>=0.005) push("Fuel Surcharge", fuels[i]);
+    });
   }
   const name=(((R&&R.orders)||[]).find(o=>o.cus===code)||{}).name
            ||((cusReg().find(c2=>c2.code===code)||{}).name)||code;
