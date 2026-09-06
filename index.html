@@ -929,7 +929,9 @@ tr.blocked{opacity:.72}
   transform:translateY(-50%);width:20px;height:20px;line-height:18px;text-align:center;
   font-weight:800;font-size:13px;color:var(--accent);background:var(--panel);
   border:1.5px solid var(--line);border-radius:50%}
-.pie{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+/* 圓餅靠上對齊:兩欄的清單長短差很多,置中的話左邊那顆會沉到半路,兩顆高低不齊。 */
+.pie{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.pie>svg{flex:none;margin-top:4px}
 .pie.pieflat{display:block}
 .pie.pieflat .plegend{width:100%}
 .pie.pieflat .plegend table{width:100%}
@@ -11463,12 +11465,16 @@ async function bkdXlsx(){
 
   /* ---- 各期比較:欄位照畫面上的總覽 —— 重算、UPS、實收、應補收都在 ---- */
   const wsrc0=((out.find(o=>o.wms)||{}).wms||{}).src||RECON_SRC||"WMS";
-  const sum=[[hc(L("追蹤號 ","Tracking ")+trk,HEAD,"left"),hc("",HEAD),hc("",HEAD),hc("",HEAD),hc("",HEAD),hc("",HEAD),hc("",HEAD),hc("",HEAD)],
-             [hc(L("期別","Invoice"),HEAD,"left"),hc(L("帳單日","Invoice date"),HEAD),
+  /* 整單(一票多件)時每件一列,前面多一欄追蹤號,列才分得出是哪一件。 */
+  const multi=new Set(out.map(o=>o.trk||"")).size>1;
+  const nCol=multi?9:8;
+  const sum=[[hc(L("追蹤號 ","Tracking ")+trk,HEAD,"left")].concat(Array.from({length:nCol-1},()=>hc("",HEAD))),
+             (multi?[hc(L("追蹤號","Tracking"),HEAD,"left")]:[]).concat([
+              hc(L("期別","Invoice"),HEAD,"left"),hc(L("帳單日","Invoice date"),HEAD),
               hc(L("UPS 實收","UPS billed"),UPSC),hc(L("重算","Repriced"),REPC),
               hc(wsrc0+L(" 實收"," billed"),WMSB),hc(L("應補收","To re-bill"),WMSB),
-              hc(L("毛利","Profit"),HEAD),hc(L("毛利率","Margin"),HEAD)]];
-  const sumMerges=[{s:{r:0,c:0},e:{r:0,c:7}}];
+              hc(L("毛利","Profit"),HEAD),hc(L("毛利率","Margin"),HEAD)])];
+  const sumMerges=[{s:{r:0,c:0},e:{r:0,c:nCol-1}}];
   let tUp=0,tRe=0,tWm=0,tRb=0,anyWm=false,anyRb=false,allPriced=true;
   /* 只有帳戶層的期別不進比較表 —— 它們集中在明細頁最後一段。
      毛利 = 實收 + 應補收 − UPS 實收;重算只是參考,不進毛利。 */
@@ -11488,42 +11494,44 @@ async function bkdXlsx(){
     const wm=perRow?wmAll:null, rb=perRow?rbAll:null;
     const rev=wm==null?null:cents(wm+(rb||0));
     const df=rev==null?null:cents(rev-up);
-    sum.push([c(o.inv,"","left"),
+    sum.push((multi?[c(o.trk||"","","left")]:[]).concat([c(o.inv,"","left"),
       sd==null?c(o.invDate||"","","right"):c(sd,DATE,"right"),
       c(up,MONEY,"right",UPSB), re==null?c("—","","right",REPB):c(re,MONEY,"right",REPB),
       wm==null?c("—","","right",WMSB):c(wm,MONEY,"right",WMSB),
       rb==null?c("—","","right",WMSB):c(rb,MONEY,"right",WMSB),
       df==null?c("—","","right"):c(df,MONEY,"right"),
-      (df==null||Math.abs(rev)<1e-9)?c("—","","right"):c(df/Math.abs(rev),PCT,"right")]);
+      (df==null||Math.abs(rev)<1e-9)?c("—","","right"):c(df/Math.abs(rev),PCT,"right")]));
   }
   if(pk.length>1){
     const tRev=cents(tWm+tRb);
     const td=anyWm?cents(tRev-tUp):null;
-    sum.push([c(L("合計","Total"),"","left",FOOT,true), c("","",  "right",FOOT,true),
+    sum.push((multi?[c("","","left",FOOT,true)]:[]).concat([c(L("合計","Total"),"","left",FOOT,true), c("","",  "right",FOOT,true),
       c(cents(tUp),MONEY,"right",FOOT,true),
       allPriced?c(cents(tRe),MONEY,"right",FOOT,true):c("—","","right",FOOT,true),
       anyWm?c(cents(tWm),MONEY,"right",FOOT,true):c("—","","right",FOOT,true),
       anyRb?c(cents(tRb),MONEY,"right",FOOT,true):c("—","","right",FOOT,true),
       td==null?c("—","","right",FOOT,true):c(td,MONEY,"right",FOOT,true),
       (td==null||Math.abs(tRev)<1e-9)?c("—","","right",FOOT,true)
-        :c(td/Math.abs(tRev),PCT,"right",FOOT,true)]);
+        :c(td/Math.abs(tRev),PCT,"right",FOOT,true)]));
   }
 
   /* ---- 明細 ---- */
-  const det=[[hc(L("期別","Invoice"),HEAD,"left"),hc(L("段別","Segment"),HEAD,"left"),
+  const det=[[hc(L("期別","Invoice"),HEAD,"left")].concat(multi?[hc(L("追蹤號","Tracking"),HEAD,"left")]:[],[hc(L("段別","Segment"),HEAD,"left"),
               hc(L("來源","Source"),HEAD,"left"),hc(L("項目","Item"),HEAD,"left"),
-              hc(L("金額","Amount"),HEAD)]];
+              hc(L("金額","Amount"),HEAD)])];
   const wsrc=(o)=>(o.wms&&o.wms.src)||RECON_SRC||"WMS";
   const RBB="F8E9E6";
+  let curTrk="";
   const push=(inv,seg,side,item,amt,bold,src)=>{
     const fill=side===0?UPSB:side===1?REPB:side===3?RBB:WMSB;
-    det.push([c(inv,"","left",fill,bold),c(seg,"","left",fill,bold),
+    det.push([c(inv,"","left",fill,bold)].concat(multi?[c(curTrk,"","left",fill,bold)]:[],[c(seg,"","left",fill,bold),
       c(side===0?L("UPS 實收","UPS billed"):side===1?L("重算","Repriced")
         :side===3?L("應補收","To re-bill"):(src||"WMS")+L(" 實收"," billed"),"","left",fill,bold),
-      c(item,"","left",fill,bold),c(amt,MONEY,"right",fill,bold)]);
+      c(item,"","left",fill,bold),c(amt,MONEY,"right",fill,bold)]));
   };
   for(const o of out){
     if(!o.r) continue;
+    curTrk=o.trk||"";
     const segs=[[o.r,(o.r.s.groups)||[],segName(o.r.s.layer),o.wms||null]];
     if(o.r.rtn) segs.push([o.r.rtn,(o.r.s.rtnSeg&&o.r.s.rtnSeg.groups)||[],L("退件回程","Return leg"),null]);
     if(o.r.npb) segs.push([o.r.npb,(o.r.s.npb&&o.r.s.npb.groups)||[],L("第二段運送","Second movement"),null]);
@@ -11557,20 +11565,21 @@ async function bkdXlsx(){
   }
   /* 帳戶層的行集中在最後一段,期別寫在第一欄,不進任何小計。 */
   const acctRows=[];
-  for(const o of out) for(const l of (o.acct||[])) acctRows.push([o.inv,l]);
+  for(const o of out) for(const l of (o.acct||[])) acctRows.push([o.inv,l,o.trk||""]);
   if(acctRows.length){
     const nm=L("帳戶層(不重新計價)","Account-level (not repriced)");
-    for(const [inv,l] of acctRows)
-      push(inv,nm,0,(l.desc||l.code||"")+((l.cls||l.ai)?" ["+(l.cls||l.ai)+"]":""),cents(l.net||0));
+    for(const [inv,l,tk] of acctRows){ curTrk=tk;
+      push(inv,nm,0,(l.desc||l.code||"")+((l.cls||l.ai)?" ["+(l.cls||l.ai)+"]":""),cents(l.net||0)); }
+    curTrk="";
     push("",nm,0,L("小計","Subtotal"),cents(acctRows.reduce((a,[,l])=>a+(l.net||0),0)),true);
   }
   const name=("Tracking_"+trk+"_Breakdown").replace(/[^A-Za-z0-9_-]+/g,"")+".xlsx";
   const ok=await xlWrite([
     {name:L("各期比較","Per invoice"), rows:sum, merges:sumMerges,
-     cols:[{w:20},{w:13},{w:14},{w:14},{w:14},{w:13},{w:13},{w:11}], freeze:{r:2,c:1}},
+     cols:(multi?[{w:22}]:[]).concat([{w:20},{w:13},{w:14},{w:14},{w:14},{w:13},{w:13},{w:11}]), freeze:{r:2,c:multi?2:1}},
     {name:L("明細","Detail"), rows:det,
-     cols:[{w:20},{w:16},{w:13},{w:38},{w:14}], freeze:{r:1,c:0},
-     filter:"A1:E"+det.length},
+     cols:[{w:20}].concat(multi?[{w:22}]:[],[{w:16},{w:13},{w:38},{w:14}]), freeze:{r:1,c:0},
+     filter:"A1:"+(multi?"F":"E")+det.length},
   ], name);
   toast(ok?L("已匯出 "+trk,"Exported "+trk):L("已取消存檔","Save cancelled"), ok);
 }
