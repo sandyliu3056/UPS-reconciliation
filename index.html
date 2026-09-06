@@ -11116,8 +11116,24 @@ function bkdWmsOf(trk){
   const k=reconTrk(trk);
   const o=(r.orders||[]).find(x=>(x.trks||[]).some(t=>reconTrk(t)===k));
   if(!o) return null;
+  /* 一票多件:模板那一列是整張訂單的錢,這個視窗其他欄位都是「這一包」的。
+     單位一致才準 —— 把訂單金額按各包在本批帳單上的 UPS 淨額佔比分攤到
+     本包(和對帳引擎的成本基準同源;帳單裡查無的包裹以 0 計),全部查無
+     就平均分。訂單總額與佔比寫進註記,兄弟包各自打開,份額相加=總額。 */
+  const pieces=(o.trks||[]).length;
+  let share=1;
+  if(pieces>1){
+    const want=new Map((o.trks||[]).map(t2=>[reconTrk(t2),0]));
+    for(const l of (ROWS||[])){
+      const kk=reconTrk(l.tracking||"");
+      if(want.has(kk)) want.set(kk, want.get(kk)+(toNum(l.net)||0));
+    }
+    const tot=[...want.values()].reduce((a,b)=>a+Math.max(0,b),0);
+    share = tot>0.004 ? Math.max(0,want.get(k)||0)/tot : 1/pieces;
+  }
   const rows=[]; let sum=0;
-  const fees=o.billedFees||{};
+  const fees={};
+  for(const [k2,v] of Object.entries(o.billedFees||{})) fees[k2]=cents(toNum(v)*share);
   /* 順序:運費在前、附加費照 Consolidated 的次序,燃油倒數第二,非承運費用壓底;
      沒逐項列示的那一份放在燃油前面。 */
   const REST=L("未逐項列示","Not itemised");
@@ -11126,7 +11142,7 @@ function bkdWmsOf(trk){
     const v=cents(toNum(fees[k2])); if(Math.abs(v)<0.005) continue;
     rows.push([k2, v]); sum=cents(sum+v);
   }
-  const amt=cents(toNum(o.amt));
+  const amt=cents(toNum(o.amt)*share);
   const rest=cents(amt-sum);
   if(rows.length && Math.abs(rest)>=0.005) rows.push([REST, rest]);
   rows.sort((x,y)=>rank(x[0])-rank(y[0])||String(x[0]).localeCompare(String(y[0])));
@@ -11139,7 +11155,7 @@ function bkdWmsOf(trk){
   const over=cents(items.reduce((a,it)=>a+toNum(it.over),0));
   return {src:RECON_SRC, rows, amt, order:o.order, cus:o.cus, name:o.name,
           zone:o.zone||"", wt:o.wt||"",
-          pieces:(o.trks||[]).length, rebill, over,
+          pieces, share, orderAmt:cents(toNum(o.amt)), rebill, over,
           /* 補收不能只給一個總數 —— 要收客戶的錢,得說得出是哪幾項。 */
           items:items.map(it=>({charge:it.charge, desc:it.desc||"", kind:it.kind,
             amt:cents(toNum(it.amt)), fuel:cents(toNum(it.fuel)), fuelPct:it.fuelPct,
@@ -11433,7 +11449,11 @@ function bkdSection(r, wms, name0){
       const W=wms.rows.map(([k,v])=>`<tr><td>${esc2(k)}</td><td class="num">${money(v)}</td></tr>`);
       const note=[];
       if(wms.order) note.push(L("單號 ","Order ")+esc2(wms.order));
-      if(wms.pieces>1) note.push(L("此單 "+wms.pieces+" 件合計","Order total for "+wms.pieces+" packages"));
+      if(wms.pieces>1) note.push(L(
+        "此單 "+wms.pieces+" 件,訂單總額 "+money2(wms.orderAmt)
+          +",本件依 UPS 佔比 "+(wms.share*100).toFixed(1)+"% 分攤",
+        "Order of "+wms.pieces+" packages · order total "+money2(wms.orderAmt)
+          +" · this package's share by UPS cost "+(wms.share*100).toFixed(1)+"%"));
       Wc=`<div class="bkdside wms"><div class="bkdside-lbl">${esc2(wms.src)+L(" 實收"," billed")}</div>`
         +`<div class="bkdside-body">${sideMeta(wms.zone, wms.wt)}<table>${W.join("")}</table>`
         +(note.length?`<div class="bkdside-note">${note.join(" · ")}</div>`:"")
