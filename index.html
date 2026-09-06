@@ -2487,7 +2487,7 @@ label:has(#newChanOn){display:none !important}
 
     <div class="subhd" data-i18n="hd.findtrk">Find a Tracking</div>
     <div class="row sketch-soft" style="padding:11px 13px;margin-bottom:12px">
-      <label class="inlab" style="margin-left:0" data-i18n="th.trk">Tracking</label>
+      <label class="inlab" style="margin-left:0" data-i18n="lb.trkorder">Tracking / order no.</label>
       <input id="trkSearch" class="cell" style="width:280px;text-align:left">
       <button class="act" id="bTrkSearch" data-i18n="btn.search">Search</button>
       <button class="act ghost" id="bTrkBreak" data-i18n="btn.breakdown">Rating Breakdown</button>
@@ -10989,8 +10989,28 @@ let BKD_LVL="";
 /* 這個追蹤號沒有經由 WMS / TMS 模板導入:認不出客戶,也就沒有費率層級。
    這時不重新計價 —— 退回畫面上正開著的那一層算,層級根本不對,數字只會誤導。 */
 let BKD_NOLVL=false;
+/* 這個追蹤號在不在手上的帳單裡 —— 只問有沒有,找到就停。 */
+function bkdHasTrk(t){
+  const k=String(t||"").toUpperCase(); if(!k) return false;
+  for(const r of (HISTROWS||[])) if(String(r.tracking||"").toUpperCase()===k) return true;
+  for(const r of (ROWS||[])) if(String(r.tracking||"").toUpperCase()===k) return true;
+  return false;
+}
+/* 單號 → 追蹤號:先看畫面上這份對帳的列,再看存過的每一份(清單已載入時)。
+   一票多件就是整張訂單的幾件,第一件拿來開視窗,整單會自動一起攤開。 */
+function bkdOrderLookup(q){
+  const key=String(q||"").trim().toUpperCase(); if(!key) return null;
+  const hit=rows=>{ for(const r of (rows||[])){
+      if(String(r.order||"").trim().toUpperCase()===key && (r.trks||[]).length)
+        return {order:String(r.order), trk:String(r.trks[0]).toUpperCase(), trks:r.trks.slice()}; }
+    return null; };
+  let h=hit((typeof RECON!=="undefined"&&RECON&&RECON.list)||[]);
+  if(!h) for(const run of ((typeof RECON_RUNS!=="undefined"&&RECON_RUNS)||[])){ h=hit(run.rows); if(h){ h.run=run.key; break; } }
+  return h;
+}
 function openBreakdown(){
-  const t=String(($("#trkSearch")||{}).value||"").trim().toUpperCase();
+  let t=String(($("#trkSearch")||{}).value||"").trim().toUpperCase();
+  let viaOrder=null;
   const body=$("#bkdBody");
   const money2=v=>"$"+(Math.round((v||0)*100)/100).toLocaleString(undefined,
     {minimumFractionDigits:2,maximumFractionDigits:2});
@@ -10998,6 +11018,8 @@ function openBreakdown(){
   if(!t){ body.innerHTML=`<div class="note plain">`
       +L("先在上面輸入單號。","Enter a tracking number above first.")+`</div>`;
     $("#bkdBg").classList.add("on"); return; }
+  /* 也吃單號:輸入的不是任何一張帳單上的追蹤號時,當作單號去找。 */
+  if(!bkdHasTrk(t)){ const h=bkdOrderLookup(t); if(h){ viaOrder=h; t=h.trk; } }
   /* 一票多件:模板那一列是整張訂單,對帳也是整單對的。查其中任何一件就把
      整單一起攤開 —— 三邊都是整單的數字,客戶那一欄用真實金額,不分攤。 */
   const w0=(typeof bkdWmsOf==="function"&&bkdWmsOf(t))||null;
@@ -11018,8 +11040,8 @@ function openBreakdown(){
   const byInv=collect(t);
   if(!byInv.size){
     body.innerHTML=`<div class="note warn">`
-      +L("已存帳單裡沒有這個追蹤號。請先匯入(或儲存)包含這筆的帳單,再回來查詢。",
-         "This tracking number is not in any stored invoice. Import or store the invoice that contains it, then look it up again.")
+      +L("已存帳單裡沒有這個追蹤號,對帳資料裡也沒有這個單號。請先匯入(或儲存)包含這筆的帳單,再回來查詢。",
+         "This is not a tracking number on any stored invoice, nor an order number in the reconciliation data. Import or store the invoice that contains it, then look it up again.")
       +`</div>`;
     $("#bkdBg").classList.add("on"); return;
   }
@@ -11113,7 +11135,8 @@ function openBreakdown(){
   };
   ACCT_LINES=keep; ORIG=keepOrig;
   const H=[];
-  H.push(`<div class="bkdtrk"><div><div class="lbl">${L("追蹤號","Tracking")}</div>`
+  H.push(`<div class="bkdtrk"><div><div class="lbl">${L("追蹤號","Tracking")
+      +(viaOrder?"  ·  "+L("單號 ","Order ")+esc2(viaOrder.order):"")}</div>`
     +`<div class="no">${esc2(t)}</div></div>`
     +`<button class="bkdxls" id="bkdXls">${L("⬇ 匯出 Excel","⬇ Export to Excel")}</button></div>`);
   /* 整單抬頭:幾件、單號、每一件的追蹤號與計費重(正在看的那一件標起來)。 */
@@ -21356,9 +21379,14 @@ function renderHist(){
   /* 追蹤號或發票期號都能查 —— 匯進來的帳單本來就該用期號找得到,
      只認追蹤號的話,想看整期有哪些行反而沒有入口。 */
   const q=(($("#trkSearch")||{}).value||"").trim().toLowerCase();
+  /* 單號也能查:對到 WMS / TMS 那一列的追蹤號(一票多件就是全部幾件)。 */
+  const oh=(q&&typeof bkdOrderLookup==="function")?bkdOrderLookup(q):null;
+  const nk=x=>String(x||"").toLowerCase().replace(/[\s-]+/g,"");
+  const otrks=oh?new Set((oh.trks||[]).map(nk)):null;
   const show=q ? src.filter(r=>
         (r.tracking||"").toLowerCase().includes(q)
-     || (r.invoice||"").toLowerCase().includes(q)) : [];
+     || (r.invoice||"").toLowerCase().includes(q)
+     || (otrks&&otrks.has(nk(r.tracking)))) : [];
   const tb=$("#tHist")&&$("#tHist").tBodies[0];
   if(!tb) return;
 
@@ -21395,8 +21423,8 @@ function renderHist(){
         <td class="num${r.net<0?" neg":""}">${money(r.net)}</td></tr>`).join("")
     : `<tr><td colspan="13" class="empty">${
         q ? (LANG?"No lines for that tracking number.":"這個追蹤號沒有資料。")
-          : (LANG?"Type a tracking number above and press Search."
-                 :"在上面輸入追蹤號後按查詢。")}</td></tr>`;
+          : (LANG?"Type a tracking or order number above and press Search."
+                 :"在上面輸入追蹤號或單號後按查詢。")}</td></tr>`;
 }
 let HISTROWS=null;
 /* 分頁狀態。每頁四百列是畫得動又不用一直按下一頁的折衷。 */
@@ -21904,7 +21932,7 @@ const I18N={
   "btn.imphist":["匯入歷史帳單","Import Past Invoices"],
   "btn.refresh":["重新整理","Refresh"],
   "btn.stored":["已存帳單","Stored Invoices"],
-  "hd.findtrk":["查詢單號","Find a Tracking"],
+  "hd.findtrk":["查追蹤號 / 單號","Find a tracking or order"],
   "btn.search":["查詢","Search"],
   "btn.breakdown":["計費計算明細","Rating Breakdown"],
   "th.trandt":["交易日期","Transaction Date"],
@@ -22072,6 +22100,7 @@ const I18N={
   "th.tplwhen":["匯入時間","Imported"],
   "th.tplfile":["檔名","File"],
   "th.tplsrc":["來源","Source"],
+  "lb.trkorder":["追蹤號 / 單號","Tracking / order no."],
   "th.tplperiod":["帳單日","Invoice date"],
   "th.tplrows":["列數","Rows"],
   "th.tplcus":["客戶數","Clients"],
