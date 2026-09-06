@@ -1061,6 +1061,13 @@ tr.blocked{opacity:.72}
 .bkdtrk .lbl{font-size:11px;letter-spacing:1.2px;color:#f0e2c9;opacity:.8}
 .bkdtrk .no{font-family:Consolas,monospace;font-size:21px;font-weight:700;
   letter-spacing:1px;color:#fff;word-break:break-all}
+.bkdorder{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:-4px 0 12px;font-size:12.5px;color:var(--muted)}
+.bkdorder .tag{font-weight:700;color:var(--ink);background:var(--select);border:1px solid var(--line);border-radius:999px;padding:2px 10px}
+.bkdorder .k{font-weight:700;color:var(--ink)}
+.bkdorder .pc{background:rgba(255,255,255,.55);border:1px solid var(--line);border-radius:6px;padding:2px 8px;color:var(--ink);font-size:12.5px}
+.bkdorder .pc.me{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-weight:700}
+.bkdorder .hint{flex-basis:100%;font-size:12px;line-height:1.5}
+.bkdinv.piece{margin-top:18px}
 .bkdinv{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   margin:20px 0 10px;padding:7px 12px;background:var(--select);
   border-left:6px solid var(--accent);border-radius:0 8px 8px 0;
@@ -10991,15 +10998,24 @@ function openBreakdown(){
   if(!t){ body.innerHTML=`<div class="note plain">`
       +L("先在上面輸入單號。","Enter a tracking number above first.")+`</div>`;
     $("#bkdBg").classList.add("on"); return; }
+  /* 一票多件:模板那一列是整張訂單,對帳也是整單對的。查其中任何一件就把
+     整單一起攤開 —— 三邊都是整單的數字,客戶那一欄用真實金額,不分攤。 */
+  const w0=(typeof bkdWmsOf==="function"&&bkdWmsOf(t))||null;
+  const orderTrks=(w0&&w0.pieces>1&&Array.isArray(w0.trks))?w0.trks.map(x=>String(x).toUpperCase()):[t];
+  const isOrder=orderTrks.length>1;
   /* 依期別收行:已存帳單優先,本期匯入只補還沒存進去的期別,同一期不重複。 */
-  const byInv=new Map();
-  const put=r=>{ if(String(r.tracking||"").toUpperCase()!==t) return;
-    const k=r.invoice||"(current)";
-    if(!byInv.has(k)) byInv.set(k,{invoice:r.invoice||"",invDate:r.invDate||"",rows:[]});
-    byInv.get(k).rows.push(r); };
-  for(const r of (HISTROWS||[])) put(r);
-  const seen=new Set(byInv.keys());
-  for(const r of (ROWS||[])){ if(!seen.has(r.invoice||"(current)")) put(r); }
+  const collect=tt=>{
+    const byInv=new Map();
+    const put=r=>{ if(String(r.tracking||"").toUpperCase()!==tt) return;
+      const k=r.invoice||"(current)";
+      if(!byInv.has(k)) byInv.set(k,{invoice:r.invoice||"",invDate:r.invDate||"",rows:[]});
+      byInv.get(k).rows.push(r); };
+    for(const r of (HISTROWS||[])) put(r);
+    const seen=new Set(byInv.keys());
+    for(const r of (ROWS||[])){ if(!seen.has(r.invoice||"(current)")) put(r); }
+    return byInv;
+  };
+  const byInv=collect(t);
   if(!byInv.size){
     body.innerHTML=`<div class="note warn">`
       +L("已存帳單裡沒有這個追蹤號。請先匯入(或儲存)包含這筆的帳單,再回來查詢。",
@@ -11015,7 +11031,7 @@ function openBreakdown(){
     $("#bkdBg").classList.add("on"); return;
   }
   const nd=normYmd;   /* 2026/8/22 和 2026-08-01 混用也排得對,見 normYmd */
-  const list=[...byInv.values()].sort((a,b)=>{
+  const sortInv=m=>[...m.values()].sort((a,b)=>{
     const da=nd(a.invDate), db=nd(b.invDate);
     return da<db?-1:da>db?1:(a.invoice<b.invoice?-1:1); });
   /* shipmentsOf 會清 ACCT_LINES,先存後還,不動報表那邊的狀態。 */
@@ -11045,22 +11061,27 @@ function openBreakdown(){
      Reprice 的金額一律不顯示、不匯出。 */
   BKD_NOLVL=!bkdLvl;
   const keepOrig=ORIG;
-  ORIG=buildOriginals([...(HISTROWS||[]),...(ROWS||[])], new Set([t]));
-  for(const g of list){
-    let r=null, err="";
-    /* UPS 偶爾把整週的帳務調整(MSC / MIS)釘在某個追蹤號上。引擎分包裹時
-       就把這種行挑到帳戶層,不進這件包裹,也不進重算 —— 這裡照同一條規則
-       分開:帳戶層的行另外標示、另外列,不混進 UPS 實收與毛利。 */
-    const acct=g.rows.filter(isAccountLevelLine);
-    const pkg=g.rows.filter(l=>!isAccountLevelLine(l));
-    try{
-      const s=pkg.length?shipmentsOf(pkg).find(x=>String(x.tracking).toUpperCase()===t):null;
-      if(s) r=priceShipment(bkdCfg,s);
-    }catch(e){ err=String((e&&e.message)||e); }
-    out.push({inv:g.invoice,invDate:g.invDate,r,err,
-      ups:pkg.reduce((a,l)=>a+(l.net||0),0),
-      pkgN:pkg.length, acct,
-      acctSum:acct.reduce((a,l)=>a+(l.net||0),0)});
+  ORIG=buildOriginals([...(HISTROWS||[]),...(ROWS||[])], new Set(orderTrks));
+  const missingPieces=[];
+  for(const tt of orderTrks){
+    const m=tt===t?byInv:collect(tt);
+    if(!m.size){ missingPieces.push(tt); continue; }
+    for(const g of sortInv(m)){
+      let r=null, err="";
+      /* UPS 偶爾把整週的帳務調整(MSC / MIS)釘在某個追蹤號上。引擎分包裹時
+         就把這種行挑到帳戶層,不進這件包裹,也不進重算 —— 這裡照同一條規則
+         分開:帳戶層的行另外標示、另外列,不混進 UPS 實收與毛利。 */
+      const acct=g.rows.filter(isAccountLevelLine);
+      const pkg=g.rows.filter(l=>!isAccountLevelLine(l));
+      try{
+        const s=pkg.length?shipmentsOf(pkg).find(x=>String(x.tracking).toUpperCase()===tt):null;
+        if(s) r=priceShipment(bkdCfg,s);
+      }catch(e){ err=String((e&&e.message)||e); }
+      out.push({trk:tt, inv:g.invoice,invDate:g.invDate,r,err,
+        ups:pkg.reduce((a,l)=>a+(l.net||0),0),
+        pkgN:pkg.length, acct,
+        acctSum:acct.reduce((a,l)=>a+(l.net||0),0)});
+    }
   }
   /* 帳戶層的行集中在一個位置:所有期別的這種行放在最後一節,照帳單原樣
      列出期別、交易日、UPS 的描述、金額,不算價。有包裹行的期別才進總覽
@@ -11095,18 +11116,26 @@ function openBreakdown(){
   H.push(`<div class="bkdtrk"><div><div class="lbl">${L("追蹤號","Tracking")}</div>`
     +`<div class="no">${esc2(t)}</div></div>`
     +`<button class="bkdxls" id="bkdXls">${L("⬇ 匯出 Excel","⬇ Export to Excel")}</button></div>`);
+  /* 整單抬頭:幾件、單號、每一件的追蹤號與計費重(正在看的那一件標起來)。 */
+  const pieceW=tt=>{ const o=out.find(x=>x.trk===tt&&x.r); const r=o&&o.r;
+    const w=r&&(r.s.billedUPS||r.s.billed); return (w!=null&&toNum(w)>0)?" · "+esc2(w)+" lb":""; };
+  if(isOrder) H.push(`<div class="bkdorder"><span class="tag">${L("整單 "+orderTrks.length+" 件","Order of "+orderTrks.length+" packages")}</span>`
+    +(w0&&w0.order?`<span class="k">${L("單號 ","Order ")+esc2(w0.order)}</span>`:"")
+    +orderTrks.map(x=>`<span class="pc mono${x===t?" me":""}">${esc2(x)}${pieceW(x)}</span>`).join("")
+    +`<span class="hint">${L("模板那一列是整張訂單,所以三邊都以整單比:UPS 與重算是各件相加,客戶實收是真實金額、不分攤;各件的明細在下方。",
+        "The template row is the whole order, so all three sides compare the whole order: UPS and the reprice are the packages added up, and what the client was billed is the real amount, not a share. Each package follows below.")}</span></div>`);
   /* 對帳那一列掛在本期(載入中的帳單)第一張卡上;同一個追蹤號跨兩期(原件
      一期、更正一期)只掛一次,免得同一筆錢看起來收了兩次。總覽和卡片用同一個判定。 */
   const loaded=new Set((ROWS||[]).map(r=>r.invoice||"(current)"));
   let wmsUsed=false;
   for(const o of pk){
     o.wms=null;
-    if(!wmsUsed && o.r && loaded.has(o.inv||"(current)")){ o.wms=bkdWmsOf(t); if(o.wms) wmsUsed=true; }
+    if(!wmsUsed && o.r && loaded.has(o.inv||"(current)")){ o.wms=bkdWmsOf(t,isOrder); if(o.wms) wmsUsed=true; }
   }
   /* 這個追蹤號的期別都不在目前載入的帳單裡(整筆靠歸檔對帳)時,
      掛在第一張有計價的卡上 —— 對帳結果照樣要看得到。 */
   if(!wmsUsed) for(const o of pk){
-    if(o.r){ o.wms=bkdWmsOf(t); if(o.wms){ wmsUsed=true; } break; }
+    if(o.r){ o.wms=bkdWmsOf(t,isOrder); if(o.wms){ wmsUsed=true; } break; }
   }
   const wsrc=(typeof reconSrcLabel==="function")?reconSrcLabel():((typeof RECON_SRC!=="undefined"&&RECON_SRC)||"WMS");
   /* 總覽:重算、UPS 實收、向客戶實收並排,最後兩欄是毛利(實收 + 應補收 − UPS)
@@ -11116,12 +11145,12 @@ function openBreakdown(){
   /* 這張表只放「分得了期」的數字:哪一期、重算多少、UPS 收多少。向客戶實收、
      應補收、毛利是整筆的量(rebill 跟帳單期沒有關係),擺在表格裡每一期都得
      寫「—」;它們改放在表格底下那一條。 */
-  H.push(`<thead><tr><th>Invoice</th><th>${L("帳單日期","Invoice date")}</th>`
+  H.push(`<thead><tr>${isOrder?`<th>${L("追蹤號","Tracking")}</th>`:""}<th>Invoice</th><th>${L("帳單日期","Invoice date")}</th>`
     +`<th class="num">Reprice</th>`
     +`<th class="num">${L("UPS 實收","UPS billed")}</th></tr></thead><tbody>`);
   let tRe=0,tUp=0,tWm=0,tRb=0,anyWm=false,anyRb=false,allPriced=true,bi=0;
   if(!pk.length)
-    H.push(`<tr><td colspan="4" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
+    H.push(`<tr><td colspan="${isOrder?5:4}" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
       "No package lines for this tracking number, only account-level charges. See below.")}</td></tr>`);
   for(const o of pk){
     const rp=(BKD_NOLVL||!o.r||o.r.total==null)?null:o.r.total;
@@ -11132,6 +11161,7 @@ function openBreakdown(){
       if(Math.abs(o.wms.rebill||0)>0.004){ tRb+=o.wms.rebill; anyRb=true; } }
     H.push(`<tr class="bkdjump" data-bi="${bi++}" title="${
         L("點一下跳到該期明細","Click to jump to this invoice's detail")}">`
+      +(isOrder?`<td class="mono">${esc2(o.trk)}</td>`:"")
       +`<td class="mono">${esc2(o.inv)}</td><td>${esc2(nd(o.invDate)||o.invDate)}</td>`
       +`<td class="num">${rp==null?"—":money2(rp)}</td>`
       +`<td class="num">${money2(up)}</td></tr>`);
@@ -11142,6 +11172,7 @@ function openBreakdown(){
   if(pk.length>1){
     const TF="border-top:2px solid var(--accent);background:var(--select);font-weight:700";
     H.push(`<tfoot><tr><td style="${TF}">${L("合計","Total")}</td>`
+      +(isOrder?`<td style="${TF}"></td>`:"")
       +`<td style="${TF}"></td>`
       +`<td class="num" style="${TF}">${allPriced?money2(tRe):"—"}</td>`
       +`<td class="num" style="${TF}">${money2(tUp)}</td></tr></tfoot>`);
@@ -11154,14 +11185,16 @@ function openBreakdown(){
       +`<span class="k">${esc2(k)}</span>`
       +`<span class="v${neg?" neg":""}">${v}</span></div>`;
     H.push(`<div class="bkdsum"><div class="bkdsum-hd">${
-        L("整筆合計 · 不分帳單期","Whole tracking · all invoices")}</div><div class="bkdsum-row">`
+        isOrder?L("整單合計 · 不分帳單期","Whole order · all invoices"):L("整筆合計 · 不分帳單期","Whole tracking · all invoices")}</div><div class="bkdsum-row">`
       +c(L(wsrc+" 實收",wsrc+" billed"), money2(tWm))
       +c(L("應補收","To re-bill"), anyRb?money2(tRb):money2(0), "+")
       +c(L("應收合計","Chargeable"), money2(tRev), "=")
       +c(L("UPS 實收","UPS billed"), money2(tUp), "−")
       +c(L("毛利","Profit"), money2(tPf), "=", tPf<-0.0001)
       +c(L("毛利率","Margin"), tMg==null?"—":tMg.toFixed(1)+"%", "", tMg!=null&&tMg<0)
-      +`</div><div class="bkdsum-note">${L(
+      +`</div><div class="bkdsum-note">${isOrder?L(
+        "向客戶實收與應補收是整張訂單的金額,和帳單期沒有關係 —— 所以不放在上面那張按期別排的表裡。",
+        "What the client was billed and what is still to re-bill belong to the whole order, not to any one invoice period, so they are not shown per period above."):L(
         "向客戶實收與應補收是整個追蹤號的金額,和帳單期沒有關係 —— 所以不放在上面那張按期別排的表裡。",
         "What the client was billed and what is still to re-bill belong to the whole tracking number, not to any one invoice period, so they are not shown per period above.")}</div></div>`);
   }
@@ -11170,7 +11203,30 @@ function openBreakdown(){
      期別留在上面那張總覽表(要看哪一期收了什麼都在那裡),底下把整個追蹤號
      合成一張卡:UPS 實收是各期相加,重新計價逐項相加,客戶那兩欄本來就只有一份。 */
   const pkOk=pk.filter(o=>o.r);
-  if(pkOk.length>1){
+  if(isOrder){
+    /* 整單一張卡:UPS 各件同名的行加總、重算各件相加、客戶那兩欄是整單的。 */
+    const wmsAny=(pkOk.find(o=>o.wms)||{}).wms||null;
+    if(pkOk.length){
+      H.push(`<div class="bkdinv" id="bkdInv0"><span class="no">${L("整單合計","Whole order")}</span>`
+        +`<span class="dt">${orderTrks.map(esc2).join("  ·  ")}</span>`
+        +`<span class="tag">${L(orderTrks.length+" 件",orderTrks.length+" packages")}</span></div>`);
+      H.push(`<div class="bkdchap">`+bkdSection(bkdOrderMerge(pkOk), wmsAny,
+               L("整單 · "+orderTrks.length+" 件","Whole order · "+orderTrks.length+" packages"))+`</div>`);
+    }
+    /* 逐件:各件自己的 UPS 與重算。客戶那兩欄是整單的,只在上面那張卡。 */
+    orderTrks.forEach((tt,pi)=>{
+      const mine=pk.filter(o=>o.trk===tt), ok=mine.filter(o=>o.r);
+      const gone=missingPieces.includes(tt);
+      H.push(`<div class="bkdinv piece"><span class="no">${L("第 "+(pi+1)+" 件","Package "+(pi+1))} · ${esc2(tt)}</span>`
+        +`<span class="dt">${ok.map(o=>esc2(o.inv)+" "+esc2(nd(o.invDate)||o.invDate)).join(" · ")}</span>`
+        +(gone?`<span class="tag">${L("已存帳單裡查無","Not on any stored invoice")}</span>`:"")+`</div>`);
+      if(gone) return;
+      if(ok.length>1) H.push(`<div class="bkdchap">`+bkdSection(bkdMergePk(ok), null, L("跨期合計","All invoices combined"))+`</div>`);
+      else for(const o of ok) H.push(`<div class="bkdchap">`+bkdSection(o.r,null)+`</div>`);
+      for(const o of mine) if(!o.r)
+        H.push(`<div class="bkdchap"><div class="note warn">${esc2(o.err)||L("這一期無法計價。","Could not price this period.")}</div></div>`);
+    });
+  }else if(pkOk.length>1){
     const wmsAny=(pkOk.find(o=>o.wms)||{}).wms||null;
     H.push(`<div class="bkdinv" id="bkdInv0"><span class="no">${
         pkOk.map(o=>esc2(o.inv)).join("  ·  ")}</span>`
@@ -11199,7 +11255,7 @@ function openBreakdown(){
       if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); };
   });
   /* 畫面畫完的同時把資料留著 —— 匯出要的是同一份東西,重算一次遲早會對不起來。 */
-  BKD_LAST={trk:t, out:out};
+  BKD_LAST={trk:isOrder?t+"  ·  "+L("整單 "+orderTrks.length+" 件","order of "+orderTrks.length+" packages"):t, out:out};
   /* 這顆按鈕是隨內容重畫出來的,每次都是新的節點,所以事件要在這裡綁。 */
   const bx=$("#bkdXls");
   if(bx){
@@ -11220,7 +11276,8 @@ let BKD_LAST=null;
 /* 對帳匯進來的那一列(向客戶收的):同一個追蹤號、這一次對帳的資料才有。
    逐項有填就逐項列,沒填只有總額;逐項加起來和總額差的那一塊照實標成
    「未逐項列示」—— TMS 自己的服務費常常就在那裡,不替它取名字。 */
-function bkdWmsOf(trk){
+/* whole:整單模式 —— 一票多件時不分攤,回整張訂單的金額與所有件的補收項目。 */
+function bkdWmsOf(trk, whole){
   const r=(typeof RECON!=="undefined")&&RECON&&RECON.res; if(!r) return null;
   const k=reconTrk(trk);
   const o=(r.orders||[]).find(x=>(x.trks||[]).some(t=>reconTrk(t)===k));
@@ -11231,7 +11288,7 @@ function bkdWmsOf(trk){
      就平均分。訂單總額與佔比寫進註記,兄弟包各自打開,份額相加=總額。 */
   const pieces=(o.trks||[]).length;
   let share=1;
-  if(pieces>1){
+  if(pieces>1 && !whole){
     const want=new Map((o.trks||[]).map(t2=>[reconTrk(t2),0]));
     for(const l of (ROWS||[])){
       const kk=reconTrk(l.tracking||"");
@@ -11258,13 +11315,14 @@ function bkdWmsOf(trk){
   if(!rows.length) rows.push([L("總額(未逐項)","Total amount (not itemised)"), amt]);
   /* 這一件還要向客戶補收多少(含燃油)、以及收多了該退多少 —— 補收清單是
      一張單一張單算的,這裡把屬於這個追蹤號的那幾項挑出來。 */
+  const mineTrks=new Set((o.trks||[]).map(reconTrk));
   const items=((r.rebill&&r.rebill.items)||[]).filter(it=>
-    String(it.trk||"").split(/[,;\s]+/).some(x=>reconTrk(x)===k));
+    String(it.trk||"").split(/[,;\s]+/).some(x=>whole?mineTrks.has(reconTrk(x)):reconTrk(x)===k));
   const rebill=cents(items.reduce((a,it)=>a+toNum(it.total),0));
   const over=cents(items.reduce((a,it)=>a+toNum(it.over),0));
   return {src:o.src||RECON_SRC, rows, amt, order:o.order, cus:o.cus, name:o.name,
           zone:o.zone||"", wt:o.wt||"",
-          pieces, share, orderAmt:cents(toNum(o.amt)), rebill, over,
+          pieces, share, whole:!!whole, trks:(o.trks||[]).slice(), orderAmt:cents(toNum(o.amt)), rebill, over,
           /* 補收不能只給一個總數 —— 要收客戶的錢,得說得出是哪幾項。 */
           items:items.map(it=>({charge:it.charge, desc:it.desc||"", kind:it.kind,
             amt:cents(toNum(it.amt)), fuel:cents(toNum(it.fuel)), fuelPct:it.fuelPct,
@@ -11465,6 +11523,28 @@ function bkdMergePk(pk){
     netCA:false, reclassCA:false,
     rtn:(seg&&seg.rtn)||null, npb:(seg&&seg.npb)||null});
 }
+/* 一票多件的整單:各件(各期)先照跨期的方式合成一份,再把 UPS 那一欄同名的行
+   加總成一行 —— 和客戶那一欄一樣是整單的一張表;計費重寫各件相加。 */
+function bkdOrderMerge(pk){
+  const m=bkdMergePk(pk);
+  const byLay=new Map();
+  for(const g of ((m.s&&m.s.groups)||[])){
+    const lay=g.layer||"SHP";
+    let G=byLay.get(lay); if(!G){ G=Object.assign({}, g, {lines:[]}); byLay.set(lay,G); }
+    for(const l of (g.lines||[])){
+      const key=String(l.desc||l.code||"");
+      const hit=G.lines.find(x=>String(x.desc||x.code||"")===key);
+      if(hit) hit.net=cents((hit.net||0)+(l.net||0)); else G.lines.push(Object.assign({}, l));
+    }
+  }
+  m.s.groups=[...byLay.values()];
+  const seen=new Set(); let bw=0, uw=0;
+  for(const o of pk){ const k=o.trk||""; if(seen.has(k)) continue; seen.add(k);
+    const r=o.r||{}; bw+=toNum((r.bw&&r.bw.billable)||0); uw+=toNum((r.s&&(r.s.billedUPS||r.s.billed))||0); }
+  m.bw=Object.assign({}, m.bw||{}, {billable:bw||((m.bw||{}).billable)});
+  if(uw>0){ m.s.billedUPS=uw; m.s.billed=uw; }
+  return m;
+}
 /* 單一期的明細:讀 priceShipment 算出來的紀錄,原樣複述。 */
 function bkdSection(r, wms, name0){
   /* 負數寫成 -$3.25,不是 $-3.25 —— 錢的正負號在幣別記號前面。 */
@@ -11558,11 +11638,12 @@ function bkdSection(r, wms, name0){
       const W=wms.rows.map(([k,v])=>`<tr><td>${esc2(k)}</td><td class="num">${money(v)}</td></tr>`);
       const note=[];
       if(wms.order) note.push(L("單號 ","Order ")+esc2(wms.order));
-      if(wms.pieces>1) note.push(L(
-        "此單 "+wms.pieces+" 件,訂單總額 "+money2(wms.orderAmt)
-          +",本件依 UPS 佔比 "+(wms.share*100).toFixed(1)+"% 分攤",
-        "Order of "+wms.pieces+" packages · order total "+money2(wms.orderAmt)
-          +" · this package's share by UPS cost "+(wms.share*100).toFixed(1)+"%"));
+      if(wms.pieces>1) note.push(wms.whole
+        ? L("此單 "+wms.pieces+" 件 · 整單金額,不分攤","Order of "+wms.pieces+" packages · whole-order amounts, not a share")
+        : L("此單 "+wms.pieces+" 件,訂單總額 "+money2(wms.orderAmt)
+              +",本件依 UPS 佔比 "+(wms.share*100).toFixed(1)+"% 分攤",
+            "Order of "+wms.pieces+" packages · order total "+money2(wms.orderAmt)
+              +" · this package's share by UPS cost "+(wms.share*100).toFixed(1)+"%"));
       Wc=`<div class="bkdside wms"><div class="bkdside-lbl">${esc2(wms.src)+L(" 實收"," billed")}</div>`
         +`<div class="bkdside-body">${sideMeta(wms.zone, wms.wt)}<table>${W.join("")}</table>`
         +(note.length?`<div class="bkdside-note">${note.join(" · ")}</div>`:"")
