@@ -18972,7 +18972,8 @@ function xlSheetName(n,i){
 }
 function xlCol(c){ let s=""; c++; while(c>0){ const m=(c-1)%26; s=String.fromCharCode(65+m)+s; c=(c-m-1)/26; } return s; }
 /* 樣式表。同一組樣式只寫一次,儲存格拿到的是它在 cellXfs 裡的序號。
-   style 物件:{fmt, bold, fill:"RRGGBB", color:"RRGGBB", align, wrap, border} */
+   style 物件:{fmt, bold, fill:"RRGGBB", color:"RRGGBB", align, wrap, sz,
+   border:true 是四邊細灰框,"b" 是只有一條黑底線(客戶請款單的表頭那種)} */
 function xlStyles(){
   const fmts=[], fonts=[], fills=["<fill><patternFill patternType=\"none\"/></fill>",
                                   "<fill><patternFill patternType=\"gray125\"/></fill>"],
@@ -18982,11 +18983,11 @@ function xlStyles(){
   function id(st){
     st=st||{};
     const k=JSON.stringify([st.fmt||"",!!st.bold,st.fill||"",st.color||"",
-                            st.align||"",!!st.wrap,!!st.border]);
+                            st.align||"",!!st.wrap,String(st.border||""),st.sz||0]);
     if(seen[k]!=null) return seen[k];
     let numId=0;
     if(st.fmt){ let i=fmts.indexOf(st.fmt); if(i<0){ fmts.push(st.fmt); i=fmts.length-1; } numId=164+i; }
-    const fontId=put(fonts,"<font><sz val=\"11\"/>"+(st.bold?"<b/>":"")
+    const fontId=put(fonts,"<font><sz val=\""+(st.sz||11)+"\"/>"+(st.bold?"<b/>":"")
       +"<color rgb=\"FF"+(st.color||"000000")+"\"/>"
       +"<name val=\"Calibri\"/><family val=\"2\"/></font>");
     const fillId=st.fill
@@ -18994,7 +18995,9 @@ function xlStyles(){
             +"\"/><bgColor indexed=\"64\"/></patternFill></fill>")
       : 0;
     const bId=st.border
-      ? put(borders,"<border><left style=\"thin\"><color rgb=\"FFD9D9D9\"/></left>"
+      ? put(borders, st.border==="b"
+          ? "<border><left/><right/><top/><bottom style=\"thin\"/><diagonal/></border>"
+          : "<border><left style=\"thin\"><color rgb=\"FFD9D9D9\"/></left>"
             +"<right style=\"thin\"><color rgb=\"FFD9D9D9\"/></right>"
             +"<top style=\"thin\"><color rgb=\"FFD9D9D9\"/></top>"
             +"<bottom style=\"thin\"><color rgb=\"FFD9D9D9\"/></bottom><diagonal/></border>")
@@ -20804,7 +20807,9 @@ function renderCode(){
 /* ---- 對帳第 4 步:客戶請款單 --------------------------------------
    數字全部來自 RECON.res.rebill.items(應補收清單),一毛都不重算:
    每一項一列(金額不含燃油),燃油另立一列;稽核費(沒有追蹤號)壓底。
-   尺寸抄該追蹤號帳單行上的 dimsC / dimsA —— 兩個都有且不同才佔兩欄。 */
+   尺寸兩欄照客戶正本的擺法:Key DIM 欄一律放帳單採用的尺寸(有更正用
+   更正後 dimsC,沒有就用申報 dimsA),Corrected DIM 欄只在真的改過尺寸
+   (兩個都有且不同)時放原申報值,其餘留白。 */
 let CLI_CUS="";
 function cliDimsOf(trk){
   const t=String(trk||"").trim(); if(!t) return {c:"",a:""};
@@ -20821,10 +20826,10 @@ function cliData(code){
   for(const it of items){
     const isAudit=(it.charge===AUDIT_FEE_NAME)||it.kind==="audit";
     const d=isAudit?{c:"",a:""}:cliDimsOf(it.trk);
-    const dc=d.c||d.a, da=(d.c&&d.a&&d.a!==d.c)?d.a:"";
+    const da=d.c||d.a, dc=(d.c&&d.a&&d.a!==d.c)?d.a:"";
     const push=(desc,amt)=>{
       if(Math.abs(amt)<0.005) return;
-      (isAudit?audit:rows).push({trk:isAudit?"":String(it.trk||""), desc,
+      (isAudit?audit:rows).push({trk:isAudit?"":String(it.trk||""), desc, aud:isAudit,
         dc:isAudit?"":dc, da:isAudit?"":da, amt:cents(amt)});
       total=cents(total+amt);
     };
@@ -20878,7 +20883,8 @@ function renderClinv(){
   const d=cliData(CLI_CUS);
   const today=new Date(), pd=n=>String(n).padStart(2,"0");
   $("#cliVCus")&&($("#cliVCus").textContent=d.name+" - "+CLI_CUS);
-  $("#cliVDate")&&($("#cliVDate").textContent=today.getFullYear()+"/"+(today.getMonth()+1)+"/"+today.getDate());
+  $("#cliVDate")&&($("#cliVDate").textContent=
+    pd(today.getMonth()+1)+"-"+pd(today.getDate())+"-"+String(today.getFullYear()).slice(-2));
   $("#cliVNo")&&($("#cliVNo").textContent=d.no);
   const sum=$("#cliSum");
   if(sum) sum.textContent=L(d.rows.length+" 列,合計 "+money(d.total),
@@ -20896,25 +20902,38 @@ function renderClinv(){
 async function cliExport(){
   if(!CLI_CUS) return;
   const d=cliData(CLI_CUS);
+  /* 版式逐格照客戶給的正本抄:前 8 列留白(信頭的位置),第 9 列 CLIENT/DATE、
+     第 10 列 NOTE/INVOICE,第 11 列 B..F 表頭(粗體、只有一條底線,底線一路畫到
+     A 欄),資料從第 12 列起、A 欄掛「Adjustments」群組標籤;稽核費自成一段,
+     前後各空一列;最後「Total」標籤與合計金額分佔兩列(正本就是這樣錯開的)。
+     全檔 14 號字;金額格式含紅色負數、靠左;DATE 是真日期值(mm-dd-yy)。
+     正本合計格是 =SUM() 公式,這支寫檔器不做公式,直接寫算好的數。 */
   const today=new Date();
-  const dt=today.getFullYear()+"/"+(today.getMonth()+1)+"/"+today.getDate();
-  const MONEY="$#,##0.00";
-  const lab=v=>({v,t:"s",s:{bold:true,align:"left"}});
-  const txt=v=>({v:String(v==null?"":v),t:"s"});
-  const hc=v=>({v,t:"s",s:{bold:true,border:true,fill:"FFF3E3C2",align:"left"}});
-  const nm2=v=>({v:cents(v),t:"n",s:{fmt:MONEY,align:"right"}});
+  const dser=Math.floor((Date.UTC(today.getFullYear(),today.getMonth(),today.getDate())
+                         -Date.UTC(1899,11,30))/86400000);
+  const MONEY="\"$\"#,##0.00_);[Red]\\(\"$\"#,##0.00\\)";
+  const lab=v=>({v,t:"s",s:{sz:14,bold:true}});
+  const txt=v=>({v:String(v==null?"":v),t:"s",s:{sz:14}});
+  const rt=v=>({v:String(v==null?"":v),t:"s",s:{sz:14,align:"right"}});
+  const hd=v=>({v,t:"s",s:{sz:14,bold:true,border:"b"}});
+  const mny=v=>({v:cents(v),t:"n",s:{sz:14,fmt:MONEY,align:"left"}});
+  const main=d.rows.filter(r=>!r.aud), auds=d.rows.filter(r=>r.aud);
   const rows=[
-    [lab("CLIENT:"),txt(d.name+" - "+CLI_CUS),txt(""),lab("DATE:"),txt(dt)],
-    [lab("NOTE:"),txt(L("SHIPPING CORRECTION CHARGES","SHIPPING CORRECTION CHARGES")),txt(""),lab("INVOICE:"),txt(d.no)],
+    [],[],[],[],[],[],[],[],
+    [lab("CLIENT:"),txt(d.name+" - "+CLI_CUS),null,null,lab("DATE:"),
+     {v:dser,t:"n",s:{sz:14,fmt:"mm-dd-yy",align:"right"}}],
+    [lab("NOTE:"),txt("SHIPPING CORRECTION CHARGES"),null,null,lab("INVOICE:"),rt(d.no)],
+    [hd(""),hd("Tracking"),hd("Description"),hd("Corrected DIM"),hd("Key DIM"),hd("Total")],
+    ...main.map((r,i)=>[i?null:lab("Adjustments"),txt(r.trk),txt(r.desc),txt(r.dc),txt(r.da),mny(r.amt)]),
+    ...(auds.length?[[]].concat(auds.map(r=>[null,null,txt(r.desc),null,null,mny(r.amt)])):[]),
     [],
-    [hc("Tracking"),hc("Description"),hc("Corrected DIM"),hc("Key DIM"),Object.assign(hc("Total"),{s:{bold:true,border:true,fill:"FFF3E3C2",align:"right"}})],
-    ...d.rows.map(r=>[txt(r.trk),txt(r.desc),txt(r.dc),txt(r.da),nm2(r.amt)]),
-    [{v:"Total",t:"s",s:{bold:true,border:true,align:"left"}},{v:"",t:"s",s:{border:true}},{v:"",t:"s",s:{border:true}},{v:"",t:"s",s:{border:true}},
-     {v:cents(d.total),t:"n",s:{fmt:MONEY,bold:true,border:true,align:"right"}}]
+    [lab("Total")],
+    [null,null,null,null,null,{v:cents(d.total),t:"n",s:{sz:14,fmt:MONEY,bold:true,align:"left"}}]
   ];
   const fname="Shipping_Adjustments_"+CLI_CUS+"_"+(d.ym||"")+".xlsx";
+  /* 欄寬抄正本的原值(Excel 存檔時的量法很怪,照抄才會顯示得一樣寬)。 */
   const ok=await xlWrite([{name:d.no.slice(0,31)||"Invoice", rows,
-    cols:[{w:22},{w:44},{w:17},{w:17},{w:12}], freeze:{r:4,c:0}}], fname);
+    cols:[{w:17.140625},{w:39.42578125},{w:70.7109375},{w:23.42578125},{w:22.42578125},{w:22.5703125}]}], fname);
   toast(ok?L("已匯出 "+fname,"Exported "+fname):L("已取消存檔","Save cancelled"), ok);
 }
 function renderHist(){
@@ -21839,8 +21858,8 @@ const I18N={
   "tx.clinote":["SHIPPING CORRECTION CHARGES","SHIPPING CORRECTION CHARGES"],
   "th.clidesc":["項目","Description"],
   "th.total":["Total","Total"],
-  "th.dimc":["更正後尺寸","Corrected DIM"],
-  "th.dima":["申報尺寸","Key DIM"],
+  "th.dimc":["原申報尺寸","Corrected DIM"],
+  "th.dima":["計費尺寸","Key DIM"],
   "rt.sys":["1. 一般設定","1. General Settings"],
   "hd.analysis":["毛利分析","Profit analysis"],
   "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",
