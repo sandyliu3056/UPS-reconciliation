@@ -13940,9 +13940,14 @@ async function reconOpenRun(key, quiet){
 function renderReconRuns(){
   const card=$("#reconRunsCard"), mini=$("#reconRunsMini");
   if(!card&&!mini) return;
+  /* 這一次畫的是誰的批次。登入還原是非同步的:重新整理後這裡可能先以
+     anon 身分去讀(空的),setMe 之後才讀到真帳號 —— 舊回呼晚一步回來
+     會把畫好的清單蓋掉、還把快取毒成空陣列。身分變了就整包丟棄。 */
+  const forWho=whoKey();
   const fmtWhen=ms=>{ if(!ms) return "—"; const d=new Date(ms), p=n=>String(n).padStart(2,"0");
     return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes()); };
   const paint=list=>{
+    if(forWho!==whoKey()) return;
     RECON_RUNS=list;
     /* 最近匯入的排最前面 —— 這張表列的是「我倒進去的那幾份」,和檢視選單同一個順序。 */
     const runs=list.slice().sort((a,b)=>(b.when||0)-(a.when||0)||String(b.invDate||"").localeCompare(String(a.invDate||"")));
