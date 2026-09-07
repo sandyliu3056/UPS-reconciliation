@@ -8324,6 +8324,11 @@ function cfgPull(){
            有客戶、或層級不只種子那一個 —— 就順手推回帳號:昨天雲端寫入
            默默失敗、今天換電腦看不到的那種洞,下次在原電腦開站自動補上。 */
         const had=restoreConfig();
+        /* 讀失敗要說;兩邊都空(換電腦、換網址第一次開)也要說 —— 不然畫面上
+           層級和客戶都不見,看起來像資料掉了,其實只是這裡還沒有一份。 */
+        if(error) setStatus(L("讀取帳號設定失敗:","Could not read the account settings: ")+(error.message||error.code||""));
+        else if(!had) toast(L("帳號上還沒有設定,這台電腦(這個網址)也沒有 —— 到原本的網站按一次「儲存設定」同步到帳號,或到「一般設定」載入費率設定檔。",
+                              "No settings on the account and none in this browser yet — press Save settings once on the original site to sync them to the account, or load the rate configuration file under General Settings."),false);
         const raw=had&&CFG&&CFG.raw;
         if(raw&&(((raw.customers||[]).length)
               ||(((raw.rate_levels||{}).list||[]).length>1))){
