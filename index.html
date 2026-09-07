@@ -1736,6 +1736,8 @@ label:has(#newChanOn){display:none !important}
 </head>
 <body>
 <svg class="defs" aria-hidden="true">
+  <!-- 側欄的一套線條圖示:同一種筆觸,不再靠表情符號(每個系統長得不一樣)。 -->
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9H4z M10 20v-6h4v6"/></symbol><symbol id="i-general" viewBox="0 0 24 24"><path d="M6 3h12v18H6z M9 7h6 M9 11h2 M13 11h2 M9 15h2 M13 15h2"/></symbol><symbol id="i-rate" viewBox="0 0 24 24"><path d="M9 11.5a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5z M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6 M16.5 11a2.75 2.75 0 1 0 0-5.5 M21 20c0-2.8-1.8-5.2-4.5-5.8"/></symbol><symbol id="i-cat" viewBox="0 0 24 24"><path d="M2 7h11v9H2z M13 10h4l3 3v3h-7z M6.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z M17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></symbol><symbol id="i-fill" viewBox="0 0 24 24"><path d="M3 7h18v10H3z M12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M6 10.5v.01 M18 13.5v.01"/></symbol><symbol id="i-recon" viewBox="0 0 24 24"><path d="M12 3v18 M7 21h10 M3 7h18 M6 7l-3 6h6l-3-6z M18 7l-3 6h6l-3-6z"/></symbol><symbol id="i-analysis" viewBox="0 0 24 24"><path d="M4 20h16 M6 16l4-5 3 3 5-7"/></symbol><symbol id="i-hist" viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v11H3z M3 11h18"/></symbol><symbol id="i-track" viewBox="0 0 24 24"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z M20 20l-4-4"/></symbol><symbol id="i-sys" viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M4.9 4.9l2.1 2.1 M17 17l2.1 2.1 M4.9 19.1 7 17 M17 7l2.1-2.1"/></symbol><symbol id="i-admin" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z M9 12l2 2 4-4"/></symbol>
   <filter id="wobble"><feTurbulence type="fractalNoise" baseFrequency="0.014"
     numOctaves="3" seed="7" result="n"/><feDisplacementMap in="SourceGraphic"
     in2="n" scale="1.0" xChannelSelector="R" yChannelSelector="G"/></filter>
@@ -1770,26 +1772,26 @@ label:has(#newChanOn){display:none !important}
   <!-- 順序與分組照規格書的側欄視覺稿:設定 → 對帳 → 管理,每一項帶編號。
        順序就是流程:計價設定、客戶、渠道目錄、費率、對帳作業(匯帳單 → 匯 WMS/TMS
        → 看結果,三步在同一顆按鈕底下)、看趨勢、查歷史、管理。左欄不再印編號。 -->
-  <button role="tab" aria-selected="false" data-p="home" class="display" id="navHome"><i class="nnum">🏠</i><span class="nico"></span><span data-i18n="tab.home">Home</span></button>
+  <button role="tab" aria-selected="false" data-p="home" class="display" id="navHome"><span class="nico"><svg><use href="#i-home"/></svg></span><span data-i18n="tab.home">Home</span></button>
   <div class="navgrp" data-i18n="nav.cfg">Configuration</div>
-  <button role="tab" aria-selected="false" data-p="general" class="display"><span class="nico">🧮</span><span data-i18n="tab.general">General Setting</span></button>
-  <button role="tab" aria-selected="false" data-p="rate" class="display"><span class="nico">👥</span><span data-i18n="tab.rate">Account &amp; Client Setup</span></button>
-  <button role="tab" aria-selected="false" data-p="cat" class="display"><span class="nico">🚚</span><span data-i18n="tab.cat">Channels &amp; Surcharges</span></button>
-  <button role="tab" aria-selected="false" data-p="fill" class="display"><span class="nico">💵</span><span data-i18n="tab.fill">Channel &amp; Surcharge Rates</span></button>
+  <button role="tab" aria-selected="false" data-p="general" class="display"><span class="nico"><svg><use href="#i-general"/></svg></span><span data-i18n="tab.general">General Setting</span></button>
+  <button role="tab" aria-selected="false" data-p="rate" class="display"><span class="nico"><svg><use href="#i-rate"/></svg></span><span data-i18n="tab.rate">Account &amp; Client Setup</span></button>
+  <button role="tab" aria-selected="false" data-p="cat" class="display"><span class="nico"><svg><use href="#i-cat"/></svg></span><span data-i18n="tab.cat">Channels &amp; Surcharges</span></button>
+  <button role="tab" aria-selected="false" data-p="fill" class="display"><span class="nico"><svg><use href="#i-fill"/></svg></span><span data-i18n="tab.fill">Channel &amp; Surcharge Rates</span></button>
   <div class="navgrp" data-i18n="nav.recon">Reconciliation</div>
   <!-- 匯帳單、匯 WMS/TMS、看結果本來是三顆按鈕,其實是同一件事的三步,收成一顆:
        按它回到上次停的那一步,三步在頁面上方的分頁列換。三個頁面的 id 和
        showTab 的名字都沒動,底下收起來的那三顆替 currentTab() 記路。 -->
-  <button role="tab" aria-selected="true" data-p="recon" class="display" id="navRecon"><span class="nico">⚖️</span><span data-i18n="tab.reconflow">Reconciliation</span></button>
-  <button role="tab" aria-selected="false" data-p="analysis" class="display"><span class="nico">📈</span><span data-i18n="tab.analysis">Analytics Dashboard</span></button>
-  <button role="tab" aria-selected="false" data-p="hist" class="display"><span class="nico">🗂️</span><span data-i18n="tab.hist">Invoice History</span></button>
-  <button role="tab" aria-selected="false" data-p="track" class="display"><span class="nico">🔎</span><span data-i18n="tab.track">Tracking</span></button>
+  <button role="tab" aria-selected="true" data-p="recon" class="display" id="navRecon"><span class="nico"><svg><use href="#i-recon"/></svg></span><span data-i18n="tab.reconflow">Reconciliation</span></button>
+  <button role="tab" aria-selected="false" data-p="analysis" class="display"><span class="nico"><svg><use href="#i-analysis"/></svg></span><span data-i18n="tab.analysis">Analytics Dashboard</span></button>
+  <button role="tab" aria-selected="false" data-p="hist" class="display"><span class="nico"><svg><use href="#i-hist"/></svg></span><span data-i18n="tab.hist">Invoice History</span></button>
+  <button role="tab" aria-selected="false" data-p="track" class="display"><span class="nico"><svg><use href="#i-track"/></svg></span><span data-i18n="tab.track">Tracking</span></button>
   <div class="navgrp" data-i18n="nav.adm">Administration</div>
   <!-- 系統設定原本收在「計價設定」底下的第三個子頁。它裝的是全帳號共用的東西
        (DIM、稽核費、燃油適用、追蹤 API),平常不會動,所以排在最底下那一組,
        User Administration 前面 —— 使用者指定的位置。 -->
-  <button role="tab" aria-selected="false" data-p="sys" class="display"><span class="nico">⚙️</span><span data-i18n="tab.sys">General Settings</span></button>
-  <button role="tab" aria-selected="false" data-p="admin" class="display"><span class="nico">🛡️</span><span data-i18n="tab.admin">User Administration</span></button>
+  <button role="tab" aria-selected="false" data-p="sys" class="display"><span class="nico"><svg><use href="#i-sys"/></svg></span><span data-i18n="tab.sys">General Settings</span></button>
+  <button role="tab" aria-selected="false" data-p="admin" class="display"><span class="nico"><svg><use href="#i-admin"/></svg></span><span data-i18n="tab.admin">User Administration</span></button>
   <!-- 底下這幾顆收起來(HIDDEN_TABS),各自由上面的入口進去。按鈕留著是因為
        currentTab() 靠 aria-selected 找現在在哪一頁。 -->
   <button role="tab" aria-selected="false" data-p="files"   class="display" data-i18n="tab.files">Batch Invoice Import</button>
@@ -1802,6 +1804,9 @@ label:has(#newChanOn){display:none !important}
   <button role="tab" aria-selected="false" data-p="demand" class="display" data-i18n="tab.demand">Demand Surcharge</button>
   <button role="tab" aria-selected="false" data-p="code"   class="display" data-i18n="tab.code">Code Lookup</button>
   <button role="tab" aria-selected="false" data-p="ratefill" class="display" data-i18n="tab.ratefill">Rate Entry</button>
+  <!-- 期別卡:現在跑的是哪一期、用哪一層費率、走到哪一步。三顆燈可以點,點了就跳到那一步。 -->
+  <div class="navperiod" id="navPeriod" hidden></div>
+  <div class="navuser" id="navUser" hidden><span class="avatar" id="navAvatar"></span><span class="nu-txt"><b id="navName"></b><i id="navRole"></i></span></div>
 </aside>
 
 <!-- 設定底下的編號列。編號是真的順序:先有層級,才有客戶指到哪一層,
@@ -1897,6 +1902,14 @@ label:has(#newChanOn){display:none !important}
   <!-- 首頁本來只有底部那一幕,中間一整片空白。空白不是留白 —— 它只是沒有內容。
        這一塊回答「我上次做到哪、現在該做什麼」:最近一次對帳的結果、還沒補收的
        金額、帳單歷史到哪一期,加三顆最常按的按鈕。內容由 renderHome() 生成。 -->
+  <div class="homehead"><div id="homeHead"></div>
+  <div class="clockcard">
+    <div class="clockbox">
+      <div><canvas id="dateCv"></canvas></div>
+      <div><canvas id="clockCv"></canvas></div>
+    </div>
+  </div>
+  </div>
   <div id="homeBoard"></div>
   <!-- 碼頭那一幕(卡車、月台、同仁、貓狗)沉在頁面底部,收窄成一條,不再佔掉下半頁。 -->
   <div class="sceneBox" id="sceneBox"><canvas id="scene"></canvas></div>
@@ -1904,16 +1917,10 @@ label:has(#newChanOn){display:none !important}
 
 <section class="page on" id="p-files">
   <div class="subtabs reconsteps" role="tablist">
-    <button data-step="files" aria-selected="true" data-i18n="rs.inv">1. UPS Invoice Import</button>
-    <button data-step="wmsdata" aria-selected="false" data-i18n="rs.wms">2. WMS / TMS Import</button>
-    <button data-step="cus" aria-selected="false" data-i18n="rs.res">3. Reconciliation Analysis</button>
-    <button data-step="clinv" aria-selected="false" data-i18n="rs.clinv">4. Client Invoice</button>
-  </div>
-  <div class="clockcard">
-    <div class="clockbox">
-      <div><canvas id="dateCv"></canvas></div>
-      <div><canvas id="clockCv"></canvas></div>
-    </div>
+    <button data-step="files" data-n="1" aria-selected="true"><span data-i18n="rs.inv">UPS Invoice Import</span><small class="st"></small></button>
+    <button data-step="wmsdata" data-n="2" aria-selected="false"><span data-i18n="rs.wms">WMS / TMS Import</span><small class="st"></small></button>
+    <button data-step="cus" data-n="3" aria-selected="false"><span data-i18n="rs.res">Reconciliation Analysis</span><small class="st"></small></button>
+    <button data-step="clinv" data-n="4" aria-selected="false"><span data-i18n="rs.clinv">Client Invoice</span><small class="st"></small></button>
   </div>
 
   <div class="lf sketch filesCard">
@@ -2093,10 +2100,10 @@ label:has(#newChanOn){display:none !important}
 
   <div id="reconPane" hidden>
   <div class="subtabs reconsteps" role="tablist">
-    <button data-step="files" aria-selected="true" data-i18n="rs.inv">1. UPS Invoice Import</button>
-    <button data-step="wmsdata" aria-selected="false" data-i18n="rs.wms">2. WMS / TMS Import</button>
-    <button data-step="cus" aria-selected="false" data-i18n="rs.res">3. Reconciliation Analysis</button>
-    <button data-step="clinv" aria-selected="false" data-i18n="rs.clinv">4. Client Invoice</button>
+    <button data-step="files" data-n="1" aria-selected="true"><span data-i18n="rs.inv">UPS Invoice Import</span><small class="st"></small></button>
+    <button data-step="wmsdata" data-n="2" aria-selected="false"><span data-i18n="rs.wms">WMS / TMS Import</span><small class="st"></small></button>
+    <button data-step="cus" data-n="3" aria-selected="false"><span data-i18n="rs.res">Reconciliation Analysis</span><small class="st"></small></button>
+    <button data-step="clinv" data-n="4" aria-selected="false"><span data-i18n="rs.clinv">Client Invoice</span><small class="st"></small></button>
   </div>
   <div class="lf sketch" id="reconTplCard">
     <h3 class="display"><span class="em">📄</span><span data-i18n="hd.recon">WMS / TMS data</span></h3>
@@ -2114,6 +2121,16 @@ label:has(#newChanOn){display:none !important}
       <input type="file" id="fRecon" accept=".xlsx,.xls,.csv,.txt" multiple style="display:none">
     </div>
 
+    <!-- 四步流程:一眼看懂路怎麼走。 -->
+    <div class="steps">
+      <span class="step"><i>⬇️</i><span class="stx"><b data-i18n="st.src">Download templates</b><s data-i18n="st.src2">WMS or TMS, from the loaded invoice</s></span></span>
+      <span class="arrow">→</span>
+      <span class="step"><i>✍️</i><span class="stx"><b data-i18n="st.dl">Fill it in</b><s data-i18n="st.dl2">One tracking number per row</s></span></span>
+      <span class="arrow">→</span>
+      <span class="step"><i>📥</i><span class="stx"><b data-i18n="st.imp">Import the files</b><s data-i18n="st.imp2">Both kinds, one button, preview first</s></span></span>
+      <span class="arrow">→</span>
+      <span class="step"><i>⚖️</i><span class="stx"><b data-i18n="st.res">Read the results</b><s data-i18n="st.res2">07 Reconciliation Analysis</s></span></span>
+    </div>
     <!-- 兩張並排:左邊是「進來了什麼」,右邊是「欄位怎麼對」。
          對應是模板設計死的,所以右邊是宣告不是表單 —— 綠點的意思是
          「這件事不用你設定」。 -->
@@ -2129,16 +2146,6 @@ label:has(#newChanOn){display:none !important}
       </div>
     </div>
 
-    <!-- 四步流程:一眼看懂路怎麼走。 -->
-    <div class="steps">
-      <span class="step"><i>⬇️</i><span class="stx"><b data-i18n="st.src">Download templates</b><s data-i18n="st.src2">WMS or TMS, from the loaded invoice</s></span></span>
-      <span class="arrow">→</span>
-      <span class="step"><i>✍️</i><span class="stx"><b data-i18n="st.dl">Fill it in</b><s data-i18n="st.dl2">One tracking number per row</s></span></span>
-      <span class="arrow">→</span>
-      <span class="step"><i>📥</i><span class="stx"><b data-i18n="st.imp">Import the files</b><s data-i18n="st.imp2">Both kinds, one button, preview first</s></span></span>
-      <span class="arrow">→</span>
-      <span class="step"><i>⚖️</i><span class="stx"><b data-i18n="st.res">Read the results</b><s data-i18n="st.res2">07 Reconciliation Analysis</s></span></span>
-    </div>
     <div class="row" style="margin-top:8px"><span id="reconMsg" class="savenote"></span></div>
   </div>
 
@@ -2194,6 +2201,7 @@ label:has(#newChanOn){display:none !important}
       <span id="reconMsg2" class="savenote"></span>
     </div>
     <div id="reconWarn" hidden></div>
+    <div class="tiles" id="rebillTiles" hidden></div>
     <div id="rebillSum" class="affsum" style="margin:0 0 8px"></div>
     <div class="tablewrap" style="max-height:56vh"><table id="tRebill"><thead><tr>
       <th data-i18n="th.cuscode">Code</th>
@@ -2331,10 +2339,10 @@ label:has(#newChanOn){display:none !important}
      排成可以直接寄出的樣子。 -->
 <section class="page" id="p-clinv">
   <div class="subtabs reconsteps" role="tablist">
-    <button data-step="files" aria-selected="false" data-i18n="rs.inv">1. UPS Invoice Import</button>
-    <button data-step="wmsdata" aria-selected="false" data-i18n="rs.wms">2. WMS / TMS Import</button>
-    <button data-step="cus" aria-selected="false" data-i18n="rs.res">3. Reconciliation Analysis</button>
-    <button data-step="clinv" aria-selected="true" data-i18n="rs.clinv">4. Client Invoice</button>
+    <button data-step="files" data-n="1" aria-selected="false"><span data-i18n="rs.inv">UPS Invoice Import</span><small class="st"></small></button>
+    <button data-step="wmsdata" data-n="2" aria-selected="false"><span data-i18n="rs.wms">WMS / TMS Import</span><small class="st"></small></button>
+    <button data-step="cus" data-n="3" aria-selected="false"><span data-i18n="rs.res">Reconciliation Analysis</span><small class="st"></small></button>
+    <button data-step="clinv" data-n="4" aria-selected="true"><span data-i18n="rs.clinv">Client Invoice</span><small class="st"></small></button>
   </div>
   <div class="lf sketch" id="clinvCard">
     <h3 class="display"><span class="em">🧾</span><span data-i18n="hd.clinv">Client invoice</span></h3>
@@ -2812,6 +2820,112 @@ label:has(#newChanOn){display:none !important}
 @media (prefers-reduced-motion:reduce){#p-dash .bfill,#p-dash .zfill,#p-dash .seg,#p-dash .cmpfill,
   #p-dash .dmenu{transition:none}
   #p-dash .dspin{animation:none}}
+
+/* ===================== 精緻版:整體排版收斂 =====================
+   同一套主題色、同一種手繪筆觸,只是收得更緊:頂欄瘦一圈、側欄圖示同一套、
+   步驟列有狀態、卡片與表格輕一點、按鈕邊框細一點。 */
+/* 頂欄 */
+.titlebar{padding:6px 18px;gap:0}
+.titlebar #appTitle{font-size:19px;letter-spacing:3px}
+.titlebar .devby{margin-left:14px}
+.titlebar .ctrls{gap:0;padding:2px 4px;border-radius:999px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,181,0,.35)}
+.titlebar .ctrls select{border:0;border-radius:999px;padding:3px 9px;opacity:.92}
+.titlebar .ctrls select:not(:first-child){border-left:1px solid rgba(255,181,0,.28);border-radius:0 999px 999px 0}
+.titlebar .ctrls select:hover{background:rgba(255,255,255,.1)}
+.bigclock{flex-direction:row;align-items:baseline;gap:7px;margin-left:12px;
+  padding:3px 12px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,181,0,.35)}
+.bigclock #clkBig{font-size:14px;letter-spacing:.5px}
+.bigclock #clkSub{margin-top:0;font-size:10.5px}
+.titlebar #who{margin-left:12px;display:inline-flex;align-items:center;gap:8px;
+  padding:3px 11px 3px 4px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,181,0,.35)}
+.titlebar #who::before{content:attr(data-av);width:20px;height:20px;border-radius:50%;
+  background:var(--tab);color:var(--accent);font-weight:700;font-size:11px;display:grid;place-items:center}
+.titlebar #who:empty{display:none}
+.titlebar button{margin-left:10px;border-radius:999px;padding:3px 12px}
+/* 側欄:圓角亮條、同一套線條圖示、底下一張期別卡和名片 */
+.nav{padding:8px 8px 12px;gap:1px}
+.nav .navgrp{padding:14px 10px 5px}
+.nav .navgrp:first-child{padding-top:4px}
+.nav button{border-left:0;border-radius:9px;padding:7px 10px;gap:9px;align-items:center;opacity:.86}
+.nav button .nico{width:18px;height:18px;display:grid;place-items:center;flex:0 0 auto;filter:none}
+.nav button .nico svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-selected=true]{box-shadow:inset 3px 0 0 var(--tab)}
+.nav button[aria-selected=true],.nav button[aria-selected=true] span{color:var(--accent)}
+.navperiod{margin:auto 2px 6px;padding:10px 12px 9px;border-radius:11px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,181,0,.3);color:var(--tab)}
+.navperiod .np-k{font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.55}
+.navperiod .np-v{font-size:13px;font-weight:700;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.navperiod .np-lv{font-size:11px;opacity:.75;margin-top:2px}
+.navperiod .np-lv b{font-weight:700;opacity:1}
+.navperiod .np-steps{display:flex;gap:4px;margin-top:8px}
+.navperiod .np-steps button{flex:1;font:inherit;font-size:10.5px;cursor:pointer;padding:3px 4px;border-radius:7px;
+  border:1px solid rgba(255,181,0,.35);background:transparent;color:var(--tab);opacity:.7;
+  display:flex;align-items:center;justify-content:center;gap:4px}
+.navperiod .np-steps button i{width:7px;height:7px;border-radius:50%;border:1.5px solid currentColor}
+.navperiod .np-steps button.ok{opacity:1;border-color:var(--tab)}
+.navperiod .np-steps button.ok i{background:var(--tab);border-color:var(--tab)}
+.navperiod .np-steps button:hover{background:rgba(255,255,255,.1);opacity:1}
+.navuser{margin-top:0;padding:8px 8px 2px;border-top:0}
+html.ink .navperiod{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.18);color:var(--chrome-ink)}
+html.ink .navperiod .np-steps button{color:var(--chrome-ink);border-color:rgba(0,0,0,.25)}
+html.ink .navperiod .np-steps button.ok i{background:var(--chrome-ink);border-color:var(--chrome-ink)}
+/* 對帳四步:步驟列。圓圈編號、做完打勾、底下一行小字寫進度,步與步之間一條短線。 */
+.subtabs.reconsteps{border-bottom:0;gap:16px;padding:0;margin:2px 0 14px;align-items:stretch;flex-wrap:wrap}
+.subtabs.reconsteps button{position:relative;border:0;border-radius:11px;background:transparent;opacity:.72;
+  margin:0;padding:7px 14px 7px 44px;color:var(--accent);display:flex;flex-direction:column;align-items:flex-start;
+  gap:1px;text-align:left;min-width:0;line-height:1.25}
+.subtabs.reconsteps button::before{content:attr(data-n);position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  width:23px;height:23px;border-radius:50%;border:2px solid var(--accent);display:grid;place-items:center;
+  font-family:var(--titlefam);font-size:12px;font-weight:700;background:var(--panel);color:var(--accent)}
+.subtabs.reconsteps button+button::after{content:"";position:absolute;left:-16px;top:50%;width:16px;height:2px;
+  background:var(--line);transform:translateY(-50%)}
+.subtabs.reconsteps button:hover{opacity:1;background:var(--select)}
+.subtabs.reconsteps button[aria-selected=true]{opacity:1;background:var(--panel);font-weight:700;padding-bottom:7px;
+  box-shadow:0 2px 0 rgba(0,0,0,.08)}
+.subtabs.reconsteps button[aria-selected=true]::before{background:var(--accent);color:var(--tab)}
+.subtabs.reconsteps button[data-done="1"]::before{content:"✓";background:var(--run2);border-color:var(--run2);color:#fff}
+.subtabs.reconsteps button .st{font-size:11px;font-weight:400;color:var(--muted);letter-spacing:0;white-space:nowrap}
+.subtabs.reconsteps button .st:empty{display:none}
+/* 卡片:內距寬一點、外框細一點、巢狀卡片攤平成分隔區 */
+:root{--bw:1.8px}
+.lf{padding:16px 20px 14px;margin-bottom:16px}
+.lf>h3{font-size:15px}
+.lf .lf.sketch{background:transparent;padding:12px 14px;margin-bottom:12px}
+.lf .lf.sketch::before{border:1.5px dashed var(--line);filter:none}
+.hint{max-width:880px}
+details.hintfold{margin:-4px 0 10px}
+details.hintfold>summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;color:var(--muted);padding:2px 9px 2px 7px;border:1.5px dashed var(--line);border-radius:999px;user-select:none}
+details.hintfold>summary::before{content:"ⓘ";font-size:12px}
+details.hintfold>summary::-webkit-details-marker{display:none}
+details.hintfold[open]>summary{color:var(--accent);border-style:solid}
+details.hintfold>.hint{margin:8px 0 2px}
+/* 表格:表頭改淺金底深字,整體輕一層;滑過整列會亮 */
+th,html.ink th{background:color-mix(in srgb,var(--tab) 32%,var(--stripe));color:var(--accent);
+  border-bottom:2px solid var(--accent);font-size:12.5px;padding:7px 10px}
+td{padding:6px 10px}
+tbody tr:hover td{background:color-mix(in srgb,var(--select) 65%,transparent)}
+/* 按鈕:邊框細一點,主要那顆才有一條底影 */
+button.act,a.act{border-width:1.5px;border-radius:8px;padding:6px 15px;font-size:13px;box-shadow:0 1.5px 0 rgba(0,0,0,.14)}
+button.act.ghost,a.act.ghost{border-color:color-mix(in srgb,var(--accent) 62%,transparent);box-shadow:none}
+button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
+/* 首頁:問候與接著做;數字用等寬字,讀得出位數 */
+.homehead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:8px 0 0}
+.hgreet{font-family:var(--titlefam);font-size:26px;font-weight:700;color:var(--accent);letter-spacing:.5px;line-height:1.2}
+.hnext{display:flex;align-items:center;gap:10px;margin-top:8px}
+.hnext>span{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+#p-home .clockcard{position:static;flex:0 0 auto}
+.homeboard{margin:16px 0 4px}
+.homeboard .hv{font-family:"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;font-size:26px;letter-spacing:-.02em}
+.homeboard .hcard.hero .hv{font-size:34px}
+#p-home #scene{height:clamp(150px,20vh,220px)}
+/* 狀態列:一顆小點在前面 */
+#rebillTiles:not([hidden])~#rebillSum{display:none}
+#rebillTiles{margin:10px 0 12px}
+.steps{margin:0 0 12px}
+.statusbar #status::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--tab);margin-right:8px;vertical-align:1px}
+@media (max-width:860px){ .navperiod{display:none} .subtabs.reconsteps{gap:8px} .subtabs.reconsteps button+button::after{display:none} .homehead{flex-direction:column} }
 </style>
 <!-- ==================== Settings ==================== -->
 <section class="page" id="p-setting">
@@ -8641,6 +8755,22 @@ function renderClaimCard(){
    不重算、不打資料庫的明細,所以進首頁是即時的。 */
 function renderHome(){
   const box=$("#homeBoard"); if(!box) return;
+  /* 問候 + 接著做:從現在的資料推出下一步是哪一步,一顆按鈕直接過去。 */
+  const hh=$("#homeHead");
+  if(hh){
+    const h=new Date().getHours();
+    const g=h<11?L("早安","Good morning"):h<18?L("午安","Good afternoon"):L("晚安","Good evening");
+    const ps=periodState(); let next,go;
+    if(!ps.cfg){ next=L("先載入費率設定檔","Load the rate configuration first"); go="sys"; }
+    else if(!ps.ships){ next=L("第 1 步:匯入這期的 UPS 帳單","Step 1 · import this period's UPS invoice"); go="files"; }
+    else if(!ps.list){ next=L("第 2 步:下載模板、填好後導入","Step 2 · download the template, fill it, import it"); go="wmsdata"; }
+    else if(!ps.hasRes){ next=L("第 3 步:看對帳分析","Step 3 · read the analysis"); go="cus"; }
+    else { next=L("第 4 步:產生客戶請款單","Step 4 · generate the client invoices"); go="clinv"; }
+    const name=ME&&(ME.name||ME.user)?(LANG?", ":"，")+esc(ME.name||ME.user):"";
+    hh.innerHTML=`<div class="hgreet">${esc(g)}${name}</div>
+      <div class="hnext"><span>${esc(L("接著做","Next up"))}</span><button class="act sm" data-go="${go}">${esc(next)} →</button></div>`;
+    hh.querySelectorAll("[data-go]").forEach(b=>{ b.onclick=()=>showTab(b.dataset.go); });
+  }
   let runs=(typeof RECON_RUNS!=="undefined"&&RECON_RUNS)?RECON_RUNS:null;
   if(runs===null && typeof idbRunAll==="function" && !window.__homeRunsKick){
     window.__homeRunsKick=true;
@@ -8721,6 +8851,57 @@ function renderHome(){
   }; });
   box.querySelectorAll("[data-go]").forEach(b=>{ b.onclick=()=>showTab(b.dataset.go); });
 }
+/* ===== 精緻版:期別卡、步驟狀態、說明摺疊 =====
+   全部從既有全域推出來(ROWS / SHIPS / RECON / CFG),不另外存狀態。 */
+function periodState(){
+  const rows=(typeof ROWS!=="undefined"&&Array.isArray(ROWS))?ROWS:[];
+  const invs=[...new Set(rows.map(r=>r.invoice).filter(Boolean))];
+  const ships=(typeof SHIPS!=="undefined"&&Array.isArray(SHIPS))?SHIPS.length:0;
+  const rc=(typeof RECON!=="undefined"&&RECON)?RECON:null;
+  const list=rc&&Array.isArray(rc.list)?rc.list.length:0;
+  const items=(rc&&rc.res&&rc.res.rebill&&Array.isArray(rc.res.rebill.items))?rc.res.rebill.items:[];
+  const cusN=new Set(items.map(it=>it.cus)).size;
+  let lv=""; try{ lv=(typeof rlActive==="function")?rlName(rlActive()):""; }catch(e){}
+  return {invs,ships,list,hasRes:!!(rc&&rc.res),items:items.length,cusN,lv,cfg:!!(typeof CFG!=="undefined"&&CFG)};
+}
+/* 側欄底的期別卡:哪一期、哪一層、走到哪一步。三顆燈可以點。 */
+function renderPeriodCard(){
+  const el=$("#navPeriod"); if(!el) return;
+  if(!ME){ el.hidden=true; return; }
+  el.hidden=false;
+  const s=periodState();
+  const inv=s.invs.length?(s.invs.length===1?s.invs[0]:s.invs.length+L(" 期帳單"," invoices")):L("尚未載入帳單","No invoice loaded");
+  const step=(k,lab,on)=>`<button type="button" data-go="${k}" class="${on?"ok":""}"><i></i>${esc(lab)}</button>`;
+  el.innerHTML=`<div class="np-k">${esc(L("目前期別","This period"))}</div>
+    <div class="np-v${s.invs.length?" mono":""}" title="${esc(s.invs.join(", "))}">${esc(inv)}</div>
+    <div class="np-lv">${esc(L("費率層級","Rate level"))} · <b>${esc(s.lv||L("未設定","not set"))}</b></div>
+    <div class="np-steps">${step("files",L("帳單","Invoice"),s.ships>0)}${step("wmsdata",L("模板","Template"),s.list>0)}${step("cus",L("結果","Result"),s.hasRes&&s.list>0)}</div>`;
+  el.querySelectorAll("[data-go]").forEach(b=>{ b.onclick=()=>showTab(b.dataset.go); });
+}
+/* 步驟列每一步底下一行小字:做到哪、有多少。 */
+function renderStepStatus(){
+  const s=periodState();
+  const st={files:s.ships?s.ships.toLocaleString()+L(" 件 · "," pkgs · ")+s.invs.length+L(" 期"," period(s)"):L("尚未匯入","not imported yet"),
+            wmsdata:s.list?s.list.toLocaleString()+L(" 列已比對"," rows matched"):L("尚未導入","not imported yet"),
+            cus:(s.hasRes&&s.list)?s.items+L(" 項補收"," to re-bill"):"—",
+            clinv:(s.hasRes&&s.list)?s.cusN+L(" 位客戶"," client(s)"):"—"};
+  const done={files:s.ships>0,wmsdata:s.list>0,cus:!!(s.hasRes&&s.list),clinv:!!(s.hasRes&&s.items)};
+  document.querySelectorAll(".reconsteps button[data-step]").forEach(b=>{
+    const k=b.dataset.step, sm=b.querySelector(".st");
+    if(sm) sm.textContent=st[k]||""; b.dataset.done=done[k]?"1":"0"; });
+}
+/* 長篇說明收進「說明」摺疊:標題底下留一行,細節按了才展開。短的照舊。 */
+function hintFold(){
+  document.querySelectorAll(".lf > p.hint, .lf > div.hint").forEach(pEl=>{
+    if(pEl.closest("details.hintfold")) return;
+    if((pEl.textContent||"").trim().length<90) return;
+    const d=document.createElement("details"); d.className="hintfold";
+    d.appendChild(document.createElement("summary"));
+    pEl.parentNode.insertBefore(d,pEl); d.appendChild(pEl);
+  });
+  document.querySelectorAll("details.hintfold>summary").forEach(sm=>{ sm.textContent=L("說明","How this works"); });
+}
+function uiSync(){ try{ renderPeriodCard(); }catch(e){} try{ renderStepStatus(); }catch(e){} try{ hintFold(); }catch(e){} }
 /* 一個 IndexedDB 整批抄到另一個。來源不存在就當 0 期,不建立空的資料庫。 */
 function idbCopyDatabase(fromName,toName){
   idbRowsInvalidate();
@@ -8878,7 +9059,8 @@ function applyRole(){
   sceneShow(!!ME && currentTab()==="home");
   const who=$("#who");
   const roleWord = admin?(LANG?"Administrator":"管理者"):(LANG?"User":"使用者");
-  if(who) who.textContent = ME? (ME.name+" · "+roleWord) : "";
+  if(who){ who.textContent = ME? (ME.name+" · "+roleWord) : "";
+    who.dataset.av = ME? (String(ME.name||ME.user||"?").trim().charAt(0).toUpperCase()||"?") : ""; }
   /* 側欄底的名片與標題列同一份資料 —— 兩處不一致比沒有更糟。 */
   const nu=$("#navUser");
   if(nu){
@@ -8962,6 +9144,13 @@ function reconStepsSync(lit){
 document.querySelectorAll(".reconsteps").forEach(bar=>{
   bar.onclick=e=>{ const b=e.target.closest("button[data-step]"); if(b) showTab(b.dataset.step); };
 });
+/* 期別卡與步驟狀態跟著這幾件事更新:換頁、跑完帳單、對帳、換語言、登入登出。 */
+(function(){
+  const after=(name)=>{ const f=window[name]; if(typeof f!=="function") return;
+    window[name]=function(){ const r=f.apply(this,arguments); if(r&&typeof r.then==="function") r.then(()=>uiSync(),()=>0); uiSync(); return r; }; };
+  ["showTab","renderSummary","renderRecon","applyLang","setMe","renderHist","reconAccept","reconRerunFrom"].forEach(after);
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",uiSync); else uiSync();
+})();
 /* 你在看哪一頁。設定、費率、帳單歷史都是存著的,只有這件事以前每次
    重新整理都被丟掉 —— 明明什麼都還在,人卻被丟回匯入檔案那一頁。 */
 const TAB_KEY="ups_recon_tab";
@@ -16367,6 +16556,15 @@ function renderRebill(){
     const cusN=new Set(items.map(it=>it.cus)).size;
     const skip=rb&&rb.skipped?rb.skipped:0;
     const unset=items.filter(it=>it.unset).length;
+    /* 四塊磚先講數字,句子留給備註 —— 先講狀態、再給摘要、最後才是明細。 */
+    const tl=$("#rebillTiles");
+    if(tl){ const noItem=!!(rb&&rb.noItem); tl.hidden=noItem;
+      if(!noItem) tl.innerHTML=[
+        [L("應補收","To re-bill"),money(chgSum),totFuel>0.004?L("含燃油附加費 ","incl. fuel ")+money(totFuel):"",false],
+        [L("淨額","Net"),money(grand),refSum>0.004?L("應退還 ","to refund ")+money(refSum):(totOver>0.004?L("溢收 ","over-collected ")+money(totOver):""),grand<0],
+        [L("項目","Items"),String(items.length),unset?unset+L(" 項費率未設定 → 費率維護"," without a rate → Rate Maintenance"):"",false],
+        [L("客戶","Clients"),String(cusN),skip?skip+L(" 筆沒有逐項費用"," row(s) without line fees"):"",false]]
+        .map(([k,v,sub,neg])=>`<div class="tile sketch-soft"><div class="k">${esc(k)}</div><div class="v${neg?" neg":""}">${v}</div><div class="sub">${esc(sub)||"&nbsp;"}</div></div>`).join(""); }
     sum.textContent=(rb&&rb.noItem)?"":L(
       "應補收 "+money(chgSum)+(refSum>0.004?" · 應退還 "+money(refSum):"")
         +" · 淨額 "+money(grand)+" · 其中燃油附加費 "+money(totFuel)
@@ -22246,9 +22444,9 @@ const I18N={
   "th.runsrc":["來源","Source"],
   "th.runrebill":["應補收","To re-bill"],
   "th.runwhen":["對帳時間","Reconciled"],
-  "rs.inv":["1. UPS 帳單匯入","1. UPS Invoice Import"],
-  "rs.wms":["2. WMS / TMS 匯入","2. WMS / TMS Import"],
-  "rs.res":["3. 對帳分析","3. Reconciliation Analysis"],
+  "rs.inv":["UPS 帳單匯入","UPS Invoice Import"],
+  "rs.wms":["WMS / TMS 匯入","WMS / TMS Import"],
+  "rs.res":["對帳分析","Reconciliation Analysis"],
   "nav.recon":["對帳","Reconciliation"],
   "nav.adm":["管理","Administration"],
   "hd.reconempty":["還沒有對帳結果","No comparison yet"],
@@ -22554,7 +22752,7 @@ const I18N={
   "rt.demand":["3. Demand Surcharge","3. Demand Surcharge"],
   "rt.chgcode":["2. UPS 代碼查詢","2. UPS Code Lookup"],
   "tab.clinv":["客戶請款單","Client Invoice"],
-  "rs.clinv":["4. 客戶請款單","4. Client Invoice"],
+  "rs.clinv":["客戶請款單","Client Invoice"],
   "hd.clinv":["客戶請款單","Client invoice"],
   "hint.clinv":["把這一份對帳的應補收清單,排成可直接寄給客戶的更正費用請款單 —— 選客戶、看預覽、下載 Excel。金額就是補收清單那一組,這一頁不重算任何錢。",
     "Turns the open reconciliation's re-bill list into a client-ready adjustments invoice — pick the client, check the preview, download the Excel. Amounts are exactly the re-bill items; nothing is recalculated here."],
