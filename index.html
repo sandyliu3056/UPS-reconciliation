@@ -11017,10 +11017,10 @@ function accTemplateFor(fam){
     return b!=null&&typeof b!=="object"&&toNum(b)!==toNum(a!=null&&typeof a!=="object"?a:0);
   }));
   const flatRows=flatFees.map(fee=>[feeDisplay(fee),flatAmt(fee,ch)]);
-  /* 全部渠道一起匯出時,平費一條渠道一列(帶 Shipment Type),族裡兩邊值
-     不同就各自帶著走,不必再挑一邊。 */
-  const flatByChan=[];
-  for(const fee of flatFees) for(const c of [...sides,...bareFlatFor(fee)].sort(chanSort)) flatByChan.push([feeDisplay(fee),c,flatAmt(fee,c)]);
+  /* 全部渠道一起匯出時,平費一族一列(Shipment Type 寫族名,不分商住)——
+     固定金額 UPS 兩邊收同一個價,分成兩列只是要人把同一個數字打兩次。
+     值取計價會用到的那一格(ch);族裡兩邊值不同的,匯出時另外講(flatDiff)。 */
+  const flatByChan=flatFees.map(fee=>[feeDisplay(fee),fam,flatAmt(fee,ch)]);
   return {fam, family, zones, ch, ahsHead, ahsRows, flatRows, flatByChan, flatDiff,
           dvRow:accDvRow(svcOfChan(ch))};
 }
@@ -11162,7 +11162,15 @@ function accImportBook(bk){
         const amt=toNum(r[ai]);
         if(ci>=0){
           const ch=String(r[ci]||"").trim(); if(!ch) continue;
-          t[fee+"|||"+ch]=amt; m++;
+          /* Shipment Type 是族名(不帶商住後綴):兩邊都寫,跟設定頁那一格一樣;
+             不帶後綴的舊格若已存在也一起更新,它在計價時是優先的。
+             帶後綴的就只寫那一條,舊模板照舊。 */
+          if(/\s+(Commercial|Residential)$/i.test(ch)){ t[fee+"|||"+ch]=amt; m++; }
+          else{
+            const keys=[channelSurchargeLabel(ch,false),channelSurchargeLabel(ch,true)].map(c=>fee+"|||"+c);
+            if((fee+"|||"+ch) in t) keys.push(fee+"|||"+ch);
+            for(const k of keys){ t[k]=amt; m++; }
+          }
         }else{
           for(const ch of targets){ t[fee+"|||"+ch]=amt; m++; }
         }
