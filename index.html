@@ -739,16 +739,23 @@ tr.blocked{opacity:.72}
 .fuelclone .fc-hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 8px}
 .fuelclone .fc-hd b{font-weight:600;color:var(--accent);font-size:13px}
 .fuelclone .fc-hd span{color:var(--muted);font-size:12px}
-.fuelclone .fc-cards{display:flex;flex-wrap:wrap;gap:10px}
-.fuelclone .fc-card{width:190px;padding:11px 13px 10px;border-radius:12px;background:var(--panel);
-  border:1.5px solid var(--line);display:flex;flex-direction:column;gap:2px;transition:border-color .12s,transform .12s}
-.fuelclone .fc-card:hover{border-color:var(--accent);transform:translateY(-1px)}
-.fuelclone .fc-name{font-weight:700;color:var(--ink);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.fuelclone .fc-pct{font-family:"Cascadia Mono",Consolas,monospace;font-size:24px;font-weight:700;color:var(--accent);
-  font-variant-numeric:tabular-nums;line-height:1.1;margin-top:2px}
-.fuelclone .fc-pct small{font-size:12px;font-weight:400;color:var(--muted);font-family:inherit;margin-left:2px}
+.fuelclone .fc-cards{display:flex;flex-wrap:wrap;gap:12px}
+.fuelclone .fc-card{width:196px;border-radius:12px;background:var(--panel);border:1.5px solid var(--line);overflow:hidden;
+  box-shadow:0 2px 0 rgba(0,0,0,.06);transition:border-color .12s,transform .12s,box-shadow .12s}
+.fuelclone .fc-card:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 3px 0 rgba(0,0,0,.08)}
+/* 卡頭一條主題金,層名深字;身體奶油底,% 帶一條小量尺,一眼比得出哪一層高。 */
+.fuelclone .fc-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;
+  background:var(--tab);color:var(--accent);border-bottom:1.5px solid color-mix(in srgb,var(--accent) 25%,transparent)}
+.fuelclone .fc-name{font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fuelclone .fc-ico{font-size:13px;line-height:1;opacity:.9}
+.fuelclone .fc-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px}
+.fuelclone .fc-pct{font-family:"Cascadia Mono",Consolas,monospace;font-size:17px;font-weight:700;color:var(--accent);
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.fuelclone .fc-pct small{font-size:11.5px;font-weight:400;color:var(--muted);font-family:inherit;margin-left:1px}
+.fuelclone .fc-bar{height:6px;border-radius:3px;background:color-mix(in srgb,var(--line) 45%,transparent);overflow:hidden}
+.fuelclone .fc-bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--run2),var(--tab))}
 .fuelclone .fc-sub{font-size:11.5px;color:var(--muted);line-height:1.45;min-height:1.45em}
-.fuelclone .fc-card .act{margin-top:8px;justify-content:center;width:100%}
+.fuelclone .fc-card .act{margin-top:4px;justify-content:center;width:100%}
 .fuelclone .fc-rest{margin-top:8px;font-size:12px;color:var(--muted)}
 .fuelclone .empty{color:var(--muted);font-size:12.5px}
 #tDv tr.dvempty td:nth-child(2){color:var(--muted)}
@@ -13807,12 +13814,17 @@ function renderFuelClone(){
   }
   const withFuel=others.map(x=>({x,s:fuelSummaryOf(o.cfg[x.id])})).filter(r=>!r.s.empty);
   const without=others.filter(x=>fuelSummaryOf(o.cfg[x.id]).empty).map(x=>x.name);
-  const cards=withFuel.map(({x,s})=>`<div class="fc-card">
-      <span class="fc-name" title="${esc(x.name)}">${esc(x.name)}</span>
-      <span class="fc-pct">${s.def!==""?esc(s.def)+"<small>%</small>":`<small>${esc(L("預設未設","no default"))}</small>`}</span>
-      <span class="fc-sub">${esc(fuelSummaryText(s))}</span>
-      <button class="act ghost sm" data-fuelclone="${esc(x.id)}">${esc(L("複製到本層","Copy to this level"))}</button>
-    </div>`).join("");
+  /* 量尺的滿格:所有層裡最高的 %,再往上取到 5 的倍數;至少 25,免得 3% 看起來像滿格。 */
+  const top=Math.max(25, Math.ceil(Math.max(0,...withFuel.map(r=>toNum(r.s.def)))/5)*5);
+  const cards=withFuel.map(({x,s})=>{ const v=toNum(s.def); const w=s.def!==""?Math.max(3,Math.min(100,v/top*100)):0;
+    return `<div class="fc-card">
+      <div class="fc-top"><span class="fc-name" title="${esc(x.name)}">${esc(x.name)}</span><span class="fc-ico">⛽</span></div>
+      <div class="fc-body">
+        <span class="fc-pct">${s.def!==""?esc(s.def)+"<small>%</small>":`<small>${esc(L("預設未設","no default"))}</small>`}</span>
+        <div class="fc-bar"><i style="width:${w}%"></i></div>
+        <span class="fc-sub">${esc(fuelSummaryText(s))}</span>
+        <button class="act ghost sm" data-fuelclone="${esc(x.id)}">${esc(L("複製到本層","Copy to this level"))}</button>
+      </div></div>`; }).join("");
   box.innerHTML=head
     +(withFuel.length?`<div class="fc-cards">${cards}</div>`
       :`<div class="empty">${esc(L("其他層級都還沒有燃油設定,沒有可複製的來源。","No other level has fuel settings yet — nothing to copy from."))}</div>`)
