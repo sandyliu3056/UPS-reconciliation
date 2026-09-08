@@ -733,22 +733,24 @@ tr.blocked{opacity:.72}
 /* Settings 頁那一行摘要。不能掛 .savenote —— paintSaveNote() 會把每一個
    .savenote 的文字和 class 一起覆蓋掉,摘要會被存檔提示蓋走。 */
 .affsum{color:var(--muted);font-size:12.5px}
-/* 燃油卡:從別層複製。一層一列:層名、預設 %(大字)、期間數,右邊一顆複製鈕。 */
+/* 燃油卡:從別層複製。有燃油設定的層各一張小卡並排(層名、% 大字、幾段期間、一顆複製鈕);
+   沒設定的層只在底下列個名字,不佔位。 */
 .fuelclone{margin-top:14px}
-.fuelclone .fc-hd{font-weight:600;color:var(--accent);font-size:13px;margin:0 0 6px;border-bottom:1.5px solid var(--line);padding-bottom:4px;
-  display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.fuelclone .fc-hd span{font-weight:400;color:var(--muted);font-size:12px}
-.fuelclone .fc-list{display:flex;flex-direction:column;gap:6px;max-width:760px}
-.fuelclone .fc-row{display:grid;grid-template-columns:minmax(120px,1.2fr) 90px minmax(0,2fr) auto;gap:12px;align-items:center;
-  padding:8px 12px;border-radius:10px;background:var(--panel);border:1.5px solid var(--line)}
-.fuelclone .fc-row.me{background:color-mix(in srgb,var(--select) 55%,var(--panel));border-style:dashed}
-.fuelclone .fc-name{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.fuelclone .fc-name small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
-.fuelclone .fc-pct{font-family:"Cascadia Mono",Consolas,monospace;font-size:18px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
-.fuelclone .fc-pct.none{color:var(--muted);font-size:13px;font-weight:400}
-.fuelclone .fc-sub{font-size:12px;color:var(--muted);line-height:1.5}
+.fuelclone .fc-hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 8px}
+.fuelclone .fc-hd b{font-weight:600;color:var(--accent);font-size:13px}
+.fuelclone .fc-hd span{color:var(--muted);font-size:12px}
+.fuelclone .fc-cards{display:flex;flex-wrap:wrap;gap:10px}
+.fuelclone .fc-card{width:190px;padding:11px 13px 10px;border-radius:12px;background:var(--panel);
+  border:1.5px solid var(--line);display:flex;flex-direction:column;gap:2px;transition:border-color .12s,transform .12s}
+.fuelclone .fc-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.fuelclone .fc-name{font-weight:700;color:var(--ink);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fuelclone .fc-pct{font-family:"Cascadia Mono",Consolas,monospace;font-size:24px;font-weight:700;color:var(--accent);
+  font-variant-numeric:tabular-nums;line-height:1.1;margin-top:2px}
+.fuelclone .fc-pct small{font-size:12px;font-weight:400;color:var(--muted);font-family:inherit;margin-left:2px}
+.fuelclone .fc-sub{font-size:11.5px;color:var(--muted);line-height:1.45;min-height:1.45em}
+.fuelclone .fc-card .act{margin-top:8px;justify-content:center;width:100%}
+.fuelclone .fc-rest{margin-top:8px;font-size:12px;color:var(--muted)}
 .fuelclone .empty{color:var(--muted);font-size:12.5px}
-@media (max-width:900px){ .fuelclone .fc-row{grid-template-columns:1fr auto} .fuelclone .fc-sub{grid-column:1 / -1} }
 #tDv tr.dvempty td:nth-child(2){color:var(--muted)}
 #tDv tr.sel{background:var(--select)}
 #tDv td .cell.num{width:100%;min-width:72px}
@@ -13796,20 +13798,25 @@ function renderFuelClone(){
   const o=rlEnsure(); if(!o){ box.innerHTML=""; return; }
   const hidden=x=>(typeof rlHidden==="function")&&rlHidden(x);
   const others=o.list.filter(x=>x.id!==o.active&&!hidden(x));
-  const me=o.list.find(x=>x.id===o.active)||{name:rlName(o.active)};
-  const mine=fuelSummaryOf(CFG.raw);
-  const pct=s=>s.def!==""?`<span class="fc-pct">${esc(s.def)}%</span>`:`<span class="fc-pct none">${L("未設","not set")}</span>`;
-  const head=`<div class="fc-hd">${esc(L("從別層複製燃油","Copy fuel from another level"))}<span>${esc(L("整份燃油設定搬過來:預設 %、期間表、各渠道的 %;其他費率不動。","Copies the whole fuel setup: default %, date ranges, per-channel %. Nothing else changes."))}</span></div>`;
+  const meName=rlName(o.active), mine=fuelSummaryOf(CFG.raw);
+  const mineTxt=mine.empty?L("還沒設燃油","no fuel yet"):((mine.def!==""?L("預設 ","default ")+mine.def+"%":L("預設未設","no default"))+" · "+fuelSummaryText(mine));
+  const head=`<div class="fc-hd"><b>${esc(L("從別層複製燃油","Copy fuel from another level"))}</b><span>${esc(L("本層","This level"))} <b style="color:var(--ink);font-size:12px">${esc(meName)}</b> · ${esc(mineTxt)} — ${esc(L("選一層,把它的預設 %、期間表、各渠道 % 整份搬過來;其他費率不動。","pick a level to copy its default %, date ranges and per-channel % in one go; nothing else changes."))}</span></div>`;
   if(!others.length){
     box.innerHTML=head+`<div class="empty">${esc(L("目前只有這一層,沒有可複製的來源。","This is the only level — nothing to copy from yet."))}</div>`;
     return;
   }
-  box.innerHTML=head+`<div class="fc-list">`
-    +`<div class="fc-row me"><span class="fc-name">${esc(me.name)}<small>${esc(L("本層(正在編輯)","this level (editing)"))}</small></span>${pct(mine)}<span class="fc-sub">${esc(fuelSummaryText(mine))}</span><span></span></div>`
-    +others.map(x=>{ const s=fuelSummaryOf(o.cfg[x.id]);
-      return `<div class="fc-row"><span class="fc-name">${esc(x.name)}</span>${pct(s)}<span class="fc-sub">${esc(fuelSummaryText(s))}</span>`
-        +`<button class="act ghost sm" data-fuelclone="${esc(x.id)}"${s.empty?" disabled title=\""+esc(L("這一層還沒有燃油設定","This level has no fuel settings yet"))+"\"":""}>${esc(L("複製到本層","Copy to this level"))}</button></div>`; }).join("")
-    +`</div>`;
+  const withFuel=others.map(x=>({x,s:fuelSummaryOf(o.cfg[x.id])})).filter(r=>!r.s.empty);
+  const without=others.filter(x=>fuelSummaryOf(o.cfg[x.id]).empty).map(x=>x.name);
+  const cards=withFuel.map(({x,s})=>`<div class="fc-card">
+      <span class="fc-name" title="${esc(x.name)}">${esc(x.name)}</span>
+      <span class="fc-pct">${s.def!==""?esc(s.def)+"<small>%</small>":`<small>${esc(L("預設未設","no default"))}</small>`}</span>
+      <span class="fc-sub">${esc(fuelSummaryText(s))}</span>
+      <button class="act ghost sm" data-fuelclone="${esc(x.id)}">${esc(L("複製到本層","Copy to this level"))}</button>
+    </div>`).join("");
+  box.innerHTML=head
+    +(withFuel.length?`<div class="fc-cards">${cards}</div>`
+      :`<div class="empty">${esc(L("其他層級都還沒有燃油設定,沒有可複製的來源。","No other level has fuel settings yet — nothing to copy from."))}</div>`)
+    +(without.length&&withFuel.length?`<div class="fc-rest">${esc(L("還沒有燃油設定:","No fuel settings yet: "))}${esc(without.join(L("、",", ")))}</div>`:"");
   box.querySelectorAll("[data-fuelclone]").forEach(b=>{ b.onclick=()=>fuelCloneFrom(b.dataset.fuelclone); });
 }
 async function fuelCloneFrom(id){
