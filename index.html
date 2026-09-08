@@ -2088,8 +2088,8 @@ label:has(#newChanOn){display:none !important}
          先預覽再寫入。 -->
     <div class="row" style="margin-top:9px">
       <button class="act" id="bCusAdd" data-i18n="btn.cusadd">Add customer</button>
+      <button class="act ghost" id="bCusXls" data-i18n="btn.cusxls">Template</button>
       <button class="act ghost" id="bCusImp" data-i18n="btn.cusimp">Import list</button>
-      <button class="act ghost" id="bCusXls" data-i18n="btn.cusxls">Export list</button>
       <input type="file" id="fCusImp" accept=".xlsx,.xls,.csv,.txt" style="display:none">
       <span id="cusMsg" class="savenote"></span>
     </div>
@@ -8162,7 +8162,7 @@ async function cusTemplate(){
     {name:"Levels", hidden:true, cols:[{w:22}], rows:[[HD("Rate Level")]].concat(lv.map(e=>[e.name]))},
   ], data.length?"Customers.xlsx":"Customer_Import_Template.xlsx");
   cusNote(data.length
-    ?L("客戶清單已匯出:"+data.length+" 位。改一改就能用「匯入名單」匯回來。","Customer list exported: "+data.length+" client(s). Edit it and bring it back with Import list.")
+    ?L("模板已下載,含現有 "+data.length+" 位客戶。改一改就能用「匯入名單」匯回來。","Template downloaded with the current "+data.length+" client(s). Edit it and bring it back with Import list.")
     :L("空白模板已下載:三欄,層級用下拉選。填好後按「匯入名單」。","Blank template downloaded: three columns, levels in a dropdown. Fill it in, then press Import list."),true);
 }
 const cusExport=cusTemplate;
@@ -22597,11 +22597,11 @@ const I18N={
     "Every charge on the matched shipments, left to right: what you billed the client (from the WMS/TMS file), what UPS actually charged, and what this customer's rate level says it should be. The last two columns are the variances: billed vs recomputed is your pricing variance, UPS vs recomputed is where the invoice departs from the agreement — sorted with the largest gap first."],
   "lb.reconscope":["檢視範圍","Showing"],
   "hd.cusreg":["客戶","Customers"],
-  "hint.cusreg":["你自己維護的清單。指定費率層級後,這個客戶的出貨就照那一層的費率重算。客戶名單為整個帳號共用,不隨層級切換而改變。名單多就用 Excel:「匯出清單」拿到的檔(空的就是空白模板)填好後按「匯入名單」。",
-    "Your own list. Assign a rate level and this customer's shipments are repriced at that level. The list is shared across the whole account and does not change when you switch levels. For many clients use Excel: the file from Export list (blank when the list is empty) is the import template; fill it in and press Import list."],
+  "hint.cusreg":["你自己維護的清單。指定費率層級後,這個客戶的出貨就照那一層的費率重算。客戶名單為整個帳號共用,不隨層級切換而改變。名單多就用 Excel:按「客戶模板」下載(有客戶就帶著現有名單),填好後按「匯入名單」。",
+    "Your own list. Assign a rate level and this customer's shipments are repriced at that level. The list is shared across the whole account and does not change when you switch levels. For many clients use Excel: press Template to download it (pre-filled with the current list), fill it in, then press Import list."],
   "hd.cusedit":["編輯客戶","Edit customer"],
   "hd.cusnew":["新增客戶","New customer"],
-  "btn.cusxls":["匯出清單","Export list"],
+  "btn.cusxls":["客戶模板","Template"],
   "lb.cecode":["客戶代碼","Customer code"],
   "hint.cecodenew":["只能用英數字和 . _ -,至少兩個字。WMS / TMS 模板的 Customer Code 填的就是這個代碼。",
     "Letters, digits, . _ - only, at least two characters. This is the code the WMS / TMS template's Customer Code column takes."],
