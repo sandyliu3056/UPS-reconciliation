@@ -10131,8 +10131,10 @@ function setChanDim(targets, raw){
   const v=String(raw==null?"":raw).trim();
   for(const c of targets){ if(v==="") delete m[c]; else m[c]=v; }
   CFG=readConfig(CFG.raw); DIRTY=true; renderConfigTabs();
-  /* 視窗還開著,下面那張「生效中」的表要跟著更新,不然看不出剛才做了什麼。 */
+  /* 視窗還開著,下面那張「生效中」的表要跟著更新,不然看不出剛才做了什麼。
+     套用完把勾勾清掉:這一批做完了,下一批從零開始勾,不會把剛設好的渠道又帶進下一次。 */
   renderDimModal();
+  document.querySelectorAll(".dimc").forEach(c=>{ c.checked=false; });
   /* 直接存檔。這個視窗沒有自己的儲存鈕,提示又寫「已設為 N」——
      不存的話重新整理就沒了,而畫面剛剛才說做好了。 */
   const ok=saveSettings();
