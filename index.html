@@ -2070,7 +2070,6 @@ label:has(#newChanOn){display:none !important}
     <h3 class="display"><span class="em">👤</span><span data-i18n="hd.cusreg">Customers</span></h3>
     <p class="hint" style="margin:0 0 11px;max-width:62ch" data-i18n="hint.cusreg">Your own list. Assign a rate level and this customer’s shipments are repriced at that level. The list is shared across the whole account and does not change when you switch levels.</p>
     <div class="row" style="margin-bottom:8px">
-      <button class="act ghost" id="bCusPrev">👁 <span data-i18n="btn.cusprev">Preview client list</span></button>
       <span style="flex:1 1 auto"></span>
       <label class="inlab" data-i18n="th.cuslevel">Rate level</label>
       <span class="foldwrap"><select class="fold" id="cusLvlFilter"></select></span>
@@ -2089,7 +2088,6 @@ label:has(#newChanOn){display:none !important}
          先預覽再寫入。 -->
     <div class="row" style="margin-top:9px">
       <button class="act" id="bCusAdd" data-i18n="btn.cusadd">Add customer</button>
-      <button class="act ghost" id="bCusTpl" data-i18n="btn.custpl">Import template</button>
       <button class="act ghost" id="bCusImp" data-i18n="btn.cusimp">Import list</button>
       <button class="act ghost" id="bCusXls" data-i18n="btn.cusxls">Export list</button>
       <input type="file" id="fCusImp" accept=".xlsx,.xls,.csv,.txt" style="display:none">
@@ -8144,11 +8142,15 @@ function cusImportApply(ok,p){
   if(typeof logAdd==="function") logAdd("customers import", nNew+" new / "+nUpd+" updated");
 }
 /* 匯入模板:三欄,層級用下拉(來源是隱藏的 Levels 分頁),說明自己一頁。 */
+/* 客戶名單倒成 Excel:代碼、名稱、層級,層級用下拉選,附 Guide 分頁。同一份檔就是
+   匯入模板 —— 名單空的時候倒出來的是空白模板,有客戶就是現在的名單,改一改可以再匯回去。
+   以前分成「匯入模板」和「匯出清單」兩顆鈕,長得一樣,併成一顆。 */
 async function cusTemplate(){
   const HD=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
   const lv=lvlListAll();
-  const main={name:"Customers", rows:[CUS_TPL_COLS.map(HD)], freeze:{r:1,c:1}, filter:"A1:C1",
-              cols:[{w:18},{w:34},{w:22}]};
+  const data=cusReg().map(c=>[c.code, c.name||"", cusLevelLabel(c.level)||""]);
+  const main={name:"Customers", rows:[CUS_TPL_COLS.map(HD),...data], freeze:{r:1,c:1}, filter:"A1:C"+(data.length+1),
+              cols:[{w:18},{w:34},{w:22}], ignoreTextNumbers:true};
   if(lv.length) main.dv=[{sqref:"C2:C5000", list:"Levels!$A$2:$A$"+(lv.length+1),
     title:L("層級不在名單上","Unknown rate level"),
     msg:L("請從 Levels 分頁選一個層級名稱。","Pick a level name from the Levels sheet.")}];
@@ -8158,18 +8160,12 @@ async function cusTemplate(){
       ["Customer Name","選填;空白時沿用代碼 Optional; blank keeps the code as the name"],
       ["Rate Level","選填;填層級名稱(下拉);空白 = 不指派 Optional; a level name from the dropdown; blank = unassigned"]]},
     {name:"Levels", hidden:true, cols:[{w:22}], rows:[[HD("Rate Level")]].concat(lv.map(e=>[e.name]))},
-  ], "Customer_Import_Template.xlsx");
-  cusNote(L("匯入模板已下載:三欄,層級用下拉選。","Import template downloaded: three columns, levels in a dropdown."),true);
+  ], data.length?"Customers.xlsx":"Customer_Import_Template.xlsx");
+  cusNote(data.length
+    ?L("客戶清單已匯出:"+data.length+" 位。改一改就能用「匯入名單」匯回來。","Customer list exported: "+data.length+" client(s). Edit it and bring it back with Import list.")
+    :L("空白模板已下載:三欄,層級用下拉選。填好後按「匯入名單」。","Blank template downloaded: three columns, levels in a dropdown. Fill it in, then press Import list."),true);
 }
-/* 客戶名單倒成 Excel:代碼、名稱、層級、最近對帳的筆數與金額。和匯入模板同一套欄名,
-   倒出來的檔改一改可以再匯回去。 */
-async function cusExport(){
-  const HD=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
-  const rows=cusReg().map(c=>[c.code, c.name||"", cusLevelLabel(c.level)||""]);
-  await xlWrite([{name:"Customers", rows:[["Customer Code","Customer Name","Rate Level"].map(HD),...rows],
-    freeze:{r:1,c:1}, cols:[{w:18},{w:34},{w:22}], ignoreTextNumbers:true}], "Customers.xlsx");
-  cusNote(L("客戶清單已匯出:"+rows.length+" 位。","Customer list exported: "+rows.length+" client(s)."),true);
-}
+const cusExport=cusTemplate;
 function renderCustomers(){
   if(!CFG) return;
   cusEnsure(); chgEnsure();
@@ -8231,7 +8227,6 @@ function bindCustomers(){
   });
 
   $("#bCusAdd") && ($("#bCusAdd").onclick=openCusNew);
-  $("#bCusTpl") && ($("#bCusTpl").onclick=()=>{ cusTemplate().catch(e=>cusNote(String((e&&e.message)||e),false)); });
   $("#bCusImp") && ($("#bCusImp").onclick=()=>$("#fCusImp").click());
   $("#bCusXls") && ($("#bCusXls").onclick=()=>{ cusExport().catch(e=>cusNote(String((e&&e.message)||e),false)); });
   $("#fCusImp") && ($("#fCusImp").onchange=e=>{
@@ -13804,7 +13799,6 @@ function bindPagePreviews(){
     const sel=$("#pvLvlLvl"); if(sel) sel.closest(".row").style.display="none";
   });
   $("#bSysPrev") && ($("#bSysPrev").onclick=()=>uiPreview(L("帳號設定總覽","Account settings overview"),sysPrevHTML()));
-  $("#bCusPrev") && ($("#bCusPrev").onclick=()=>uiPreview(L("客戶清單","Client list"),cusPrevHTML()));
 }
 /* 04 標題上的層級名,跟右上角選單同一份資料 */
 function fillLvlSync(){
@@ -22603,8 +22597,8 @@ const I18N={
     "Every charge on the matched shipments, left to right: what you billed the client (from the WMS/TMS file), what UPS actually charged, and what this customer's rate level says it should be. The last two columns are the variances: billed vs recomputed is your pricing variance, UPS vs recomputed is where the invoice departs from the agreement — sorted with the largest gap first."],
   "lb.reconscope":["檢視範圍","Showing"],
   "hd.cusreg":["客戶","Customers"],
-  "hint.cusreg":["你自己維護的清單。指定費率層級後,這個客戶的出貨就照那一層的費率重算。客戶名單為整個帳號共用,不隨層級切換而改變。",
-    "Your own list. Assign a rate level and this customer's shipments are repriced at that level. The list is shared across the whole account and does not change when you switch levels."],
+  "hint.cusreg":["你自己維護的清單。指定費率層級後,這個客戶的出貨就照那一層的費率重算。客戶名單為整個帳號共用,不隨層級切換而改變。名單多就用 Excel:「匯出清單」拿到的檔(空的就是空白模板)填好後按「匯入名單」。",
+    "Your own list. Assign a rate level and this customer's shipments are repriced at that level. The list is shared across the whole account and does not change when you switch levels. For many clients use Excel: the file from Export list (blank when the list is empty) is the import template; fill it in and press Import list."],
   "hd.cusedit":["編輯客戶","Edit customer"],
   "hd.cusnew":["新增客戶","New customer"],
   "btn.cusxls":["匯出清單","Export list"],
@@ -22612,7 +22606,6 @@ const I18N={
   "hint.cecodenew":["只能用英數字和 . _ -,至少兩個字。WMS / TMS 模板的 Customer Code 填的就是這個代碼。",
     "Letters, digits, . _ - only, at least two characters. This is the code the WMS / TMS template's Customer Code column takes."],
   "btn.cusimp":["匯入名單","Import list"],
-  "btn.custpl":["匯入模板","Import template"],
   "btn.cussave":["儲存客戶","Save customer"],
   "hint.cecode":["只能用英數字和 . _ -,至少兩個字。改了代碼,指向這個客戶的規則與人工指定會一併更新。",
     "Letters, digits, . _ - only, at least two characters. Change it and every rule and assignment pointing at this customer follows."],
@@ -22748,7 +22741,6 @@ const I18N={
   "o.disabledonly":["僅停用","Disabled only"],
   "th.state":["狀態","State"],
   "hint.onoffdem":["Demand 整體開關在 Demand 分頁;個別期間在那裡刪除,不在此停用。","Demand as a whole switches on the Demand page; individual periods are removed there, not disabled."],
-  "btn.cusprev":["預覽客戶清單","Preview client list"],
   "rt.levels":["1. 層級設定","1. Level Setup"],
   "rt.customers":["1. 客戶設定","1. Client Setup"],
   "rt.rules":["2. 附加費管理","2. Surcharges"],
