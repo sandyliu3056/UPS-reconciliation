@@ -8853,7 +8853,9 @@ function setMe(m){
     cfgReset();
     histLoad();
     renderHist();
-    if(m) cfgPull();
+    /* 雲端那份還沒到之前先說一句 —— 不然層級和費率的頁面是空的,看起來像資料掉了,
+       其實只是還在載。載到了 cfgPull 會把這句蓋掉。 */
+    if(m){ setStatus(L("正在載入帳號設定與帳單歷史…","Loading account settings and invoice history…")); cfgPull(); }
   }
   /* 跟瀏覽器要「永久儲存」:拿到了,空間吃緊時就不會先把這個站的 IndexedDB
      回收掉 —— 帳單歷史就存在那裡。要不到也沒關係,照常。 */
