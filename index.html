@@ -10783,7 +10783,18 @@ function accTemplateFor(fam){
   const suffixed=c=>/\s+(Commercial|Residential)$/i.test(c);
   const hasRate=c=>Object.keys(t).some(k=>k.split("|||")[1]===c);
   const all=members.filter(c=>znStr(c)===zstr).sort(chanSort);
-  const family=all.some(suffixed)?all.filter(c=>suffixed(c)||hasRate(c)):all;
+  /* 一族一律兩列:商業、住宅 —— 設定頁就是這樣並排兩格,大包裹兩邊費率本來就不同,
+     模板要對得上。空運服務的渠道清單只有不帶後綴的名字,以前族裡沒有帶後綴的成員
+     就只印一列「2nd Day Air」,填進去的是不分商住的那一格,畫面上兩格卻是空的。
+     不帶後綴那列只在它已有費率時照舊印出來(計價優先讀它);匯入時兩邊都填了它才會被換掉。 */
+  const bases=[...new Set(all.map(svcOf))];
+  const sides=bases.flatMap(b=>[channelSurchargeLabel(b,false),channelSurchargeLabel(b,true)]);
+  const bares=all.filter(c=>!suffixed(c));
+  const family=[...new Set([...sides,...bares.filter(hasRate)])].sort(chanSort);
+  /* 不帶後綴那列逐項費用判斷:這一項真的有填 Zone 費率才印。以前是整條渠道只要有任何
+     一筆費率就每一項都多印一列,沒填的那些項就多出一列空的。 */
+  const bareRowsFor=fee=>bares.filter(b=>{ const v=t[fee+"|||"+b]; return v&&typeof v==="object"&&Object.keys(v).length>0; });
+  const bareFlatFor=fee=>bares.filter(b=>{ const v=t[fee+"|||"+b]; return v!=null&&typeof v!=="object"; });
   /* 平費那一頁的值取自哪一個成員:不帶後綴的那個有費率就用它(計價也是它
      優先),否則用族裡第一個。 */
   const ch=family.find(c=>!suffixed(c)&&hasRate(c))||family[0]||"";
@@ -10803,7 +10814,7 @@ function accTemplateFor(fam){
 
   const ahsHead=["Fee Type","Shipment Type",...zones.map(z=>"Zone "+z)];
   const ahsRows=[];
-  if(zones.length) for(const fee of zoneFees) for(const c of family){
+  if(zones.length) for(const fee of zoneFees) for(const c of [...sides,...bareRowsFor(fee)].sort(chanSort)){
     const v=t[fee+"|||"+c];
     ahsRows.push([feeDisplay(fee),c,...zones.map(z=>
       (v&&typeof v==="object"&&v[z]!=null&&v[z]!=="")?toNum(v[z]):"")]);
@@ -10820,7 +10831,7 @@ function accTemplateFor(fam){
   /* 全部渠道一起匯出時,平費一條渠道一列(帶 Shipment Type),族裡兩邊值
      不同就各自帶著走,不必再挑一邊。 */
   const flatByChan=[];
-  for(const fee of flatFees) for(const c of family) flatByChan.push([feeDisplay(fee),c,flatAmt(fee,c)]);
+  for(const fee of flatFees) for(const c of [...sides,...bareFlatFor(fee)].sort(chanSort)) flatByChan.push([feeDisplay(fee),c,flatAmt(fee,c)]);
   return {fam, family, zones, ch, ahsHead, ahsRows, flatRows, flatByChan, flatDiff,
           dvRow:accDvRow(svcOfChan(ch))};
 }
@@ -10915,7 +10926,7 @@ function accImportBook(bk){
     const zc=zoneCols(hdr);
     if(fi<0||ci<0||!zc.length) continue;
     sawShape++;
-    let m=0;
+    let m=0; const sidesGot=new Map();   /* fee|||族 → 這次填了哪幾邊 */
     for(const r of rows.slice(1)){
       const fee=feeKey(r[fi]), ch=String(r[ci]||"").trim();
       if(!fee||!ch) continue;
@@ -10925,7 +10936,14 @@ function accImportBook(bk){
       const key=fee+"|||"+ch, box={};
       for(const z of zc){ if(blankCell(r[z.i])) continue; box[z.zone]=toNum(r[z.i]); }
       t[key]=box; m++;
+      if(/\s+(Commercial|Residential)$/i.test(ch)){
+        const fk=fee+"|||"+svcOfChan(ch);
+        (sidesGot.get(fk)||sidesGot.set(fk,new Set()).get(fk)).add(/Residential$/i.test(ch)?"res":"com");
+      }
     }
+    /* 商業、住宅兩邊都填了,不分商住的那一格就讓路 —— 計價優先讀它,留著的話
+       表上兩邊漂亮的價格,實際收的還是看不到的那一格。只填一邊就不動,另一邊還要靠它。 */
+    for(const [fk,got] of sidesGot){ if(got.size===2 && (fk in t)) delete t[fk]; }
     if(m){ n+=m; shapes.push(nm+"("+m+")"); }
   }
 
