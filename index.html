@@ -733,6 +733,22 @@ tr.blocked{opacity:.72}
 /* Settings 頁那一行摘要。不能掛 .savenote —— paintSaveNote() 會把每一個
    .savenote 的文字和 class 一起覆蓋掉,摘要會被存檔提示蓋走。 */
 .affsum{color:var(--muted);font-size:12.5px}
+/* 燃油卡:從別層複製。一層一列:層名、預設 %(大字)、期間數,右邊一顆複製鈕。 */
+.fuelclone{margin-top:14px}
+.fuelclone .fc-hd{font-weight:600;color:var(--accent);font-size:13px;margin:0 0 6px;border-bottom:1.5px solid var(--line);padding-bottom:4px;
+  display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.fuelclone .fc-hd span{font-weight:400;color:var(--muted);font-size:12px}
+.fuelclone .fc-list{display:flex;flex-direction:column;gap:6px;max-width:760px}
+.fuelclone .fc-row{display:grid;grid-template-columns:minmax(120px,1.2fr) 90px minmax(0,2fr) auto;gap:12px;align-items:center;
+  padding:8px 12px;border-radius:10px;background:var(--panel);border:1.5px solid var(--line)}
+.fuelclone .fc-row.me{background:color-mix(in srgb,var(--select) 55%,var(--panel));border-style:dashed}
+.fuelclone .fc-name{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fuelclone .fc-name small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.fuelclone .fc-pct{font-family:"Cascadia Mono",Consolas,monospace;font-size:18px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.fuelclone .fc-pct.none{color:var(--muted);font-size:13px;font-weight:400}
+.fuelclone .fc-sub{font-size:12px;color:var(--muted);line-height:1.5}
+.fuelclone .empty{color:var(--muted);font-size:12.5px}
+@media (max-width:900px){ .fuelclone .fc-row{grid-template-columns:1fr auto} .fuelclone .fc-sub{grid-column:1 / -1} }
 #tDv tr.dvempty td:nth-child(2){color:var(--muted)}
 #tDv tr.sel{background:var(--select)}
 #tDv td .cell.num{width:100%;min-width:72px}
@@ -2412,6 +2428,9 @@ label:has(#newChanOn){display:none !important}
       <button class="act alt" id="bFuelUrl" data-i18n="btn.fuelurl">Look Up UPS Fuel Percentage</button>
     </div>
     <dl class="kv" id="fuelKV" style="margin-top:10px"></dl>
+    <!-- 從別層複製燃油:一層一列,看得到每一層的預設 % 與幾段期間,一顆「複製到本層」。
+         標題與內容都由 renderFuelClone() 生成(換層、換語言都會重畫)。 -->
+    <div class="fuelclone" id="fuelClone"></div>
   </div>
 
   <div class="lf sketch">
@@ -13393,6 +13412,7 @@ function renderConfigTabs(){
   document.querySelectorAll("#app select.chansel").forEach(el=>{
     el.onchange=()=>moveRateRow(el.dataset.key, el.value);
   });
+  if(typeof renderFuelClone==="function") renderFuelClone();
 }
 
 /* 把一列費率搬到另一個 Shipment Type 底下 */
@@ -13938,6 +13958,67 @@ function dpShift(dy,dm){
 function fuelSched(){
   const s=CFG.raw.channel_fuel_schedules||(CFG.raw.channel_fuel_schedules={});
   return s;
+}
+/* ===== 燃油:從別層複製 =====
+   一層的燃油設定由四件事組成:預設 %、全域期間表、各渠道期間表、各渠道自己的 %。
+   複製就是把這四件事整份搬過來,別的費率一律不碰。 */
+const FUEL_KEYS=["fuel_schedule","channel_fuel_schedules","channel_fuel_percents"];
+function fuelSummaryOf(raw){
+  raw=raw||{};
+  const def=String(((raw.global_rules||{}).fuel_percent)??"").trim();
+  const gl=Array.isArray(raw.fuel_schedule)?raw.fuel_schedule.length:0;
+  const cs=raw.channel_fuel_schedules||{};
+  const chN=Object.values(cs).reduce((a,v)=>a+(Array.isArray(v)?v.length:0),0);
+  const cp=raw.channel_fuel_percents||{};
+  const cpN=Object.keys(cp).filter(k=>String(cp[k]==null?"":cp[k]).trim()!=="").length;
+  return {def, ranges:gl+chN, chanPct:cpN, empty:def===""&&!gl&&!chN&&!cpN};
+}
+function fuelSummaryText(s){
+  const out=[];
+  out.push(s.ranges?s.ranges+L(" 段期間"," date range(s)"):L("沒有期間表","no date ranges"));
+  if(s.chanPct) out.push(s.chanPct+L(" 條渠道另有自己的 %"," channel(s) with their own %"));
+  return out.join(" · ");
+}
+function renderFuelClone(){
+  const box=$("#fuelClone"); if(!box||!CFG) return;
+  const o=rlEnsure(); if(!o){ box.innerHTML=""; return; }
+  const hidden=x=>(typeof rlHidden==="function")&&rlHidden(x);
+  const others=o.list.filter(x=>x.id!==o.active&&!hidden(x));
+  const me=o.list.find(x=>x.id===o.active)||{name:rlName(o.active)};
+  const mine=fuelSummaryOf(CFG.raw);
+  const pct=s=>s.def!==""?`<span class="fc-pct">${esc(s.def)}%</span>`:`<span class="fc-pct none">${L("未設","not set")}</span>`;
+  const head=`<div class="fc-hd">${esc(L("從別層複製燃油","Copy fuel from another level"))}<span>${esc(L("整份燃油設定搬過來:預設 %、期間表、各渠道的 %;其他費率不動。","Copies the whole fuel setup: default %, date ranges, per-channel %. Nothing else changes."))}</span></div>`;
+  if(!others.length){
+    box.innerHTML=head+`<div class="empty">${esc(L("目前只有這一層,沒有可複製的來源。","This is the only level — nothing to copy from yet."))}</div>`;
+    return;
+  }
+  box.innerHTML=head+`<div class="fc-list">`
+    +`<div class="fc-row me"><span class="fc-name">${esc(me.name)}<small>${esc(L("本層(正在編輯)","this level (editing)"))}</small></span>${pct(mine)}<span class="fc-sub">${esc(fuelSummaryText(mine))}</span><span></span></div>`
+    +others.map(x=>{ const s=fuelSummaryOf(o.cfg[x.id]);
+      return `<div class="fc-row"><span class="fc-name">${esc(x.name)}</span>${pct(s)}<span class="fc-sub">${esc(fuelSummaryText(s))}</span>`
+        +`<button class="act ghost sm" data-fuelclone="${esc(x.id)}"${s.empty?" disabled title=\""+esc(L("這一層還沒有燃油設定","This level has no fuel settings yet"))+"\"":""}>${esc(L("複製到本層","Copy to this level"))}</button></div>`; }).join("")
+    +`</div>`;
+  box.querySelectorAll("[data-fuelclone]").forEach(b=>{ b.onclick=()=>fuelCloneFrom(b.dataset.fuelclone); });
+}
+async function fuelCloneFrom(id){
+  const o=rlEnsure(); if(!o) return;
+  const src=o.cfg[id], e=o.list.find(x=>x.id===id);
+  if(!src||!e) return;
+  const s=fuelSummaryOf(src), meName=rlName(o.active);
+  const ok=await uiConfirm({title:L("複製燃油設定","Copy fuel settings"),
+    body:L(`把「${e.name}」的燃油(預設 ${s.def||"—"}%、${fuelSummaryText(s)})複製到「${meName}」?本層現有的燃油設定會被覆蓋,其他費率不動。`,
+           `Copy the fuel settings of "${e.name}" (default ${s.def||"—"}%, ${fuelSummaryText(s)}) to "${meName}"? This level's current fuel settings will be replaced; nothing else changes.`),
+    okText:L("複製","Copy")});
+  if(!ok) return;
+  const g=CFG.raw.global_rules||(CFG.raw.global_rules={});
+  g.fuel_percent=((src.global_rules||{}).fuel_percent)??"";
+  for(const k of FUEL_KEYS){ if(src[k]==null) delete CFG.raw[k]; else CFG.raw[k]=JSON.parse(JSON.stringify(src[k])); }
+  CFG=readConfig(CFG.raw); DIRTY=true;
+  renderConfigTabs();
+  if(RATED&&ROWS){ RATED=SHIPS.map(sh=>priceShipment(CFG,sh)); renderRate(); }
+  saveSettings();
+  logAdd("fuel clone", e.name+" -> "+meName);
+  toast(L(`已把「${e.name}」的燃油設定複製到「${meName}」。`,`Fuel settings of "${e.name}" copied to "${meName}".`), true);
 }
 /* =====================================================================
    自訂附加費
