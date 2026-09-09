@@ -11431,8 +11431,8 @@ function openBreakdown(){
   let t=String(($("#trkSearch")||{}).value||"").trim().toUpperCase();
   let viaOrder=null;
   const body=$("#bkdBody");
-  const money2=v=>"$"+(Math.round((v||0)*100)/100).toLocaleString(undefined,
-    {minimumFractionDigits:2,maximumFractionDigits:2});
+  const money2=v=>{ const n=Math.round((v||0)*100)/100; return (n<0?"-$":"$")+Math.abs(n).toLocaleString(undefined,
+    {minimumFractionDigits:2,maximumFractionDigits:2}); };
   const esc2=x=>esc(String(x==null?"":x));
   if(!t){ body.innerHTML=`<div class="note plain">`
       +L("先在上面輸入單號。","Enter a tracking number above first.")+`</div>`;
@@ -16439,7 +16439,11 @@ function reconRun(list){
          收了沒有」,而是「這一家族該收多少、實際收了多少」,差額才補收。
          以前只看「完全沒收」的項目,合併欄一填,整組就被當成收過了:UPS 改收
          的大包裹要 50.90,客戶端只收了 4.50,那 46.40 從此不會出現在補收清單上。 */
-      const heads=Object.values(RECON_GROUPS).filter(d=>!d.auto && d.fees.some(f=>cols.includes(f)));
+      /* 合併欄照整個家族的成員名單找,不照 cols:被 UPS 沖銷成 0 的成員(出貨時收
+         AHS、量過改收 LPS,AHS 那一欄淨額 0)不會出現在 cols 裡,只照 cols 找就看不到
+         WMS 用「Additional Handling Surcharge」那一欄收過錢,退款從此無聲消失。 */
+      const famFees=(REBILL_FAMILIES[+k.slice(1)]||{}).fees||[];
+      const heads=Object.values(RECON_GROUPS).filter(d=>!d.auto && d.fees.some(f=>famFees.includes(f)));
       const paidNames=[];
       let famBilled=0;
       for(const c of cols){
@@ -16478,11 +16482,16 @@ function reconRun(list){
       const rev=F.rev||new Set();
       /* 對整個家族的成員名單查,不是對 cols:被沖掉的欄淨額是 0,
          根本不會出現在 cols 裡。 */
-      const famFees=(REBILL_FAMILIES[+k.slice(1)]||{}).fees||[];
       const swapped=famFees.some(m=>!upsCols.includes(m) && rev.has(m));
-      const coveredByHead=headPaid.length>0 && !swapped;
+      /* 合併欄只涵蓋它自己的成員。WMS 的「額外處理」欄合的是 AHS 的三型,不含大包裹;
+         UPS 收的是大包裹、一型 AHS 都沒收,那一欄和自己的細項欄一樣是名目對不上 ——
+         退還,大包裹照費率補。涵蓋到 UPS 所收成員的合併欄(TMS 的額外處理+大包裹、
+         DAS/偏遠合一欄、簽名合一欄)才算「有收」,差額是毛利。 */
+      const headDef=n=>Object.values(RECON_GROUPS).find(d=>d.head===n);
+      const headMiss=headPaid.filter(n=>{ const d=headDef(n); return !!d && !d.fees.some(f=>upsCols.includes(f)); });
+      const coveredByHead=headPaid.some(n=>!headMiss.includes(n)) && !swapped;
       const refNames=paidOwn.filter(n=>!upsCols.includes(n))
-                     .concat(swapped?headPaid:[]);
+                     .concat(swapped?headPaid:headMiss);
       let backTot=0;
       for(const n of refNames){
         const w=cents(toNum(b[n]));
@@ -16497,6 +16506,8 @@ function reconRun(list){
         items.push(Object.assign({kind:"refund", charge:n, desc:dsc,
           refShort:refundShortOf(revd[0]||n),
           ups:0, billed:w, rate:0, amt:cents(-w), credit:0, creditFrom:[], wms:w, over:0}, base));
+        /* UPS 從頭就沒收這一型(沒有沖銷行可引):說明寫 UPS 實際收的是哪一項。 */
+        if(!dsc) dsc="Not charged by UPS — billed as "+upsCols.join(" / ");
       }
       if(coveredByHead) continue;
       const rows=upsCols.filter(c=>!paidNames.includes(c)).map(mk).sort((x,y)=>y.amt-x.amt);
