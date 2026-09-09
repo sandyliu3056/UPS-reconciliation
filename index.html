@@ -12085,7 +12085,9 @@ function bkdSection(r, wms, name0){
                      : it.kind==="zone"?L("Zone 更正","Zone correction")
                      : it.kind==="miss"?L("漏收","Not billed"):"";
       const rbFuel=cents((wms.items||[]).reduce((a,it)=>a+(it.fuel||0),0));
-      const pct=((wms.items||[]).find(it=>it.fuel>0.004)||{}).fuelPct;
+      /* 燃油可以是負的:退還那一項的燃油也跟著退。以前用 >0.004 判,只有退款時燃油那一列
+         就不見了,合計卻含著它 —— 列出來的數字加不出底下的總數。 */
+      const pct=((wms.items||[]).find(it=>Math.abs(it.fuel||0)>0.004)||{}).fuelPct;
       /* 說明和項目名一樣(或只是它的一部分)就不重複印 —— 整齊為先。 */
       const nk=x=>String(x||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
       /* 整單模式下每一項是某一件的:標出第幾件,同名的項目才看得出是不同的件。 */
@@ -12099,7 +12101,7 @@ function bkdSection(r, wms, name0){
           +(showD?`<span class="bkdsub">${esc2(it.desc)}</span>`:"")
           +`</td><td class="num">${money(it.amt)}</td></tr>`);
       }
-      if(rbFuel>0.004) extra.push(`<tr><td>${L("燃油附加費 ","Fuel Surcharge ")+(pct!=null?esc2(fmtPct2(pct))+"%":"")}</td>`
+      if(Math.abs(rbFuel)>0.004) extra.push(`<tr><td>${L("燃油附加費 ","Fuel Surcharge ")+(pct!=null?esc2(fmtPct2(pct))+"%":"")}</td>`
         +`<td class="num">${money(rbFuel)}</td></tr>`);
       /* 溢收是反方向的錢:掛在應補收合計下面,不併進去。整件只有溢收、沒有
          要補收的時候,這一格就是退款那一格,標題與合計一起換過來 —— 不會出現
@@ -16969,7 +16971,7 @@ function renderRebill(){
     const tl=$("#rebillTiles");
     if(tl){ const noItem=!!(rb&&rb.noItem); tl.hidden=noItem;
       if(!noItem) tl.innerHTML=[
-        [L("應補收","To re-bill"),money(chgSum),totFuel>0.004?L("含燃油附加費 ","incl. fuel ")+money(totFuel):"",false],
+        [L("應補收","To re-bill"),money(chgSum),Math.abs(totFuel)>0.004?L("含燃油附加費 ","incl. fuel ")+money(totFuel):"",false],
         [L("淨額","Net"),money(grand),refSum>0.004?L("應退還 ","to refund ")+money(refSum):(totOver>0.004?L("溢收 ","over-collected ")+money(totOver):""),grand<0],
         [L("項目","Items"),String(items.length),unset?unset+L(" 項費率未設定 → 費率維護"," without a rate → Rate Maintenance"):"",false],
         [L("客戶","Clients"),String(cusN),skip?skip+L(" 筆沒有逐項費用"," row(s) without line fees"):"",false]]
