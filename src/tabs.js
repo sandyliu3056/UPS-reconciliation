@@ -34,7 +34,7 @@ var SECT=[
   {r:"rffuel",   n:["2. Fuel Surcharge","2. 燃油附加費"],      cards:["hd.fuel"]},
   {r:"rfacc",    n:["3. Surcharge Rates","3. 附加費費率"],     cards:["hd.acc"]},
   {r:"rfsize",   n:["4. Dimensional Rules","4. 材積規則"],     cards:["hd.dimf","hd.rulesforce"]},
-  {r:"rfdem",    n:["5. Demand Rates","5. Demand 費率"],       cards:["hd.demrate"]}
+  {r:"rfdem",    n:["5. Demand Surcharge","5. Demand 附加費"], cards:["hd.demand"]}
 ];
 /* 這一張是頁首 —— 說明這一頁屬於右上角選的那一層,還帶著預覽鈕。
    四個子頁都要看得到,不歸任何一組。 */

@@ -14,10 +14,10 @@ const W=dom.window, D=W.document;
 
 /* 重建她那幾個最外層變數,行為與原檔相同 */
 W.SET_GROUPS={general:["setting","code2","sys"],rate:["cus"],
-              cat:["chan","rules","demand"],fill:["ratefill"]};
+              cat:["chan","rules"],fill:["ratefill"]};
 W.RATE_TABS=[].concat(...Object.values(W.SET_GROUPS));
 W.RATE_PAGE={setting:"setting",sys:"setting",code2:"code",cus:"cus",
-             chan:"chan",rules:"rules",demand:"demand",ratefill:"ratefill"};
+             chan:"chan",rules:"rules",ratefill:"ratefill"};
 W.RATE_PER_LEVEL=new W.Set(["ratefill"]);
 W.SET_TAB="ratefill";
 W.LANG=1;
@@ -26,7 +26,7 @@ W.showSetCards=function(){ cardsRan++; };
 let langRan=0;
 W.applyLang=function(){ langRan++; };
 
-const KEYS=["hd.ratefill","hd.baserate","hd.fuel","hd.acc","hd.dimf","hd.rulesforce","hd.demrate"];
+const KEYS=["hd.ratefill","hd.baserate","hd.fuel","hd.acc","hd.dimf","hd.rulesforce","hd.demand"];
 const P=()=>D.getElementById("p-ratefill");
 const keyOf=lf=>{ const h=lf.querySelector(":scope > h3"); if(!h) return "";
   const e=h.querySelector("[data-i18n]"); return e?e.getAttribute("data-i18n"):""; };
@@ -36,7 +36,7 @@ const shown=()=>KEYS.filter(k=>{ const c=card(k); return c&&!c.hidden; });
 console.log('\n[0] \u5957\u4e4b\u524d');
 ok(!!P(), '\u627e\u5230 p-ratefill');
 ok(KEYS.every(k=>!!card(k)), '\u4e03\u5f35\u9762\u677f\u90fd\u5728');
-ok(card("hd.demrate").parentNode===P(),
+ok(card("hd.demand").parentNode===P(),
    'Demand \u76f4\u63a5\u5c31\u5728\u540c\u5c64\uff08markup \u5df2\u88dc\u56de\u7d50\u675f\u6a19\u7c64\uff0c\u4e0d\u518d\u9760 unnest\uff09');
 
 W.eval(fs.readFileSync(path.join(ROOT,'src/tabs.js'),'utf8'));
@@ -46,7 +46,7 @@ await new Promise(r=>{ if(D.readyState!=='loading') return r();
   D.addEventListener('DOMContentLoaded',()=>r()); W.setTimeout(r,500); });
 
 console.log('\n[1] \u642c\u51fa\u4f86');
-ok(card("hd.demrate").parentNode===P(), 'Demand \u642c\u5230\u8ddf DIM \u540c\u5c64');
+ok(card("hd.demand").parentNode===P(), 'Demand \u642c\u5230\u8ddf DIM \u540c\u5c64');
 ok(card("hd.rulesforce").parentNode===P(), '\u5c3a\u5bf8\u9580\u6abb\u4e5f\u642c\u51fa\u4f86');
 ok(KEYS.every(k=>!!card(k)), '\u4e03\u5f35\u4e00\u5f35\u4e5f\u6c92\u5f04\u4e0d\u898b');
 
@@ -78,7 +78,7 @@ ok(shown().join()==="hd.ratefill,hd.acc", '2. \u9644\u52a0\u8cbb');
 W.showSetCards("rfsize");
 ok(shown().join()==="hd.ratefill,hd.dimf,hd.rulesforce", '3. \u5c3a\u5bf8\uff1aDIM + \u9580\u6abb');
 W.showSetCards("rfdem");
-ok(shown().join()==="hd.ratefill,hd.demrate", '4. Demand');
+ok(shown().join()==="hd.ratefill,hd.demand", '4. Demand');
 ok(KEYS.every(k=>!card(k).hidden||k!=="hd.ratefill"), '\u9801\u9996\u90a3\u5f35\u56db\u500b\u5b50\u9801\u90fd\u5728');
 W.showSetCards("");
 ok(shown().length===7, '\u4e0d\u662f\u9019\u4e00\u7d44\u7684\u5c31\u5168\u9732 \u2014\u2014 \u4e0d\u6703\u51fa\u73fe\u4e00\u7247\u7a7a\u767d');

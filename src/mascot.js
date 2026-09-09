@@ -118,7 +118,7 @@ var PROP={
 var PAGE_MASCOT={
   "p-setting": ["cat","ledger"],   "p-code":  ["cat","tag"],
   "p-cus":     ["dog","nametag"],  "p-chan":  ["cat","box"],
-  "p-rules":   ["dog","plus"],     "p-demand":["cat","bolt"],
+  "p-rules":   ["dog","plus"],
   "p-ratefill":["dog","price"],    "p-files": ["cat","invoice"],
   "recon":     ["dog","lens"],     "p-analysis":["cat","chart"],
   "p-hist":    ["dog","calendar"], "p-admin": ["cat","key"],

@@ -92,11 +92,11 @@ ok(px('html.ink .lf>h3')>=19, '\u6bb5\u843d\u6a19\u984c \u2265 19px');
 ok(px('html.ink .nav button')>=14.5, '\u5074\u6b04 \u2265 14.5px');
 
 console.log('\n[7] \u6c92\u640d\u5230\u539f\u672c\u7684\u6771\u897f');
-ok(D.querySelectorAll('.sketch').length===62&&D.querySelectorAll('.sketch-soft').length===16,
-   '62 個 .sketch、16 個 .sketch-soft 都在(多了 Demand 期間視窗)');
-ok(D.querySelectorAll('table').length===33&&D.querySelectorAll('.modalbg').length===27,
-   '\u8868\u683c 32\u3001\u8996\u7a97 26');
-ok(D.querySelectorAll('[data-i18n]').length===609, 'i18n 標記 609 個(匯入頁歸檔清單與跑帳單動畫;Demand 頁拿掉刪除所選與搜尋)');
+ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft').length===16,
+   '61 個 .sketch、16 個 .sketch-soft 都在(Demand 卡搬進費率維護,舊費率表卡拿掉)');
+ok(D.querySelectorAll('table').length===32&&D.querySelectorAll('.modalbg').length===27,
+   '表格 32、視窗 27');
+ok(D.querySelectorAll('[data-i18n]').length===602, 'i18n 標記 602 個(匯入頁歸檔清單與跑帳單動畫;Demand 搬進費率維護,舊費率表卡與分頁入口拿掉)');
 
 console.log('\n[8] \u7d19\u7684\u984f\u8272');
 ok(/--paper-mask:url\(/.test(face), '\u6709\u4e00\u5f35\u5c08\u9580\u7576\u906e\u7f69\u7684\u5642\u9ede');
