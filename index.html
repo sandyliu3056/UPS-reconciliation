@@ -837,8 +837,9 @@ tr.blocked{opacity:.72}
 .dstat.on{border-color:var(--run2);background:color-mix(in srgb,var(--run2) 10%,var(--stripe))}
 .dstat.on b{color:var(--run2);font-family:inherit;font-size:14px}
 .dstat.off b{font-family:inherit;font-size:14px;color:var(--muted)}
-#p-demand .subtabs{margin-top:14px}
-#p-demand .subpanel{padding:12px 14px 14px}
+#demandCard .subtabs{margin-top:14px}
+#demandCard>h3 .demtoggle{margin-left:auto;font-weight:400;display:inline-flex;align-items:center;gap:8px}
+#demandCard .subpanel{padding:12px 14px 14px}
 #tDemand tbody tr:hover td{background:var(--select)}
 #tDemand th{white-space:nowrap}
 .demdate{display:inline-flex;align-items:center;gap:4px}
@@ -1882,7 +1883,6 @@ label:has(#newChanOn){display:none !important}
   <button role="tab" aria-selected="false" data-p="setting" class="display" data-i18n="tab.setting">Rate levels</button>
   <button role="tab" aria-selected="false" data-p="rules"  class="display" data-i18n="tab.rules">Surcharge Setup</button>
   <button role="tab" aria-selected="false" data-p="chan"   class="display" data-i18n="tab.chan">Channels</button>
-  <button role="tab" aria-selected="false" data-p="demand" class="display" data-i18n="tab.demand">Demand Surcharge</button>
   <button role="tab" aria-selected="false" data-p="code"   class="display" data-i18n="tab.code">Code Lookup</button>
   <button role="tab" aria-selected="false" data-p="ratefill" class="display" data-i18n="tab.ratefill">Rate Entry</button>
   <!-- 期別卡:現在跑的是哪一期、用哪一層費率、走到哪一步。三顆燈可以點,點了就跳到那一步。 -->
@@ -1912,7 +1912,6 @@ label:has(#newChanOn){display:none !important}
   <div class="setnav-tabs" data-g="cat" hidden>
     <button data-r="chan"    data-i18n="rt.chan">1. Channels</button>
     <button data-r="rules"   data-i18n="rt.rules">2. Surcharges</button>
-    <button data-r="demand"  data-i18n="rt.demand">3. Demand Surcharge</button>
   </div>
   <div class="setnav-tabs" data-g="fill" hidden>
     <button data-r="ratefill" data-i18n="rt.ratefill">1. Rate Entry</button>
@@ -2602,32 +2601,13 @@ label:has(#newChanOn){display:none !important}
   </div>
 
 
-  <div class="lf sketch">
-    <h3 class="display"><span class="em">⚡</span><span data-i18n="hd.demrate">Demand surcharge rates</span></h3>
-    <p class="hint" style="margin:0 0 9px;max-width:78ch" data-i18n="hint.demrate">Periods are defined under 03 → 3. Demand Surcharge; each level prices them here.</p>
-    <div class="subtabs" id="demRateTabs">
-      <button data-dr="pkg" aria-selected="true"  data-i18n="dt.pkg">Package surcharges</button>
-      <button data-dr="svc" aria-selected="false" data-i18n="dt.svc">Service level rates</button>
-    </div>
-    <div class="tablewrap" style="max-height:40vh"><table id="tDemRate"><thead></thead><tbody></tbody></table></div>
-    <div class="row" style="margin-top:10px">
-      <button class="act" id="bDemRateSave" data-i18n="btn.save">Save Settings</button>
-      <span class="savenote" id="demRateMsg"></span>
-    </div>
-  </div>
-</section>
-
-
-<!-- ==================== Demand ==================== -->
-<section class="page" id="p-demand">
-  <div class="lf sketch">
-    <div class="row" style="justify-content:space-between;align-items:flex-start">
-      <h3 class="display" style="margin:0"><span class="em">⚡</span>
-        <span data-i18n="hd.demand">Demand Surcharge</span>
-        <span class="pill ok" data-i18n="pill.shared">Account-wide</span></h3>
-      <span><label class="inlab" data-i18n="lb.applydemand">Apply to repricing</label>
-        <select id="demandOn"><option value="off">Off</option><option value="on">On</option></select></span>
-    </div>
+  <div class="lf sketch" id="demandCard">
+    <!-- h3 要是面板的直屬子層:費率維護的子分頁靠 .lf > h3 的 data-i18n 認卡。開關掛在標題右端。 -->
+    <h3 class="display"><span class="em">⚡</span>
+      <span data-i18n="hd.demand">Demand Surcharge</span>
+      <span class="pill ok" data-i18n="pill.demmix">Periods shared · amounts per level</span>
+      <span class="demtoggle"><label class="inlab" data-i18n="lb.applydemand">Apply to repricing</label>
+        <select id="demandOn"><option value="off">Off</option><option value="on">On</option></select></span></h3>
     <div class="demsum" id="demandSum"></div>
     <div class="subtabs" id="demandTabs">
       <button data-d="pkg" aria-selected="true"  data-i18n="dt.pkg">Package surcharges</button>
@@ -2651,6 +2631,7 @@ label:has(#newChanOn){display:none !important}
     <p class="hint" style="margin:10px 0 0;max-width:78ch" data-i18n="hint.demshare">Periods, categories and mapping are shared by every rate level; amounts belong to each level.</p>
   </div>
 </section>
+
 
 <!-- ==================== Invoice History ==================== -->
 <section class="page" id="p-hist">
@@ -7010,7 +6991,7 @@ const ADMIN_ONLY=["admin"];
 /* 費率設定的六個內頁不再各佔一顆頂層頁籤 —— 它們現在掛在「Rate Configuration」
    底下那條列上。程式和頁面都原封不動,只是不從上排進去。
    「cus」不在這裡:那一顆是每月要用的對帳,留在上排。 */
-const HIDDEN_TABS=["setting","rules","chan","demand","code","ratefill","files","wmsdata","cus","clinv"];
+const HIDDEN_TABS=["setting","rules","chan","code","ratefill","files","wmsdata","cus","clinv"];
 /* 對帳作業的三步:同一顆左欄按鈕底下的三個頁面。按鈕記的是上次停在哪一步。 */
 const RECON_STEPS=["files","wmsdata","cus","clinv"];
 let RECON_LAST="files";
@@ -9292,14 +9273,14 @@ const TAB_KEY="ups_recon_tab";
 const SET_GROUPS={ sys:["sys"],
                    general:["setting","code2"],
                    rate:["cus"],
-                   cat:["chan","rules","demand"],
+                   cat:["chan","rules"],
                    fill:["ratefill"] };
 const SET_ENTRANCES=Object.keys(SET_GROUPS);
 const RATE_TABS=[].concat(...Object.values(SET_GROUPS));
 /* code2 = 費用代碼,跟 UPS 代碼查詢同住在 p-code;sys 與 setting 共用
    p-setting,由 showSetCards 決定露哪幾張卡。 */
 const RATE_PAGE={setting:"setting", sys:"setting", code2:"code", cus:"cus",
-                 chan:"chan", rules:"rules", demand:"demand", ratefill:"ratefill"};
+                 chan:"chan", rules:"rules", ratefill:"ratefill"};
 const setGroupOf=k=>{
   for(const g of SET_ENTRANCES) if(SET_GROUPS[g].includes(k)) return g;
   return "general";
@@ -13429,7 +13410,6 @@ function renderConfigTabs(){
   if(typeof paintResiSrcSum==="function") paintResiSrcSum();
   if($("#resiApiBox")) $("#resiApiBox").style.display=(_rs==="api")?"":"none";
   renderDemand();
-  if(typeof renderDemRate==="function") renderDemRate();
   if(typeof renderAccMgr==="function") renderAccMgr();
   if(typeof renderOnOff==="function") renderOnOff();
   if(typeof fillLvlSync==="function") fillLvlSync();
@@ -13678,7 +13658,7 @@ function demandDlgOpen(i){
     :L("一件只收一項:OVR 優先、其次 LPS、最後 AHS。空格 = 不收。","One per parcel: OVR first, then LPS, then AHS. Blank = not charged.");
   /* 對帳站分層級:期間本身全帳號共用,金額是「正在編輯的這一層」的;其他層到 04 填。 */
   if(typeof rlActive==="function"&&typeof rlName==="function"){ const lv=rlName(rlActive());
-    if(lv) $("#demDlgHint").textContent+=" "+L("金額填的是層級「"+lv+"」的;其他層到「04 渠道與附加費費率」填。","Amounts here are for level “"+lv+"”; other levels fill theirs under 04."); }
+    if(lv) $("#demDlgHint").textContent+=" "+L("金額填的是層級「"+lv+"」的;要填別層,先在頁首切換層級。","Amounts here are for level “"+lv+"”; switch the level at the top to price another."); }
   $("#demDlgCancel").textContent=L("取消","Cancel"); $("#demDlgSave").textContent=L("儲存","Save");
   demandDlgNote(""); demandDlgStatus();
   $("#demDlgBg").classList.add("on");
@@ -13831,50 +13811,6 @@ demandBind();
 
 /* 日期挑選器。桌面版是自己畫的月曆,不是系統控制項 ——
    瀏覽器原生的 date input 每個系統長得都不一樣,對不上這套外觀。 */
-
-/* ===== 04:Demand 費率(分層) ===== */
-let DEMRATE_TAB="pkg";
-function renderDemRate(){
-  const tbl=$("#tDemRate"); if(!tbl||!CFG) return;
-  const d=demandCfg(), pkg=(DEMRATE_TAB==="pkg");
-  const groups=d.service_group_names.slice();
-  const H=(zh,en)=>`<th>${esc(L(zh,en))}</th>`;
-  const amts=pkg?["AHS","LPS","OVR"]:groups;
-  tbl.querySelector("thead").innerHTML=`<tr>${H("開始","Start")}${H("結束","End")}${pkg?H("適用類別","Category"):""}`
-    +amts.map(a=>`<th class="num" style="width:130px">${esc(a)}</th>`).join("")+`</tr>`;
-  const rows=pkg?d.special_rows:d.service_rows;
-  tbl.tBodies[0].innerHTML=rows.length
-    ? rows.map((r,i)=>`<tr><td class="mono">${esc(r.start||"")}</td><td class="mono">${esc(r.end||"")}</td>`
-        +(pkg?`<td>${r.GROUP?`<span class="tag">${esc(r.GROUP)}</span>`:esc(L("全部","All"))}</td>`:"")
-        +amts.map(a=>`<td class="num"><input class="cell num demrate" data-i="${i}" data-k="${esc(a)}"
-            style="width:110px" value="${esc(r[a]??"")}" placeholder="${esc(L("待填","blank"))}"></td>`).join("")
-        +`</tr>`).join("")
-    : `<tr><td colspan="${amts.length+3}" class="empty">${esc(L("還沒有期間 —— 請到「03 → 3. Demand Surcharge」新增。",
-        "No periods defined — add them under 03 → 3. Demand Surcharge."))}</td></tr>`;
-  tbl.querySelectorAll("input.demrate").forEach(e=>e.oninput=()=>{
-    const rs=pkg?demandCfg().special_rows:demandCfg().service_rows;
-    if(rs[+e.dataset.i]) rs[+e.dataset.i][e.dataset.k]=e.value.trim();
-    DIRTY=true;
-  });
-}
-function bindDemRate(){
-  const tabs=$("#demRateTabs");
-  if(tabs) tabs.onclick=e=>{
-    const b=e.target.closest("button[data-dr]"); if(!b) return;
-    DEMRATE_TAB=b.dataset.dr;
-    tabs.querySelectorAll("button").forEach(x=>
-      x.setAttribute("aria-selected",String(x===b)));
-    renderDemRate();
-  };
-  $("#bDemRateSave") && ($("#bDemRateSave").onclick=()=>{
-    CFG=readConfig(CFG.raw);
-    const ok=saveSettings();
-    const m=$("#demRateMsg");
-    if(m){ m.textContent=ok===false?L("儲存失敗。","Could not save."):L("已儲存。","Saved.");
-           m.className="savenote"+(ok===false?" bad":""); }
-    if(RATED&&SHIPS){ RATED=SHIPS.map(x=>priceShipment(CFG,x)); renderRate(); }
-  });
-}
 
 /* ===== 各層視角的小工具:清單頁的 n/N 徽章與各處預覽 ===== */
 function lvlListAll(){ const o=rlStore(); return o?o.list.slice():[{id:"L1",name:L("預設","Default")}]; }
@@ -23182,6 +23118,7 @@ const I18N={
   "rt.ratefill":["1. 費率填寫","1. Rate Entry"],
   "pill.shared":["不分層 · 全帳號共用","Account-wide"],
   "pill.perlvl":["分層 · 每層一份","Per level"],
+  "pill.demmix":["期間共用 · 金額分層","Periods shared · amounts per level"],
   "hd.accmgr":["附加費管理","Surcharge Management"],
   "hint.accmgr":["這裡決定「有哪些附加費」。新增一項即同步建立於所有費率層級;各層費率到「04 渠道與附加費費率」填寫。","Which surcharges exist. Adding one creates it in every rate level at once; each level fills its own rates under 04 Channel & Surcharge Rates."],
   "btn.addacc":["新增附加費","Add surcharge"],
@@ -23196,14 +23133,14 @@ const I18N={
   "hint.acczone":["依 Zone 級距的附加費沿用各渠道自己的 Zone —— 與基本運費同一套 Zone,只是費率不同。","Zone-scaled surcharges reuse each channel's own zones — the same zones as the base rates, only the rates differ."],
   "hd.ratefill":["費率維護","Rate Maintenance"],
   "lb.rfnow":["正在編價","Pricing"],
-  "hint.rfshort":["這一頁只填錢。有哪些項目由目錄決定。","This page only sets the money. Which items exist is decided in the catalog."],
+  "hint.rfshort":["這一頁填的是各層的金額;有哪些項目由目錄決定。Demand 的期間與對應也在這裡管。","This page sets each level's money; which items exist is decided in the catalog. Demand periods and mapping are managed here too."],
   "btn.fillprev":["預覽本層費率","Preview this level's rates"],
   "hd.baserate":["渠道基本運費","Channel base rates"],
   "hd.demrate":["Demand 附加費費率","Demand surcharge rates"],
   "hint.demrate":["期間在「03 → 3. Demand Surcharge」定義;各層在這裡填費率。","Periods are defined under 03 → 3. Demand Surcharge; each level prices them here."],
   "btn.chanprev":["預覽各層費率","Preview rates by level"],
   "btn.demprev":["預覽各層費率","Preview rates by level"],
-  "hint.demshare":["期間、類別、渠道對應為所有層級共用;金額屬於各層 —— 這裡填的是目前層級的,其他層到「04 渠道與附加費費率」填。","Periods, categories and channel mapping are shared by every rate level; amounts belong to each level — what you enter here is the current level's, other levels fill theirs under 04 Channel & Surcharge Rates."],
+  "hint.demshare":["期間、類別、渠道對應是所有層級共用;金額屬於各層,填的是上面選的這一層。","Periods, categories and channel mapping are shared by every level; amounts belong to each level — you are pricing the level selected above."],
   "btn.lvlprev":["預覽此層","Preview this level"],
   "lb.sort":["排序","Sort"],
   "o.created":["依建立順序","By creation"],
@@ -25079,7 +25016,7 @@ step("auth",()=>{
   bindUserAdmin();
   bindCustomers();
   bindLevels(); bindAsk();
-  bindAccMgr(); bindOnOff(); bindDemRate(); bindPagePreviews();
+  bindAccMgr(); bindOnOff(); bindPagePreviews();
   bindRecon();
   bindAnalysis();
   bindGap();
@@ -25444,7 +25381,7 @@ var SECT=[
   {r:"rffuel",   n:["2. Fuel Surcharge","2. 燃油附加費"],      cards:["hd.fuel"]},
   {r:"rfacc",    n:["3. Surcharge Rates","3. 附加費費率"],     cards:["hd.acc"]},
   {r:"rfsize",   n:["4. Dimensional Rules","4. 材積規則"],     cards:["hd.dimf","hd.rulesforce"]},
-  {r:"rfdem",    n:["5. Demand Rates","5. Demand 費率"],       cards:["hd.demrate"]}
+  {r:"rfdem",    n:["5. Demand Surcharge","5. Demand 附加費"], cards:["hd.demand"]}
 ];
 /* 這一張是頁首 —— 說明這一頁屬於右上角選的那一層,還帶著預覽鈕。
    四個子頁都要看得到,不歸任何一組。 */
@@ -25660,8 +25597,7 @@ var RENAME={
   "rt.customers":["1. 客戶名錄",       "1. Customer Directory"],
   /* 03 */
   "rt.chan":    ["1. 渠道",            "1. Channels"],
-  "rt.rules":   ["2. 附加費目錄",      "2. Surcharge Catalog"],
-  "rt.demand":  ["3. Demand 期間",     "3. Demand Periods"]
+  "rt.rules":   ["2. 附加費目錄",      "2. Surcharge Catalog"]
 };
 function boot(){
   if(typeof I18N==="undefined") return;
@@ -25794,7 +25730,7 @@ var PROP={
 var PAGE_MASCOT={
   "p-setting": ["cat","ledger"],   "p-code":  ["cat","tag"],
   "p-cus":     ["dog","nametag"],  "p-chan":  ["cat","box"],
-  "p-rules":   ["dog","plus"],     "p-demand":["cat","bolt"],
+  "p-rules":   ["dog","plus"],
   "p-ratefill":["dog","price"],    "p-files": ["cat","invoice"],
   "recon":     ["dog","lens"],     "p-analysis":["cat","chart"],
   "p-hist":    ["dog","calendar"], "p-admin": ["cat","key"],
