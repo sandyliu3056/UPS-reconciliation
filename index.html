@@ -78,8 +78,9 @@ table,table *,input,select,.tablewrap{filter:none !important}
   color:var(--titlefill,var(--tab));
   -webkit-text-stroke:var(--titlestroke,0) var(--tab);
   paint-order:stroke fill}
-.titlebar .devby{font-size:10.5px;letter-spacing:2px;opacity:.6;margin-left:20px}
-.titlebar .devby{cursor:help}
+/* 署名放在右下角的狀態列,不在標題列。 */
+.statusbar{display:flex;align-items:center;gap:14px}
+.statusbar .devby{font-size:10.5px;letter-spacing:2px;opacity:.6;margin-left:auto;cursor:help;white-space:nowrap}
 .titlebar .ctrls{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
 .titlebar select{font:inherit;font-size:11.5px;background:transparent;color:var(--tab);
   border:1px solid var(--tab);border-radius:5px;padding:3px 7px;cursor:pointer;opacity:.85;
@@ -1598,7 +1599,7 @@ html.ink .subhd{font-family:var(--titlefam);font-size:16.5px}
 html.ink .nav button{font-size:14.5px}
 html.ink .nav .navgrp{font-size:11.5px;letter-spacing:.1em}
 html.ink .titlebar #appTitle{letter-spacing:1.5px;font-size:26px}
-html.ink .titlebar .devby{font-size:11.5px;letter-spacing:1px}
+html.ink .statusbar .devby{font-size:11px;letter-spacing:1.5px}
 html.ink .titlebar select,html.ink .titlebar button{font-size:12.5px}
 html.ink #who{font-size:13px}
 html.ink button.act,html.ink a.act{font-size:15px}
@@ -1706,7 +1707,7 @@ html.ink .titlebar select,
 html.ink .titlebar button{color:var(--chrome-ink);border-color:var(--chrome-ink);opacity:.92}
 html.ink .titlebar select:hover,
 html.ink .titlebar button:hover{opacity:1}
-html.ink .titlebar .devby{opacity:.7}
+html.ink .statusbar .devby{opacity:.7}
 html.ink .bigclock #clkSub{opacity:.78}
 
 html.ink .nav button{color:var(--chrome-ink);opacity:1}
@@ -1827,7 +1828,6 @@ label:has(#newChanOn){display:none !important}
 
 <div class="titlebar">
   <b class="display" id="appTitle">UPS RECONCILIATION</b>
-  <span class="devby" id="appBy">DEVELOPED BY SANDY LIU</span>
   <div class="ctrls">
     <select id="langSel"  title="Language"></select>
     <select id="zoomSel"  title="Display size"></select>
@@ -3938,7 +3938,7 @@ label:has(#newChanOn){display:none !important}
   </div>
 </div>
 
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBy">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
