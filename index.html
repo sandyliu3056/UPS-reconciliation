@@ -15934,6 +15934,7 @@ function reconRun(list){
     let upsWt=0, wtN=0, upsId=null, fuelPct=null, sccRate=null, zoneRate=null, zoneNote="", zoneAcc=null, zoneOld="", zoneNew="";
     let usedArch=false;
     const pieceFees=new Map();       /* 每一件各自的 UPS 費用(照 Consolidated 分欄),補收拆件用 */
+    const pieceUps=new Map();        /* 每一件自己的帳單識別欄(尺寸、重量、Zone):匯出一件一列時用它,不用整單第一件的 */
     for(const t of e.trks){
       const s=byTrk.get(t);
       if(!s){ missTrk.push(t); continue; }
@@ -15945,7 +15946,9 @@ function reconRun(list){
       for(const l of (s.allLines||[])){ const d=l.invDate?(normYmd(l.invDate)||String(l.invDate)):""; if(d){ invDates.add(d); break; } }
       cost+=toNum(s.upsTotal);
       /* 帳單上的識別欄(尺寸、重量、Zone、渠道),匯出明細照 Consolidated 列。 */
-      if(!upsId) upsId=consIdentityOf(s.allLines||[]);
+      const idT=consIdentityOf(s.allLines||[]);
+      if(!upsId) upsId=idT;
+      pieceUps.set(reconTrk(t), idT);
       /* UPS 收多少不需要費率表:每一行照 Consolidated 的分欄歸位,先收下。 */
       const cf=consFeesOf(s.allLines||[]);
       pieceFees.set(reconTrk(t), cf.fees||{});
@@ -16040,7 +16043,7 @@ function reconRun(list){
     /* 計費重量只記錄、不核對:帳單上的是合約計費重量,向客戶收的重量本來
        就不必一樣。兩個數字並排放在匯出的 Orders 分頁,給人參考。 */
     const o={ln:e.ln, order:e.order, cus:e.cus, date:e.date||(upsId&&upsId.date)||"", carried:e.carried||null,
-             src:(e.src||RECON_SRC)==="TMS"?"TMS":"WMS", sib:!!e.sib, pieceFees,
+             src:(e.src||RECON_SRC)==="TMS"?"TMS":"WMS", sib:!!e.sib, pieceFees, pieceUps,
              trks:e.trks.slice(), ref1:e.ref1||(upsId&&upsId.ref1)||"", ref2:e.ref2||(upsId&&upsId.ref2)||"",
              ups:upsId,
              zone:String(e.zone||""), upsZone, zoneMis,
@@ -16315,11 +16318,11 @@ function reconRun(list){
         let dsc=(desc[n]||[]).join(" / ");
         if(!dsc) dsc=revd.map(m=>(desc[m]||[]).join(" / ")).filter(Boolean).join(" / ")
                      || revd.join(" / ");
+        /* UPS 從頭就沒收這一型(沒有沖銷行可引):說明寫 UPS 實際收的是哪一項。 */
+        if(!dsc) dsc="Not charged by UPS — billed as "+upsCols.join(" / ");
         items.push(Object.assign({kind:"refund", charge:n, desc:dsc,
           refShort:refundShortOf(revd[0]||n),
           ups:0, billed:w, rate:0, amt:cents(-w), credit:0, creditFrom:[], wms:w, over:0}, base));
-        /* UPS 從頭就沒收這一型(沒有沖銷行可引):說明寫 UPS 實際收的是哪一項。 */
-        if(!dsc) dsc="Not charged by UPS — billed as "+upsCols.join(" / ");
       }
       if(coveredByHead) continue;
       const rows=upsCols.filter(c=>!paidNames.includes(c)).map(mk).sort((x,y)=>y.amt-x.amt);
@@ -16921,7 +16924,8 @@ async function reconExport(){
   };
   const why=b=>b===RL_NONE?"NOT PRICED — no rate level assigned"
              :b===RL_GONE?"NOT PRICED — rate level deleted":"";
-  const lvl=x=>x.block?"":(x.level?cusLevelLabel(x.level):"");
+  /* 沒指派層級的客戶寫出來,不留白 —— 空格看起來像漏了資料;層級被刪的 cusLevelLabel 會自己註明。 */
+  const lvl=x=>x.block===RL_NONE?"(not assigned)":(x.level?cusLevelLabel(x.level):(x.block?"":""));
 
   /* ---- Summary:一個客戶一列 ---- */
   const sumCols=[["Customer Code","id"],["Customer Name","id"],["Rate Level","id"],["Repricing Status","id"],
@@ -17087,8 +17091,19 @@ async function reconExport(){
        金額一律帶 $、沒有的寫 $0.00,整欄可以直接加總;合併欄的退款獨立一欄
        「Refund」(負數);Fuel、Total 收尾。金額 0 的項目(費率未設定等)不佔格。 ---- */
   const rb=r.rebill||{items:[]};
+  /* 補收清單從拆件那一步起就是一個追蹤號一列;一票多件的單子要用任何一件的追蹤號
+     都找得到它,不然那幾列的層級、渠道、Zone、尺寸全是空白。件自己的尺寸重量在
+     pieceUps 裡(整單只留第一件的 ups)。 */
   const ordInfo=new Map();
-  for(const o2 of (r.orders||[])) ordInfo.set((o2.trks||[]).join(", "), o2);
+  for(const o2 of (r.orders||[])){
+    ordInfo.set((o2.trks||[]).join(", "), o2);
+    for(const t of (o2.trks||[])){ const k=String(t||"").trim(); if(k && !ordInfo.has(k)) ordInfo.set(k, o2); }
+  }
+  const upsOf=(o2,trk)=>{
+    const pu=o2&&o2.pieceUps;
+    const hit=pu&&typeof pu.get==="function"&&(pu.get(String(trk||"").trim())||(typeof reconTrk==="function"&&pu.get(reconTrk(trk))));
+    return hit||(o2&&o2.ups)||{};
+  };
   const rbColOf=it=>(it.kind==="refund" && gs.some(g=>g.head===it.charge))
     ?((it.refShort?it.refShort+" ":"")+"Refund"):it.charge;
   const rbByOrd=new Map();
@@ -17114,11 +17129,12 @@ async function reconExport(){
     .concat(rbCols.map(n=>[n,DIFH]))
     .concat([["Fuel",DIFH],["Total",DIFH]]).map(([n,f])=>dh(n,f));
   const rbRows=rbOrders.map(o=>{
-    const o2=ordInfo.get(o.trk)||{}, u2=o2.ups||{};
+    const o2=ordInfo.get(o.trk)||{}, u2=upsOf(o2,o.trk);
     return [o.cus, cusNameOf(o.cus), lvl(o2), o.order, o.trk, dcell(o.invDate),
-      dcell(o2.date||""), String(o2.sysChan||o2.chan||u2.chan||""), zoneCell(o2.upsZone||u2.zone||""),
+      dcell(u2.date||o2.date||""), String(o2.sysChan||o2.chan||u2.chan||""), zoneCell(u2.zone||o2.upsZone||""),
       dimTxt(u2.dimsC), dimTxt(u2.dimsA), wt0(u2.entered),
-      (o2.upsWt!==""&&o2.upsWt!=null)?wt0(o2.upsWt):wt0(u2.billed)]
+      /* 整單的計費重是各件相加;一件一列時寫這一件自己的。 */
+      ((o2.trks||[]).length<=1 && o2.upsWt!==""&&o2.upsWt!=null)?wt0(o2.upsWt):wt0(u2.billed)]
       .concat(rbCols.map(n=>dm$(o.amt[n]||0)))
       .concat([dm$(o.fuel), dm$(o.total)]);
   });
@@ -17150,10 +17166,10 @@ async function reconExport(){
     if(!sorted.length) continue;
     const rows=[]; let sum=0;
     for(const it of sorted){
-      const o2=ordInfo.get(it.trk)||{}, u2=o2.ups||{};
+      const o2=ordInfo.get(it.trk)||{}, u2=upsOf(o2,it.trk);
       const idc=[String(code||""), dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"",
         dimTxt(u2.dimsC), dimTxt(u2.dimsA), wt0(u2.entered),
-        (o2.upsWt!==""&&o2.upsWt!=null)?wt0(o2.upsWt):wt0(u2.billed)];
+        ((o2.trks||[]).length<=1 && o2.upsWt!==""&&o2.upsWt!=null)?wt0(o2.upsWt):wt0(u2.billed)];
       rows.push(idc.concat([it.charge, it.desc||"", dc(it.amt)])); sum=cents(sum+it.amt);
       if(Math.abs(it.fuel)>0.004){ rows.push(idc.concat(["Fuel Surcharge", it.charge+" @ "+fmtPct2(it.fuelPct)+"%", dc(it.fuel)])); sum=cents(sum+it.fuel); }
     }
