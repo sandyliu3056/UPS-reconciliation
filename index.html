@@ -16206,7 +16206,7 @@ function reconRun(list){
         const billedAmt=bw2==null?0:cents(toNum(bw2));
         if(Math.abs(billedAmt)>0.004){
           items.push(Object.assign({kind:"refund", charge:bn, desc:zn+" — reversed",
-            refShort:refundShortOf(nm),
+            refShort:refundShortOf(nm), refCol:nm,
             ups:0, billed:billedAmt, rate:0, amt:cents(-billedAmt), credit:0, creditFrom:[], wms:billedAmt, over:0},
             base, zOldTxt?{zone:zOldTxt}:{}));
         }
@@ -16349,7 +16349,7 @@ function reconRun(list){
         /* UPS 從頭就沒收這一型(沒有沖銷行可引):說明寫 UPS 實際收的是哪一項。 */
         if(!dsc) dsc=upsCols.join(" / ")+" billed instead — "+n+" not on the UPS invoice";
         items.push(Object.assign({kind:"refund", charge:n, desc:dsc,
-          refShort:refundShortOf(revd[0]||n),
+          refShort:refundShortOf(revd[0]||n), refCol:revd[0]||"",
           ups:0, billed:w, rate:0, amt:cents(-w), credit:0, creditFrom:[], wms:w, over:0}, base));
       }
       const rows=upsCols.filter(c=>!paidNames.includes(c) && !coveredMembers.has(c)).map(mk).sort((x,y)=>y.amt-x.amt);
@@ -17135,8 +17135,17 @@ async function reconExport(){
     const hit=pu&&typeof pu.get==="function"&&(pu.get(String(trk||"").trim())||(typeof reconTrk==="function"&&pu.get(reconTrk(trk))));
     return hit||(o2&&o2.ups)||{};
   };
-  const rbColOf=it=>(it.kind==="refund" && gs.some(g=>g.head===it.charge))
-    ?((it.refShort?it.refShort+" ":"")+"Refund"):it.charge;
+  /* 退款一律寫成負數、放在那一項自己的欄裡,不另開「Refund」欄:合併欄的退款寫在
+     被沖銷的那一項的欄(和 UPS 帳單對得起來);沒有沖銷行可對的(UPS 從頭沒收那一型)
+     就放進這一組裡表上已經有的那一欄,再不然是這一組的第一項。 */
+  const knownCols=new Set(rb.items.filter(it=>it.kind!=="refund"&&Math.abs(it.amt)>0.004).map(it=>it.charge));
+  const rbColOf=it=>{
+    if(it.kind!=="refund") return it.charge;
+    const g=gs.find(x=>x.head===it.charge);
+    if(!g) return it.charge;
+    if(it.refCol && AUD_FEES.includes(it.refCol)) return it.refCol;
+    return g.fees.find(f=>knownCols.has(f)) || g.fees.find(f=>AUD_FEES.includes(f)) || g.fees[0] || it.charge;
+  };
   const rbByOrd=new Map();
   for(const it of rb.items){
     const k=it.cus+" "+it.order+" "+it.trk;
