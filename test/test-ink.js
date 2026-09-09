@@ -96,7 +96,7 @@ ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft')
    '61 個 .sketch、16 個 .sketch-soft 都在(Demand 卡搬進費率維護,舊費率表卡拿掉)');
 ok(D.querySelectorAll('table').length===32&&D.querySelectorAll('.modalbg').length===27,
    '表格 32、視窗 27');
-ok(D.querySelectorAll('[data-i18n]').length===602, 'i18n 標記 602 個(匯入頁歸檔清單與跑帳單動畫;Demand 搬進費率維護,舊費率表卡與分頁入口拿掉)');
+ok(D.querySelectorAll('[data-i18n]').length===603, 'i18n 標記 603 個(帳單歷史多一欄追蹤號碼;匯入頁歸檔清單與跑帳單動畫;Demand 搬進費率維護,舊費率表卡與分頁入口拿掉)');
 
 console.log('\n[8] \u7d19\u7684\u984f\u8272');
 ok(/--paper-mask:url\(/.test(face), '\u6709\u4e00\u5f35\u5c08\u9580\u7576\u906e\u7f69\u7684\u5642\u9ede');

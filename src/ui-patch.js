@@ -35,7 +35,9 @@ document.addEventListener("mousedown",function(e){
 document.addEventListener("keydown",function(e){
   if(e.key!=="Escape") return;
   var bg=topModal(); if(!bg) return;
-  var x=qs(".modalhd .mx",bg); if(!x) return;
+  /* 標題列可能有 ⤢ 和 ✕ 兩顆 .mx:Esc 要走 ✕,不然按下去只是把視窗放大。 */
+  var xs=qsa(".modalhd .mx",bg); if(!xs.length) return;
+  var x=xs.filter(function(b){ return /[✕×]/.test(b.textContent||""); })[0]||xs[xs.length-1];
   e.preventDefault(); e.stopPropagation();
   x.click();
   if(opener&&document.contains(opener)&&!opener.closest(".modalbg")){
