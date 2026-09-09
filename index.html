@@ -2281,7 +2281,7 @@ label:has(#newChanOn){display:none !important}
 
   <div class="lf sketch" id="reconResCard" hidden>
     <h3 class="display"><span class="em">📌</span><span data-i18n="hd.rebill">To re-bill</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:80ch;display:none" data-i18n="hint.rebill">Charges UPS billed that WMS / TMS did not bill the client, one item per row, largest first. To re-bill is the customer's own rate where the rate level gives one, otherwise the UPS amount. Profit is only accurate once these are re-billed; the full comparison is folded below.</p>
+    <p class="hint" style="margin:0 0 11px;max-width:80ch" data-i18n="hint.rebill">Charges UPS billed that WMS / TMS did not bill the client, one item per row, largest first. To re-bill is the customer's own rate where the rate level gives one, otherwise the UPS amount. Profit is only accurate once these are re-billed; the full comparison is folded below.</p>
     <div class="row" style="margin-bottom:9px">
       <button class="act sm" id="bReconRerun" data-i18n="btn.reconrerun">Analyse</button>
       <label class="inlab" style="margin-left:0" data-i18n="lb.reconscope">Showing</label>
@@ -9016,7 +9016,7 @@ function renderStepStatus(){
   const s=periodState();
   const st={files:s.ships?s.ships.toLocaleString()+L(" 件 · "," pkgs · ")+s.invs.length+L(" 期"," period(s)"):L("尚未匯入","not imported yet"),
             wmsdata:s.list?s.list.toLocaleString()+L(" 列已比對"," rows matched"):L("尚未導入","not imported yet"),
-            cus:(s.hasRes&&s.list)?s.items+L(" 項補收"," to re-bill"):"—",
+            cus:(s.hasRes&&s.list)?s.items+L(" 項"," item(s)"):"—",
             clinv:(s.hasRes&&s.list)?s.cusN+L(" 位客戶"," client(s)"):"—"};
   const done={files:s.ships>0,wmsdata:s.list>0,cus:!!(s.hasRes&&s.list),clinv:!!(s.hasRes&&s.items)};
   document.querySelectorAll(".reconsteps button[data-step]").forEach(b=>{
@@ -12135,14 +12135,16 @@ function bkdSection(r, wms, name0){
          要補收的時候,這一格就是退款那一格,標題與合計一起換過來 —— 不會出現
          一格叫「應補收」、合計卻是 0.00。 */
       const hasRb=extra.length>0, hasOver=wms.over>0.004;
+      /* 整件只有退還(UPS 沖掉了、沒改收別的):標題與合計寫「應退還」,不寫負的「應補收」。 */
+      const rbNeg=hasRb && (wms.rebill||0)<-0.004;
       if(hasRb||hasOver)
         Rc=`<div class="bkdside rb${hasRb?"":" rfndonly"}"><div class="bkdside-lbl">${
-             hasRb?L("應補收","To re-bill"):L("溢收,應退還","Over-collected, refundable")}</div>`
+             hasRb?(rbNeg?L("應退還","To refund"):L("應補收","To re-bill")):L("溢收,應退還","Over-collected, refundable")}</div>`
           +`<div class="bkdside-body"><table>${hasRb?extra.join("")
              :`<tr><td>${L("已向客戶收取,UPS 未收取此費用","Billed to the client, not charged by UPS")}</td>`
               +`<td class="num">${money(-wms.over)}</td></tr>`}</table>`
           +(hasRb
-            ?`<div class="bkdside-ft"><span>${L("應補收合計","Total to re-bill")}</span>`
+            ?`<div class="bkdside-ft"><span>${rbNeg?L("應退還合計","Total to refund"):L("應補收合計","Total to re-bill")}</span>`
              +`<span class="num">${money(wms.rebill||0)}</span></div>`
              +(hasOver?`<div class="bkdside-ft rfnd"><span>${L("溢收,應退還","Over-collected, refundable")}</span>`
                        +`<span class="num">${money(-wms.over)}</span></div>`:"")
@@ -12176,7 +12178,7 @@ function bkdSection(r, wms, name0){
   const wDiff=wms?cents(wms.amt-s.upsTotal):null;
   const wTone=wDiff==null?"":(wDiff<0?"d":"p");
   /* 三個數並排:UPS 實收、重算、向客戶實收。毛利與毛利率先不放。 */
-  const wRb=wms&&wms.rebill>0.004, wOv=wms&&wms.over>0.004;
+  const wRb=wms&&Math.abs(wms.rebill||0)>0.004, wOv=wms&&wms.over>0.004;
   H.push(`<div class="bkdtot${wms?((wRb||wOv)?" four":" three"):""}">`
     +`<div class="bt"><span class="l">${L("UPS 實收","UPS billed")}</span>`
     +`<span class="v">${money2(s.upsTotal)}</span></div>`
@@ -12185,7 +12187,7 @@ function bkdSection(r, wms, name0){
     +`<span class="v">${BKD_NOLVL?"—":money2(r.total||0)}</span></div>`
     +(wms?`<div class="bt"><span class="l">${esc2(wms.src)+L(" 實收"," billed")}</span>`
       +`<span class="v">${money2(wms.amt)}</span></div>`:"")
-    +(wRb?`<div class="bt d"><span class="l">${L("應補收","To re-bill")}</span>`
+    +(wRb?`<div class="bt d"><span class="l">${(wms.rebill||0)<0?L("應退還","To refund"):L("應補收","To re-bill")}</span>`
       +`<span class="v">${money2(wms.rebill)}</span></div>`
      :wOv?`<div class="bt d"><span class="l">${L("溢收,應退還","Over-collected, refundable")}</span>`
       +`<span class="v">${money2(-wms.over)}</span></div>`:"")
@@ -16023,7 +16025,8 @@ function reconSplitByPiece(items, feesByLn){
   for(const it of items){
     const ts=String(it.trk||"").split(/[,;\s]+/).filter(Boolean);
     if(ts.length<2){ out.push(it); continue; }
-    const fees=feesByLn.get(String(it.ln))||new Map();
+    const pf=feesByLn.get(String(it.oid!=null?it.oid:it.ln))||{};
+    const fees=(pf instanceof Map)?pf:(pf.fees||new Map()), pieceRev=(pf instanceof Map)?new Map():(pf.rev||new Map());
     const isAud=/audit/i.test(it.charge||""), key=norm(it.charge);
     /* 稽核費是「每一筆更正一筆」:跟著被更正的那一件走(看 SCC 那一欄),
        UPS 自己有開稽核費行的也算;沒有更正欄才退回比例。 */
@@ -16037,11 +16040,20 @@ function reconSplitByPiece(items, feesByLn){
       }
       return sum; });
     let tot=w.reduce((a,b)=>a+b,0);
+    /* 退還:合併欄的名字對不到任何一件的欄,被沖銷的欄淨額 0 也早就不在 fees 裡 ——
+       改看「哪一件收過(或被沖掉)這一組的成員」,退款就落在那一件,不按整單金額攤。 */
+    if(it.kind==="refund"){
+      const g=(typeof reconGroupOf==="function")?reconGroupOf(it.charge):"";
+      const mem=g?RECON_GROUPS[g].fees:[it.charge];
+      const hit=ts.map(t=>{ const f=fees.get(reconTrk(t))||{}, rv=pieceRev.get(reconTrk(t))||new Set();
+        return mem.some(m=>Math.abs(toNum(f[m]||0))>0.004 || rv.has(m))?1:0; });
+      if(hit.some(x=>x)){ w=hit; tot=hit.reduce((a,b)=>a+b,0); }
+    }
     if(isAud){
       /* 稽核費永遠不拆:找不到被更正的那一件,就掛在有 SCC 項目的那一件,
          再不然掛第一件 —— 沒有更正就不該有稽核費,所以絕不按比例攤。 */
       if(!(tot>0)){
-        const sccT=items.find(x=>x!==it&&String(x.ln)===String(it.ln)&&/correction/i.test(x.charge||"")&&!/audit/i.test(x.charge||""));
+        const sccT=items.find(x=>x!==it&&String(x.oid!=null?x.oid:x.ln)===String(it.oid!=null?it.oid:it.ln)&&/correction/i.test(x.charge||"")&&!/audit/i.test(x.charge||""));
         const pick=sccT?String(sccT.trk||"").split(/[,;\s]+/).filter(Boolean)[0]:ts[0];
         w=ts.map(t=>reconTrk(t)===reconTrk(pick||ts[0])?1:0); tot=1;
       }else{
@@ -16105,7 +16117,9 @@ function reconRun(list){
   const codeCol={};
   REBILL_CODECOL=codeCol;
   const repPend=[];
+  let oidN=0;
   for(const e of list){
+    const oid=String(++oidN);   /* 訂單的唯一鍵:另一來源附掛進來的列 ln 會和自己的重號,不能拿 ln 當鍵 */
     const c=byCode.get(e.cus)||{};
     /* 每一列都自己解析一次層級 —— 靠的是這一列的客戶,不是畫面上正在編輯
        的那一層。同一批資料裡兩個客戶用不同層級,各算各的。 */
@@ -16123,6 +16137,7 @@ function reconRun(list){
     let usedArch=false;
     const pieceFees=new Map();       /* 每一件各自的 UPS 費用(照 Consolidated 分欄),補收拆件用 */
     const pieceUps=new Map();        /* 每一件自己的帳單識別欄(尺寸、重量、Zone):匯出一件一列時用它,不用整單第一件的 */
+    const pieceRev=new Map();        /* 每一件被 UPS 整筆沖銷的欄:退款要落在真的收過那一項的那一件 */
     for(const t of e.trks){
       const s=byTrk.get(t);
       if(!s){ missTrk.push(t); continue; }
@@ -16140,6 +16155,7 @@ function reconRun(list){
       /* UPS 收多少不需要費率表:每一行照 Consolidated 的分欄歸位,先收下。 */
       const cf=consFeesOf(s.allLines||[]);
       pieceFees.set(reconTrk(t), cf.fees||{});
+      pieceRev.set(reconTrk(t), new Set(cf.reversed||[]));
       for(const k of Object.keys(cf.codeCol)) if(!codeCol[k]) codeCol[k]=cf.codeCol[k];
       for(const [col,v] of Object.entries(cf.fees)) feesUps[col]=cents((feesUps[col]||0)+v);
       for(const [col,ds] of Object.entries(cf.descs||{})){ const a=feesDesc[col]||(feesDesc[col]=[]); for(const d of ds) if(!a.includes(d)) a.push(d); }
@@ -16230,8 +16246,8 @@ function reconRun(list){
                      && ![...sysChans].some(c=>chanFamKey(c)===chanFamKey(chan)));
     /* 計費重量只記錄、不核對:帳單上的是合約計費重量,向客戶收的重量本來
        就不必一樣。兩個數字並排放在匯出的 Orders 分頁,給人參考。 */
-    const o={ln:e.ln, order:e.order, cus:e.cus, date:e.date||(upsId&&upsId.date)||"", carried:e.carried||null,
-             src:(e.src||RECON_SRC)==="TMS"?"TMS":"WMS", sib:!!e.sib, pieceFees, pieceUps,
+    const o={ln:e.ln, oid, order:e.order, cus:e.cus, date:e.date||(upsId&&upsId.date)||"", carried:e.carried||null,
+             src:(e.src||RECON_SRC)==="TMS"?"TMS":"WMS", sib:!!e.sib, pieceFees, pieceUps, pieceRev,
              trks:e.trks.slice(), ref1:e.ref1||(upsId&&upsId.ref1)||"", ref2:e.ref2||(upsId&&upsId.ref2)||"",
              ups:upsId,
              zone:String(e.zone||""), upsZone, zoneMis,
@@ -16316,12 +16332,14 @@ function reconRun(list){
        的代碼)才照 UPS 實收。帳號層級停用的是真的不收(列出來、金額 0)。 */
     const rateOf=c=>rebillDisabled(c)?0:((!o.block && known.has(c) && cents(rep[c]||0)>0.004)?cents(rep[c]):(rebillConfigurable(c)?"unset":null));
     const buckets=new Map();
-    for(const c of new Set([...Object.keys(upsF), ...Object.keys(b)])){
+    /* 被 UPS 整筆沖銷的欄(F.rev)也進桶:UPS 收了 AHS 又整筆沖掉、什麼都沒改收,
+       那一欄的淨額是 0、不在 upsF 裡 —— 少了它,客戶收過的 AHS 就沒有地方退。 */
+    for(const c of new Set([...Object.keys(upsF), ...Object.keys(b), ...(F.rev||[])])){
       if(c===RECON_OTHER) continue;
       const k=famOf.has(c)?"f"+famOf.get(c):c;
       (buckets.get(k)||buckets.set(k,[]).get(k)).push(c);
     }
-    const base={ln:o.ln, cus:o.cus, order:o.order, trk:o.trks.join(", "), invDate:o.invDate||"",
+    const base={ln:o.ln, oid:o.oid, cus:o.cus, order:o.order, trk:o.trks.join(", "), invDate:o.invDate||"",
                 src:o.src||"", sib:!!o.sib,
                 zone:String(o.upsZone||o.zone||""), chan:String(o.sysChan||o.chan||"")};
     /* 運費 + 更正:重算算的是最後的運費,UPS 的更正不能再加一次。更正 UPS 有收、
@@ -16420,8 +16438,12 @@ function reconRun(list){
       if(k===SCC) continue;
       if(zoneDone.has(k)) continue;
       const upsCols=cols.filter(c=>upsF[c]>0.004);
-      if(!upsCols.length) continue;
       const isFam=k[0]==="f";
+      /* UPS 一項都沒收的家族通常沒事;但 UPS 收過又整筆沖掉(量過之後什麼都不收)
+         而客戶端收了的,要走下面的退款路 —— 只有沖銷的證據才退,從頭沒收的不退。 */
+      const revOnly=isFam && !upsCols.length
+        && ((REBILL_FAMILIES[+k.slice(1)]||{}).fees||[]).some(m=>(F.rev||new Set()).has(m));
+      if(!upsCols.length && !revOnly) continue;
       const mk=c=>{
         const u=cents(upsF[c]), r0=rateOf(c);
         const unset=r0==="unset", rate=unset?0:r0;
@@ -16485,16 +16507,22 @@ function reconRun(list){
       const rev=F.rev||new Set();
       /* 對整個家族的成員名單查,不是對 cols:被沖掉的欄淨額是 0,
          根本不會出現在 cols 裡。 */
-      const swapped=famFees.some(m=>!upsCols.includes(m) && rev.has(m));
+      const revd=famFees.filter(m=>!upsCols.includes(m) && rev.has(m));
+      const swapped=revd.length>0;
       /* 合併欄只涵蓋它自己的成員。WMS 的「額外處理」欄合的是 AHS 的三型,不含大包裹;
          UPS 收的是大包裹、一型 AHS 都沒收,那一欄和自己的細項欄一樣是名目對不上 ——
          退還,大包裹照費率補。涵蓋到 UPS 所收成員的合併欄(TMS 的額外處理+大包裹、
-         DAS/偏遠合一欄、簽名合一欄)才算「有收」,差額是毛利。 */
+         DAS/偏遠合一欄、簽名合一欄)才算「有收」,差額是毛利。
+         改收也看這一欄:UPS 沖掉的是這一欄涵蓋的成員(出貨收 AHS、改收 LPS)才退;
+         沖掉的是它不涵蓋的成員(出貨收 LPS、改收 AHS,客戶本來就照 AHS 欄收)不退。 */
       const headDef=n=>Object.values(RECON_GROUPS).find(d=>d.head===n);
       const headMiss=headPaid.filter(n=>{ const d=headDef(n); return !!d && !d.fees.some(f=>upsCols.includes(f)); });
-      const coveredByHead=headPaid.some(n=>!headMiss.includes(n)) && !swapped;
-      const refNames=paidOwn.filter(n=>!upsCols.includes(n))
-                     .concat(swapped?headPaid:headMiss);
+      const headSwapped=n=>{ const d=headDef(n); return !!d && revd.some(m=>d.fees.includes(m)); };
+      const refHeads=headPaid.filter(n=>headMiss.includes(n)||headSwapped(n));
+      /* 收過的合併欄涵蓋到哪些成員:那幾項算收了;它不涵蓋而 UPS 有收的(額外處理欄
+         對上 UPS 同時收的大包裹)照樣補。 */
+      const coveredMembers=new Set(headPaid.filter(n=>!refHeads.includes(n)).flatMap(n=>(headDef(n)||{fees:[]}).fees));
+      const refNames=paidOwn.filter(n=>!upsCols.includes(n)).concat(refHeads);
       let backTot=0;
       for(const n of refNames){
         const w=cents(toNum(b[n]));
@@ -16507,18 +16535,18 @@ function reconRun(list){
         if(!dsc) dsc=revd.map(m=>(desc[m]||[]).join(" / ")).filter(Boolean).join(" / ")
                      || revd.join(" / ");
         /* UPS 從頭就沒收這一型(沒有沖銷行可引):說明寫 UPS 實際收的是哪一項。 */
-        if(!dsc) dsc="Not charged by UPS — billed as "+upsCols.join(" / ");
+        if(!dsc) dsc=upsCols.join(" / ")+" billed instead — "+n+" not on the UPS invoice";
         items.push(Object.assign({kind:"refund", charge:n, desc:dsc,
           refShort:refundShortOf(revd[0]||n),
           ups:0, billed:w, rate:0, amt:cents(-w), credit:0, creditFrom:[], wms:w, over:0}, base));
       }
-      if(coveredByHead) continue;
-      const rows=upsCols.filter(c=>!paidNames.includes(c)).map(mk).sort((x,y)=>y.amt-x.amt);
+      const rows=upsCols.filter(c=>!paidNames.includes(c) && !coveredMembers.has(c)).map(mk).sort((x,y)=>y.amt-x.amt);
       /* 費率未設定的列出來當警示:這一家族有退有收、或一毛都沒收過的時候,
          少了費率就是少收一筆,必須看得見;同名已收、只是我們沒費率的不列 ——
          比不出短收多少,列出來只是做不了事的紅字。 */
-      items.push(...rows.filter(it=>it.amt>0.004
-                                 ||(it.unset&&(backTot>0.004||famBilled<=0.004))));
+      /* rows 已經排掉同名收過的和合併欄涵蓋的,剩下的每一項都是 UPS 有收、客戶沒收 ——
+         沒費率的也要列出來當警示,不然少收一筆卻沒有人知道。 */
+      items.push(...rows.filter(it=>it.amt>0.004||it.unset));
     }
   }
   /* 燃油最後算:每一項的應補收 × 這一筆客戶的燃油 %,只算 UPS 本來就加燃油的項目
@@ -16542,9 +16570,9 @@ function reconRun(list){
     }
     return bk.length>0 && bk.every(fuelOnFor);
   };
-  const orderOf=new Map(orders.map(o=>[o.ln,o]));
+  const orderOf=new Map(orders.map(o=>[o.oid,o]));
   for(const it of items){
-    const o=orderOf.get(it.ln)||{}; const F=o.fees||{};
+    const o=orderOf.get(it.oid)||{}; const F=o.fees||{};
     let pct=toNum(F.fuelPct);
     if(!(pct>0)){
       const upsF=F.ups||{};
@@ -16564,7 +16592,7 @@ function reconRun(list){
      (按各件該項目的 UPS 金額比例);帳單上分不出來的才按各件 UPS 總額比例。
      從這裡起,後面的表、匯出、請款單都是一個追蹤號一列,合計一毛不變。 */
   {
-    const feesByLn=new Map(orders.concat(notOnInv).map(o=>[String(o.ln), o.pieceFees||new Map()]));
+    const feesByLn=new Map(orders.concat(notOnInv).map(o=>[String(o.oid), {fees:o.pieceFees||new Map(), rev:o.pieceRev||new Map()}]));
     const split=reconSplitByPiece(items, feesByLn);
     items.splice(0, items.length, ...split);
   }
@@ -17005,7 +17033,8 @@ function renderRebill(){
     L("客戶端實收 ","billed to the client ")+money(it.wms)
       +L(" · 應收 "," · should be ")+(it.rate==null?"—":money(it.rate))
       +L(" · UPS 收 "," · UPS charged ")+money(it.ups)
-      +(it.total>0.004?L(" · 補收 "+money(it.total)+"(含燃油)"," · to re-bill "+money(it.total)+" incl. fuel"):""),
+      +(it.total>0.004?L(" · 補收 "+money(it.total)+"(含燃油)"," · to re-bill "+money(it.total)+" incl. fuel")
+        :it.total<-0.004?L(" · 退還 "+money(-it.total)+"(含燃油)"," · to refund "+money(-it.total)+" incl. fuel"):""),
     it.credit?L("客戶端是照「","billed to the client as \"")+(it.creditFrom||[]).join(" · ")
       +L("」收的,實收 ","\", ")+money(it.wms):"",
     it.over>0.004?L("其中多收 "+money(it.over)+",應退客戶","of which "+money(it.over)+" was over-collected and is owed back"):""]
@@ -17035,6 +17064,8 @@ function renderRebill(){
   const tot=items.reduce((a,it)=>cents(a+it.amt),0);
   const totFuel=items.reduce((a,it)=>cents(a+(it.fuel||0)),0), grand=cents(tot+totFuel);
   const chgSum=items.filter(it=>(it.total||0)>0).reduce((a,it)=>cents(a+it.total),0);
+  /* 「應補收」那塊磚底下寫的燃油,是補收項目自己的燃油;退還的燃油在淨額那邊。 */
+  const chgFuel=items.filter(it=>(it.total||0)>0).reduce((a,it)=>cents(a+(it.fuel||0)),0);
   const refSum=cents(-items.filter(it=>(it.total||0)<0).reduce((a,it)=>cents(a+it.total),0));
   const totOver=items.reduce((a,it)=>cents(a+(it.over||0)),0);
   const tf=$("#tRebill")&&$("#tRebill").tFoot;
@@ -17048,18 +17079,18 @@ function renderRebill(){
     const tl=$("#rebillTiles");
     if(tl){ const noItem=!!(rb&&rb.noItem); tl.hidden=noItem;
       if(!noItem) tl.innerHTML=[
-        [L("應補收","To re-bill"),money(chgSum),Math.abs(totFuel)>0.004?L("含燃油附加費 ","incl. fuel ")+money(totFuel):"",false],
+        [L("應補收","To re-bill"),money(chgSum),Math.abs(chgFuel)>0.004?L("含燃油附加費 ","incl. fuel ")+money(chgFuel):"",false],
         [L("淨額","Net"),money(grand),refSum>0.004?L("應退還 ","to refund ")+money(refSum):(totOver>0.004?L("溢收 ","over-collected ")+money(totOver):""),grand<0],
         [L("項目","Items"),String(items.length),unset?unset+L(" 項費率未設定 → 費率維護"," without a rate → Rate Maintenance"):"",false],
         [L("客戶","Clients"),String(cusN),skip?skip+L(" 筆沒有逐項費用"," row(s) without line fees"):"",false]]
         .map(([k,v,sub,neg])=>`<div class="tile sketch-soft"><div class="k">${esc(k)}</div><div class="v${neg?" neg":""}">${v}</div><div class="sub">${esc(sub)||"&nbsp;"}</div></div>`).join(""); }
     sum.textContent=(rb&&rb.noItem)?"":L(
       "應補收 "+money(chgSum)+(refSum>0.004?" · 應退還 "+money(refSum):"")
-        +" · 淨額 "+money(grand)+" · 其中燃油附加費 "+money(totFuel)
+        +" · 淨額 "+money(grand)+"(其中燃油附加費 "+money(totFuel)+")"
         +(totOver>0.004?" · 溢收(應退還)"+money(totOver):"")+" · "+items.length+" 項 · "+cusN+" 個客戶 · 逐筆金額在匯出的活頁簿裡"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":"")
         +(unset?" · "+unset+" 項費率未設定(到「費率維護」設好再匯一次)":""),
       "To re-bill "+money(chgSum)+(refSum>0.004?" · to refund "+money(refSum):"")
-        +" · net "+money(grand)+" · fuel surcharge within it "+money(totFuel)
+        +" · net "+money(grand)+", of which fuel surcharge "+money(totFuel)
         +(totOver>0.004?" · over-collected (owed back) "+money(totOver):"")+" · "+items.length+" item(s) · "+cusN+" customer(s) · the figures are in the exported workbook"+(skip?" · "+skip+" row(s) without itemised charges not listed":"")
         +(unset?" · "+unset+" item(s) with no rate set (set them under Rate Maintenance and import again)":""));
   }
@@ -17367,8 +17398,9 @@ async function reconExport(){
       const idc=[String(code||""), dcell(it.invDate), it.trk, it.order, it.chan||"", it.zone||"",
         dimTxt(u2.dimsC), dimTxt(u2.dimsA), wt0(u2.entered),
         ((o2.trks||[]).length<=1 && o2.upsWt!==""&&o2.upsWt!=null)?wt0(o2.upsWt):wt0(u2.billed)];
-      rows.push(idc.concat([it.charge, it.desc||"", dc(it.amt)])); sum=cents(sum+it.amt);
-      if(Math.abs(it.fuel)>0.004){ rows.push(idc.concat(["Fuel Surcharge", it.charge+" @ "+fmtPct2(it.fuelPct)+"%", dc(it.fuel)])); sum=cents(sum+it.fuel); }
+      const rf=it.kind==="refund";
+      rows.push(idc.concat([rf?it.charge+" — refund":it.charge, it.desc||"", dc(it.amt)])); sum=cents(sum+it.amt);
+      if(Math.abs(it.fuel)>0.004){ rows.push(idc.concat([rf?"Fuel Surcharge — refund":"Fuel Surcharge", it.charge+" @ "+fmtPct2(it.fuelPct)+"%", dc(it.fuel)])); sum=cents(sum+it.fuel); }
     }
     rows.push(["","","","","","","","","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:CUR,bold:true}}]);
     cusSheets.push({name:sheetName(code), rows:[cusHead,...rows], cols:[16,12,22,20,20,7,16,16,9,9,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
@@ -18858,8 +18890,10 @@ function prSheetRecon(){
   const MONEY="$#,##0.00", PCT="0.0%", INT="#,##0";
   const HEAD="E8E2D6", FOOT="FFF2CC", RED="C00000";
   const rbBy=new Map();
+  /* 用訂單的唯一鍵,不用 ln:另一來源附掛的列 ln 會重號,補收會記到別張單上。 */
+  const okey=x=>String(x.oid!=null?x.oid:x.ln);
   for(const it of ((r.rebill&&r.rebill.items)||[]))
-    rbBy.set(it.ln, cents((rbBy.get(it.ln)||0)+toNum(it.total)));
+    rbBy.set(okey(it), cents((rbBy.get(okey(it))||0)+toNum(it.total)));
   const head=[L("客戶代碼","Customer Code"),L("客戶名稱","Customer Name"),
               L("單號","Order Number"),L("追蹤號","Tracking Number"),L("件數","Packages"),
               RECON_SRC+L(" 實收"," Billed"),L("應補收(含燃油)","To Re-bill (incl. fuel)"),
@@ -18879,7 +18913,7 @@ function prSheetRecon(){
   const orders=r.orders.slice().sort((a,b)=>
     String(a.cus).localeCompare(String(b.cus))||String(a.order).localeCompare(String(b.order)));
   for(const o of orders){
-    const rb=cents(rbBy.get(o.ln)||0);
+    const rb=cents(rbBy.get(okey(o))||0);
     const amt=cents(toNum(o.amt)), cost=cents(toNum(o.cost));
     const chg=cents(amt+rb), pf=cents(chg-cost);
     tAmt=cents(tAmt+amt); tRb=cents(tRb+rb); tCost=cents(tCost+cost); tPkg+=toNum(o.pkgs)||0;
@@ -22068,8 +22102,8 @@ function cliData(code){
         rows.push({trk:t, desc, dc:dd.dc, da:dd.da, amt:cents(amt)});
         total=cents(total+amt);
       };
-      push(it.charge, amts[i]);
-      if(Math.abs(it.fuel||0)>=0.005) push("Fuel Surcharge", fuels[i]);
+      push(it.kind==="refund"?it.charge+" — refund":it.charge, amts[i]);
+      if(Math.abs(it.fuel||0)>=0.005) push(it.kind==="refund"?"Fuel Surcharge — refund":"Fuel Surcharge", fuels[i]);
     });
   }
   const name=(((R&&R.orders)||[]).find(o=>o.cus===code)||{}).name
@@ -23057,8 +23091,8 @@ const I18N={
   "ct.recon":["對帳","Reconciliation"],
   "hd.reconchg":["逐項比對","By charge"],
   "hd.rebill":["補收清單","To re-bill"],
-  "hint.rebill":["UPS 有收、WMS / TMS 沒向客戶收的項目,一項一列,金額大的在前;名稱用 UPS 的細項名,底下帶帳單上的原文,可以直接開給客戶。「應補收」用客戶自己的費率(重算有算這一項就用它),合約沒有費率或 UPS 才有的項目照 UPS 實收。燃油最後算:應補收 × 這一筆客戶的燃油 %,只算 UPS 本來就加燃油的項目。補收完利潤才準;完整的比對收在下面。",
-    "Charges UPS billed that WMS / TMS did not bill the client, one item per row, largest first, under UPS's own itemised name with the invoice wording beneath, ready to pass on to the customer. To re-bill is the customer's own rate where the rate level priced the charge, otherwise the UPS amount. Fuel comes last: to re-bill times the customer's fuel percent, only on charges UPS itself fuels. Profit is only accurate once these are re-billed; the full comparison is folded below."],
+  "hint.rebill":["UPS 有收、WMS / TMS 沒向客戶收的項目,一項一列,金額大的在前;名稱用 UPS 的細項名,底下帶帳單上的原文,可以直接開給客戶。「應補收」用客戶自己的費率(重算有算這一項就用它),合約沒有費率或 UPS 才有的項目照 UPS 實收。燃油最後算:應補收 × 這一筆客戶的燃油 %,只算 UPS 本來就加燃油的項目。UPS 量過改收別的費用(例如額外處理改成大包裹)、或收了又整筆沖掉時,客戶原本收的那一項列成「退還」、燃油跟著退,改收的那一項照全額補收;兩者相抵的數看下面的「淨額」磚。補收完利潤才準;完整的比對收在下面。",
+    "Charges UPS billed that WMS / TMS did not bill the client, one item per row, largest first, under UPS's own itemised name with the invoice wording beneath, ready to pass on to the customer. To re-bill is the customer's own rate where the rate level priced the charge, otherwise the UPS amount. Fuel comes last: to re-bill times the customer's fuel percent, only on charges UPS itself fuels. When UPS re-measured a package and billed a different surcharge (for example Large Package instead of Additional Handling), or reversed a charge outright, the charge the client already paid is listed as a Refund with its fuel and the new charge is re-billed in full; the Net tile below shows the balance. Profit is only accurate once these are re-billed; the full comparison is folded below."],
   "th.rebillorder":["單號","Order Number"],
   "th.rebilltrk":["追蹤號","Tracking Number"],
   "th.rebillrate":["重算","Reprice"],
