@@ -20255,16 +20255,36 @@ function prSheetInvoice(){
          表上的筆數對不起來,看起來像其中一邊算錯。 */
       kv2(L("匯入筆數","Imported rows"), run.n||0, INT2, true),
       kv2(L("對帳筆數","Reconciled rows"), wab.n||0, INT2, true),
-      kv2(L("帳單上沒有(留給下一期)","Not on this invoice (carried forward)"),
-          ((run.sum&&run.sum.offInv)||0), INT2, true),
+      /* 「帳單上沒有(留給下一期)」那一列拿掉了:它是件數,不是錢,夾在毛利
+         那幾列中間讀起來像少收了什麼。是哪幾筆,「帳單上沒有」那一頁一筆一筆寫著。 */
       kv2("UPS"+L("(對帳貨件)"," (reconciled shipments)"), upsRecon, MONEY2),
       kv2(L("應收合計("+wab.src+" 實收 + 應補收)","Chargeable ("+wab.src+" billed + re-bill)"), cents(wab.chargeable||0), MONEY2),
       kv2(L("對帳毛利(應收合計 − UPS)","Reconciliation profit (Chargeable − UPS)"), cents(wab.profit||0), MONEY2),
       kv2(L("對帳毛利率","Reconciliation margin"), (wab.chargeable?(wab.profit/Math.abs(wab.chargeable)):0), PCT2)];
+    /* 上面那一組是整批的。「這一層在賺錢嗎」要另外問 —— 一層二十家客戶,
+       沒有這一塊就得自己把二十列加起來。和儀表板上那張表同一個算式、
+       同一批單(儀表板篩了什麼,這一份就是什麼),加起來就是上面那個毛利。 */
+    const lv=(typeof dashLevelRows==="function")?dashLevelRows():null;
+    if(lv&&lv.length){
+      const cell2=(v,fmt,neg)=>({v:v,t:fmt?"n":"s",
+        s:{fmt:fmt||undefined, align:fmt?"right":"left", border:true,
+           color:(neg&&typeof v==="number"&&v<0)?RED2:undefined}});
+      rows.push([]);
+      rows.push([hc2(L("各層級毛利","Profit by rate level"),"left"),
+                 hc2(L("應收合計","Chargeable")), hc2("UPS"),
+                 hc2(L("毛利","Profit")), hc2(L("毛利率","Margin"))]);
+      for(const g of lv) rows.push([
+        cell2(anaLvlName(g.level)),
+        cell2(cents(g.chargeable), MONEY2),
+        cell2(cents(g.cost), MONEY2),
+        cell2(cents(g.profit), MONEY2, true),
+        cell2(g.margin==null?0:g.margin/100, PCT2, true)]);
+    }
     /* 摘要那一列「帳單上沒有 5」會讓人問:是哪五筆?自己一頁列出來 ——
        客戶、單號、追蹤號、日期、向客戶收多少、從哪一批帶進來的。 */
     const off=(typeof RECON!=="undefined"&&RECON&&RECON.res&&RECON.res.notOnInv)||[];
-    const sheets=[{name:L("本批次摘要","Summary"), rows, cols:[{w:30},{w:34}], freeze:{r:1,c:0}}];
+    const sheets=[{name:L("本批次摘要","Summary"), rows,
+      cols:[{w:34},{w:30},{w:16},{w:16},{w:12}], freeze:{r:1,c:0}}];
     if(off.length){
       const cTxt=o=>o.carried?((o.carried.invDate||"")+(o.carried.inv?" "+o.carried.inv:"")).trim():"";
       const oh=["Customer Code","Customer Name","Order Number","Tracking Number","Transaction Date",
