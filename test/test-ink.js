@@ -92,11 +92,15 @@ ok(px('html.ink .lf>h3')>=19, '\u6bb5\u843d\u6a19\u984c \u2265 19px');
 ok(px('html.ink .nav button')>=14.5, '\u5074\u6b04 \u2265 14.5px');
 
 console.log('\n[7] \u6c92\u640d\u5230\u539f\u672c\u7684\u6771\u897f');
-ok(D.querySelectorAll('.sketch').length===60&&D.querySelectorAll('.sketch-soft').length===17,
-   '60 個 .sketch、17 個 .sketch-soft 都在(毛利分析那張數字卡拿掉,數字都在儀表板上)');
+ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft').length===17,
+   '61 個 .sketch、17 個 .sketch-soft 都在(費率維護多一張「清除本層費率」)');
 ok(D.querySelectorAll('table').length===32&&D.querySelectorAll('.modalbg').length===27,
    '表格 32、視窗 27');
-ok(D.querySelectorAll('[data-i18n]').length===608, 'i18n 標記 608 個(毛利分析數字卡拿掉,少了標題與匯出鈕兩個)');
+ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft').length===17,
+   '61 個 .sketch、17 個 .sketch-soft 都在(費率維護多一張「清除本層費率」)');
+ok(D.querySelectorAll('table').length===32&&D.querySelectorAll('.modalbg').length===27,
+   '表格 32、視窗 27');
+ok(D.querySelectorAll('[data-i18n]').length===614, 'i18n 標記 614 個(清除本層費率:標題、說明、三個勾、一顆鈕)');
 
 console.log('\n[8] \u7d19\u7684\u984f\u8272');
 ok(/--paper-mask:url\(/.test(face), '\u6709\u4e00\u5f35\u5c08\u9580\u7576\u906e\u7f69\u7684\u5642\u9ede');
