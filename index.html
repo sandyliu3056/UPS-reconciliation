@@ -2653,6 +2653,23 @@ label:has(#newChanOn){display:none !important}
     </div>
     <p class="hint" style="margin:10px 0 0;max-width:78ch" data-i18n="hint.demshare">Periods, categories and mapping are shared by every rate level; amounts belong to each level.</p>
   </div>
+
+  <!-- 換約的時候要的:把這一層填過的費率一次清掉,再匯入新的一份。以前只能
+       一條渠道一條渠道覆蓋,或是另開一層、把客戶一個一個改指過去。
+       只動目前這一層,客戶名單、對應規則、費用代號都不碰 —— 那三樣是整個
+       帳號共用的,和費率無關。清之前先自動存一份設定檔到你電腦上。 -->
+  <div class="lf sketch">
+    <h3 class="display"><span class="em">🧹</span><span data-i18n="hd.clearrate">Clear this level's rates</span></h3>
+    <p class="hint" style="margin:0 0 11px;max-width:78ch" data-i18n="hint.clearrate">Empties what you tick, for the rate level you are on now — nothing else changes level, and the client list, mapping and charge codes are untouched. A configuration file is downloaded first, so a mis-click is recoverable: load it back and save.</p>
+    <div class="row">
+      <label class="bulkchk"><input type="checkbox" id="clrBase" checked> <span data-i18n="lb.clrbase">Base rate tables</span></label>
+      <label class="bulkchk"><input type="checkbox" id="clrAcc" checked> <span data-i18n="lb.clracc">Surcharge rates</span></label>
+      <label class="bulkchk"><input type="checkbox" id="clrFuel"> <span data-i18n="lb.clrfuel">Fuel</span></label>
+      <span style="flex:1 1 auto"></span>
+      <button class="act alt" id="bClearRate" data-i18n="btn.clearrate">Clear</button>
+    </div>
+    <div id="clearRateState"></div>
+  </div>
 </section>
 
 
@@ -21545,6 +21562,72 @@ function cfgDownload(){
           "Downloaded "+name+" ("+rows.toLocaleString()+" rate rows, "+c.levels+" other rate levels, "+c.customers+" clients). To restore it, use Load Configuration File, then Save Settings."), true);
   return true;
 }
+/* 換約要的:把這一層填過的費率一次清掉,再匯入新的一份。以前只能一條渠道
+   一條渠道覆蓋 —— 舊約有、新約沒有的那幾條會留在那裡,而留下來的舊價照樣
+   拿去計價,沒有人會發現。
+   只動目前這一層。層級之外的客戶名單、對應規則、費用代號一概不碰:那三樣是
+   整個帳號共用的,和費率無關。Demand 也不在這裡清 —— 它的期別與分類是各層
+   共用的結構,從這裡砍掉會把別層一起砍了。
+   清之前一定先下載一份設定檔:這是不可逆的,而「按錯了」和「按對了」在按下去
+   的那一刻長得一模一樣。 */
+function clrZeros(v){
+  if(v&&typeof v==="object"){
+    const o=Array.isArray(v)?[]:{};
+    for(const k of Object.keys(v)) o[k]=clrZeros(v[k]);
+    return o;
+  }
+  return 0;
+}
+function clearLevelRates(){
+  if(!CFG||!CFG.raw){
+    toast(L("目前沒有可清除的設定。","There is no configuration to clear yet."), false); return;
+  }
+  const on=id=>{ const e=$("#"+id); return !!(e&&e.checked); };
+  const want={base:on("clrBase"), acc:on("clrAcc"), fuel:on("clrFuel")};
+  if(!want.base && !want.acc && !want.fuel){
+    toast(L("先勾要清哪一項。","Tick what to clear first."), false); return;
+  }
+  const raw=CFG.raw;
+  const nBase=(raw.base_rate_tables||[]).length;
+  const names=[];
+  if(want.base) names.push(L("基本運費表("+nBase+" 條渠道)","base rate tables ("+nBase+" channel"+(nBase===1?"":"s")+")"));
+  if(want.acc)  names.push(L("附加費費率","surcharge rates"));
+  if(want.fuel) names.push(L("燃油","fuel"));
+  const id=(typeof rlActive==="function")?rlActive():"";
+  const lvl=(id&&typeof cusLevelLabel==="function")?cusLevelLabel(id):"";
+  uiConfirm({
+    title:L("清除費率","Clear rates"), danger:true, okText:L("清除","Clear"),
+    html:L("要清掉「"+esc(lvl||"目前這一層")+"」的"+names.join("、")+"嗎?<br>其他層級、客戶名單、對應規則都不動。清除前會先下載一份設定檔。",
+           "Clear the "+names.join(", ")+" on \u201c"+esc(lvl||"this level")+"\u201d?<br>Other rate levels, the client list and the mapping stay as they are. A configuration file is downloaded first.")
+  }).then(ok=>{
+    if(!ok) return;
+    /* 先留底再動手。下載失敗(擋下載、沒空間)就整個不做 —— 沒有退路的清除
+       不該發生在使用者以為有退路的時候。 */
+    if(!cfgDownload()) return;
+    if(want.base){ raw.base_rate_tables=[]; raw.base_rate_paths=[]; }
+    if(want.acc){
+      /* 結構留著、數字歸零:欄位還在,畫面上每一條渠道、每一個 Zone 都看得到
+         自己是空的;整個砍掉的話,自訂渠道的那幾格會連位置都不見。 */
+      raw.accessorial_rate_table=clrZeros(raw.accessorial_rate_table||{});
+      const ac=raw.accessorial_charges||{};
+      for(const k of Object.keys(ac)) ac[k]="";
+      raw.accessorial_charges=ac;
+    }
+    if(want.fuel){
+      raw.fuel_schedule=[]; raw.channel_fuel_schedules={}; raw.channel_fuel_percents={};
+      if(raw.global_rules) raw.global_rules.fuel_percent="";
+    }
+    CFG=readConfig(raw); DIRTY=true; renderConfigTabs();
+    if(RATED&&SHIPS){ RATED=SHIPS.map(x=>priceShipment(CFG,x)); renderRate(); }
+    saveSettings();
+    const msg=L("已清除:"+names.join("、")+"。"+(lvl?"("+lvl+")":"") ,
+                "Cleared: "+names.join(", ")+"."+(lvl?" ("+lvl+")":""));
+    const st=$("#clearRateState");
+    if(st) st.innerHTML=`<p class="hint" style="margin:9px 0 0">${esc(msg)}</p>`;
+    setStatus(msg); toast(msg, true);
+  });
+}
+$("#bClearRate") && ($("#bClearRate").onclick=clearLevelRates);
 /* 被換掉的上一份。有才畫,沒有就整列不出現。 */
 function cfgPrevRead(){
   try{ const t=localStorage.getItem(cfgPrevKey()); return t?JSON.parse(t):null; }catch(e){ return null; }
@@ -23872,6 +23955,13 @@ const I18N={
   "hint.rfshort":["這一頁填的是各層的金額;有哪些項目由目錄決定。Demand 的期間與對應也在這裡管。","This page sets each level's money; which items exist is decided in the catalog. Demand periods and mapping are managed here too."],
   "btn.fillprev":["預覽本層費率","Preview this level's rates"],
   "hd.baserate":["渠道基本運費","Channel base rates"],
+  "hd.clearrate":["清除本層費率","Clear this level's rates"],
+  "hint.clearrate":["把勾起來的那幾樣清空,只動你現在所在的這一層 —— 別層不會跟著清,客戶名單、對應規則、費用代號也都不碰。清除前會自動下載一份設定檔到你電腦上,按錯了用「載入設定檔」讀回來、再按儲存設定就回得去。",
+    "Empties what you tick, for the rate level you are on now — nothing else changes level, and the client list, mapping and charge codes are untouched. A configuration file is downloaded first, so a mis-click is recoverable: load it back and save."],
+  "lb.clrbase":["基本運費表","Base rate tables"],
+  "lb.clracc":["附加費費率","Surcharge rates"],
+  "lb.clrfuel":["燃油","Fuel"],
+  "btn.clearrate":["清除","Clear"],
   "hd.demrate":["Demand 附加費費率","Demand surcharge rates"],
   "hint.demrate":["期間在「03 → 3. Demand Surcharge」定義;各層在這裡填費率。","Periods are defined under 03 → 3. Demand Surcharge; each level prices them here."],
   "btn.chanprev":["預覽各層費率","Preview rates by level"],
