@@ -1394,12 +1394,9 @@ main.home{display:flex;flex-direction:column}
 main.home #app{flex:1 0 auto;display:flex;flex-direction:column;min-height:0}
 main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
 #p-home .sceneBox{margin-top:auto}
-#p-home #scene{height:clamp(200px,26vh,300px)}
-/* 那一幕本來是一塊直接切在頁面底部的畫布,上緣是硬邊。把它收成一塊:
-   上緣圓角、壓一條和主色同一族的細線、底下一層淺淺的陰影,和頁面上其他
-   卡片講同一種話。 */
-#p-home .sceneBox{border-radius:14px 14px 0 0;border:2px solid var(--accent);border-bottom:none;
-  box-shadow:0 -2px 0 rgba(0,0,0,.05)}
+#p-home #scene{height:clamp(104px,13vh,140px)}
+/* 框拿掉了:裡面沒有一幕要框住,只有幾個角色在頁面上走。留著框,空的那一
+   大片底色反而變成畫面上最大的一塊東西。 */
 /* 首頁面板。三塊:最近一次對帳(大)、待補收、帳單歷史,底下三顆快捷。
    數字用標題字型 —— 首頁是用看的,不是用讀的。 */
 .homeboard{display:grid;grid-template-columns:1.7fr 1fr 1fr;gap:14px;margin:20px 0 4px}
@@ -20425,8 +20422,8 @@ function renderDashboard(){
    兩側對照、渠道、Zone 分布,四張工作表對應畫面上的四個區塊。
    「全部期別」那一份回答「每一期賺多少」,這一份回答「這一期的錢花在哪」。 */
 function prSheetInvoice(){
-  /* 有對帳批次就出「本批次」:期別、筆數、應收合計、對帳毛利全是同一份
-     對帳的數字,不再拿目前載入的某一期去配整批的應收(那兩個對不起來)。 */
+  /* 有對帳批次就出「本批次」:一層一欄的毛利表,數字全是同一份對帳的,
+     不再拿目前載入的某一期去配整批的應收(那兩個對不起來)。 */
   const run=(typeof RECON_RUN_KEY!=="undefined"&&RECON_RUN_KEY&&RECON_RUNS)
     ?(RECON_RUNS||[]).find(x=>x.key===RECON_RUN_KEY):null;
   /* 儀表板篩了什麼,這一頁就是什麼 —— 畫面上寫「9,247 / 10,408 筆」,
@@ -20434,54 +20431,29 @@ function prSheetInvoice(){
   const wab=(typeof dashWmsAgg==="function")&&dashWmsAgg();
   if(run&&wab){
     const HEAD2="E8E2D6", RED2="C00000";
-    const MONEY2="$#,##0.00", PCT2="0.0%", INT2="#,##0";
-    const kv2=(k,v,fmt,plain)=>[{v:k,t:"s",s:{bold:true,align:"left",border:true}},
-      fmt?{v:v,t:"n",s:{fmt:fmt,align:"right",border:true,
-        color:(!plain&&typeof v==="number"&&v<0)?RED2:undefined}}
-         :{v:String(v==null?"":v),t:"s",s:{align:"left",border:true}}];
+    const MONEY2="$#,##0.00", PCT2="0.0%";
     const hc2=(v,al)=>({v:v,t:"s",s:{bold:true,fill:HEAD2,align:al||"right",wrap:true,border:true}});
     const invs=(run.invoices||[]);
     const accs=[...new Set(invs.map(k=>acctFromInvoice(k)).filter(Boolean))];
-    const upsRecon=cents((wab.chargeable||0)-(wab.profit||0));
-    const rows=[[hc2(L("項目","Item"),"left"),hc2(L("數值","Value"))],
-      kv2(L("批次","Batch"), runLabelOf(run)),
-      /* 匯入時間、操作人、期別那三列拿掉了:誰在幾點按的匯入不是這份報表要
-         回答的事,而期別那一格是一長串期號,把整欄撐開、印出來也讀不了。 */
-      kv2(L("UPS 帳號","UPS account"), accs.join(", ")),
-      /* 匯入幾筆、對到幾筆、差在哪裡 —— 只寫「對帳筆數」的話,和第 3 步那張
-         表上的筆數對不起來,看起來像其中一邊算錯。 */
-      kv2(L("匯入筆數","Imported rows"), run.n||0, INT2, true),
-      kv2(L("對帳筆數","Reconciled rows"), wab.n||0, INT2, true),
-      /* 「帳單上沒有(留給下一期)」那一列拿掉了:它是件數,不是錢,夾在毛利
-         那幾列中間讀起來像少收了什麼。是哪幾筆,「帳單上沒有」那一頁一筆一筆寫著。 */
-      kv2("UPS"+L("(對帳貨件)"," (reconciled shipments)"), upsRecon, MONEY2),
-      kv2(L("應收合計("+wab.src+" 實收 + 應補收)","Chargeable ("+wab.src+" billed + re-bill)"), cents(wab.chargeable||0), MONEY2),
-      kv2(L("對帳毛利(應收合計 − UPS)","Reconciliation profit (Chargeable − UPS)"), cents(wab.profit||0), MONEY2),
-      kv2(L("對帳毛利率","Reconciliation margin"), (wab.chargeable?(wab.profit/Math.abs(wab.chargeable)):0), PCT2)];
-    /* 上面那一組是整批的。「這一層在賺錢嗎」要另外問 —— 一層二十家客戶,
-       沒有這一塊就得自己把二十列加起來。和儀表板上那張表同一個算式、
-       同一批單(儀表板篩了什麼,這一份就是什麼),加起來就是上面那個毛利。 */
+    /* 摘要就是這一張:一層一欄,應收、UPS、毛利、毛利率。批次、帳號、筆數那幾列
+       拿掉了 —— 這份報表是拿來看「哪一層在賺錢」的,是哪一批在檔名上寫著。
+       算式和儀表板上那張表同一條,也和儀表板站在同一批單上(篩了什麼就是什麼)。 */
     const lv=(typeof dashLevelRows==="function")?dashLevelRows():null;
-    if(lv&&lv.length){
-      const cell2=(v,fmt,neg)=>({v:v,t:fmt?"n":"s",
-        s:{fmt:fmt||undefined, align:fmt?"right":"left", border:true,
-           color:(neg&&typeof v==="number"&&v<0)?RED2:undefined}});
-      rows.push([]);
-      rows.push([hc2(L("各層級毛利","Profit by rate level"),"left"),
-                 hc2(L("應收合計","Chargeable")), hc2("UPS"),
-                 hc2(L("毛利","Profit")), hc2(L("毛利率","Margin"))]);
-      for(const g of lv) rows.push([
-        cell2(anaLvlName(g.level)),
-        cell2(cents(g.chargeable), MONEY2),
-        cell2(cents(g.cost), MONEY2),
-        cell2(cents(g.profit), MONEY2, true),
-        cell2(g.margin==null?0:g.margin/100, PCT2, true)]);
-    }
-    /* 摘要那一列「帳單上沒有 5」會讓人問:是哪五筆?自己一頁列出來 ——
-       客戶、單號、追蹤號、日期、向客戶收多少、從哪一批帶進來的。 */
+    const cell2=(v,fmt,neg)=>({v:v,t:fmt?"n":"s",
+      s:{fmt:fmt||undefined, align:fmt?"right":"left", border:true,
+         color:(neg&&typeof v==="number"&&v<0)?RED2:undefined}});
+    const cols=(lv||[]);
+    const rows=[
+      [hc2("Level","left")].concat(cols.map(g=>hc2(anaLvlName(g.level)))),
+      [hc2(L("應收合計","Chargeable"),"left")].concat(cols.map(g=>cell2(cents(g.chargeable),MONEY2))),
+      [hc2("UPS","left")].concat(cols.map(g=>cell2(cents(g.cost),MONEY2))),
+      [hc2(L("毛利","Profit"),"left")].concat(cols.map(g=>cell2(cents(g.profit),MONEY2,true))),
+      [hc2(L("毛利率","Margin"),"left")].concat(cols.map(g=>cell2(g.margin==null?0:g.margin/100,PCT2,true)))];
+    /* 這一批有幾筆在 WMS / TMS 收了、帳單上卻還沒出現(留給下一期):
+       自己一頁列出來 —— 客戶、單號、追蹤號、日期、向客戶收多少、從哪一批帶進來的。 */
     const off=(typeof RECON!=="undefined"&&RECON&&RECON.res&&RECON.res.notOnInv)||[];
     const sheets=[{name:L("本批次摘要","Summary"), rows,
-      cols:[{w:34},{w:30},{w:16},{w:16},{w:12}], freeze:{r:1,c:0}}];
+      cols:[{w:16}].concat((lv||[]).map(()=>({w:16}))), freeze:{r:1,c:1}}];
     if(off.length){
       const cTxt=o=>o.carried?((o.carried.invDate||"")+(o.carried.inv?" "+o.carried.inv:"")).trim():"";
       const oh=["Customer Code","Customer Name","Order Number","Tracking Number","Transaction Date",
@@ -24830,7 +24802,6 @@ function sceneInit(){
     {kind:"cat",   x:334,y:160,seed:71,act:"sit",love:0},
   ];
   spreadActors();
-  bugsInit();
   /* 摸摸。桌面版的場景可以點角色互動( _pet_at),這裡同樣。 */
   SCENE.cv.style.cursor="pointer";
   SCENE.cv.title = LANG?"Click an animal":"點一下摸摸";
@@ -24857,9 +24828,8 @@ function sceneInit(){
    左半邊是貨車、地磅和天秤,所以人往右擺。 */
 function spreadActors(){
   const W=SCENE.W||900;
-  /* 左側被場景佔掉的寬度:Recon 是貨車和月台,Boop 是掃描架和稽核桌。
-     用比例算,窄視窗下家具才不會壓到角色。 */
-  const lead = BRAND==="Boop" ? Math.min(0.50*W, 470) : Math.min(0.52*W, 500);
+  /* 以前左半邊留給貨車和月台。家具拿掉了,整條都是他們的 —— 只留一點邊。 */
+  const lead = 40;
   const span = Math.max(160, W-lead-70);
   const a=SCENE.actors;
   if(!a.length) return;
@@ -25610,49 +25580,24 @@ function drawBug(g,b,t){
   g.lineWidth=0.6; g.beginPath(); g.moveTo(0,-4); g.lineTo(-2.2,-7.5); g.moveTo(0,-4); g.lineTo(2.2,-7.5); g.stroke();
   g.restore();
 }
+/* 只剩角色。碼頭、天空、天氣、蝴蝶都拿掉了 —— 一整幕動畫擺在首頁底下,
+   看第一次是有趣,看第五十次是每次開站都要等它畫完的一塊噪音;而人要在首頁
+   看的是上面那三張卡。畫布留著、底透明,兩個同仁、一隻狗、一隻貓就在頁面上
+   走來走去,點一下還是會有反應。 */
 function sceneDraw(){
   const g=SCENE.ctx; if(!g) return;
-  const W=SCENE.W,H=SCENE.H,t=SCENE.t;
-  g.clearRect(0,0,W,H);
+  g.clearRect(0,0,SCENE.W,SCENE.H);
   g.lineWidth=2.2; g.strokeStyle=INK;
-
-  if(BRAND==="Boop"){
-    /* 室內:底是地板色,天空和天氣只從窗格看得到。 */
-    skRect(g,3,3,W-6,H-6,101,pal("--bg","#f4ecdc"));
-    drawBoopHall(g,W,H,t);
-    g.save();
-    g.beginPath();
-    for(let k=0;k<3;k++) g.rect(W*0.56+k*58,14,44,30);
-    g.clip();
-    drawSunMoon(g,W,58);
-    drawWeather(g,W,80,t);
-    g.restore();
-  }else{
-    /* 戶外:天空要漸層才畫得出「天頂藍、地平線橘」。單色只能二選一。 */
-    const sky=g.createLinearGradient(0,3,0,H-22);
-    sky.addColorStop(0, skyColour("top"));
-    sky.addColorStop(0.62, blendHex(skyColour("top"),skyColour("bot"),.55));
-    sky.addColorStop(1, skyColour("bot"));
-    skRect(g,3,3,W-6,H-6,101,sky);
-    drawDock(g,W,H,t);
-    drawWeather(g,W,H,t,true);
-  }
-
+  const t=SCENE.t;
   for(const a of SCENE.actors){
     if(a.kind==="worker") drawWorker(g,a,t);
     else if(a.kind==="dog") drawDog(g,a,t);
     else drawCat(g,a,t);
   }
-  /* 蝴蝶最後畫:停在頭上時要在頭的前面。夜裡和壞天氣不飛。 */
-  if(BRAND!=="Boop"&&SCENE.bugs){
-    const ph=skyPhase(localHour()), hide=(ph==="night"||ph==="evening")||(WX.mode==="rain"||WX.mode==="storm"||WX.mode==="snow");
-    if(!hide) for(const b of SCENE.bugs) drawBug(g,b,t);
-  }
 }
 function sceneLoop(){
-  /* stormTick 要在 sceneStep 之前:貓讀 FLASH 決定要不要嚇到,
-     順序反過來的話貓永遠比閃電慢一幀。 */
-  SCENE.t++; stormTick(SCENE.t); sceneStep(); bugsStep(); sceneDraw();
+  /* 天氣和蝴蝶都不畫了,所以也不跑:看不見的雷把貓嚇一跳,只會像當機。 */
+  SCENE.t++; sceneStep(); sceneDraw();
   SCENE.raf=requestAnimationFrame(sceneLoop);
 }
 
