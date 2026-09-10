@@ -16850,6 +16850,11 @@ function reconRun(list){
     const split=reconSplitByPiece(items, feesByLn);
     items.splice(0, items.length, ...split);
   }
+  /* 每一列記下它是第幾個被開出來的。底下那個「金額大的在前」是給對帳的人看的
+     總清單;開給客戶的請款單、逐客戶那幾張分頁不照金額排 —— 一筆運費更正和它的
+     稽核費、一退一收的那兩列,本來就是照這個順序成對開出來的,照金額重排會把它們
+     拆散:同一張追蹤號底下有時稽核費在更正上面、有時在下面,一份文件兩種排法。 */
+  items.forEach((it,i)=>{ it.seq=i; });
   items.sort((a,b)=>b.total-a.total||a.cus.localeCompare(b.cus)||a.order.localeCompare(b.order));
   const byCusR=new Map(), byChgR=new Map();
   for(const it of items){
@@ -17664,7 +17669,9 @@ async function reconExport(){
   const CUR="$#,##0.00";
   const dc=v=>({v:cents(v||0),t:"n",s:{fmt:CUR}});
   for(const [code,list] of byCusItems){
-    const sorted=list.filter(it=>Math.abs(it.amt)>0.004).sort((a,b)=>a.trk.localeCompare(b.trk)||b.total-a.total);
+    /* 追蹤號由小到大,同一張追蹤號底下照開立的順序(seq),不照金額 —— 見上面。 */
+    const sorted=list.filter(it=>Math.abs(it.amt)>0.004)
+      .sort((a,b)=>a.trk.localeCompare(b.trk)||((a.seq||0)-(b.seq||0)));
     if(!sorted.length) continue;
     const rows=[]; let sum=0;
     for(const it of sorted){
@@ -22404,7 +22411,7 @@ function cliDimsOf(trk){
 function cliData(code){
   const R=(typeof RECON!=="undefined")&&RECON&&RECON.res;
   const items=((R&&R.rebill&&R.rebill.items)||[]).filter(it=>it.cus===code)
-    .sort((a,b)=>String(a.trk||"").localeCompare(String(b.trk||""))||(b.total||0)-(a.total||0));
+    .sort((a,b)=>String(a.trk||"").localeCompare(String(b.trk||""))||((a.seq||0)-(b.seq||0)));
   const rows=[]; let total=0;
   const dimsOf=t=>{ const d=cliDimsOf(t); return {da:d.a||d.c, dc:(d.c&&d.a&&d.a!==d.c)?d.c:""}; };
   /* 平均分攤到 n 件:前 n−1 件無條件捨去到分,最後一件補足餘數,相加還是原數。 */
