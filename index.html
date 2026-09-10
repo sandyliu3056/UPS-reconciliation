@@ -1394,7 +1394,7 @@ main.home{display:flex;flex-direction:column}
 main.home #app{flex:1 0 auto;display:flex;flex-direction:column;min-height:0}
 main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
 #p-home .sceneBox{margin-top:auto}
-#p-home #scene{height:clamp(104px,13vh,140px)}
+#p-home #scene{height:clamp(124px,15vh,164px)}
 /* 框拿掉了:裡面沒有一幕要框住,只有幾個角色在頁面上走。留著框,空的那一
    大片底色反而變成畫面上最大的一塊東西。 */
 /* 首頁面板。三塊:最近一次對帳(大)、待補收、帳單歷史,底下三顆快捷。
@@ -5393,6 +5393,17 @@ function priceShipment(cfg, s, force){
       const pos=zl.filter(l=>toNum(l.net)>0.004);
       const uniq=new Set(zl.map(l=>normZone(l.zone)));
       if(pos.length||uniq.size===1) zone=(pos[0]||zl[0]).zone;
+    }else if((s.allLines||[]).some(l=>l.layer==="ADJ"
+        && String(l.detail||"").toUpperCase()==="ZONE")){
+      /* ZONE 那幾行也可能整排掛著原本的 Zone(帳單 000000586Y51306 的
+         1Z...951009:ZONE ADJUSTMENT 掛 3,更正後的 8 寫在 SCC 那一行上)。
+         那就去看 SCC 那一行 —— 更正後的重量、尺寸都寫在它身上,同一行講的就是
+         「更正之後長什麼樣」,Zone 跟著它走。少了這一段,Zone 3 改 8 的單子會
+         一直用 Zone 3 的費率算,而 UPS 已經照 8 收了。 */
+      const sc=(s.allLines||[]).find(l=>l.layer==="ADJ"
+        && String(l.detail||"").toUpperCase()==="SCC" && isFreightLine(l) && l.zone
+        && normZone(l.zone)!==normZone(s.zone));
+      if(sc) zone=sc.zone;
     }
   }
 
@@ -16647,8 +16658,11 @@ function reconRun(list){
           swapPair("Base Rate", rB); did=true;
         }
       }
-      if(!did && F.zoneRate!=null && cents(F.zoneRate)>0.004){
-        /* 客戶沒收運費、或同單另有重量更正:退不了原收的,照差額開一項。 */
+      if(!did && !hasSCC && F.zoneRate!=null && cents(F.zoneRate)>0.004){
+        /* 客戶沒收運費:退不了原收的,照差額開一項。
+           同單另有重量更正(SCC)的不走這裡 —— 那條路算的是「客戶費率的最後運費
+           減掉已收的運費」,而最後運費已經是照更正後的 Zone 算的,Zone 差額本來
+           就含在裡面;這裡再開一筆,同一段運費就收了兩次。 */
         items.push(Object.assign({kind:"zone", charge:"Zone Adjustment", desc:zn,
           ups:0, billed:0, rate:cents(F.zoneRate), amt:cents(F.zoneRate), credit:0, creditFrom:[]}, base));
         did=true;
@@ -24593,21 +24607,15 @@ function sceneInit(){
   const cs=getComputedStyle(document.documentElement);
   INK=cs.getPropertyValue("--accent").trim()||INK;
   sceneResize(); addEventListener("resize",()=>{ sceneResize(); spreadActors(); });
+  /* 只剩貓和狗。同仁那兩個拿掉了 —— 首頁不是辦公室的縮圖,那一條要的是
+     一點生氣,不是一幕戲。畫得比原本大一號,兩隻在整條上走才看得清楚。 */
   SCENE.actors=[
-    /* 襯衫和背心必須是對比色 —— 同色系疊起來只會看成衣服上一塊補丁。
-       兩個人的髮型、眼鏡、體型、膚色都不一樣,遠看才分得出是兩個人,
-       不是同一個人複製兩份。 */
-    {kind:"worker",x:72, y:150,seed:11,act:"walk",dir:1, box:false,tgt:230,
-     coat:"#5b86b8",vest:"#e8762c",hat:"#ffb500",hair:"#3a2b20",love:0,
-     build:0.94,skin:"#ffe0bf",hairStyle:"bun",   indoorHat:"headset",glasses:true},
-    {kind:"worker",x:214,y:156,seed:29,act:"idle",dir:-1,box:true, tgt:92,
-     coat:"#d8d2c6",vest:"#5b9e6b",hat:"#e8762c",hair:"#6b4a2e",love:0,
-     build:1.07,skin:"#e3b183",hairStyle:"fringe",indoorHat:"cap",    beard:true},
-    {kind:"dog",   x:150,y:162,seed:53,act:"walk",dir:1, tgt:300,love:0},
-    {kind:"cat",   x:334,y:160,seed:71,act:"sit",love:0},
+    {kind:"dog", x:150,y:162,seed:53,act:"walk",dir:1, tgt:300,love:0},
+    {kind:"cat", x:334,y:160,seed:71,act:"sit", love:0},
   ];
   spreadActors();
   /* 摸摸。桌面版的場景可以點角色互動( _pet_at),這裡同樣。 */
+  SCENE.K=1.9;
   SCENE.cv.style.cursor="pointer";
   SCENE.cv.title = LANG?"Click an animal":"點一下摸摸";
   SCENE.cv.addEventListener("click",e=>{
@@ -24615,10 +24623,10 @@ function sceneInit(){
     const mx=(e.clientX-r.left)/S, my=(e.clientY-r.top)/S;
     let best=null,bd=1e9;
     for(const a of SCENE.actors){
-      const d=Math.hypot(a.x-mx,(a.y-20)-my);
+      const d=Math.hypot(a.x-mx,(a.y-20*(SCENE.K||1))-my);
       if(d<bd){bd=d;best=a;}
     }
-    if(best&&bd<42){
+    if(best&&bd<42*(SCENE.K||1)){
       best.love=SCENE.t;
       /* 點下去各有各的反應:狗抬腿尿尿,貓炸毛,工人揮手。 */
       if(best.kind==="dog"){ best.act="pee";  best.wait=90; }
@@ -24640,7 +24648,9 @@ function spreadActors(){
   if(!a.length) return;
   /* 平均分配時貓是最後一個,會落在最右邊角落。
      把貓抽出來擺中間,其餘的平均分。 */
-  const cat = a.find(x=>x.kind==="cat");
+  /* 貓抽出來擺中間是為了不落在最右邊角落 —— 那是四個角色的時候。剩兩隻的
+     時候抽掉一隻,另一隻就被平均分到正中間,兩隻疊在一起。 */
+  const cat = a.length>2 ? a.find(x=>x.kind==="cat") : null;
   const rest = cat ? a.filter(x=>x!==cat) : a;
   rest.forEach((act,i)=>{
     act.x = lead + span*(i+0.5)/rest.length;
@@ -25394,10 +25404,16 @@ function sceneDraw(){
   g.clearRect(0,0,SCENE.W,SCENE.H);
   g.lineWidth=2.2; g.strokeStyle=INK;
   const t=SCENE.t;
+  /* 放大是畫的時候縮放,不是改每一段線的座標:腳底(a.x,a.y)當原點撐開,
+     走位、腳步、互動那幾條算式一個字都不用動。 */
+  const K=SCENE.K||1;
   for(const a of SCENE.actors){
-    if(a.kind==="worker") drawWorker(g,a,t);
-    else if(a.kind==="dog") drawDog(g,a,t);
-    else drawCat(g,a,t);
+    g.save();
+    if(K!==1){ g.translate(a.x,a.y); g.scale(K,K); g.translate(-a.x,-a.y); }
+    if(a.kind==="dog") drawDog(g,a,t);
+    else if(a.kind==="cat") drawCat(g,a,t);
+    else drawWorker(g,a,t);
+    g.restore();
   }
 }
 function sceneLoop(){
