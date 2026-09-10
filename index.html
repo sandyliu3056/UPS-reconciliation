@@ -16782,6 +16782,11 @@ function reconRun(list){
            一項一項對過了,燃油再退一次就是同一件事收兩次帳。逐項對帳這幾列
            因此一律只有本金、不帶燃油,兩個方向都一樣。 */
         if(c==="Fuel Surcharge") continue;
+        /* 運費也不比。UPS 重新量過會自己開一筆更正(SCC),那一條路已經
+           把「最後該收多少運費」算完了;這裡再拿基本運費比一次是同一件事
+           算兩遍,而且兩遍方向相反 —— 更正那邊補收、逐項這邊退還,兩列
+           並排在同一張對帳單上自相矛盾。 */
+        if(memOfCol(c).includes("Base Rate")) continue;
         if(done.has(c)) continue;
         const w=cents(toNum(b[c]));
         if(!(Math.abs(w)>0.004)) continue;
