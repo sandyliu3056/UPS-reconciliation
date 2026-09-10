@@ -14889,7 +14889,7 @@ const RECON_SHEET="Shipments";
 /* 欄名照 Consolidated Invoice 那一頁:一個追蹤號一列。舊模板的 Tracking Numbers、
    Ship Date、Billed Weight (lb) 匯入端還認。 */
 const RECON_COL={ order:"Order Number", trk:"Tracking Number",
-                  cus:"Customer Code",  amt:"Total Amount",
+                  cus:"Customer Code",  cusName:"Customer", amt:"Total Amount",
                   date:"Transaction Date", zone:"Zone", chan:"Channel",
                   wt:"Billed Weight",
                   ref1:"Shipment Reference Number 1", ref2:"Shipment Reference Number 2" };
@@ -15894,6 +15894,9 @@ function reconParse(sheetRows){
     amt:  mineOr(["Total Amount"],["Total Amount"].concat(RECON_AMT_ALIAS)),
     date: find("Transaction Date","Ship Date"),
     ref1: find("Shipment Reference Number 1"), ref2: find("Shipment Reference Number 2"),
+    /* 客戶名稱:給填表的人看的,對帳一律照代碼比。認完整的欄名,
+       find() 是整格相等,所以不會和「Customer Code」撞在一起。 */
+    cusName: find("Customer"),
     chan: mineOr(["Channel","Shipping Channel"],["Channel"]),
     zone: mineOr(["Zone"],["Zone"]),
     wt:   mineOr(["Billed Weight","Billed Weight (lb)"],["Billed Weight","Billed Weight (lb)"]),
@@ -16018,7 +16021,10 @@ function reconParse(sheetRows){
     const wtRaw=cell("wt").replace(/\s*(lbs?|磅)$/i,"").replace(/[,\s]/g,"");
     if(wtRaw!=="" && !/^\d+(\.\d+)?$/.test(wtRaw)){
       issues.push({ln, kind:"wt", what:cell("wt")}); continue; }
-    if(!known.has(cus)){ issues.push({ln, kind:"cus", what:cus}); continue; }
+    if(!known.has(cus)){
+      /* 名字一起講:要建檔的人才知道那個代碼是誰,不必回頭翻檔案。 */
+      const nm0=cell("cusName");
+      issues.push({ln, kind:"cus", what:cus+(nm0?" ("+nm0+")":"")}); continue; }
     const clash=trks.find(t=>seenTrk.has(t));
     if(clash){ issues.push({ln, kind:"dupTrk", what:clash, at:seenTrk.get(clash)}); continue; }
     /* 逐項費用:填了才算。空格是「沒填」,0 是「填了零」—— 兩回事,
@@ -16037,7 +16043,8 @@ function reconParse(sheetRows){
     /* 日期欄是模板抄帳單來的真日期;CSV 或另存過的檔可能剩下 Excel 序號,換回 yyyy-mm-dd。 */
     const dRaw=cell("date");
     const date=/^\d{5}$/.test(dRaw)?xlDate(new Date(Date.UTC(1899,11,30)+(+dRaw)*86400000+43200000)):dRaw;
-    const row={ln, order, trks, cus, amt, date, zone:cell("zone"), chan:cell("chan"),
+    const row={ln, order, trks, cus, cusName:cell("cusName"), amt, date,
+               zone:cell("zone"), chan:cell("chan"),
                wt:wtRaw===""?null:toNum(wtRaw), ref1, ref2};
     /* 同一個單號的其他件掛上來。單號要是這一列真的填了的 —— 退回追蹤號
        那種情況每一列本來就自成一單,不能拿追蹤號去併別人。 */
@@ -16120,8 +16127,8 @@ async function reconTemplate(src){
   /* 欄名不帶「- WMS / - TMS」了:整張表都是同仁要填的,沒有另一側可以混淆,
      後綴只是讓每個欄名長一截。參考號兩欄也拿掉 —— 對帳是照追蹤號比的,
      單號空白時本來就會退回用追蹤號。 */
-  const hd=[HM(RECON_COL.date), HQ(RECON_COL.trk), HQ(RECON_COL.cus), HM(RECON_COL.order),
-            HM("Channel"), HM("Zone"), HM("Billed Weight")]
+  const hd=[HM(RECON_COL.date), HQ(RECON_COL.trk), HM(RECON_COL.cusName), HQ(RECON_COL.cus),
+            HM(RECON_COL.order), HM("Channel"), HM("Zone"), HM("Billed Weight")]
     .concat(feeCols.map(HM), [HQ("Total Amount")]);
   const MONEY="#,##0.00";
   /* 模板是空白的:只有表頭,一列資料都不帶。以前它把手上那批帳單整個倒進去
@@ -16136,6 +16143,7 @@ async function reconTemplate(src){
   const guide=[[G("Column"),G("Fill with / 填什麼"),G("Notes / 說明")],
     gRow(RECON_COL.trk,"追蹤號 Tracking number","必填;對帳照它比對帳單,一票多件時一件一列 Required; the reconciliation matches on it — one row per package",
          "版式與稽核中心匯出的 Consolidated Invoice 相同,一個追蹤號一列 Same layout as the Audit Center's Consolidated Invoice sheet, one tracking per row"),
+    gRow(RECON_COL.cusName,"客戶名稱 Customer name","選填;給填表的人看的,對帳一律照代碼比;代碼建錯時這一欄會一起印在錯誤訊息裡 Optional; for whoever fills the sheet — the reconciliation always matches on the code, and this name is echoed in the error when a code is not on file"),
     gRow(RECON_COL.cus,"客戶代碼 Customer code","必填;要在客戶名單裡,對照 Customers 分頁 Required; must be on the client list, see the Customers sheet"),
     gRow(RECON_COL.order,"系統單號 Order number","選填;空白時用追蹤號;一票多件時各件同一個單號 —— 費用只填在其中一件那一列,其餘幾件只留單號與追蹤號、金額欄空白,匯入時會併成同一張單 Optional; blank falls back to the tracking number; a multi-piece order repeats its number on each package — put the charges on one of them and leave the amount blank on the rest, and they are folded into that one order on import"),
     gRow("Channel","計價用的渠道 Channel used for pricing","選填;系統的渠道名稱,對照 Channels 分頁;Ground 不分商業／住宅;匯入後與系統判的渠道核對 Optional; a system channel name, see the Channels sheet; Ground has no com/res split; checked against the system's channel"),
@@ -16173,7 +16181,7 @@ async function reconTemplate(src){
   guide.push(["","",""]);
   guide.push(gRow(L("規則","Rules"),"欄名不可改、不可增刪 Do not rename, add or remove columns",
                   "缺追蹤號、客戶代碼或總額的列整份退回;整列空白的略過 A row missing the tracking number, client code or total rejects the whole file; entirely blank rows are skipped"));
-  const idW=[12,22,16,20,18,10,14];
+  const idW=[12,22,24,16,20,18,10,14];
   const sheets=[
     /* 不凍結、不加篩選:要的人自己在 Excel 開,一下就好;強加上去的反而礙事。 */
     {name:RECON_SHEET, rows, ignoreTextNumbers:true,
