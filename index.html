@@ -6353,6 +6353,11 @@ const HISTINV_KEY="ups_recon_histinv_v1";
 /* 明細列放 IndexedDB,不是 localStorage —— 五十萬列是幾十 MB,
    localStorage 只有 5 MB。一期一筆,重開瀏覽器再讀回來。 */
 const IDB_NAME="ups_recon_hist", IDB_STORE="invoices", IDB_RUNS="recon_runs";
+/* 手上這一份 WMS / TMS 的列。以前放 localStorage,那裡總共只有 5~10 MB,
+   一份一萬八千列的 TMS 檔光是它就好幾 MB —— 存不進去,於是跳「這一批太大,
+   重新整理後不會留著」,重新整理真的就沒了。明細本來就在這個資料庫裡,
+   它跟著放才對。 */
+const IDB_META="meta";
 /* 帳單歷史也是一個帳號一份。localStorage 的 key 和 IndexedDB 的資料庫名稱
    都綁 user id —— 同一台機器換人登入,不該看到前一個人的帳單明細。
    舊版共用的那一份留在原地不動,由本人在歷史頁自己認領或刪掉。 */
@@ -6369,19 +6374,42 @@ function idb(){
   const name=IDB_FOR;
   IDB=new Promise((res,rej)=>{
     if(!window.indexedDB) return rej(new Error("no indexedDB"));
-    /* v2 多一個 store:存過的對帳(WMS / TMS 的列 + 摘要)。舊庫開起來就補上,明細不動。 */
-    const rq=indexedDB.open(name,2);
+    /* v2 多一個 store:存過的對帳(WMS / TMS 的列 + 摘要)。
+       v3 再多一個 meta:手上這一份還沒存成對帳的列。舊庫開起來就補上,明細不動。 */
+    const rq=indexedDB.open(name,3);
     rq.onupgradeneeded=()=>{
       const db=rq.result;
       if(!db.objectStoreNames.contains(IDB_STORE))
         db.createObjectStore(IDB_STORE,{keyPath:"invoice"});
       if(!db.objectStoreNames.contains(IDB_RUNS))
         db.createObjectStore(IDB_RUNS,{keyPath:"key"});
+      if(!db.objectStoreNames.contains(IDB_META))
+        db.createObjectStore(IDB_META,{keyPath:"k"});
     };
     rq.onsuccess=()=>{ IDB_DB=rq.result; res(rq.result); };
     rq.onerror=()=>rej(rq.error||new Error("indexedDB open failed"));
   }).catch(e=>{ IDB=null; IDB_FOR=""; throw e; });
   return IDB;
+}
+/* meta:一個 key 一筆的小東西。讀不到就回 null,呼叫端一律當成「沒有」——
+   這裡沒有一筆是原始資料,重匯一次就有了。 */
+function metaGet(k){
+  return idb().then(db=>new Promise((res,rej)=>{
+    const rq=db.transaction(IDB_META,"readonly").objectStore(IDB_META).get(k);
+    rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>rej(rq.error);
+  })).catch(()=>null);
+}
+function metaPut(rec){
+  return idb().then(db=>new Promise((res,rej)=>{
+    const rq=db.transaction(IDB_META,"readwrite").objectStore(IDB_META).put(rec);
+    rq.onsuccess=()=>res(true); rq.onerror=()=>rej(rq.error);
+  })).catch(()=>false);
+}
+function metaDel(k){
+  return idb().then(db=>new Promise((res)=>{
+    const rq=db.transaction(IDB_META,"readwrite").objectStore(IDB_META).delete(k);
+    rq.onsuccess=()=>res(true); rq.onerror=()=>res(false);
+  })).catch(()=>false);
 }
 function idbTx(mode){
   return idb().then(db=>db.transaction(IDB_STORE,mode).objectStore(IDB_STORE));
@@ -15044,29 +15072,38 @@ let RECON_SRC="WMS";
    錯。所以回來之後重算一次;帳單還沒載入就先擺著,並且說出來。 */
 const RECON_KEY_BASE="ups_recon_rows_v1";
 function reconRowsKey(){ return RECON_KEY_BASE+"::"+((ME&&ME.id)||"anon"); }
+/* 手上這一份列存進 IndexedDB。以前存 localStorage,一份一萬八千列的 TMS
+   檔就是好幾 MB,而整個設定區總共才 5~10 MB —— 存不進去只好放棄,重新
+   整理就沒了。IndexedDB 是以 GB 計的,同一台機器上明細本來就放那裡。
+   非同步,所以呼叫端不再需要看回傳值決定要不要跳「留不住」那句話。 */
+const RECON_ROWS_META="recon_rows";
 function reconRowsSave(rows){
-  try{
-    if(!rows||!rows.length) localStorage.removeItem(reconRowsKey());
-    /* 逐項明細直接長在每一列的 chg 上,一起進 JSON —— 不必另存一份。
-       v2 物件格式保留,讀的那一端連舊版純陣列都認。 */
-    else localStorage.setItem(reconRowsKey(), JSON.stringify({v:2, rows}));
-    return true;
-  }catch(e){
-    /* 塞不下就不留 —— 留一半比沒留更糟。 */
-    try{ localStorage.removeItem(reconRowsKey()); }catch(e2){}
-    return false;
-  }
+  /* localStorage 那份是舊版留下的,搬過來之後就不需要了 —— 順手清掉,
+     設定區也跟著鬆一口氣。 */
+  try{ localStorage.removeItem(reconRowsKey()); }catch(e){}
+  if(!rows||!rows.length) return metaDel(RECON_ROWS_META);
+  return metaPut({k:RECON_ROWS_META, v:3, at:Date.now(), rows});
 }
 function reconRowsLoad(){
+  /* 舊版在 localStorage 的那一份先收下來、搬進 IndexedDB,再把舊的清掉。 */
+  let legacy=null;
   try{
     const t=localStorage.getItem(reconRowsKey());
-    if(!t) return null;
-    const v=JSON.parse(t);
-    if(Array.isArray(v)) return v.length?{rows:v, charges:[]}:null;   /* 舊版 */
-    if(v&&Array.isArray(v.rows)&&v.rows.length)
-      return {rows:v.rows, charges:Array.isArray(v.charges)?v.charges:[]};
-    return null;
-  }catch(e){ return null; }
+    if(t){
+      const v=JSON.parse(t);
+      if(Array.isArray(v)&&v.length) legacy={rows:v, charges:[]};
+      else if(v&&Array.isArray(v.rows)&&v.rows.length)
+        legacy={rows:v.rows, charges:Array.isArray(v.charges)?v.charges:[]};
+    }
+  }catch(e){}
+  if(legacy){
+    reconRowsSave(legacy.rows);
+    return Promise.resolve(legacy);
+  }
+  return metaGet(RECON_ROWS_META).then(r=>{
+    if(!r||!Array.isArray(r.rows)||!r.rows.length) return null;
+    return {rows:r.rows, charges:Array.isArray(r.charges)?r.charges:[]};
+  });
 }
 /* ---- 存過的對帳 -------------------------------------------------------
    每對一次就存一份:來源、帳單期別、WMS / TMS 的列、摘要數字。回來的時候先開上一份
@@ -15720,8 +15757,8 @@ function reconOpenPending(){
   reconOpenRun(key,true).then(()=>renderReconRuns()).catch(()=>{});
 }
 /* 帳單在就重算,不在就把列留著等。兩種情況都要讓人看見狀態。 */
-function reconRestoreRows(){
-  const keep=reconRowsLoad();
+async function reconRestoreRows(){
+  const keep=await reconRowsLoad();
   if(!keep) return;
   const rows=keep.rows;
   if(!CFG){
@@ -17815,12 +17852,11 @@ async function reconAccept(p, fname){
      期別一律自動撿回來一起算,不必回步驟 1 重新處理。 */
   if(!CFG){
     RECON={issues:[], res:null, list:p.rows, sumWarn:p.sumWarn||[], fname:fname||"", pending:true};
-    const kept=reconRowsSave(p.rows);
+    reconRowsSave(p.rows);
     reconRerunBtn(); renderRecon();
     const m=L("已收下 "+p.rows.length+" 筆"+skipNote+mergeNote+"。請先載入費率設定,載好會自動比對。",
               "Accepted "+p.rows.length+" row(s)"+skipNote+mergeNote+". Load the rate configuration and the comparison runs by itself.");
     reconMsg(m,true); toast(m,true);
-    if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
     return true;
   }
   /* 前期沒對到帳單的先帶進來,再跑之前點名。等到跑完才說「這幾個沒算」,人已經在讀數字了。 */
@@ -17835,24 +17871,22 @@ async function reconAccept(p, fname){
   await reconFetchArchived(all).catch(()=>0);
   if((!SHIPS||!SHIPS.length) && !(typeof RECON_XSHIPS!=="undefined"&&RECON_XSHIPS&&RECON_XSHIPS.size)){
     RECON={issues:[], res:null, list:p.rows, sumWarn:p.sumWarn||[], fname:fname||"", pending:true};
-    const kept=reconRowsSave(p.rows);
+    reconRowsSave(p.rows);
     reconRerunBtn(); renderRecon();
     const m=L("已收下 "+p.rows.length+" 筆"+skipNote+mergeNote+"。這批追蹤號的期別還不在系統裡 —— 到「1. UPS 帳單匯入」把那幾週匯入(匯入即歸檔),就會自動比對。",
               "Accepted "+p.rows.length+" row(s)"+skipNote+mergeNote+". Their invoice periods are not in the system yet — import those weeks under step 1, UPS Invoice Import (importing archives them), and the comparison runs by itself.");
     reconMsg(m,true); toast(m,true);
-    if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
     return true;
   }
   const pf=reconPreflight(all.map(r=>r.cus));
   const res=reconRun(all);
   RECON={issues:[], res, list:all, sumWarn:p.sumWarn||[], fname:fname||"", carried:carried.length, srcFiles};
-  const kept=reconRowsSave(all);
+  reconRowsSave(all);
   await reconRunSave(all,res,fname);
   reconRerunBtn();
   /* 檔一收下就把人帶到結果那一側 —— 匯入在 03,答案在 05,不讓人自己找。 */
   if(RECON_VIEW==="data" && typeof showTab==="function") showTab("cus");
   else renderRecon();
-  if(!kept) toast(L("這一批太大,重新整理後不會留著。","Too large to keep — a refresh will lose it."),false);
   const carryNote=(carried.length?L("(另自動帶入前期未對到帳單的 "+carried.length+" 筆)",
                                    " (plus "+carried.length+" row(s) carried from earlier periods that were not on their invoice)"):"")
     +(sib.rows.length?L("(另掛上同一組帳單的 "+sib.src+" 檔 "+sib.rows.length+" 筆"
