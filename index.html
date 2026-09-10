@@ -2358,11 +2358,11 @@ label:has(#newChanOn){display:none !important}
       <th class="num" data-i18n="th.reconups">Charged by UPS</th>
       <th class="num" data-i18n="th.reconprofit">Profit</th>
       <th class="num" data-i18n="th.reconmargin">Margin</th>
-      <th class="num" data-i18n="th.reconrep">Recomputed</th>
+      <th class="num" data-i18n="th.reconrep">Chargeable</th>
       <th class="num" data-i18n="th.reconpgap">Billed vs recomputed</th>
       <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
-    <p class="hint" style="margin:11px 0 0;max-width:76ch" data-i18n="hint.reconcols">Each customer is repriced at its assigned rate level; billed, recomputed and UPS amounts yield the pricing and UPS variances. Definitions and edge cases are in the guide.</p>
+    <p class="hint" style="margin:11px 0 0;max-width:76ch" data-i18n="hint.reconcols">Each customer is priced at its assigned rate level; billed, chargeable and UPS amounts yield the pricing and UPS variances. Definitions and edge cases are in the guide.</p>
 
     <div id="reconChgCard" hidden style="margin-top:16px">
     <div class="subhd" data-i18n="hd.reconchg">By charge</div>
@@ -2377,7 +2377,7 @@ label:has(#newChanOn){display:none !important}
       <th data-i18n="th.chgname">Charge</th>
       <th class="num c-cli"><span class="srcdot wms"></span><span data-i18n="th.chgbilled">Billed to client</span></th>
       <th class="num c-ups"><span class="srcdot ups"></span><span data-i18n="th.reconups">Charged by UPS</span></th>
-      <th class="num c-rep"><span class="srcdot rep"></span><span data-i18n="th.reconrep">Recomputed</span></th>
+      <th class="num c-rep"><span class="srcdot rep"></span><span data-i18n="th.reconrep">Chargeable</span></th>
       <th class="num" data-i18n="th.chgpgap">Billed vs recomputed</th>
       <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
@@ -12075,7 +12075,7 @@ async function bkdXlsx(){
   const sum=[[hc(L("追蹤號 ","Tracking ")+trk,HEAD,"left")].concat(Array.from({length:nCol-1},()=>hc("",HEAD))),
              (multi?[hc(L("追蹤號","Tracking"),HEAD,"left")]:[]).concat([
               hc(L("期別","Invoice"),HEAD,"left"),hc(L("帳單日","Invoice date"),HEAD),
-              hc(L("UPS 實收","UPS billed"),UPSC),hc(L("重算","Repriced"),REPC),
+              hc(L("UPS 實收","UPS billed"),UPSC),hc(L("應收","Chargeable"),REPC),
               hc(wsrc0+L(" 實收"," billed"),WMSB),hc(L("應補收","To re-bill"),WMSB),
               hc(L("毛利","Profit"),HEAD),hc(L("毛利率","Margin"),HEAD)])];
   const sumMerges=[{s:{r:0,c:0},e:{r:0,c:nCol-1}}];
@@ -12129,7 +12129,7 @@ async function bkdXlsx(){
   const push=(inv,seg,side,item,amt,bold,src)=>{
     const fill=side===0?UPSB:side===1?REPB:side===3?RBB:WMSB;
     det.push([c(inv,"","left",fill,bold)].concat(multi?[c(curTrk,"","left",fill,bold)]:[],[c(seg,"","left",fill,bold),
-      c(side===0?L("UPS 實收","UPS billed"):side===1?L("重算","Repriced")
+      c(side===0?L("UPS 實收","UPS billed"):side===1?L("應收","Chargeable")
         :side===3?L("應補收","To re-bill"):(src||"WMS")+L(" 實收"," billed"),"","left",fill,bold),
       c(item,"","left",fill,bold),c(amt,MONEY,"right",fill,bold)]));
   };
@@ -12403,7 +12403,7 @@ function bkdSection(r, wms, name0){
       +`<div class="bkdside ups"><div class="bkdside-lbl">${L("UPS 實收","UPS billed")}</div>`
       +`<div class="bkdside-body">${upsMeta||sideMeta(res.s.zone, res.s.billedUPS||res.s.billed)}<table>${U.join("")}</table>`
       +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${money(usub)}</span></div></div></div>`
-      +`<div class="bkdside rp"><div class="bkdside-lbl">${L("重新計價","Reprice")}`
+      +`<div class="bkdside rp"><div class="bkdside-lbl">${L("應收","Chargeable")}`
       +(BKD_LVL?`<span class="bkdlvl">${esc2(L("層級 ","Level ")+BKD_LVL)}</span>`:"")+`</div>`
       +`<div class="bkdside-body">${rpBody}`
       +`<div class="bkdside-ft"><span>${L("小計","Subtotal")}</span><span class="num">${rpFoot}</span></div></div></div>`
@@ -12425,7 +12425,7 @@ function bkdSection(r, wms, name0){
   H.push(`<div class="bkdtot${wms?((wRb||wOv)?" four":" three"):""}">`
     +`<div class="bt"><span class="l">${L("UPS 實收","UPS billed")}</span>`
     +`<span class="v">${money2(s.upsTotal)}</span></div>`
-    +`<div class="bt"><span class="l">${L("重新計價","Reprice")}`
+    +`<div class="bt"><span class="l">${L("應收","Chargeable")}`
     +(BKD_LVL?`<span class="bkdlvl">${esc2(L("層級 ","Level ")+BKD_LVL)}</span>`:"")+`</span>`
     +`<span class="v">${BKD_NOLVL?"—":money2(r.total||0)}</span></div>`
     +(wms?`<div class="bt"><span class="l">${esc2(wms.src)+L(" 實收"," billed")}</span>`
@@ -17587,7 +17587,7 @@ async function reconExport(){
   const TINT={id:"EFE3CB", cli:"DCEFE3", ups:"F1E3D3", rep:"FBEBC8", chk:"E8E2D6"};
   const CELL={cli:"EEF7F1", ups:"F8F1EA", rep:"FDF6E7"};
   const BAND={id:"識別 Identity", cli:"WMS / TMS", ups:"UPS",
-              rep:"重算 Reprice", chk:"核對與差異 Checks & variance"};
+              rep:"應收 Chargeable", chk:"核對與差異 Checks & variance"};
   /* 金額格帶 $ —— 這幾張表上一整片數字裡混著計費重、Zone、尺寸,不帶錢號的
      那幾欄看起來和它們沒兩樣;補收清單本來就帶,整本活頁簿一種寫法。 */
   const MONEY="$#,##0.00";
@@ -17622,8 +17622,8 @@ async function reconExport(){
   /* ---- Summary:一個客戶一列 ---- */
   const sumCols=[["Customer Code","id"],["Customer Name","id"],["Rate Level","id"],["Repricing Status","id"],
     ["Rows","id"],["Packages Matched","id"],["Packages","id"],
-    ["WMS / TMS","cli"],["UPS","ups"],["Reprice","rep"],
-    ["Profit (Billed − UPS)","chk"],["WMS / TMS vs Reprice","chk"],["UPS vs Reprice","chk"]].map(([name,g])=>({name,g}));
+    ["WMS / TMS","cli"],["UPS","ups"],["Chargeable","rep"],
+    ["Profit (Billed − UPS)","chk"],["WMS / TMS vs Chargeable","chk"],["UPS vs Chargeable","chk"]].map(([name,g])=>({name,g}));
   const sumRows=r.cus.map(a=>[a.code, a.name, lvl(a), why(a.block), a.orders, a.found, a.pkgs,
      m(a.amt,"cli"), m(a.cost,"ups"), m(a.rep,"rep"), m(a.profit), m(a.pgap), m(a.gap)]);
 
@@ -17634,8 +17634,8 @@ async function reconExport(){
     ["Packages","id"],["Packages Matched","id"],["Not On Invoice","id"],
     ["Channel","cli"],["Zone","cli"],["Billed Weight","cli"],["WMS / TMS","cli"],
     ["Channel (UPS)","ups"],["Zone (UPS)","ups"],["Billed Weight (UPS)","ups"],["UPS","ups"],
-    ["Reprice","rep"],
-    ["Channel Match","chk"],["Zone Match","chk"],["Profit (Billed − UPS)","chk"],["WMS / TMS vs Reprice","chk"],["UPS vs Reprice","chk"]]
+    ["Chargeable","rep"],
+    ["Channel Match","chk"],["Zone Match","chk"],["Profit (Billed − UPS)","chk"],["WMS / TMS vs Chargeable","chk"],["UPS vs Chargeable","chk"]]
     .map(([name,g])=>({name,g}));
   const ordRows=r.orders.map(o=>[o.order, o.date, o.cus, lvl(o), why(o.block),
      (o.trks||[]).join(", "), o.ref1||"", o.ref2||"", o.pkgs, o.found, o.missTrk.join(", "),
@@ -17650,8 +17650,8 @@ async function reconExport(){
   const chgName=n=>n===RECON_UNKNOWN?"Unrecognised codes":n;
   const noCode=o=>o.name===RECON_UNKNOWN||o.name===RECON_OTHER;
   const chgCols=[["Scope","id"],["Charge","id"],["Your Code","id"],["System Code","id"],
-    ["WMS / TMS","cli"],["UPS","ups"],["Reprice","rep"],
-    ["WMS / TMS vs Reprice","chk"],["Reprice vs UPS","chk"]].map(([name,g])=>({name,g}));
+    ["WMS / TMS","cli"],["UPS","ups"],["Chargeable","rep"],
+    ["WMS / TMS vs Chargeable","chk"],["Chargeable vs UPS","chk"]].map(([name,g])=>({name,g}));
   const chgRows=[];
   const crow=(scope,o,pre)=>chgRows.push([scope, pre+chgName(o.name),
       noCode(o)?"":chgCodeMine(o), noCode(o)?"":chgUpsOf(o).join(" "),
@@ -17729,7 +17729,7 @@ async function reconExport(){
   const blank=()=>({v:"",t:"s",s:{border:true}});
   const h1=[], h2=[], merges=[];
   idNames.forEach((n,i)=>{ h1.push(h1c(n)); h2.push(blank()); merges.push({s:{r:0,c:i},e:{r:1,c:i}}); });
-  const SUB=[[src,WMSH],["Repriced",REPH],["Difference",DIFH]];
+  const SUB=[[src,WMSH],[L("應收","Chargeable"),REPH],[L("差額","Difference"),DIFH]];
   const block=(name,subs)=>{
     const c0=h1.length;
     h1.push(h1c(name)); for(let i=1;i<subs.length;i++) h1.push(blank());
@@ -19402,8 +19402,8 @@ function prSheetPeriods(){
     return m?Math.floor((Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/86400000):"";
   };
   const head=[L("期別","Invoice"),L("帳單日","Invoice date"),L("UPS 帳號","UPS account"),
-              L("貨件","Shipments"),L("重算","Reprice"),"UPS",
-              L("重算差額","Reprice − UPS"),L("差額率","Variance %"),L("帳戶層費用","Account charges")];
+              L("貨件","Shipments"),L("應收","Chargeable"),"UPS",
+              L("差額","Chargeable − UPS"),L("差額率","Variance %"),L("帳戶層費用","Account charges")];
   const body=[]; let tn=0,tr=0,tb=0,ta=0,nOk=0;
   for(const d of data){
     const a=dashAcctOf(d);
@@ -20477,7 +20477,7 @@ function prSheetInvoice(){
   const kset=[...new Set(Object.keys(d.buckets||{}).concat(Object.keys(d.upsBuckets||{})))];
   const ordOf=k=>{ const i=REPORT_COLS.indexOf(k); return i<0?1e6:i; };
   kset.sort((a,b)=>ordOf(a)-ordOf(b)||String(a).localeCompare(String(b)));
-  const UPSCOL=L("UPS 實收","UPS"), REPCOL=L("重算","Repriced");
+  const UPSCOL=L("UPS 實收","UPS"), REPCOL=L("應收","Chargeable");
   const cbHead1=[hc(L("費用類別","Charge"),HEAD,"left"),
                  hc(L("金額","Amount"),HEAD),hc("",HEAD),
                  hc(L("佔比","Share"),HEAD),hc("",HEAD),
@@ -22275,7 +22275,7 @@ function exportIssues(){
               L("帳單列號","Invoice row"),L("追蹤號","Tracking"),
               L("嚴重度","Severity"),L("問題","Problem"),
               L("代碼","Code"),L("帳單描述","Billed as"),L("項目","Item"),
-              L("說明","Detail"),L("金額","Amount"),L("系統算的","Repriced"),
+              L("說明","Detail"),L("金額","Amount"),L("應收","Chargeable"),
               L("帳單服務","Service on invoice"),L("判成的渠道","Channel (system)")]]
     .concat(ISSUES.map(x=>[x.inv,x.invDate,x.date,x.line,x.trk,sv(x.kind),kn(x.kind),
       x.code,x.billdesc,x.item,x.note,r2(x.amt),r2(x.repriced),x.svcRaw,x.chan]));
@@ -22346,7 +22346,7 @@ function exportIssues(){
                   :k===DASH_RECLASS?L("改判 AHS/大包裹","Reclassified AHS/LP")
                   :dashLabel(k);
   /* 數字格式先宣告 —— 下面那張欄位規格表要用到,而它比樣式那一段早跑。 */
-  const UPSCOL=L("UPS 實收","UPS"), REPCOL=L("重算","Repriced");
+  const UPSCOL=L("UPS 實收","UPS"), REPCOL=L("應收","Chargeable");
   const MONEY="$#,##0.00", INT="#,##0", DATE="mm/dd/yyyy";
   /* 單欄的部分只有一個名字,佔兩列高;成對的部分第一列是名字、第二列是
      UPS / 重算。merges 兩種都要記。 */
@@ -23704,7 +23704,7 @@ const I18N={
     "Charges UPS billed that WMS / TMS did not bill the client, one item per row, largest first, under UPS's own itemised name with the invoice wording beneath, ready to pass on to the customer. To re-bill is the customer's own rate where the rate level priced the charge, otherwise the UPS amount. Fuel comes last: to re-bill times the customer's fuel percent, only on charges UPS itself fuels. When UPS re-measured a package and billed a different surcharge (for example Large Package instead of Additional Handling), or reversed a charge outright, the charge the client already paid is listed as a Refund with its fuel and the new charge is re-billed in full; the Net tile below shows the balance. Profit is only accurate once these are re-billed; the full comparison is folded below."],
   "th.rebillorder":["單號","Order Number"],
   "th.rebilltrk":["追蹤號","Tracking Number"],
-  "th.rebillrate":["重算","Reprice"],
+  "th.rebillrate":["應收","Chargeable"],
   "hd.tplhist":["已匯入的模板","Imported templates"],
   "hint.tplhist":["每一份收下的 WMS / TMS 檔一列,新的在前,帶匯入時間。「明細」看那一次進了哪些列、有沒有對到帳單;「載入」把那一份對帳叫回畫面上。",
     "Every accepted WMS / TMS file, most recent first, with the time it was imported. Detail shows the rows that came in and whether each was matched to the invoice; Load brings that reconciliation back on screen."],
@@ -23730,7 +23730,7 @@ const I18N={
   "th.rebillamt":["差額","Difference"],
   "th.rbwms":["WMS / TMS","WMS / TMS"],
   "th.rbups":["UPS","UPS"],
-  "th.rbrep":["重算","Reprice"],
+  "th.rbrep":["應收","Chargeable"],
   "th.rebillfuel":["燃油附加費","Fuel surcharge"],
   "th.rebillgrand":["合計","Total"],
   "th.rebillitems":["項目","Items"],
@@ -23739,8 +23739,8 @@ const I18N={
   "hd.recondetail":["完整比對 — 利潤與差異","Full comparison — profit and variances"],
   "hint.recondetail":["補收完再看:漏收的項目補上之後,利潤與毛利率才是準的。","Read this after re-billing: profit and margin are only accurate once the missed charges above have been billed."],
   "btn.recondetail":["展開","Show"],
-  "hint.reconchg":["同一筆費用由左到右三個數字:向客戶收多少(WMS/TMS 檔填的)、UPS 實際收多少、這個客戶的費率層級算出來應該收多少。最後兩欄是差異:向客戶收對重算是你的定價落差,UPS 收對重算是帳單和合約的落差 —— 差最多的排前面。",
-    "Every charge on the matched shipments, left to right: what you billed the client (from the WMS/TMS file), what UPS actually charged, and what this customer's rate level says it should be. The last two columns are the variances: billed vs recomputed is your pricing variance, UPS vs recomputed is where the invoice departs from the agreement — sorted with the largest gap first."],
+  "hint.reconchg":["同一筆費用由左到右三個數字:向客戶收多少(WMS/TMS 檔填的)、UPS 實際收多少、這個客戶的費率層級算出來應該收多少。最後兩欄是差異:向客戶收對應收是你的定價落差,UPS 收對應收是帳單和合約的落差 —— 差最多的排前面。",
+    "Every charge on the matched shipments, left to right: what you billed the client (from the WMS/TMS file), what UPS actually charged, and what this customer's rate level says it should be. The last two columns are the variances: billed vs chargeable is your pricing variance, UPS vs chargeable is where the invoice departs from the agreement — sorted with the largest gap first."],
   "lb.reconscope":["檢視範圍","Showing"],
   "hd.cusreg":["客戶","Customers"],
   "hint.cusreg":["你自己維護的清單。指定費率層級後,這個客戶的出貨就照那一層的費率重算。客戶名單為整個帳號共用,不隨層級切換而改變。名單多就用 Excel:按「客戶模板」下載(有客戶就帶著現有名單),填好後按「匯入名單」。",
@@ -23839,10 +23839,10 @@ const I18N={
   "th.reconups":["UPS","UPS"],
   "th.reconprofit":["毛利","Profit"],
   "th.reconmargin":["毛利率","Margin"],
-  "th.reconrep":["重算","Reprice"],
+  "th.reconrep":["應收","Chargeable"],
   "th.recongap":["UPS 差異","UPS vs recomputed"],
   "th.reconpgap":["定價差異","Billed vs recomputed"],
-  "hint.reconcols":["各客戶依其指派之費率層級重算;實收、重算與 UPS 三數推出定價差異與 UPS 差異。定義與特殊情況詳見說明(PDF)。","Each customer is repriced at its assigned rate level; billed, recomputed and UPS amounts yield the pricing and UPS variances. Definitions and edge cases are in the guide."],
+  "hint.reconcols":["各客戶依其指派之費率層級計價;實收、應收與 UPS 三數推出定價差異與 UPS 差異。定義與特殊情況詳見說明(PDF)。","Each customer is priced at its assigned rate level; billed, chargeable and UPS amounts yield the pricing and UPS variances. Definitions and edge cases are in the guide."],
   "tab.setting":["🧭 費率層級","🧭 Rate levels"],
   "tab.rate":["帳戶與客戶","Account & Client Setup"],
   "tab.rateset":["費率層級管理","Rate Level Management"],
