@@ -14804,6 +14804,13 @@ const RECON_GROUPS={
    —— 那是我自己編的名字,現場的叫法就是 Service Fee。舊檔案裡的舊欄名照收。 */
 const RECON_OTHER="Service Fee";
 const RECON_OTHER_ALIAS=["Other Fees (non-carrier)","Other Fees","Service Charge","Handling Fee"];
+/* 算毛利用的「實收」:模板上的 Total Amount 扣掉自家的服務費。服務費 UPS 那一側
+   沒有對應的成本,留在裡面會把運費這門生意的毛利率墊高,看起來比實際好;要問的是
+   「運費賺不賺」,那就不能拿貼標費去補。整站只有這一條在扣,每一張表、每一個
+   儀表板都走它 —— 各算各的就會有兩個版本的毛利,而它們遲早會不一樣。
+   模板上原本的總額留在 o.amt:帳單歷史、「TMS 有而帳單沒有」那幾頁問的是
+   「客戶總共被收多少」,那裡要的是原數。 */
+const reconNetAmt=o=>cents(toNum(o&&o.amt)-toNum(o&&o.svc));
 /* 補收清單用的「家族」:客戶端和 UPS 端可能用不同的細項收同一件事 —— 出貨時收
    AHS、UPS 量過改收 LPS;WMS 收商業 DAS、UPS 改判住宅 DAS。同一家族先抵,只補
    UPS 比客戶多收的部分。 */
@@ -14997,7 +15004,7 @@ function reconRunSave(rows,res,fname){
          rebill:(res.rebill&&res.rebill.grand)||0, offInv:(res.notOnInv||[]).length};
   }else{
     const os=(res.orders||[]).filter(o=>!o.sib);
-    const amt=cents(os.reduce((a,o)=>a+toNum(o.amt),0)), cost=cents(os.reduce((a,o)=>a+toNum(o.cost),0));
+    const amt=cents(os.reduce((a,o)=>a+reconNetAmt(o),0)), cost=cents(os.reduce((a,o)=>a+toNum(o.cost),0));
     const rebill=cents(((res.rebill&&res.rebill.items)||[]).filter(it=>!it.sib).reduce((a,it)=>a+toNum(it.total),0));
     const chargeable=cents(amt+rebill), profit=cents(chargeable-cost);
     sum={orders:os.length, amt, cost, profit, margin:chargeable?profit/Math.abs(chargeable)*100:null,
@@ -16424,11 +16431,12 @@ function reconRun(list){
              fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc, zoneOld, zoneNew}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
              name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
-             amt:e.amt, cost:cents(cost), rep:block?null:cents(rep)};
+             amt:e.amt, svc:cents((e.chg||{})[RECON_OTHER]||0),
+             cost:cents(cost), rep:block?null:cents(rep)};
     /* 毛利只要 WMS 和帳單,沒有層級也算得出來。另外兩個要重算,擋下來就留空。 */
-    o.profit=cents(o.amt-o.cost);
+    o.profit=cents(reconNetAmt(o)-o.cost);
     o.gap  = block?null:cents(o.rep-o.cost);   /* UPS 差異:帳單 vs 費率表 */
-    o.pgap = block?null:cents(o.amt-o.rep);    /* 定價差異:實收 vs 應收 */
+    o.pgap = block?null:cents(reconNetAmt(o)-o.rep);  /* 定價差異:實收 vs 應收 */
     if(offInv){ notOnInv.push(o); continue; }
     orders.push(o);
     let a=perCus.get(e.cus);
@@ -16436,7 +16444,7 @@ function reconRun(list){
                orders:0, pkgs:0, found:0, amt:0, cost:0, rep:0}; perCus.set(e.cus,a); }
     a.srcs[o.src]=1;
     a.orders++; a.pkgs+=o.pkgs; a.found+=o.found;
-    a.amt+=o.amt; a.cost+=o.cost; if(!block) a.rep+=o.rep;
+    a.amt+=reconNetAmt(o); a.cost+=o.cost; if(!block) a.rep+=o.rep;
   }
   /* 重算那一側現在才入桶:名字對到這批帳單上實際用的欄。 */
   for(const [cus,row,resi,feesRep,known,accKeys,miss,hasRtn,hasBase] of repPend){
@@ -18358,8 +18366,11 @@ function dashWmsAgg(all){
   const buckets={}; let total=0, itemised=0;
   const keyOf=n=>{ const sy=sysNamesOfAud(n); return sy.length===1?sy[0]:n; };
   for(const o of list){
-    total+=toNum(o.amt);
+    total+=reconNetAmt(o);
     for(const [k,v] of Object.entries(o.billedFees||{})){
+      /* 服務費既然不算進實收,費用組成那張圓餅也不能有它 —— 留著的話
+         「其餘未逐項」那一塊會被它扣成負的。 */
+      if(k===RECON_OTHER) continue;
       const x=toNum(v); if(Math.abs(x)<0.005) continue;
       const kk=keyOf(k); buckets[kk]=(buckets[kk]||0)+x; itemised+=x;
     }
@@ -19140,9 +19151,13 @@ function prSheetRecon(){
   const okey=x=>String(x.oid!=null?x.oid:x.ln);
   for(const it of ((r.rebill&&r.rebill.items)||[]))
     rbBy.set(okey(it), cents((rbBy.get(okey(it))||0)+toNum(it.total)));
+  /* 實收扣掉了自家的服務費,欄名就要說出來 —— 不說的話,拿這一欄去對模板上的
+     Total Amount 會差一截,看起來像少算。這一批沒有服務費就不多這一句廢話。 */
+  const anySvc=(r.orders||[]).some(o=>Math.abs(toNum(o.svc))>0.004);
   const head=[L("客戶代碼","Customer Code"),L("客戶名稱","Customer Name"),
               L("單號","Order Number"),L("追蹤號","Tracking Number"),L("件數","Packages"),
-              RECON_SRC+L(" 實收"," Billed"),L("應補收(含燃油)","To Re-bill (incl. fuel)"),
+              RECON_SRC+L(" 實收"," Billed")+(anySvc?L("(不含服務費)"," (excl. service fee)"):""),
+              L("應補收(含燃油)","To Re-bill (incl. fuel)"),
               L("應收合計","Chargeable"),"UPS",L("毛利","Profit"),L("毛利率","Margin")];
   const alignOf=c=>c<4?"left":"right";
   const grid=[head.map((h,c)=>({v:h,t:"s",s:{bold:true,fill:HEAD,align:alignOf(c),wrap:true,border:true}}))];
@@ -19165,7 +19180,7 @@ function prSheetRecon(){
     String(a.cus).localeCompare(String(b.cus))||String(a.order).localeCompare(String(b.order)));
   for(const o of orders){
     const rb=cents(rbBy.get(okey(o))||0);
-    const amt=cents(toNum(o.amt)), cost=cents(toNum(o.cost));
+    const amt=reconNetAmt(o), cost=cents(toNum(o.cost));
     const chg=cents(amt+rb), pf=cents(chg-cost);
     tAmt=cents(tAmt+amt); tRb=cents(tRb+rb); tCost=cents(tCost+cost); tPkg+=toNum(o.pkgs)||0;
     grid.push([o.cus, cusNameOf(o.cus), o.order, (o.trks||[]).join(", "),
@@ -19752,7 +19767,7 @@ function dashLevelRows(){
     let g=by.get(key);
     if(!g){ g={level:key, cusSet:new Set(), orders:0, amt:0, cost:0, rebill:0}; by.set(key,g); }
     g.cusSet.add(o.cus); g.orders++;
-    g.amt=cents(g.amt+toNum(o.amt)); g.cost=cents(g.cost+toNum(o.cost));
+    g.amt=cents(g.amt+reconNetAmt(o)); g.cost=cents(g.cost+toNum(o.cost));
     /* 一票多件:同一個追蹤號的補收只算一次。 */
     for(const t of (o.trks||[])){ const k=reconTrk(t);
       if(rb.has(k)&&!used.has(k)){ used.add(k); g.rebill=cents(g.rebill+rb.get(k)); } }
