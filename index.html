@@ -19124,11 +19124,11 @@ async function prDownload(){
       });
       DASH_ALL_CACHE={stamp:stamp, data:data};
     }
-    const sheets=[]; let accts=[], key="", last="";
+    const sheets=[]; let accts=[], key="", last="", cut="";
     if(wantI){ const r=prSheetInvoice();
       if(r){ sheets.push(...r.sheets); accts=accts.concat(r.accts);
              key=r.key; if(String(r.last)>last) last=String(r.last); }
-      const rc=prSheetRecon(); if(rc) sheets.push(rc); }
+      const rc=prSheetRecon(); if(rc){ sheets.push(rc); if(rc.cut) cut=rc.cut; } }
     if(wantP){ const r=prSheetPeriods();
       if(r){ sheets.push(...r.sheets); accts=accts.concat(r.accts);
              if(String(r.last)>last) last=String(r.last); } }
@@ -19136,7 +19136,7 @@ async function prDownload(){
     const acc=[...new Set(accts.filter(Boolean))].sort();
     const tag=!acc.length?"":(acc.length<=3?acc.join("-"):acc.length+"accounts");
     const scope=(wantI&&!wantP)?key:((wantP&&!wantI)?"By_Period":"");
-    const name=["Profit_Report", tag, scope, (last||"").replace(/-/g,"")]
+    const name=["Profit_Report", tag, scope, cut, (last||"").replace(/-/g,"")]
       .filter(Boolean).join("_").replace(/[^A-Za-z0-9_-]+/g,"")+".xlsx";
     note("");
     const ok=await xlWrite(sheets, name);
@@ -19181,7 +19181,12 @@ function prSheetRecon(){
       color:(c===9&&toNum(v)<0)?RED:undefined})};
   };
   let tAmt=0,tRb=0,tCost=0,tPkg=0;
-  const orders=r.orders.slice().sort((a,b)=>
+  /* 儀表板上篩了期別／層級／客戶,倒出來的就要是那一份。整批倒出來的話,
+     畫面上寫「9,247 / 10,408 筆」而手裡的檔案是 10,408 筆 —— 那兩個數字
+     對不起來,而人是照畫面上看到的去要那個檔的。 */
+  const src=(typeof dashOrders==="function" && typeof dashCutActive==="function"
+             && dashCutActive()) ? dashOrders() : r.orders;
+  const orders=src.slice().sort((a,b)=>
     String(a.cus).localeCompare(String(b.cus))||String(a.order).localeCompare(String(b.order)));
   for(const o of orders){
     const rb=cents(rbBy.get(okey(o))||0);
@@ -19195,7 +19200,7 @@ function prSheetRecon(){
   const tChg=cents(tAmt+tRb), tPf=cents(tChg-tCost);
   grid.push([L("合計","Total"),"","","",tPkg,tAmt,tRb,tChg,tCost,tPf,
              tChg?tPf/Math.abs(tChg):0].map((v,c)=>cell(v,c,true)));
-  return {name:L("對帳毛利","Reconciliation profit"), rows:grid,
+  return {name:L("對帳毛利","Reconciliation profit"), rows:grid, cut:dashCutTag(),
           cols:[14,22,20,24,8,15,17,15,14,14,10].map(w=>({w})),
           freeze:{r:1,c:0}, filter:"A1:K"+(grid.length)};
 }
@@ -19638,6 +19643,13 @@ function dashRebillOf(list){
   return sum;
 }
 /* 三個下拉。選項照整批(不是照篩過的)列,不然選了一個就回不去。 */
+/* 篩選的簡稱,給檔名用:層級、客戶、期別都寫進去,拿到檔的人分得出這是哪一份。 */
+function dashCutTag(){
+  if(typeof dashCutActive!=="function" || !dashCutActive()) return "";
+  const f=DASH_CUT_F||{};
+  return [f.lvl&&("L-"+f.lvl), f.cus&&("C-"+f.cus), f.per&&("P-"+f.per)]
+    .filter(Boolean).join("_").replace(/[^A-Za-z0-9_-]+/g,"");
+}
 function dashCutFilters(){
   const all=dashAllOrders();
   if(!all.length) return "";
@@ -20088,7 +20100,9 @@ function prSheetInvoice(){
      對帳的數字,不再拿目前載入的某一期去配整批的應收(那兩個對不起來)。 */
   const run=(typeof RECON_RUN_KEY!=="undefined"&&RECON_RUN_KEY&&RECON_RUNS)
     ?(RECON_RUNS||[]).find(x=>x.key===RECON_RUN_KEY):null;
-  const wab=(typeof dashWmsAgg==="function")&&dashWmsAgg(true);
+  /* 儀表板篩了什麼,這一頁就是什麼 —— 畫面上寫「9,247 / 10,408 筆」,
+     倒出來的檔卻是整批,那兩個數字對不起來。 */
+  const wab=(typeof dashWmsAgg==="function")&&dashWmsAgg();
   if(run&&wab){
     const HEAD2="E8E2D6", RED2="C00000";
     const MONEY2="$#,##0.00", PCT2="0.0%", INT2="#,##0";
