@@ -16427,7 +16427,14 @@ function reconRun(list){
                有它們的代碼):各查新舊 Zone 的客戶費率,補收時一正一負開列。 */
             const zbk=new Set();
             for(const l of (s.allLines||[])){
-              if(String(l.layer||"")!=="ADJ"||String(l.detail||"").toUpperCase()!=="ZONE") continue;
+              if(String(l.layer||"")!=="ADJ") continue;
+              const dt=String(l.detail||"").toUpperCase();
+              /* Zone 改判會把按 Zone 計費的附加費一起重開。UPS 有時把那幾行標成
+                 ZONE,有時標成 SCC —— 帳單 000000586Y51306 的 1Z...951009 就是
+                 後者(額外處理 −4.99 / +6.07 兩行都掛 SCC)。這一筆確定改過
+                 Zone,附加費那幾行不管掛哪一種細項碼都算它重開的;運費不算,
+                 那一段走運費自己那條路。 */
+              if(dt!=="ZONE" && (dt!=="SCC" || String(l.cls||"").toUpperCase()!=="ACC")) continue;
               const c=String(l.code||"").toUpperCase();
               if(AHS_DIM.has(c)) zbk.add("AHS Dimension");
               else if(AHS_WT.has(c)) zbk.add("AHS Weight");
@@ -25407,16 +25414,30 @@ function drawBug(g,b,t){
 function drawProps(g,W,H){
   const K=SCENE.K||1, y=H-22*K, u=1.45;
   const panel=pal("--panel","#f4ecdc"), stripe=pal("--stripe","#e8dfcc"), tab=pal("--tab","#c8a24a");
+  /* 地板。東西總得站在什麼上面 —— 少了這一條,箱子和貓狗看起來是浮在頁面上,
+     而那正是「有點醜」的來源。一條線加一層很淡的地色,不畫牆也不畫框。 */
+  g.save();
+  g.fillStyle=stripe; g.globalAlpha=.55;
+  g.fillRect(0,y,W,H-y);
+  g.restore();
   g.lineWidth=2.2; g.strokeStyle=INK;
-  /* 兩箱貨。上面那一箱小一點、往右偏一點,疊起來才像疊的,不像兩個矩形。 */
-  const bw=46*u, bh=30*u, bx=Math.round(W*0.05);
-  skRect(g,bx,y-bh,bw,bh,7,stripe);
-  skLine(g,bx,y-bh*0.62,bx+bw,y-bh*0.62,8);          /* 封箱膠帶 */
-  skLine(g,bx+bw*0.5,y-bh,bx+bw*0.5,y-bh*0.62,9);
-  const sw=32*u, sh=24*u, sx=bx+bw*0.22;
-  skRect(g,sx,y-bh-sh,sw,sh,10,panel);
-  skLine(g,sx,y-bh-sh*0.58,sx+sw,y-bh-sh*0.58,11);
-  skLine(g,sx+sw*0.5,y-bh-sh,sx+sw*0.5,y-bh-sh*0.58,12);
+  skLine(g,4,y,W-4,y,3);
+  /* 左邊一整面貨架:三欄三層的箱子,和 reprice 那一幕同一個東西。 */
+  const cw=30*u*0.72, ch=22*u*0.72, cx0=Math.round(W*0.03);
+  for(let r0=0;r0<3;r0++) for(let c0=0;c0<3;c0++){
+    const cx=cx0+c0*(cw+3), cy=y-(r0+1)*(ch+3)+3;
+    skRect(g,cx,cy,cw,ch,7+r0*5+c0,r0%2?stripe:panel);
+    skLine(g,cx,cy+ch*0.5,cx+cw,cy+ch*0.5,9+r0*3+c0);
+  }
+  /* 上面一排窗:天光從那裡進來。玻璃分四格,右邊那一扇斜一道反光。 */
+  const wy=9, wwd=34, wht=24;
+  for(let i=0;i<4;i++){
+    const wxx=Math.round(W*0.42)+i*(wwd+20);
+    skRect(g,wxx,wy,wwd,wht,20+i,pal("--select","#efe6d2"));
+    skLine(g,wxx,wy+wht/2,wxx+wwd,wy+wht/2,24+i);
+    skLine(g,wxx+wwd/2,wy,wxx+wwd/2,wy+wht,28+i);
+    if(i===3) skLine(g,wxx+3,wy+wht-4,wxx+wwd-4,wy+4,32);
+  }
   /* 球:一條縫,看得出是球不是圓點。 */
   const ba=Math.round(W*0.46), br=11*u;
   skCircle(g,ba,y-br,br,13,panel);
@@ -25427,8 +25448,8 @@ function drawProps(g,W,H){
   g.quadraticCurveTo(wx,y+wr*0.55,wx+wr,y-wr*0.75);
   g.closePath(); g.fillStyle=tab; g.fill(); g.stroke();
   skLine(g,wx-wr*1.15,y-wr*0.75,wx+wr*1.15,y-wr*0.75,15);
-  /* 一盆草。 */
-  const px=Math.round(W*0.93), pw=17*u, ph=20*u;
+  /* 一盆草。往內收一點 —— 貼著右緣的東西,視窗一窄就被切一半。 */
+  const px=Math.round(W*0.87), pw=17*u, ph=20*u;
   skRect(g,px-pw,y-ph,pw*2,ph,16,stripe);
   skLine(g,px-pw,y-ph*0.72,px+pw,y-ph*0.72,17);
   for(const [dx,dy] of [[-11,-17],[-4,-27],[5,-25],[12,-15]])
