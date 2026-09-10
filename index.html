@@ -1314,6 +1314,9 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
 .bkdside.rb.rfndonly .bkdside-ft{color:var(--neg)}
 .bkdglbl{font-size:10.5px;color:var(--muted);font-weight:700;padding-top:7px;
   letter-spacing:.7px;text-transform:uppercase}
+/* 開了又沖掉、淨額 0 的那幾行不列,但要說一聲 —— 「沒列」和「沒有」在畫面上
+   不能長得一樣。 */
+.bkdgone{font-size:10.5px;color:var(--muted);font-style:italic;padding-top:5px}
 .bkdmiss{color:var(--neg);border-bottom:1.5px dotted var(--neg);cursor:help}
 .bkdmissrow td:first-child{color:var(--neg)}
 .bkdneg{color:var(--neg)}
@@ -12117,17 +12120,50 @@ function bkdSection(r, wms, name0){
       ? `<div class="bkdside-meta">${"Zone "+esc2(zsN)+" → "+esc2(zuN)
           +((upsW!=null&&String(upsW).trim()!==""&&toNum(upsW)>0)?"  ·  "+esc2(upsW)+" lb":"")}</div>`
       : null;
-    const U=[]; let usub=0; let lastLbl=null;
-    for(const g of groups){
-      const glbl=segName(g.layer);
-      if(groups.length>1 && glbl!==lastLbl){
-        U.push(`<tr><td colspan="2" class="bkdglbl">${esc2(glbl)}</td></tr>`);
-        lastLbl=glbl;
+    const U=[]; let usub=0;
+    /* 帳單調整那一段動輒十幾行:同一個名目原文一字不差地重複幾次,還有開了又
+       整筆沖掉的一正一負躺在中間。照樣一行行印出來,要看的人得自己在心裡加減 ——
+       而他要問的只是「這一段 UPS 最後收了什麼」。
+       兩件事:原文一模一樣的併成一行(寫明幾行合計);同一個費用代碼開了又沖、
+       淨額是 0 的整組不列,底下用一行說有幾行沒列。名目不同的不併 —— 出貨那段的
+       運費更正和回程的運費更正都是 003,講的卻是兩件事。
+       併是跨整段做的,不是一個 group 一個 group 做:同一段的調整常常分散在
+       好幾期的 group 裡,各併各的就永遠碰不到頭,一正一負照樣並排。
+       流水帳一行都沒少,在上面那張逐行表裡。 */
+    {
+      const secs=[], byLbl=new Map();
+      for(const g of groups){
+        const lbl=segName(g.layer);
+        let S=byLbl.get(lbl);
+        if(!S){ S={lbl, fold:new Map(), byCode:new Map()}; byLbl.set(lbl,S); secs.push(S); }
+        for(const l of (g.lines||[])){
+          const code=String(l.code||l.desc||"");
+          const k=code+"\u0000"+String(l.desc||l.code||"");
+          let f=S.fold.get(k);
+          if(!f){ f={code, desc:String(l.desc||l.code||""), net:0, n:0}; S.fold.set(k,f); }
+          f.net=cents(f.net+toNum(l.net));
+          /* 金額 0 的資訊行(INF)不算進「幾行合計」—— 它一毛錢都沒帶,
+             寫「2 行合計」只會讓人回頭去帳單上找那不存在的第二筆。 */
+          if(Math.abs(toNum(l.net))>=0.005) f.n++;
+          S.byCode.set(code, cents((S.byCode.get(code)||0)+toNum(l.net)));
+        }
       }
-      for(const l of g.lines){
-        if(Math.abs(l.net)<0.005) continue;
-        usub+=l.net;
-        U.push(`<tr><td>${esc2(l.desc||l.code)}</td><td class="num">${money(l.net)}</td></tr>`);
+      const many=secs.length>1;
+      for(const S of secs){
+        const dead=f=>Math.abs(S.byCode.get(f.code)||0)<0.005;
+        const live=[...S.fold.values()].filter(f=>!dead(f) && Math.abs(f.net)>=0.005);
+        const gone=[...S.fold.values()].reduce((a,f)=>a+(dead(f)?f.n:0),0);
+        if(!live.length && !gone) continue;
+        if(many) U.push(`<tr><td colspan="2" class="bkdglbl">${esc2(S.lbl)}</td></tr>`);
+        for(const f of live){
+          usub+=f.net;
+          U.push(`<tr><td>${esc2(f.desc)}`
+            +(f.n>1?`<span class="bkdsub">${esc2(L(f.n+" 行合計", f.n+" lines"))}</span>`:"")
+            +`</td><td class="num">${money(f.net)}</td></tr>`);
+        }
+        if(gone) U.push(`<tr><td colspan="2" class="bkdgone">${esc2(L(
+          "另有 "+gone+" 行開了又沖掉,淨額 0,未列",
+          gone+" line"+(gone===1?"":"s")+" charged then reversed, net zero — not listed"))}</td></tr>`);
       }
     }
 
