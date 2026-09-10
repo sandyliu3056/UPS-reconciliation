@@ -3253,15 +3253,10 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
     <p class="hint" style="margin:0 0 11px;max-width:70ch" data-i18n="hint.anaempty">Nothing to analyse yet. This page reads the reconciliation — once the filled template is imported, the numbers land here and the whole analysis can be exported.</p>
   </div>
 
-  <div class="lf sketch" id="anaSumCard" hidden>
-    <h3 class="display"><span class="em">📈</span><span data-i18n="hd.analysis">Profit analysis</span></h3>
-    <div class="row" style="margin:0 0 11px">
-      <span id="anaScope" class="affsum"></span>
-      <span style="flex:1 1 auto"></span>
-      <button class="act" id="bAnaXls" data-i18n="btn.anaxls">Export analysis</button>
-    </div>
-    <div class="tiles" id="anaTiles"></div>
-  </div>
+  <!-- 毛利分析那張數字卡拿掉了:實收、應補收、UPS、毛利、毛利率五格,和這一頁
+       最上面那條儀表板講的是同一件事,同一個數字印兩次,看的人只會去比對兩邊
+       有沒有差。毛利率原本只長在這裡,已經搬到上面那條算式的最後一格;
+       匯出那顆鈕也搬到儀表板抬頭,和「重新整理」並排。 -->
 
 </section>
 
@@ -17580,7 +17575,9 @@ async function reconExport(){
   const CELL={cli:"EEF7F1", ups:"F8F1EA", rep:"FDF6E7"};
   const BAND={id:"識別 Identity", cli:"WMS / TMS", ups:"UPS",
               rep:"重算 Reprice", chk:"核對與差異 Checks & variance"};
-  const MONEY="#,##0.00";
+  /* 金額格帶 $ —— 這幾張表上一整片數字裡混著計費重、Zone、尺寸,不帶錢號的
+     那幾欄看起來和它們沒兩樣;補收清單本來就帶,整本活頁簿一種寫法。 */
+  const MONEY="$#,##0.00";
   const H=(n,g)=>({v:n,t:"s",s:{bold:true,fill:TINT[g]||TINT.id,color:"351C15",align:"left",wrap:true,border:true}});
   /* 沒重算的欄位寫空白,不寫 0 —— 匯出去之後沒人分得出 0 是「算出來是零」
      還是「沒算」,而這兩件事差很多。 */
@@ -18172,40 +18169,8 @@ function renderAnalysis(){
   const has=!!(r&&r.cus&&r.cus.length);
   const show=(id,on)=>{ const e=$("#"+id); if(e) e.hidden=!on; };
   show("anaEmpty",!has);
-  show("anaSumCard",has);
-  if(!has) return;
-  const t=r.tot;
-  const sign=v=>`<span class="mny ${v<0?"neg":(v>0?"pos":"")}">${money(v)}</span>`;
-  const pcCell=v=>v==null?`<span class="empty">—</span>`:anaPct(v);
-
-  const scope=$("#anaScope");
-  /* 這張卡算的是「手上這一份對帳」。不寫是哪一份,換過批次之後就分不出畫面上
-     的數字屬於誰。 */
-  const run=RECON_RUN_KEY&&(RECON_RUNS||[]).find(x=>x.key===RECON_RUN_KEY);
-  const who=run?[runLabelOf(run),tplWhen(run.when),run.by||""].filter(Boolean).join(" · ")+" · ":"";
-  if(scope) scope.textContent=who+L(
-    r.cus.length+" 個客戶 · "+t.orders+" 筆"
-      +(r.hasBilled?" · 逐項費用已匯入":" · 沒有逐項費用"),
-    r.cus.length+" client"+(r.cus.length>1?"s":"")+" · "+t.orders
-      +" order"+(t.orders>1?"s":"")
-      +(r.hasBilled?" · itemised charges imported":" · no itemised charges"));
-  const tiles=$("#anaTiles");
-  if(tiles) tiles.innerHTML=[
-    ["WMS / TMS", money(t.amt), ""],
-    [L("應補收","To re-bill"), money(t.rebill||0), ""],
-    ["UPS",       money(t.cost), ""],
-    [L("毛利","Profit"),               money(t.profit), L("實收 + 應補收 − UPS","billed + to re-bill − UPS"), t.profit<0],
-    [L("毛利率","Margin"),             anaPct(t.margin),
-      L(t.orders+" 筆 · "+r.cus.length+" 個客戶",
-        t.orders+" order"+(t.orders>1?"s":"")+" · "+r.cus.length
-        +" client"+(r.cus.length>1?"s":""))],
-  ].map(([k,v,sub,neg])=>`<div class="tile sketch-soft"><div class="k">${esc(k)}</div>
-    <div class="v${neg?" neg":""}">${v}</div>
-    <div class="sub">${esc(sub)||"&nbsp;"}</div></div>`).join("");
-
-
-  /* 依客戶的表拿掉了:一個客戶時全是重複,數字都在上面的數字卡;
-     逐客戶的細目留在匯出的分析檔。 */
+  /* 數字都在這一頁最上面那條儀表板上了:實收、應補收、UPS、毛利、毛利率。
+     這裡只留「還沒有東西可分析」那張卡 —— 逐客戶的細目在匯出的分析檔裡。 */
 }
 /* 匯出的每一個數字都取自 renderAnalysis() 用的那一份,不重算 —— 螢幕上和
    檔案裡對不起來的報表,沒有人會再相信第二次。 */
@@ -18235,12 +18200,6 @@ async function anaExport(){
   ], "Profit_Analysis.xlsx");
   toast(L("毛利分析已匯出。","Profit analysis exported."), true);
 }
-function bindAnalysis(){
-  const x=$("#bAnaXls");
-  if(x) x.onclick=()=>{ anaExport().catch(e=>
-    toast(String(e&&e.message||e), false)); };
-}
-
 function bindRecon(){
   /* 來源只影響下載哪一個檔名 —— 欄位是同一套,匯入端不分。 */
   $("#reconSrcSeg") && ($("#reconSrcSeg").onclick=e=>{
@@ -20218,11 +20177,21 @@ function renderDashboard(){
      「沒有重算」收在一起,由重到輕排,每一組都指得出帳單的哪幾列。
      內容和匯出都在 renderIssueCard()/exportIssues()。 */
   const uCard=renderIssueCard();
+  /* 毛利率跟著毛利走:應收合計是 0 就沒有比率可言(除以 0 會印出 Infinity%,
+     那比一格空白更難解釋)。分母取絕對值 —— 應收是負的時候,虧損不該顯示成賺。 */
+  const wmsMargin=(wmsAgg&&Math.abs(wmsAgg.chargeable)>0.004)
+    ? wmsAgg.profit/Math.abs(wmsAgg.chargeable)*100 : null;
+  /* 逐客戶的毛利分析檔:原本那顆鈕在下面那張數字卡上,卡拿掉了,鈕搬到抬頭來。
+     有對到客戶才給 —— 沒有對帳的時候按下去只會匯出一張空表。 */
+  const anaRes=(typeof RECON!=="undefined")&&RECON&&RECON.res;
+  const anaHas=!!(anaRes&&anaRes.cus&&anaRes.cus.length);
   body.innerHTML=`
     <div class="dhead">
       <div><div class="dtitle">${L("儀表板","Dashboard")}</div>
       <div class="dsub">${d.n} ${L("筆貨件","shipments")}</div></div>
-      <button class="act ghost" id="bDashRe">${L("重新整理","Refresh")}</button></div>
+      <span class="dhbtns">${anaHas?`<button class="act ghost" id="bAnaXls">${
+        L("毛利分析…","Profit analysis…")}</button>`:""}
+      <button class="act ghost" id="bDashRe">${L("重新整理","Refresh")}</button></span></div>
     ${dashBarHTML()}
     <!-- 住宅／商業判定的提示不放這裡。儀表板是看錢的地方,那是設定沒填完的
          警告,兩件事;而且這裡印出來是光禿禿一條,沒有前面「住宅／商業判定:」
@@ -20240,6 +20209,9 @@ function renderDashboard(){
         <div class="dv">${money(wmsAgg.cost)}</div></div>
       <div class="dcell dop" data-op="="><div class="dk">${L("毛利","Profit")}</div>
         <div class="dv ${wmsAgg.profit<0?"neg":"pos"}">${money(wmsAgg.profit)}</div></div>
+      <div class="dcell"><div class="dk">${L("毛利率","Margin")}</div>
+        <div class="dv ${wmsAgg.profit<0?"neg":"pos"}">${anaPct(wmsMargin)}</div>
+        <div class="dsub">${L("毛利 ÷ 應收合計","profit ÷ chargeable")}</div></div>
       <div class="dcell dapart"><div class="dk">${L("對帳筆數","Reconciled rows")}</div>
         <div class="dv">${wmsAgg.n}</div></div>
     </div>`:`<div class="dempty" style="padding:14px 18px;margin-bottom:12px">${L("毛利要等對帳:匯入 WMS / TMS 檔之後,這裡才會有「實收 + 應補收 − UPS」。",
@@ -20268,6 +20240,8 @@ function renderDashboard(){
   if(gx) gx.onclick=openGap;
   const px=$("#bPerXls");
   if(px) px.onclick=()=>openProfitReport("inv");
+  const ax=$("#bAnaXls");
+  if(ax) ax.onclick=()=>{ anaExport().catch(e=>toast(String(e&&e.message||e), false)); };
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     body.querySelectorAll(".bfill,.zfill,.seg,.cmpfill").forEach(el=>{
       if(el.dataset.w!=null) el.style.width=el.dataset.w+"%"; });
@@ -23846,7 +23820,6 @@ const I18N={
   "hd.analysis":["毛利分析","Profit analysis"],
   "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",
     "Nothing to analyse yet. This page reads the reconciliation — once the filled template is imported, the numbers land here and the whole analysis can be exported."],
-  "btn.anaxls":["匯出毛利分析","Export analysis"],
   "th.chgbilled":["WMS / TMS","WMS / TMS"],
   "th.chgpgap":["實收 vs 應收","Billed vs recomputed"],
   "lb.tplchg":["逐項費用(選填)","Itemised charges (optional)"],
@@ -25699,7 +25672,6 @@ step("auth",()=>{
   $("#bCfgDown2") && ($("#bCfgDown2").onclick=cfgDownload);
   bindAccMgr(); bindOnOff(); bindPagePreviews();
   bindRecon();
-  bindAnalysis();
   bindGap();
   $("#bLoginExport").onclick=()=>exportLoginHistory();
 });
