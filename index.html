@@ -6176,7 +6176,13 @@ function shipmentsOf(rows){
         clbLines:[], rtnLines:[], rtnSeg:null,
         service:gr.service||s.service, zone:gr.zone||s.zone,
         entered:gr.entered>0?gr.entered:gr.billed, billedUPS:gr.billed,
-        dims:gr.dims, shipDate:gr.shipDate||s.shipDate,
+        /* 回程走的是同一個實體包裹。UPS 重新量過的尺寸記在原出貨／更正那幾行,
+           回程那幾行只帶著出貨時報的尺寸;照它算,同一個包裹去程算大包裹、
+           回程不算 —— 而 UPS 兩段都收了大包裹,我們只收一段。量過就以量過的為準,
+           回程自己有量過的尺寸(重新包裝)才用它自己的。 */
+        dims:parseDims((s.rtnLines.find(l=>l.dimsC)||{}).dimsC)
+            ||parseDims((s.lines.find(l=>l.dimsC)||{}).dimsC)||gr.dims,
+        shipDate:gr.shipDate||s.shipDate,
         upsTotal:gr.net, layer:"RTN", npb:null,
         refEntered:gr.entered, refBilled:gr.billed, pureAdj:false, bwt:gr.bwt,
         resiKnown:true, residential:s.residential,
@@ -11655,20 +11661,20 @@ function openBreakdown(){
      與毛利率(毛利 ÷(實收 + 應補收))。 */
   H.push(`<div class="bkdov"><div class="bkdov-hd">${L("各期總覽","Invoice overview")}</div>`);
   H.push(`<div class="tablewrap" style="margin:0"><table style="width:100%">`);
-  /* 這張表只放「分得了期」的數字:哪一期、重算多少、UPS 收多少。向客戶實收、
-     應補收、毛利是整筆的量(rebill 跟帳單期沒有關係),擺在表格裡每一期都得
-     寫「—」;它們改放在表格底下那一條。 */
+  /* 這張表只放「分得了期」的數字:哪一期、UPS 收多少。向客戶實收、應補收、
+     毛利是整筆的量(rebill 跟帳單期沒有關係),擺在表格裡每一期都得寫「—」;
+     它們改放在表格底下那一條。
+     應收那一欄拿掉了:它是我們的費率算出來的,本來就不分期 —— 硬切成每一期
+     一格,看的人會拿它去對同一列的 UPS 金額,而那兩個數字不是同一件事的兩面。
+     整筆該收多少,底下那條算式和右邊的應收卡都寫著。 */
   H.push(`<thead><tr>${isOrder?`<th>${L("追蹤號","Tracking")}</th>`:""}<th>Invoice</th><th>${L("帳單日期","Invoice date")}</th>`
-    +`<th class="num">Reprice</th>`
     +`<th class="num">${L("UPS 實收","UPS billed")}</th></tr></thead><tbody>`);
-  let tRe=0,tUp=0,tWm=0,tRb=0,anyWm=false,anyRb=false,allPriced=true,bi=0;
+  let tUp=0,tWm=0,tRb=0,anyWm=false,anyRb=false,bi=0;
   if(!pk.length)
-    H.push(`<tr><td colspan="${isOrder?5:4}" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
+    H.push(`<tr><td colspan="${isOrder?4:3}" class="empty">${L("這個追蹤號沒有包裹行,只有帳戶層費用,見下方。",
       "No package lines for this tracking number, only account-level charges. See below.")}</td></tr>`);
   for(const o of pk){
-    const rp=(BKD_NOLVL||!o.r||o.r.total==null)?null:o.r.total;
     const up=o.r?o.r.s.upsTotal:o.ups;
-    if(rp!=null) tRe+=cents(rp); else allPriced=false;
     tUp+=up;
     if(o.wms){ tWm+=o.wms.amt; anyWm=true;
       if(Math.abs(o.wms.rebill||0)>0.004){ tRb+=o.wms.rebill; anyRb=true; } }
@@ -11676,7 +11682,6 @@ function openBreakdown(){
         L("點一下跳到該期明細","Click to jump to this invoice's detail")}">`
       +(isOrder?`<td class="mono">${esc2(o.trk)}</td>`:"")
       +`<td class="mono">${esc2(o.inv)}</td><td>${esc2(nd(o.invDate)||o.invDate)}</td>`
-      +`<td class="num">${rp==null?"—":money2(rp)}</td>`
       +`<td class="num">${money2(up)}</td></tr>`);
   }
   H.push(`</tbody>`);
@@ -11687,7 +11692,6 @@ function openBreakdown(){
     H.push(`<tfoot><tr><td style="${TF}">${L("合計","Total")}</td>`
       +(isOrder?`<td style="${TF}"></td>`:"")
       +`<td style="${TF}"></td>`
-      +`<td class="num" style="${TF}">${allPriced?money2(tRe):"—"}</td>`
       +`<td class="num" style="${TF}">${money2(tUp)}</td></tr></tfoot>`);
   }
   H.push(`</table></div></div>`);
