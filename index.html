@@ -19765,8 +19765,6 @@ function dashLevelRows(){
     g.margin=Math.abs(g.chargeable)>0.004?g.profit/Math.abs(g.chargeable)*100:null;
     return g;
   }).sort((a,b)=>b.profit-a.profit);
-  const tp=cents(rows.reduce((a,x)=>a+x.profit,0));
-  for(const g of rows) g.share=Math.abs(tp)>0.004?g.profit/tp*100:null;
   return rows.length?rows:null;
 }
 function dashLevelHTML(){
@@ -19788,21 +19786,19 @@ function dashLevelHTML(){
       <th>${L("筆數","Orders")}</th>
       <th>${L("應收合計","Chargeable")}</th><th>UPS</th>
       <th>${L("毛利","Profit")}</th><th>${L("毛利率","Margin")}</th>
-      <th>${L("佔總毛利","Share of profit")}</th>
     </tr></thead><tbody>${rows.map(g=>`<tr>
       <td class="ak">${esc(anaLvlName(g.level))}</td>
       <td class="ad">${esc(nOf(g.n))}</td>
       <td>${g.orders.toLocaleString()}</td>
       ${m(g.chargeable)}${m(g.cost)}
       <td class="${g.profit<0?"neg":"pos"}">${money(g.profit)}</td>
-      <td>${anaPct(g.margin)}</td>
-      <td>${anaPct(g.share)}</td></tr>`).join("")}</tbody>
+      <td>${anaPct(g.margin)}</td></tr>`).join("")}</tbody>
     <tfoot><tr><td class="ak">${L("合計","Total")}</td>
       <td class="ad">${esc(nOf(t.n))}</td>
       <td>${t.orders.toLocaleString()}</td>
       ${m(t.chargeable)}${m(t.cost)}
       <td class="${t.profit<0?"neg":"pos"}">${money(t.profit)}</td>
-      <td>${anaPct(tm)}</td><td></td></tr></tfoot></table></div>
+      <td>${anaPct(tm)}</td></tr></tfoot></table></div>
   </div>`;
 }
 function renderDashboard(){
