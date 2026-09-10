@@ -14815,6 +14815,19 @@ const RECON_OTHER_ALIAS=["Other Fees (non-carrier)","Other Fees","Service Charge
 /* 舊 SOP 的規則:每一筆運費更正向客戶收一筆稽核費(SCC audit fee)。
    金額在「費率設定 → Correction Audit Fee」卡管理:留空照舊 SOP 的 $1.65,設 0 就不收。
    Not Previously Billed 的手續費(NPF / SCF)照收:有合約費率照費率,沒有照 UPS 實收。 */
+/* 逐項對帳的門檻:差多少才值得開一列。
+   兩套系統各自算同一件事,每一件都會差個幾毛 —— 住宅費差 0.65、簽名差 1.92
+   這種,一件一列開下去,一期兩萬件就是幾萬列沒有人對得完的補收單,而且拿
+   去跟客戶爭幾毛錢,信用的損失比收回來的多。真正要處理的是整筆不該收的
+   附加費、或運費算錯的那種結構性的差。
+   小於門檻的差額不會消失:明細那一頁的 Difference 欄照樣看得到,補收單
+   底下也會寫出「另有 N 筆小額差異合計多少」。
+   設定在 global_rules.rebill_min_diff:留空是 1.00,設 0 就是全部都開。 */
+function rebillMinDiff(){
+  const v=String((((CFG&&CFG.raw&&CFG.raw.global_rules)||{}).rebill_min_diff)??"").trim();
+  if(v==="") return 1;
+  const n=toNum(v); return n>0?cents(n):0;
+}
 function sccAuditFee(){
   const v=String((((CFG&&CFG.raw&&CFG.raw.global_rules)||{}).scc_audit_fee)??"").trim();
   if(v==="") return 1.65;
@@ -16482,6 +16495,9 @@ function reconRun(list){
   const heads=new Map();
   for(const g of active) for(const f of RECON_GROUPS[g].fees) heads.set(f, RECON_GROUPS[g].head);
   const items=[]; let skipped=0;
+  /* 沒有開成一列的小額差異:數量和合計要講出來,不然「沒開」和「沒有」
+     在畫面上長得一模一樣。 */
+  let smallN=0, smallSum=0;
   for(const o of orders){
     const F=o.fees||{}, upsF=F.ups||{}, rep=F.rep||{}, known=F.known||new Set(), desc=F.desc||{};
     const b=o.billedFees;
@@ -16509,6 +16525,7 @@ function reconRun(list){
        客戶端沒補收時,應補收 = 客戶費率的最後運費 − 已收的運費;沒有重算(沒層級)
        就照 UPS 的更正金額。算出來沒有多的就不列 —— 運費已經收夠了。 */
     let auditPushed=Object.keys(upsF).some(c=>/audit fee/i.test(c));
+    const MIN_DIFF=rebillMinDiff();
     const AUD_FEE=sccAuditFee();
     const zoneDone=new Set();   /* Zone 更正已一退一收處理掉的家族 */
     const SCC="Shipping Charge Correction";
@@ -16761,6 +16778,10 @@ function reconRun(list){
       const priced=c=>!o.block && memOfCol(c).some(f=>known.has(f) && cents(rep[f]||0)>0.004);
       for(const c of Object.keys(b)){
         if(c===RECON_OTHER) continue;            /* 自家的服務費沒有 UPS 這一側可比 */
+        /* 燃油不比。它是別的欄位乘出來的,不是一項獨立的費用 —— 本金已經
+           一項一項對過了,燃油再退一次就是同一件事收兩次帳。逐項對帳這幾列
+           因此一律只有本金、不帶燃油,兩個方向都一樣。 */
+        if(c==="Fuel Surcharge") continue;
         if(done.has(c)) continue;
         const w=cents(toNum(b[c]));
         if(!(Math.abs(w)>0.004)) continue;
@@ -16768,6 +16789,7 @@ function reconRun(list){
         const sh=shouldCol(c);
         const d=cents(sh-w);
         if(!(Math.abs(d)>0.004)) continue;
+        if(Math.abs(d)<MIN_DIFF){ smallN++; smallSum=cents(smallSum+d); continue; }
         const dsc=(desc[c]||[]).join(" / ");
         if(d<0) items.push(Object.assign({kind:"over", charge:c,
             desc:dsc||L("向客戶收的高於這個客戶的費率","billed above this client's own rate"),
@@ -16802,10 +16824,6 @@ function reconRun(list){
     return bk.length>0 && bk.every(fuelOnFor);
   };
   const orderOf=new Map(orders.map(o=>[o.oid,o]));
-  /* 燃油只能算一次。逐項對帳把 Fuel Surcharge 那一欄也比了(向客戶收的燃油
-     對上客戶費率算出來的燃油)—— 那一列已經是整單燃油的差額,其餘每一列
-     就不能再各自加一次,不然同一筆燃油算兩次。 */
-  const fuelTrued=new Set(items.filter(x=>x.charge==="Fuel Surcharge"&&x.noFuel).map(x=>x.oid));
   for(const it of items){
     const o=orderOf.get(it.oid)||{}; const F=o.fees||{};
     let pct=toNum(F.fuelPct);
@@ -16815,7 +16833,8 @@ function reconRun(list){
       pct=base>0?toNum(upsF["Fuel Surcharge"])/base*100:0;
     }
     it.fuelPct=Math.round(pct*100)/100;
-    it.fuel=(it.noFuel||fuelTrued.has(it.oid))?0:(fuelOn(it.charge)?cents(it.amt*pct/100):0);
+    /* noFuel 是逐項對帳開的那幾列:只比本金,不帶燃油。 */
+    it.fuel=it.noFuel?0:(fuelOn(it.charge)?cents(it.amt*pct/100):0);
     it.total=cents(it.amt+it.fuel);
     /* 表上那一欄「客戶端實收」:一般的漏收就是 0,改收的那一列是實際收的金額。
        應收(rate)擺在旁邊,差自己看得出來,不再多一欄差額 —— 那一欄一邊是
@@ -16837,7 +16856,8 @@ function reconRun(list){
     const a=byCusR.get(it.cus)||{items:0,amt:0,fuel:0,total:0}; a.items++; a.amt=cents(a.amt+it.amt); a.fuel=cents(a.fuel+it.fuel); a.total=cents(a.total+it.total); byCusR.set(it.cus,a);
     const c=byChgR.get(it.charge)||{charge:it.charge,items:0,amt:0,fuel:0,total:0}; c.items++; c.amt=cents(c.amt+it.amt); c.fuel=cents(c.fuel+it.fuel); c.total=cents(c.total+it.total); byChgR.set(it.charge,c);
   }
-  const rebill={items, total:cents(items.reduce((a,i)=>a+i.amt,0)), fuel:cents(items.reduce((a,i)=>a+i.fuel,0)),
+  const rebill={items, smallN, smallSum:cents(smallSum), minDiff:rebillMinDiff(),
+    total:cents(items.reduce((a,i)=>a+i.amt,0)), fuel:cents(items.reduce((a,i)=>a+i.fuel,0)),
     grand:cents(items.reduce((a,i)=>a+i.total,0)), skipped, noItem:!hasBilled,
     /* 補收與多收分開算:一邊是還要向客戶收的,一邊是收多了該退的,
        加在一起會互相抵銷,看起來就像兩邊都沒事。 */
@@ -17321,10 +17341,12 @@ function renderRebill(){
       "應補收 "+money(chgSum)+(refSum>0.004?" · 應退還 "+money(refSum):"")
         +" · 淨額 "+money(grand)+"(其中燃油附加費 "+money(totFuel)+")"
         +(totOver>0.004?" · 溢收(應退還)"+money(totOver):"")+" · "+items.length+" 項 · "+cusN+" 個客戶 · 逐筆金額在匯出的活頁簿裡"+(skip?" · "+skip+" 筆沒有逐項費用,沒列":"")
+        +(rb&&rb.smallN?" · 另有 "+rb.smallN+" 筆小於 "+money(rb.minDiff)+" 的差額(合計 "+money(rb.smallSum)+")沒有開立,明細那一頁看得到":"")
         +(unset?" · "+unset+" 項費率未設定(到「費率維護」設好再匯一次)":""),
       "To re-bill "+money(chgSum)+(refSum>0.004?" · to refund "+money(refSum):"")
         +" · net "+money(grand)+", of which fuel surcharge "+money(totFuel)
         +(totOver>0.004?" · over-collected (owed back) "+money(totOver):"")+" · "+items.length+" item(s) · "+cusN+" customer(s) · the figures are in the exported workbook"+(skip?" · "+skip+" row(s) without itemised charges not listed":"")
+        +(rb&&rb.smallN?" · "+rb.smallN+" difference(s) under "+money(rb.minDiff)+" ("+money(rb.smallSum)+" in total) were not raised — they are on the Detail sheet":"")
         +(unset?" · "+unset+" item(s) with no rate set (set them under Rate Maintenance and import again)":""));
   }
   const tc=$("#tRebillCus")&&$("#tRebillCus").tBodies[0];
