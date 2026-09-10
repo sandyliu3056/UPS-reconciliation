@@ -15068,6 +15068,10 @@ function reconSubHeads(head){
     .filter(d=>d.head!==head && d.fees.length && d.fees.every(f=>set.has(f)))
     .map(d=>d.head);
 }
+/* 給人看的寫法。合併欄的正式欄名帶「+」(模板的欄名不能改,改了舊檔就匯不進來),
+   但印在客戶那一側的單子上用斜線,短一截、也不會被截掉。 */
+const RECON_SHOW={"Additional Handling + Large Package Surcharge":"Additional Handling/Large Package Surcharge"};
+function reconShowName(n){ return RECON_SHOW[n]||n; }
 function reconGroupOf(name){
   const n=String(name||"").trim().toLowerCase();
   for(const [g,def] of Object.entries(RECON_GROUPS)) if(def.head.toLowerCase()===n) return g;
@@ -16671,6 +16675,8 @@ function reconRun(list){
     const b=o.billedFees;
     if(!b){ if(Object.keys(upsF).length) skipped++; continue; }
     const billedOf=c=>{ let w=b[c]; if(w==null && heads.has(c)) w=b[heads.get(c)]; return w==null?null:cents(w); };
+    /* 合併欄攤成它的成員;不是合併欄的就是它自己。 */
+    const memOfCol=c=>{ const g=Object.values(RECON_GROUPS).find(d=>d.head===c); return g?g.fees:[c]; };
     /* 客戶費率:重算算過、而且算出來大於 0 才算數。0 是沒設費率 —— 費率表裡有位置
        的費用(flat fee、DAS、AHS…)要自己設,沒設就標「費率未設定」、金額 0,不替人
        猜;只有費率表裡沒有位置、或本來就照 UPS 轉嫁的(NPF、超大件、稽核費、認不得
@@ -16892,6 +16898,74 @@ function reconRun(list){
       /* rows 已經排掉同名收過的和合併欄涵蓋的,剩下的每一項都是 UPS 有收、客戶沒收 ——
          沒費率的也要列出來當警示,不然少收一筆卻沒有人知道。 */
       items.push(...rows.filter(it=>it.amt>0.004||it.unset));
+      /* 整組被退掉(UPS 收了又整筆沖掉,或名目對不上)時,那一件依客戶自己的
+         費率本來就成立的那幾項還是要收 —— 只退不收的話,客戶白拿了一筆
+         本來就該付的加值處理費。一退一收兩列並排,對帳單上看得出來。 */
+      if(refNames.length){
+        const already=new Set(items.filter(x=>x.oid===o.oid).map(x=>x.charge));
+        for(const f of famFees){
+          if(already.has(f)) continue;
+          if(o.block || !known.has(f)) continue;
+          const rv=cents(rep[f]||0);
+          if(!(rv>0.004)) continue;
+          items.push(Object.assign({kind:"miss", charge:f,
+            desc:(desc[f]||[]).join(" / ")||L("依這個客戶的費率本來就成立","applies under this client's own rate"),
+            ups:cents(upsF[f]||0), billed:0, rate:rv, amt:rv, credit:0, creditFrom:[]}, base));
+        }
+      }
+    }
+    /* =====================================================================
+       逐項對帳:向客戶收的,對上這個客戶自己的費率
+       ---------------------------------------------------------------------
+       上面那一整段問的是「UPS 收了、客戶端沒收」。它問不到另一半:名目一樣、
+       金額不一樣。以前那被當成毛利略過 —— 可是「應收」就是這個客戶的合約價,
+       收超過它不是毛利,是多收;收不足也不是毛利,是少收。兩邊都要開成一列。
+
+       「應收」和明細那一頁 Difference 欄用同一條算式(shouldCol),所以補收單
+       和明細一定對得起來 —— 那也是這一段唯一該有的答案。
+
+       上面已經開過的那幾欄不再碰:漏收、退還、Zone 一退一收、運費更正都是
+       更精確的說法,這裡只補剩下的。
+       ===================================================================== */
+    {
+      const done=new Set();
+      for(const it of items) if(it.oid===o.oid){
+        done.add(it.charge);
+        for(const f of memOfCol(it.charge)) done.add(f);
+        if(it.refCol) done.add(it.refCol);
+      }
+      /* 一項費用該向這個客戶收多少 —— 和匯出明細同一條:重算算過就照重算,
+         合約裡有位置卻沒設費率的算 0(不替人猜),費率表裡沒有位置的照 UPS 轉嫁。 */
+      const should1=c=>{
+        const rp=cents(rep[c]||0);
+        if(!o.block && known.has(c) && rp>0.004) return rp;
+        if(rebillDisabled(c)||rebillConfigurable(c)) return 0;
+        return cents(upsF[c]||0);
+      };
+      const shouldCol=c=>cents(memOfCol(c).reduce((a,f)=>a+should1(f),0));
+      /* 這一欄的費率算得出來嗎。算不出來就不比 —— 「沒有費率」在補收那一側是
+         「不收」(0),在退還這一側卻會變成「整筆退給客戶」,那是兩件完全不同
+         的事。合約還沒設好的費用不該自動退錢,它要的是有人去把費率設起來。 */
+      const priced=c=>!o.block && memOfCol(c).some(f=>known.has(f) && cents(rep[f]||0)>0.004);
+      for(const c of Object.keys(b)){
+        if(c===RECON_OTHER) continue;            /* 自家的服務費沒有 UPS 這一側可比 */
+        if(done.has(c)) continue;
+        const w=cents(toNum(b[c]));
+        if(!(Math.abs(w)>0.004)) continue;
+        if(!priced(c)) continue;
+        const sh=shouldCol(c);
+        const d=cents(sh-w);
+        if(!(Math.abs(d)>0.004)) continue;
+        const dsc=(desc[c]||[]).join(" / ");
+        if(d<0) items.push(Object.assign({kind:"over", charge:c,
+            desc:dsc||L("向客戶收的高於這個客戶的費率","billed above this client's own rate"),
+            ups:cents(upsF[c]||0), billed:w, rate:sh, amt:d, credit:0, creditFrom:[],
+            wms:w, over:cents(-d), noFuel:true}, base));
+        else items.push(Object.assign({kind:"short", charge:c,
+            desc:dsc||L("向客戶收的低於這個客戶的費率","billed below this client's own rate"),
+            ups:cents(upsF[c]||0), billed:w, rate:sh, amt:d, credit:0, creditFrom:[],
+            wms:w, over:0, noFuel:true}, base));
+      }
     }
   }
   /* 燃油最後算:每一項的應補收 × 這一筆客戶的燃油 %,只算 UPS 本來就加燃油的項目
@@ -16916,6 +16990,10 @@ function reconRun(list){
     return bk.length>0 && bk.every(fuelOnFor);
   };
   const orderOf=new Map(orders.map(o=>[o.oid,o]));
+  /* 燃油只能算一次。逐項對帳把 Fuel Surcharge 那一欄也比了(向客戶收的燃油
+     對上客戶費率算出來的燃油)—— 那一列已經是整單燃油的差額,其餘每一列
+     就不能再各自加一次,不然同一筆燃油算兩次。 */
+  const fuelTrued=new Set(items.filter(x=>x.charge==="Fuel Surcharge"&&x.noFuel).map(x=>x.oid));
   for(const it of items){
     const o=orderOf.get(it.oid)||{}; const F=o.fees||{};
     let pct=toNum(F.fuelPct);
@@ -16925,7 +17003,7 @@ function reconRun(list){
       pct=base>0?toNum(upsF["Fuel Surcharge"])/base*100:0;
     }
     it.fuelPct=Math.round(pct*100)/100;
-    it.fuel=fuelOn(it.charge)?cents(it.amt*pct/100):0;
+    it.fuel=(it.noFuel||fuelTrued.has(it.oid))?0:(fuelOn(it.charge)?cents(it.amt*pct/100):0);
     it.total=cents(it.amt+it.fuel);
     /* 表上那一欄「客戶端實收」:一般的漏收就是 0,改收的那一列是實際收的金額。
        應收(rate)擺在旁邊,差自己看得出來,不再多一欄差額 —— 那一欄一邊是
@@ -17771,8 +17849,10 @@ async function reconExport(){
         dimTxt(u2.dimsC), dimTxt(u2.dimsA), wt0(u2.entered),
         ((o2.trks||[]).length<=1 && o2.upsWt!==""&&o2.upsWt!=null)?wt0(o2.upsWt):wt0(u2.billed)];
       const rf=it.kind==="refund";
-      rows.push(idc.concat([rf?it.charge+" — refund":it.charge, it.desc||"", dc(it.amt)])); sum=cents(sum+it.amt);
-      if(Math.abs(it.fuel)>0.004){ rows.push(idc.concat([rf?"Fuel Surcharge — refund":"Fuel Surcharge", it.charge+" @ "+fmtPct2(it.fuelPct)+"%", dc(it.fuel)])); sum=cents(sum+it.fuel); }
+      /* 退還不另外標字:金額是負數,那一列自己就說完了。標了反而多一種寫法,
+         而且合併欄的名字本來就長,後面再接一段就被截掉。 */
+      rows.push(idc.concat([reconShowName(it.charge), it.desc||"", dc(it.amt)])); sum=cents(sum+it.amt);
+      if(Math.abs(it.fuel)>0.004){ rows.push(idc.concat(["Fuel Surcharge", it.charge+" @ "+fmtPct2(it.fuelPct)+"%", dc(it.fuel)])); sum=cents(sum+it.fuel); }
     }
     rows.push(["","","","","","","","","","",{v:"Total",t:"s",s:{bold:true}},"",{v:sum,t:"n",s:{fmt:CUR,bold:true}}]);
     cusSheets.push({name:sheetName(code), rows:[cusHead,...rows], cols:[16,12,22,20,20,7,16,16,9,9,40,44,14].map(w=>({w})), ignoreTextNumbers:true});
@@ -22528,8 +22608,8 @@ function cliData(code){
         rows.push({trk:t, desc, dc:dd.dc, da:dd.da, amt:cents(amt)});
         total=cents(total+amt);
       };
-      push(it.kind==="refund"?it.charge+" — refund":it.charge, amts[i]);
-      if(Math.abs(it.fuel||0)>=0.005) push(it.kind==="refund"?"Fuel Surcharge — refund":"Fuel Surcharge", fuels[i]);
+      push(reconShowName(it.charge), amts[i]);
+      if(Math.abs(it.fuel||0)>=0.005) push("Fuel Surcharge", fuels[i]);
     });
   }
   const name=(((R&&R.orders)||[]).find(o=>o.cus===code)||{}).name
