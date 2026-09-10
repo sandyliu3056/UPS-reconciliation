@@ -17480,14 +17480,9 @@ async function reconExport(){
   const add=n=>{ if(!charges.includes(n)) charges.push(n); };
   for(const n of AUD_FEES.filter(n=>seen.has(n)).concat([...seen].filter(n=>!AUD_FEES.includes(n)).sort()))
     add(headOf.has(n)?headOf.get(n):n);
-  /* 非承運費用不進三欄比對:UPS 那一側根本沒有它,重算永遠是 0,並排一比就變成
-     「整筆多收」。但它是實實在在向客戶收的錢,要進 Total Amount ——不加的話,
-     Total 比模板上那一欄少一截,對的人會以為是漏了哪一項。所以它自己一欄、
-     只寫金額、不比對,兩側的合計都算它,Total 的差額仍然只講承運費用。
+  /* 非承運費用不列:只有向客戶收那一側有它,重算永遠是 0,列出來只是噪音。
      更正緊接在運費後面。 */
   if(charges.includes(RECON_OTHER)) charges.splice(charges.indexOf(RECON_OTHER),1);
-  const svcOf=o=>cents(((o&&o.billedFees)||{})[RECON_OTHER]||0);
-  const hasSvc=(r.orders||[]).some(o=>Math.abs(svcOf(o))>0.004);
   const SCC="Shipping Charge Correction";
   if(charges.includes(SCC)&&charges.includes("Base Rate")){
     charges.splice(charges.indexOf(SCC),1); charges.splice(charges.indexOf("Base Rate")+1,0,SCC); }
@@ -17537,7 +17532,6 @@ async function reconExport(){
     if(subs.length>1) merges.push({s:{r:0,c:c0},e:{r:0,c:c0+subs.length-1}});
   };
   for(const nm of charges) block(chgName(nm), SUB);
-  if(hasSvc) block(RECON_OTHER, [[src,WMSH]]);
   block("Total Amount", SUB);
   /* 前期帶進來的列:最後多一欄說它來自哪一期。沒有就不長這一欄。 */
   const anyCarried=(r.orders||[]).some(o=>o.carried);
@@ -17581,13 +17575,12 @@ async function reconExport(){
       tS=cents(tS+should); tW=cents(tW+w);
       row.push(dm(w)); row.push(dm(should)); row.push(dm(w-should));
     }
-    if(hasSvc){ const sv=svcOf(o); row.push(dm(sv)); tW=cents(tW+sv); tS=cents(tS+sv); }
     row.push(dm(tW)); row.push(dm(tS)); row.push(dm(tW-tS));
     if(anyCarried) row.push(carriedTxt(o));
     return row;
   });
   const dWidths=[12,12,16,16,20,22,22,22,16,16,10,10,7,26,9]
-    .concat(charges.flatMap(()=>[14,14,14]),hasSvc?[14]:[],[14,14,14],anyCarried?[26]:[]);
+    .concat(charges.flatMap(()=>[14,14,14]),[14,14,14],anyCarried?[26]:[]);
   const detailSheet={name:"Detail", rows:[h1,h2,...dRows], merges, freeze:{r:2,c:0},
     cols:dWidths.map(w=>({w})), ignoreTextNumbers:true};
 
