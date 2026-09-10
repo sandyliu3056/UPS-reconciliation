@@ -19733,6 +19733,79 @@ function renderDashBatches(body){
   wireDashBar();
   const rb=$("#bDashRe"); if(rb) rb.onclick=()=>{ RECON_RUNS=null; window.__dashRunsKick=false; renderDashboard(); };
 }
+/* 各層級的總體毛利:同一個層級的客戶加在一起,問「這一層在賺錢嗎」。
+   逐客戶那張表回答不了這件事 —— 一層有二十家客戶,人要自己在心裡加二十次。
+   數字取自畫面上這一批單(儀表板篩了什麼就算什麼),所以每一欄加起來就是
+   上面那條算式,不會有第二個版本的毛利。 */
+function dashLevelRows(){
+  const r=(typeof RECON!=="undefined")&&RECON&&RECON.res;
+  if(!r||!(r.orders||[]).length) return null;
+  const cut=(typeof dashCutActive==="function")&&dashCutActive();
+  const list=(cut&&typeof dashOrders==="function")?dashOrders():r.orders;
+  if(!list.length) return null;
+  /* 層級讀單子自己的那一欄 —— 儀表板上那個層級篩選也是讀它,兩邊同一個來源,
+     篩過之後這張表和上面那條算式才會是同一批單。沒指派層級、或層級被刪的
+     自成一列:併進別人裡面,那一層的毛利率就變成別人的了。 */
+  const rb=dashRebillByTrk(), used=new Set(), by=new Map();
+  for(const o of list){
+    const key=String(o.level||"");
+    let g=by.get(key);
+    if(!g){ g={level:key, cusSet:new Set(), orders:0, amt:0, cost:0, rebill:0}; by.set(key,g); }
+    g.cusSet.add(o.cus); g.orders++;
+    g.amt=cents(g.amt+toNum(o.amt)); g.cost=cents(g.cost+toNum(o.cost));
+    /* 一票多件:同一個追蹤號的補收只算一次。 */
+    for(const t of (o.trks||[])){ const k=reconTrk(t);
+      if(rb.has(k)&&!used.has(k)){ used.add(k); g.rebill=cents(g.rebill+rb.get(k)); } }
+  }
+  const rows=[...by.values()].map(g=>{
+    g.n=g.cusSet.size; delete g.cusSet;
+    g.chargeable=cents(g.amt+g.rebill);
+    g.profit=cents(g.chargeable-g.cost);
+    /* 應收是 0 就沒有比率可言;分母取絕對值,應收是負的時候虧損不會顯示成賺。 */
+    g.margin=Math.abs(g.chargeable)>0.004?g.profit/Math.abs(g.chargeable)*100:null;
+    return g;
+  }).sort((a,b)=>b.profit-a.profit);
+  const tp=cents(rows.reduce((a,x)=>a+x.profit,0));
+  for(const g of rows) g.share=Math.abs(tp)>0.004?g.profit/tp*100:null;
+  return rows.length?rows:null;
+}
+function dashLevelHTML(){
+  const rows=dashLevelRows();
+  if(!rows) return "";
+  const m=v=>`<td>${money(v)}</td>`;
+  const t={n:0,orders:0,amt:0,rebill:0,chargeable:0,cost:0,profit:0};
+  for(const g of rows){ t.n+=g.n; t.orders+=g.orders;
+    for(const k of ["amt","rebill","chargeable","cost","profit"]) t[k]=cents(t[k]+g[k]); }
+  const tm=Math.abs(t.chargeable)>0.004?t.profit/Math.abs(t.chargeable)*100:null;
+  const nOf=n=>L(n+" 家", n+" client"+(n===1?"":"s"));
+  return `<div class="dcard" style="margin-top:12px">
+    <div class="ch"><h3>${L("各層級毛利","Profit by rate level")}</h3>
+      <span class="cnote">${L("同一層的客戶加總,毛利大的在上面",
+        "clients of the same level added together, most profitable first")}</span></div>
+    <div class="tablewrap" style="max-height:none;overflow-x:auto">
+    <table class="atbl"><thead><tr>
+      <th>${L("層級","Rate level")}</th><th>${L("客戶","Clients")}</th>
+      <th>${L("筆數","Orders")}</th>
+      <th>${L("實收","Billed")}</th><th>${L("應補收","To re-bill")}</th>
+      <th>${L("應收合計","Chargeable")}</th><th>UPS</th>
+      <th>${L("毛利","Profit")}</th><th>${L("毛利率","Margin")}</th>
+      <th>${L("佔總毛利","Share of profit")}</th>
+    </tr></thead><tbody>${rows.map(g=>`<tr>
+      <td class="ak">${esc(anaLvlName(g.level))}</td>
+      <td class="ad">${esc(nOf(g.n))}</td>
+      <td>${g.orders.toLocaleString()}</td>
+      ${m(g.amt)}${m(g.rebill)}${m(g.chargeable)}${m(g.cost)}
+      <td class="${g.profit<0?"neg":"pos"}">${money(g.profit)}</td>
+      <td>${anaPct(g.margin)}</td>
+      <td>${anaPct(g.share)}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><td class="ak">${L("合計","Total")}</td>
+      <td class="ad">${esc(nOf(t.n))}</td>
+      <td>${t.orders.toLocaleString()}</td>
+      ${m(t.amt)}${m(t.rebill)}${m(t.chargeable)}${m(t.cost)}
+      <td class="${t.profit<0?"neg":"pos"}">${money(t.profit)}</td>
+      <td>${anaPct(tm)}</td><td></td></tr></tfoot></table></div>
+  </div>`;
+}
 function renderDashboard(){
   const body=$("#dashBody"); if(!body) return;
   /* 整頁重畫 = 上一次的等待已經結束(成功走 repriceStored,失敗走
@@ -19986,6 +20059,7 @@ function renderDashboard(){
   /* 三張卡片講同一件事的時代結束了:這一張把「查不到費率」「判定不確定」
      「沒有重算」收在一起,由重到輕排,每一組都指得出帳單的哪幾列。
      內容和匯出都在 renderIssueCard()/exportIssues()。 */
+  const lvlCard=dashLevelHTML();
   const uCard=renderIssueCard();
   /* 毛利率跟著毛利走:應收合計是 0 就沒有比率可言(除以 0 會印出 Infinity%,
      那比一格空白更難解釋)。分母取絕對值 —— 應收是負的時候,虧損不該顯示成賺。 */
@@ -20026,6 +20100,7 @@ function renderDashboard(){
         <div class="dv">${wmsAgg.n}</div></div>
     </div>`:`<div class="dempty" style="padding:14px 18px;margin-bottom:12px">${L("毛利要等對帳:匯入 WMS / TMS 檔之後,這裡才會有「實收 + 應補收 − UPS」。",
         "Profit waits for the reconciliation: import the WMS / TMS file and this line shows billed + to re-bill − UPS.")}</div>`}
+    ${lvlCard}
     <div class="dcard">
       <div class="ch"><h3>${L("費用組成","Cost breakdown")}</h3>
         <button class="act ghost" id="bPerXls" style="padding:3px 11px;font-size:12px">${
