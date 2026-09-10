@@ -1394,7 +1394,7 @@ main.home{display:flex;flex-direction:column}
 main.home #app{flex:1 0 auto;display:flex;flex-direction:column;min-height:0}
 main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
 #p-home .sceneBox{margin-top:auto}
-#p-home #scene{height:clamp(124px,15vh,164px)}
+#p-home #scene{height:clamp(150px,17vh,190px)}
 /* 框拿掉了:裡面沒有一幕要框住,只有幾個角色在頁面上走。留著框,空的那一
    大片底色反而變成畫面上最大的一塊東西。 */
 /* 首頁面板。三塊:最近一次對帳(大)、待補收、帳單歷史,底下三顆快捷。
@@ -24865,7 +24865,9 @@ function spreadActors(){
 }
 
 function sceneStep(){
-  const W=SCENE.W||640, FLR=(SCENE.H||190)-22;
+  /* 腳底離下緣留的空間要跟著放大倍率走 —— 影子和腳掌畫在原點下面一點,
+     放大之後那一點也放大,留 22 就會被畫布的下緣切掉。 */
+  const W=SCENE.W||640, FLR=(SCENE.H||190)-22*(SCENE.K||1);
   for(const a of SCENE.actors) a.y=FLR;
   if(SCENE.t%3) return;
   for(const a of SCENE.actors){
@@ -25594,11 +25596,45 @@ function drawBug(g,b,t){
    看第一次是有趣,看第五十次是每次開站都要等它畫完的一塊噪音;而人要在首頁
    看的是上面那三張卡。畫布留著、底透明,兩個同仁、一隻狗、一隻貓就在頁面上
    走來走去,點一下還是會有反應。 */
+/* 幾個安靜的小東西陪著牠們:左邊兩箱貨、一個碗、一顆球、右邊一盆草,
+   全都坐在同一條看不見的地平線上。不畫地面、不畫背景 —— 有東西可看,
+   又不會變回一幕要等它演完的戲。 */
+function drawProps(g,W,H){
+  const K=SCENE.K||1, y=H-22*K, u=1.45;
+  const panel=pal("--panel","#f4ecdc"), stripe=pal("--stripe","#e8dfcc"), tab=pal("--tab","#c8a24a");
+  g.lineWidth=2.2; g.strokeStyle=INK;
+  /* 兩箱貨。上面那一箱小一點、往右偏一點,疊起來才像疊的,不像兩個矩形。 */
+  const bw=46*u, bh=30*u, bx=Math.round(W*0.05);
+  skRect(g,bx,y-bh,bw,bh,7,stripe);
+  skLine(g,bx,y-bh*0.62,bx+bw,y-bh*0.62,8);          /* 封箱膠帶 */
+  skLine(g,bx+bw*0.5,y-bh,bx+bw*0.5,y-bh*0.62,9);
+  const sw=32*u, sh=24*u, sx=bx+bw*0.22;
+  skRect(g,sx,y-bh-sh,sw,sh,10,panel);
+  skLine(g,sx,y-bh-sh*0.58,sx+sw,y-bh-sh*0.58,11);
+  skLine(g,sx+sw*0.5,y-bh-sh,sx+sw*0.5,y-bh-sh*0.58,12);
+  /* 球:一條縫,看得出是球不是圓點。 */
+  const ba=Math.round(W*0.46), br=11*u;
+  skCircle(g,ba,y-br,br,13,panel);
+  skLine(g,ba-br*0.75,y-br*1.35,ba+br*0.75,y-br*0.7,14);
+  /* 飯碗:淺淺一個,碗口一條線。 */
+  const wx=Math.round(W*0.55), wr=13*u;
+  g.beginPath(); g.moveTo(wx-wr,y-wr*0.75);
+  g.quadraticCurveTo(wx,y+wr*0.55,wx+wr,y-wr*0.75);
+  g.closePath(); g.fillStyle=tab; g.fill(); g.stroke();
+  skLine(g,wx-wr*1.15,y-wr*0.75,wx+wr*1.15,y-wr*0.75,15);
+  /* 一盆草。 */
+  const px=Math.round(W*0.93), pw=17*u, ph=20*u;
+  skRect(g,px-pw,y-ph,pw*2,ph,16,stripe);
+  skLine(g,px-pw,y-ph*0.72,px+pw,y-ph*0.72,17);
+  for(const [dx,dy] of [[-11,-17],[-4,-27],[5,-25],[12,-15]])
+    skLine(g,px,y-ph,px+dx*u,y-ph+dy*u,18+dx);
+}
 function sceneDraw(){
   const g=SCENE.ctx; if(!g) return;
   g.clearRect(0,0,SCENE.W,SCENE.H);
   g.lineWidth=2.2; g.strokeStyle=INK;
   const t=SCENE.t;
+  drawProps(g,SCENE.W,SCENE.H);
   /* 放大是畫的時候縮放,不是改每一段線的座標:腳底(a.x,a.y)當原點撐開,
      走位、腳步、互動那幾條算式一個字都不用動。 */
   const K=SCENE.K||1;
