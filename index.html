@@ -3978,7 +3978,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-10-j</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-10-k</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -12023,8 +12023,40 @@ async function bkdXlsx(){
     curTrk="";
     push("",nm,0,L("小計","Subtotal"),cents(acctRows.reduce((a,[,l])=>a+(l.net||0),0)),true);
   }
+  /* 第三頁:對帳實際用的那一份計價。
+     上面兩頁是「一期一期各自算」—— 那是稽核帳單用的視角。對帳不是這樣算的:
+     它把同一個追蹤號跨期的行合成一件再計價一次,所以兩邊的數字本來就不一樣,
+     而補收清單用的是後者。以前這個檔裡看不到它,對不起來的時候沒有人講得出
+     哪一個是哪一個。一項費用一列:UPS 實收、應收、向客戶收、差額。 */
+  const reconRows=(()=>{
+    const R=(typeof RECON!=="undefined")&&RECON&&RECON.res;
+    if(!R||!(R.orders||[]).length) return null;
+    const k0=reconTrk(trk);
+    const o=(R.orders||[]).concat(R.notOnInv||[]).find(x=>(x.trks||[]).some(t2=>reconTrk(t2)===k0));
+    if(!o) return null;
+    const F=o.fees||{}, up=F.ups||{}, rp=F.rep||{}, bl=o.billedFees||{};
+    const names=[...new Set(Object.keys(up).concat(Object.keys(rp),Object.keys(bl)))]
+      .filter(n=>Math.abs(toNum(up[n]))>0.004||Math.abs(toNum(rp[n]))>0.004||Math.abs(toNum(bl[n]))>0.004)
+      .sort((a2,b2)=>Math.abs(toNum(up[b2])||0)-Math.abs(toNum(up[a2])||0)||a2.localeCompare(b2));
+    const H=n=>({v:n,t:"s",s:{bold:true,fill:HEAD,align:"left",wrap:true,border:true}});
+    const rows=[[H(L("費用項目","Charge")),H("UPS"),H(L("應收","Chargeable")),
+                 H(wsrc+L(" 實收"," billed")),H(L("差額(應收 − UPS)","Chargeable − UPS"))]];
+    let tu=0,tr=0,tw=0;
+    for(const n of names){
+      const u2=cents(toNum(up[n])), r2=cents(toNum(rp[n])), w2=cents(toNum(bl[n]));
+      tu=cents(tu+u2); tr=cents(tr+r2); tw=cents(tw+w2);
+      rows.push([c(n,"","left"),c(u2,MONEY,"right"),c(r2,MONEY,"right"),
+                 c(w2,MONEY,"right"),c(cents(r2-u2),MONEY,"right")]);
+    }
+    rows.push([c(L("合計","Total"),"","left",FOOT,true),c(tu,MONEY,"right",FOOT,true),
+               c(tr,MONEY,"right",FOOT,true),c(tw,MONEY,"right",FOOT,true),
+               c(cents(tr-tu),MONEY,"right",FOOT,true)]);
+    return rows;
+  })();
   const name=("Tracking_"+trk+"_Breakdown").replace(/[^A-Za-z0-9_-]+/g,"")+".xlsx";
   const ok=await xlWrite([
+    ...(reconRows?[{name:L("對帳計價","Reconciliation pricing"), rows:reconRows,
+      cols:[{w:44},{w:14},{w:14},{w:14},{w:18}], freeze:{r:1,c:1}}]:[]),
     {name:L("各期比較","Per invoice"), rows:sum, merges:sumMerges,
      cols:(multi?[{w:22}]:[]).concat([{w:20},{w:13},{w:14},{w:14},{w:14},{w:13},{w:13},{w:11}]), freeze:{r:2,c:multi?2:1}},
     {name:L("明細","Detail"), rows:det,
