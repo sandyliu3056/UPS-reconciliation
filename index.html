@@ -1394,7 +1394,7 @@ main.home{display:flex;flex-direction:column}
 main.home #app{flex:1 0 auto;display:flex;flex-direction:column;min-height:0}
 main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
 #p-home .sceneBox{margin-top:auto}
-#p-home #scene{height:clamp(150px,17vh,190px)}
+#p-home #scene{height:clamp(168px,19vh,205px)}
 /* 框拿掉了:裡面沒有一幕要框住,只有幾個角色在頁面上走。留著框,空的那一
    大片底色反而變成畫面上最大的一塊東西。 */
 /* 首頁面板。三塊:最近一次對帳(大)、待補收、帳單歷史,底下三顆快捷。
@@ -4088,7 +4088,9 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
   </div>
 </div>
 
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBy">DEVELOPED BY SANDY LIU</span></div>
+<!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
+     只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-10-j</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -24817,7 +24819,7 @@ function sceneInit(){
   ];
   spreadActors();
   /* 摸摸。桌面版的場景可以點角色互動( _pet_at),這裡同樣。 */
-  SCENE.K=1.9;
+  SCENE.K=1.45;
   SCENE.cv.style.cursor="pointer";
   SCENE.cv.title = LANG?"Click an animal":"點一下摸摸";
   SCENE.cv.addEventListener("click",e=>{
@@ -24872,9 +24874,10 @@ function spreadActors(){
 }
 
 function sceneStep(){
-  /* 腳底離下緣留的空間要跟著放大倍率走 —— 影子和腳掌畫在原點下面一點,
-     放大之後那一點也放大,留 22 就會被畫布的下緣切掉。 */
-  const W=SCENE.W||640, FLR=(SCENE.H||190)-22*(SCENE.K||1);
+  /* 地板的位置決定頭頂還剩多少。放大到 1.9 倍之後,一隻貓從腳底到耳尖大約
+     95px,而畫布高度在 85% 縮放下只有 137 —— 底下留 42,上面就只剩 95,耳朵
+     正好被切掉。腳掌畫在原點下面約 7px,留 8×倍率就夠,剩下的高度全給頭頂。 */
+  const W=SCENE.W||640, FLR=(SCENE.H||190)-8*(SCENE.K||1);
   for(const a of SCENE.actors) a.y=FLR;
   if(SCENE.t%3) return;
   for(const a of SCENE.actors){
@@ -25607,7 +25610,7 @@ function drawBug(g,b,t){
    全都坐在同一條看不見的地平線上。不畫地面、不畫背景 —— 有東西可看,
    又不會變回一幕要等它演完的戲。 */
 function drawProps(g,W,H){
-  const K=SCENE.K||1, y=H-22*K, u=1.45;
+  const K=SCENE.K||1, y=H-8*K, u=1.45;
   const panel=pal("--panel","#f4ecdc"), stripe=pal("--stripe","#e8dfcc"), tab=pal("--tab","#c8a24a");
   /* 地板。東西總得站在什麼上面 —— 少了這一條,箱子和貓狗看起來是浮在頁面上,
      而那正是「有點醜」的來源。一條線加一層很淡的地色,不畫牆也不畫框。 */
