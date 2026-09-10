@@ -20120,9 +20120,8 @@ function prSheetInvoice(){
     const upsRecon=cents((wab.chargeable||0)-(wab.profit||0));
     const rows=[[hc2(L("項目","Item"),"left"),hc2(L("數值","Value"))],
       kv2(L("批次","Batch"), runLabelOf(run)),
-      kv2(L("匯入時間","Imported"), tplWhen(run.when)),
-      ...(run.by?[kv2(L("操作人","Imported by"), run.by)]:[]),
-      kv2(L("期別","Invoice periods"), invs.join(", ")),
+      /* 匯入時間、操作人、期別那三列拿掉了:誰在幾點按的匯入不是這份報表要
+         回答的事,而期別那一格是一長串期號,把整欄撐開、印出來也讀不了。 */
       kv2(L("UPS 帳號","UPS account"), accs.join(", ")),
       /* 匯入幾筆、對到幾筆、差在哪裡 —— 只寫「對帳筆數」的話,和第 3 步那張
          表上的筆數對不起來,看起來像其中一邊算錯。 */
