@@ -92,11 +92,11 @@ ok(px('html.ink .lf>h3')>=19, '\u6bb5\u843d\u6a19\u984c \u2265 19px');
 ok(px('html.ink .nav button')>=14.5, '\u5074\u6b04 \u2265 14.5px');
 
 console.log('\n[7] \u6c92\u640d\u5230\u539f\u672c\u7684\u6771\u897f');
-ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft').length===16,
-   '61 個 .sketch、16 個 .sketch-soft 都在(Demand 卡搬進費率維護,舊費率表卡拿掉)');
+ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft').length===17,
+   '61 個 .sketch、17 個 .sketch-soft 都在(多一條「帳號那份少了東西」的橫幅)(Demand 卡搬進費率維護,舊費率表卡拿掉)');
 ok(D.querySelectorAll('table').length===32&&D.querySelectorAll('.modalbg').length===27,
    '表格 32、視窗 27');
-ok(D.querySelectorAll('[data-i18n]').length===601, 'i18n 標記 601 個(帳單歷史多一欄追蹤號碼;Demand 搬進費率維護,舊費率表卡與分頁入口拿掉)');
+ok(D.querySelectorAll('[data-i18n]').length===608, 'i18n 標記 608 個(帳單歷史多一欄追蹤號碼;設定檔下載、上一份、覆蓋前的橫幅)');
 
 console.log('\n[8] \u7d19\u7684\u984f\u8272');
 ok(/--paper-mask:url\(/.test(face), '\u6709\u4e00\u5f35\u5c08\u9580\u7576\u906e\u7f69\u7684\u5642\u9ede');
