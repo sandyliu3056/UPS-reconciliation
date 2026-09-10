@@ -15057,6 +15057,17 @@ const REBILL_FAMILIES=[
   {name:"Signature / Adult Signature", fees:["Signature","Adult Signature"]},
 ];
 /* 這個欄名是哪一組的合併欄;不是就回空字串。 */
+/* 「Additional Handling + Large Package」整個包含「Additional Handling」。
+   兩份來源的模板可能各用一種欄名,合成一欄之後要連被涵蓋的那些欄名一起找,
+   不然那一側收的錢會在畫面上憑空不見(或另外長出一列來)。 */
+function reconSubHeads(head){
+  const g=Object.values(RECON_GROUPS).find(d=>d.head===head);
+  if(!g||g.fees.length<2) return [];
+  const set=new Set(g.fees);
+  return Object.values(RECON_GROUPS)
+    .filter(d=>d.head!==head && d.fees.length && d.fees.every(f=>set.has(f)))
+    .map(d=>d.head);
+}
 function reconGroupOf(name){
   const n=String(name||"").trim().toLowerCase();
   for(const [g,def] of Object.entries(RECON_GROUPS)) if(def.head.toLowerCase()===n) return g;
@@ -16422,6 +16433,14 @@ function reconRun(list){
      加總成同一組再比,細項留作子列。比對用的自動組不在這裡,看數字才成組。 */
   const active=new Set();
   for(const e of list) for(const k of Object.keys(e.chg||{})){ const g=reconGroupOf(k); if(g && !RECON_GROUPS[g].auto) active.add(g); }
+  /* 兩個合併欄的細項重疊時,只能留一個。「Additional Handling + Large Package」
+     整個包含「Additional Handling」—— 兩邊各出一欄的話,同一筆加值處理費會
+     在兩欄各出現一次,而明細那一頁的總額是把每一欄加起來的,於是那一筆被
+     算了兩次。同一份檔案裡兩欄並存在匯入時就擋掉了;會走到這裡的是「WMS 那份
+     用細項欄、TMS 那份用合併欄」——兩份合起來對帳的時候。
+     留涵蓋範圍大的那一個:它裝得下另一個的每一項,不會漏。 */
+  for(const [a,b] of [["ahs","ahslps"]])
+    if(active.has(a)&&active.has(b)) active.delete(a);
   const byTrk=new Map();
   for(const s of (SHIPS||[])){
     const k=reconTrk(s.tracking);
@@ -16972,9 +16991,14 @@ function reconRun(list){
       if(!kids.length&&!self) continue;
       const rep=cents(kids.reduce((a,o)=>a+o.rep,0)), ups=cents(kids.reduce((a,o)=>a+o.ups,0));
       /* 向客戶收:模板填了合併欄就用它;填的是細項欄就把細項加起來。 */
+      /* 另一份來源用細項合併欄記的(WMS 寫 Additional Handling Surcharge、
+         TMS 寫 Additional Handling + Large Package Surcharge)也要一起收進來。 */
+      const subs=reconSubHeads(def.head).map(h=>m.get(h)).filter(o=>o&&o.billedN);
       let billed=null;
       if(self&&self.billedN) billed=cents(self.billed);
-      else { const ks=kids.filter(o=>o.billedN); if(ks.length) billed=cents(ks.reduce((a,o)=>a+o.billed,0)); }
+      if(subs.length) billed=cents((billed||0)+subs.reduce((a,o)=>a+o.billed,0));
+      if(billed==null){ const ks=kids.filter(o=>o.billedN); if(ks.length) billed=cents(ks.reduce((a,o)=>a+o.billed,0)); }
+      subs.forEach(o=>used.add(o.name));
       const kidRows=kids.map(fmt).sort(byGap);
       /* 自動組的細項只看 UPS 那一側的拆分:重算算的是最後的運費,拆不出
          「更正」那一份,所以細項不寫重算與差異。 */
@@ -17536,6 +17560,9 @@ async function reconExport(){
   const gs=(r.groups||[]).map(g=>RECON_GROUPS[g]).filter(Boolean);
   const headOf=new Map();                       /* 細項 → 它屬於哪一個合併欄 */
   for(const g of gs) for(const f of g.fees) headOf.set(f,g.head);
+  /* 被涵蓋的那個合併欄名(另一份來源的模板用的)也指到同一欄 —— 不這樣做的話
+     它會自己長成第二欄,而同一筆錢在兩欄各出現一次,總額就多算了一次。 */
+  for(const g of gs) for(const h of reconSubHeads(g.head)) headOf.set(h,g.head);
   const seen=new Set();
   for(const o of r.orders){
     for(const k of Object.keys((o.fees&&o.fees.ups)||{})) seen.add(k);
@@ -17555,6 +17582,11 @@ async function reconExport(){
   /* 燃油最後才算,放最後一格(Total 前):它是別的欄位乘出來的,不是一項獨立的費用。 */
   if(charges.includes("Fuel Surcharge")){ charges.splice(charges.indexOf("Fuel Surcharge"),1); charges.push("Fuel Surcharge"); }
   const membersOf=nm=>{ const g=gs.find(x=>x.head===nm); return g?g.fees:[nm]; };
+  /* 向客戶收那一側是照模板的欄名記的,而兩份來源的模板可能用不同的合併欄:
+     WMS 那份寫「Additional Handling Surcharge」、TMS 那份寫「Additional Handling
+     + Large Package Surcharge」。合成一欄之後,要連被它涵蓋的那些欄名一起找,
+     不然 WMS 收的那一筆會在畫面上憑空不見。 */
+  const subHeadsOf=reconSubHeads;
   const UPSH="FFC000", WMSH="92D050", DIFH="9BC2E6", REPH="FBEBC8";
   const dh=(n,fill)=>({v:n,t:"s",s:{bold:true,fill,color:"1F1F1F",align:"left",wrap:true,border:true}});
   const dm=v=>({v:cents(v||0),t:"n",s:{fmt:MONEY}});
@@ -17628,7 +17660,10 @@ async function reconExport(){
       let w=0;
       if(billed){
         if(billed[nm]!=null) w=cents(billed[nm]);
-        else w=cents(mem.reduce((a,f)=>a+(billed[f]||0),0));
+        else{
+          w=cents(mem.reduce((a,f)=>a+(billed[f]||0),0));
+          for(const h of subHeadsOf(nm)) w=cents(w+(billed[h]||0));
+        }
       }
       tS=cents(tS+should); tW=cents(tW+w);
       row.push(dm(w)); row.push(dm(should)); row.push(dm(w-should));
