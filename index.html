@@ -19773,9 +19773,9 @@ function dashLevelHTML(){
   const rows=dashLevelRows();
   if(!rows) return "";
   const m=v=>`<td>${money(v)}</td>`;
-  const t={n:0,orders:0,amt:0,rebill:0,chargeable:0,cost:0,profit:0};
+  const t={n:0,orders:0,chargeable:0,cost:0,profit:0};
   for(const g of rows){ t.n+=g.n; t.orders+=g.orders;
-    for(const k of ["amt","rebill","chargeable","cost","profit"]) t[k]=cents(t[k]+g[k]); }
+    for(const k of ["chargeable","cost","profit"]) t[k]=cents(t[k]+g[k]); }
   const tm=Math.abs(t.chargeable)>0.004?t.profit/Math.abs(t.chargeable)*100:null;
   const nOf=n=>L(n+" 家", n+" client"+(n===1?"":"s"));
   return `<div class="dcard" style="margin-top:12px">
@@ -19786,7 +19786,6 @@ function dashLevelHTML(){
     <table class="atbl"><thead><tr>
       <th>${L("層級","Rate level")}</th><th>${L("客戶","Clients")}</th>
       <th>${L("筆數","Orders")}</th>
-      <th>${L("實收","Billed")}</th><th>${L("應補收","To re-bill")}</th>
       <th>${L("應收合計","Chargeable")}</th><th>UPS</th>
       <th>${L("毛利","Profit")}</th><th>${L("毛利率","Margin")}</th>
       <th>${L("佔總毛利","Share of profit")}</th>
@@ -19794,14 +19793,14 @@ function dashLevelHTML(){
       <td class="ak">${esc(anaLvlName(g.level))}</td>
       <td class="ad">${esc(nOf(g.n))}</td>
       <td>${g.orders.toLocaleString()}</td>
-      ${m(g.amt)}${m(g.rebill)}${m(g.chargeable)}${m(g.cost)}
+      ${m(g.chargeable)}${m(g.cost)}
       <td class="${g.profit<0?"neg":"pos"}">${money(g.profit)}</td>
       <td>${anaPct(g.margin)}</td>
       <td>${anaPct(g.share)}</td></tr>`).join("")}</tbody>
     <tfoot><tr><td class="ak">${L("合計","Total")}</td>
       <td class="ad">${esc(nOf(t.n))}</td>
       <td>${t.orders.toLocaleString()}</td>
-      ${m(t.amt)}${m(t.rebill)}${m(t.chargeable)}${m(t.cost)}
+      ${m(t.chargeable)}${m(t.cost)}
       <td class="${t.profit<0?"neg":"pos"}">${money(t.profit)}</td>
       <td>${anaPct(tm)}</td><td></td></tr></tfoot></table></div>
   </div>`;
