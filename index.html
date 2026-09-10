@@ -16496,6 +16496,10 @@ function reconRun(list){
   const items=[]; let skipped=0;
   for(const o of orders){
     const F=o.fees||{}, upsF=F.ups||{}, rep=F.rep||{}, known=F.known||new Set(), desc=F.desc||{};
+    /* 這一單的項目從 items 的哪裡開始。要「這一單已經開過哪幾欄」時,
+       切這一段就好 —— 每一單都掃整個 items 的話是 O(n²):兩萬張單、
+       每張一項,就是兩億次比對,畫面直接停住。 */
+    const i0=items.length;
     const b=o.billedFees;
     if(!b){ if(Object.keys(upsF).length) skipped++; continue; }
     const billedOf=c=>{ let w=b[c]; if(w==null && heads.has(c)) w=b[heads.get(c)]; return w==null?null:cents(w); };
@@ -16727,7 +16731,7 @@ function reconRun(list){
          費率本來就成立的那幾項還是要收 —— 只退不收的話,客戶白拿了一筆
          本來就該付的加值處理費。一退一收兩列並排,對帳單上看得出來。 */
       if(refNames.length){
-        const already=new Set(items.filter(x=>x.oid===o.oid).map(x=>x.charge));
+        const already=new Set(items.slice(i0).map(x=>x.charge));
         for(const f of famFees){
           if(already.has(f)) continue;
           if(o.block || !known.has(f)) continue;
@@ -16754,7 +16758,7 @@ function reconRun(list){
        ===================================================================== */
     {
       const done=new Set();
-      for(const it of items) if(it.oid===o.oid){
+      for(const it of items.slice(i0)){
         done.add(it.charge);
         for(const f of memOfCol(it.charge)) done.add(f);
         if(it.refCol) done.add(it.refCol);
