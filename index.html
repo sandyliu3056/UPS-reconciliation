@@ -4090,7 +4090,7 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-10-k</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-12-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -12228,8 +12228,36 @@ async function bkdXlsx(){
       .filter(n=>Math.abs(toNum(up[n]))>0.004||Math.abs(toNum(rp[n]))>0.004||Math.abs(toNum(bl[n]))>0.004)
       .sort((a2,b2)=>Math.abs(toNum(up[b2])||0)-Math.abs(toNum(up[a2])||0)||a2.localeCompare(b2));
     const H=n=>({v:n,t:"s",s:{bold:true,fill:HEAD,align:"left",wrap:true,border:true}});
-    const rows=[[H(L("費用項目","Charge")),H("UPS"),H(L("應收","Chargeable")),
-                 H(wsrc+L(" 實收"," billed")),H(L("差額(應收 − UPS)","Chargeable − UPS"))]];
+    /* 開頭先交代「引擎這一筆到底看到了什麼」:合併了哪幾期、用哪一組尺寸、
+       判成哪一個 Zone / 計費重 / 住商、有沒有回程段。數字對不起來的時候,
+       第一個要回答的問題永遠是「兩邊看到的是不是同一件東西」——
+       這幾列就是讓那個問題不用猜的。 */
+    const prov=(()=>{
+      try{
+        const x=((typeof RECON_XSHIPS!=="undefined"&&RECON_XSHIPS)?RECON_XSHIPS.get(k0):null)
+              ||(SHIPS||[]).find(s2=>reconTrk(s2.tracking)===k0);
+        if(!x) return [["engine shipment","(not found)"]];
+        const per=[...new Set((x.allLines||[]).map(l2=>String(l2.invoice||"").trim()).filter(Boolean))].sort();
+        const d=v=>v?(v.l+"×"+v.w+"×"+v.h):"—";
+        let st="—";
+        try{ const pr2=priceShipment(CFG,x);
+          st="Zone "+(pr2.zoneUsed||x.zone||"—")+" · "+((pr2.bw&&pr2.bw.billable)||"—")+" lb · "
+            +(pr2.residential?L("住宅","residential"):L("商業","commercial"))
+            +(pr2.rtn?L(" · 回程:有"," · return leg: yes")+((pr2.rtn.acc&&Math.abs(pr2.rtn.acc["Large Package"]||0)>0.004)?" (+LPS)":"")
+                     :L(" · 回程:無"," · return leg: none"));
+        }catch(e2){ st="price error: "+String(e2&&e2.message||e2); }
+        return [[L("合併期別","Periods merged"), per.join(", ")||"—"],
+                [L("計價尺寸","Dims priced"), d(x.dims)+(x.rtnSeg?L("(回程 "," (return ")+d(x.rtnSeg.dims)+")":"")],
+                [L("計價狀態","Priced as"), st],
+                [L("版本","Build"), String(($("#appBuild")||{}).textContent||"")]];
+      }catch(e){ return [["diag error", String(e&&e.message||e)]]; }
+    })();
+    const rows=prov.map(([k2,v2])=>[
+      {v:k2,t:"s",s:{bold:true,align:"left",border:true}},
+      {v:String(v2),t:"s",s:{align:"left",border:true}},"","",""]);
+    rows.push([]);
+    rows.push([H(L("費用項目","Charge")),H("UPS"),H(L("應收","Chargeable")),
+               H(wsrc+L(" 實收"," billed")),H(L("差額(應收 − UPS)","Chargeable − UPS"))]);
     let tu=0,tr=0,tw=0;
     for(const n of names){
       const u2=cents(toNum(up[n])), r2=cents(toNum(rp[n])), w2=cents(toNum(bl[n]));
@@ -12245,7 +12273,7 @@ async function bkdXlsx(){
   const name=("Tracking_"+trk+"_Breakdown").replace(/[^A-Za-z0-9_-]+/g,"")+".xlsx";
   const ok=await xlWrite([
     ...(reconRows?[{name:L("對帳計價","Reconciliation pricing"), rows:reconRows,
-      cols:[{w:44},{w:14},{w:14},{w:14},{w:18}], freeze:{r:1,c:1}}]:[]),
+      cols:[{w:44},{w:26},{w:14},{w:14},{w:18}]}]:[]),
     {name:L("各期比較","Per invoice"), rows:sum, merges:sumMerges,
      cols:(multi?[{w:22}]:[]).concat([{w:20},{w:13},{w:14},{w:14},{w:14},{w:13},{w:13},{w:11}]), freeze:{r:2,c:multi?2:1}},
     {name:L("明細","Detail"), rows:det,
