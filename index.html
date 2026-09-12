@@ -4090,7 +4090,7 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-12-e</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-12-f</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -11877,7 +11877,8 @@ function openBreakdown(){
     const mrow=RD.rows.map(rw=>`<tr><td>${esc2(rw.name)}</td>`
       +`<td class="num">${money2(rw.ups)}</td>`
       +`<td class="num">${BKD_NOLVL?"—":money2(rw.rep)}</td>`
-      +`<td class="num">${money2(rw.billed)}</td></tr>`).join("");
+      +`<td class="num">${money2(rw.billed)}</td>`
+      +`<td class="num">${BKD_NOLVL?"—":money2(cents(rw.rep-rw.ups))}</td></tr>`).join("");
     H.push(`<div class="bkdov"><div class="bkdov-hd">${L("對帳計價 · 補收清單用的口徑","Reconciliation pricing · what the re-bill uses")}</div>`
       +`<div style="padding:8px 12px;font-size:12px;line-height:1.9">`
       +`${esc2(L("合併期別","Periods merged"))}: ${RD.per.map(chip).join(" ")||"—"}`
@@ -11888,11 +11889,13 @@ function openBreakdown(){
       +`</div>`
       +`<div class="tablewrap" style="margin:0"><table style="width:100%">`
       +`<thead><tr><th>${L("費用項目","Charge")}</th><th class="num">UPS</th>`
-      +`<th class="num">${L("應收","Chargeable")}</th><th class="num">${esc2(wsrc)+L(" 實收"," billed")}</th></tr></thead>`
+      +`<th class="num">${L("應收","Chargeable")}</th><th class="num">${esc2(wsrc)+L(" 實收"," billed")}</th>`
+      +`<th class="num">${L("差額(應收−UPS)","Chargeable − UPS")}</th></tr></thead>`
       +`<tbody>${mrow}</tbody>`
       +`<tfoot><tr style="font-weight:700"><td>${L("合計","Total")}</td>`
       +`<td class="num">${money2(RD.tot.ups)}</td><td class="num">${BKD_NOLVL?"—":money2(RD.tot.rep)}</td>`
-      +`<td class="num">${money2(RD.tot.billed)}</td></tr></tfoot>`
+      +`<td class="num">${money2(RD.tot.billed)}</td>`
+      +`<td class="num">${BKD_NOLVL?"—":money2(cents(RD.tot.rep-RD.tot.ups))}</td></tr></tfoot>`
       +`</table></div></div>`);
   }
   H.push(`<div class="bkdov"><div class="bkdov-hd">${L("各期原文(每期各自計價,稽核用;口徑與上面的對帳計價不同)","Per-invoice view (each period priced alone, for audit — a different basis from the reconciliation pricing above)")}</div>`);
