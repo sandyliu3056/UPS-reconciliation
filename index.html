@@ -3978,7 +3978,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-12-f</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-12-g</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -11498,9 +11498,6 @@ let BKD_LVL="";
 /* 這個追蹤號沒有經由 WMS / TMS 模板導入:認不出客戶,也就沒有費率層級。
    這時不重新計價 —— 退回畫面上正開著的那一層算,層級根本不對,數字只會誤導。 */
 let BKD_NOLVL=false;
-/* 這一次開的對帳計價(bkdReconData 的結果)。理由同 BKD_LVL:openBreakdown
-   算出來,bkdSection 畫底部合計列的時候要用,函式內的 const 彼此看不到。 */
-let BKD_RD=null;
 /* 這個追蹤號在不在手上的帳單裡 —— 只問有沒有,找到就停。 */
 function bkdHasTrk(t){
   const k=String(t||"").toUpperCase(); if(!k) return false;
@@ -11675,41 +11672,7 @@ function openBreakdown(){
   const wsrc=(typeof reconSrcLabel==="function")?reconSrcLabel():((typeof RECON_SRC!=="undefined"&&RECON_SRC)||"WMS");
   /* 總覽:重算、UPS 實收、向客戶實收並排,最後兩欄是毛利(實收 + 應補收 − UPS)
      與毛利率(毛利 ÷(實收 + 應補收))。 */
-  /* 第一張卡:對帳計價 —— 補收清單用的就是這一份。以前這個視窗只有
-     「一期一期各自算」的視角,和補收對不起來的時候,真正的那份口徑
-     在畫面上根本不存在,要匯出 Excel 才看得到。現在它排最前面;
-     引擎合併到的期別少於下面列出的期別時,紅字點名少了哪幾期。 */
-  const RD=(typeof bkdReconData==="function")?bkdReconData(t):null;
-  BKD_RD=RD;
-  if(RD){
-    const allPer=[...byInv.keys()].filter(k2=>k2&&k2!=="(current)").sort();
-    const missing=allPer.filter(k2=>!RD.per.includes(k2));
-    const chip=v=>`<span class="bkdtag">${esc2(v)}</span>`;
-    const mrow=RD.rows.map(rw=>`<tr><td>${esc2(rw.name)}</td>`
-      +`<td class="num">${money2(rw.ups)}</td>`
-      +`<td class="num">${BKD_NOLVL?"—":money2(rw.rep)}</td>`
-      +`<td class="num">${money2(rw.billed)}</td>`
-      +`<td class="num">${BKD_NOLVL?"—":money2(cents(rw.rep-rw.ups))}</td></tr>`).join("");
-    H.push(`<div class="bkdov"><div class="bkdov-hd">${L("對帳計價 · 補收清單用的口徑","Reconciliation pricing · what the re-bill uses")}</div>`
-      +`<div style="padding:8px 12px;font-size:12px;line-height:1.9">`
-      +`${esc2(L("合併期別","Periods merged"))}: ${RD.per.map(chip).join(" ")||"—"}`
-      +(missing.length?`<div style="color:var(--neg);font-weight:700">⚠ ${esc2(L(
-          "引擎沒合併到:"+missing.join(", ")+" —— 這幾期的更正/回程沒進對帳,請到「1. UPS 帳單匯入」重新匯入那幾期,再重新開啟這一批。",
-          "Not merged by the engine: "+missing.join(", ")+" — corrections and return legs on those periods are missing from this comparison. Re-import them under step 1, then open the batch again."))}</div>`:"")
-      +`<div>${esc2(L("計價","Priced"))}: ${esc2(RD.dims||"—")} · ${esc2(RD.state||"—")}</div>`
-      +`</div>`
-      +`<div class="tablewrap" style="margin:0"><table style="width:100%">`
-      +`<thead><tr><th>${L("費用項目","Charge")}</th><th class="num">UPS</th>`
-      +`<th class="num">${L("應收","Chargeable")}</th><th class="num">${esc2(wsrc)+L(" 實收"," billed")}</th>`
-      +`<th class="num">${L("差額(應收−UPS)","Chargeable − UPS")}</th></tr></thead>`
-      +`<tbody>${mrow}</tbody>`
-      +`<tfoot><tr style="font-weight:700"><td>${L("合計","Total")}</td>`
-      +`<td class="num">${money2(RD.tot.ups)}</td><td class="num">${BKD_NOLVL?"—":money2(RD.tot.rep)}</td>`
-      +`<td class="num">${money2(RD.tot.billed)}</td>`
-      +`<td class="num">${BKD_NOLVL?"—":money2(cents(RD.tot.rep-RD.tot.ups))}</td></tr></tfoot>`
-      +`</table></div></div>`);
-  }
-  H.push(`<div class="bkdov"><div class="bkdov-hd">${L("各期原文(每期各自計價,稽核用;口徑與上面的對帳計價不同)","Per-invoice view (each period priced alone, for audit — a different basis from the reconciliation pricing above)")}</div>`);
+  H.push(`<div class="bkdov"><div class="bkdov-hd">${L("各期總覽","Invoice overview")}</div>`);
   H.push(`<div class="tablewrap" style="margin:0"><table style="width:100%">`);
   /* 這張表只放「分得了期」的數字:哪一期、UPS 收多少。向客戶實收、應補收、
      毛利是整筆的量(rebill 跟帳單期沒有關係),擺在表格裡每一期都得寫「—」;
@@ -11847,41 +11810,6 @@ let BKD_LAST=null;
    逐項有填就逐項列,沒填只有總額;逐項加起來和總額差的那一塊照實標成
    「未逐項列示」—— TMS 自己的服務費常常就在那裡,不替它取名字。 */
 /* whole:整單模式 —— 一票多件時不分攤,回整張訂單的金額與所有件的補收項目。 */
-/* 對帳計價:補收清單真正用的那一份 —— 引擎把這個追蹤號跨期合成一件之後,
-   UPS 收多少、應收多少、實收多少,一項一列。視窗第一張卡和匯出的第一頁
-   都從這裡拿,同一份資料兩種排版,永遠不會兩邊講兩個故事。 */
-function bkdReconData(trk){
-  const R=(typeof RECON!=="undefined")&&RECON&&RECON.res;
-  if(!R||!(R.orders||[]).length) return null;
-  const k0=reconTrk(trk);
-  const o=(R.orders||[]).concat(R.notOnInv||[]).find(x=>(x.trks||[]).some(t2=>reconTrk(t2)===k0));
-  if(!o) return null;
-  const F=o.fees||{}, up=F.ups||{}, rp=F.rep||{}, bl=o.billedFees||{};
-  const names=[...new Set(Object.keys(up).concat(Object.keys(rp),Object.keys(bl)))]
-    .filter(n=>Math.abs(toNum(up[n]))>0.004||Math.abs(toNum(rp[n]))>0.004||Math.abs(toNum(bl[n]))>0.004)
-    .sort((a2,b2)=>Math.abs(toNum(up[b2])||0)-Math.abs(toNum(up[a2])||0)||a2.localeCompare(b2));
-  const rows=names.map(n=>({name:n, ups:cents(toNum(up[n])), rep:cents(toNum(rp[n])), billed:cents(toNum(bl[n]))}));
-  const tot={ups:cents(rows.reduce((a,r)=>a+r.ups,0)), rep:cents(rows.reduce((a,r)=>a+r.rep,0)),
-             billed:cents(rows.reduce((a,r)=>a+r.billed,0))};
-  let per=[], dims="", state="";
-  try{
-    const x=((typeof RECON_XSHIPS!=="undefined"&&RECON_XSHIPS)?RECON_XSHIPS.get(k0):null)
-          ||(SHIPS||[]).find(s2=>reconTrk(s2.tracking)===k0);
-    if(x){
-      per=[...new Set((x.allLines||[]).map(l2=>String(l2.invoice||"").trim()).filter(Boolean))].sort();
-      const d=v=>v?(v.l+"×"+v.w+"×"+v.h):"—";
-      dims=d(x.dims)+(x.rtnSeg?L("(回程 "," (return ")+d(x.rtnSeg.dims)+")":"");
-      try{ const pr2=priceShipment(CFG,x);
-        state="Zone "+(pr2.zoneUsed||x.zone||"—")+" · "+((pr2.bw&&pr2.bw.billable)||"—")+" lb · "
-          +(pr2.residential?L("住宅","residential"):L("商業","commercial"))
-          +(pr2.rtn?L(" · 回程:有"," · return leg: yes")+((pr2.rtn.acc&&Math.abs(pr2.rtn.acc["Large Package"]||0)>0.004)?" (+LPS)":"")
-                   :L(" · 回程:無"," · return leg: none"));
-      }catch(e2){ state="price error: "+String(e2&&e2.message||e2); }
-    }
-  }catch(e){}
-  const holes=((typeof RECON_ARCH_INFO!=="undefined"&&RECON_ARCH_INFO&&RECON_ARCH_INFO.idxOnly)||[]).slice();
-  return {o, rows, tot, per, dims, state, holes};
-}
 function bkdWmsOf(trk, whole){
   const r=(typeof RECON!=="undefined")&&RECON&&RECON.res; if(!r) return null;
   const k=reconTrk(trk);
@@ -12101,29 +12029,62 @@ async function bkdXlsx(){
      而補收清單用的是後者。以前這個檔裡看不到它,對不起來的時候沒有人講得出
      哪一個是哪一個。一項費用一列:UPS 實收、應收、向客戶收、差額。 */
   const reconRows=(()=>{
-    /* 和視窗第一張卡同一份資料(bkdReconData),這裡只管排成儲存格。 */
-    const RD=(typeof bkdReconData==="function")?bkdReconData(trk):null;
-    if(!RD) return null;
+    const R=(typeof RECON!=="undefined")&&RECON&&RECON.res;
+    if(!R||!(R.orders||[]).length) return null;
+    const k0=reconTrk(trk);
+    const o=(R.orders||[]).concat(R.notOnInv||[]).find(x=>(x.trks||[]).some(t2=>reconTrk(t2)===k0));
+    if(!o) return null;
+    const F=o.fees||{}, up=F.ups||{}, rp=F.rep||{}, bl=o.billedFees||{};
+    const names=[...new Set(Object.keys(up).concat(Object.keys(rp),Object.keys(bl)))]
+      .filter(n=>Math.abs(toNum(up[n]))>0.004||Math.abs(toNum(rp[n]))>0.004||Math.abs(toNum(bl[n]))>0.004)
+      .sort((a2,b2)=>Math.abs(toNum(up[b2])||0)-Math.abs(toNum(up[a2])||0)||a2.localeCompare(b2));
     const H=n=>({v:n,t:"s",s:{bold:true,fill:HEAD,align:"left",wrap:true,border:true}});
-    const prov=[[L("合併期別","Periods merged"), RD.per.join(", ")||"—"],
-      ...(RD.holes.length?[[L("缺明細的期別","Periods with no detail here"),
-          RD.holes.join(", ")+L("(只有期號,請重新匯入)"," (index only — re-import them)")]]:[]),
-      [L("計價尺寸","Dims priced"), RD.dims||"—"],
-      [L("計價狀態","Priced as"), RD.state||"—"],
-      [L("版本","Build"), String(($("#appBuild")||{}).textContent||"")]];
+    /* 開頭先交代「引擎這一筆到底看到了什麼」:合併了哪幾期、用哪一組尺寸、
+       判成哪一個 Zone / 計費重 / 住商、有沒有回程段。數字對不起來的時候,
+       第一個要回答的問題永遠是「兩邊看到的是不是同一件東西」——
+       這幾列就是讓那個問題不用猜的。 */
+    const prov=(()=>{
+      try{
+        const x=((typeof RECON_XSHIPS!=="undefined"&&RECON_XSHIPS)?RECON_XSHIPS.get(k0):null)
+              ||(SHIPS||[]).find(s2=>reconTrk(s2.tracking)===k0);
+        if(!x) return [["engine shipment","(not found)"]];
+        const per=[...new Set((x.allLines||[]).map(l2=>String(l2.invoice||"").trim()).filter(Boolean))].sort();
+        const d=v=>v?(v.l+"×"+v.w+"×"+v.h):"—";
+        let st="—";
+        try{ const pr2=priceShipment(CFG,x);
+          st="Zone "+(pr2.zoneUsed||x.zone||"—")+" · "+((pr2.bw&&pr2.bw.billable)||"—")+" lb · "
+            +(pr2.residential?L("住宅","residential"):L("商業","commercial"))
+            +(pr2.rtn?L(" · 回程:有"," · return leg: yes")+((pr2.rtn.acc&&Math.abs(pr2.rtn.acc["Large Package"]||0)>0.004)?" (+LPS)":"")
+                     :L(" · 回程:無"," · return leg: none"));
+        }catch(e2){ st="price error: "+String(e2&&e2.message||e2); }
+        const holes=((typeof RECON_ARCH_INFO!=="undefined"&&RECON_ARCH_INFO&&RECON_ARCH_INFO.idxOnly)||[]);
+        return [[L("合併期別","Periods merged"), per.join(", ")||"—"],
+                ...(holes.length?[[L("缺明細的期別","Periods with no detail here"),
+                    holes.join(", ")+L("(只有期號,請重新匯入)"," (index only — re-import them)")]]:[]),
+                [L("計價尺寸","Dims priced"), d(x.dims)+(x.rtnSeg?L("(回程 "," (return ")+d(x.rtnSeg.dims)+")":"")],
+                [L("計價狀態","Priced as"), st],
+                [L("版本","Build"), String(($("#appBuild")||{}).textContent||"")]];
+      }catch(e){ return [["diag error", String(e&&e.message||e)]]; }
+    })();
     const rows=prov.map(([k2,v2])=>[
       {v:k2,t:"s",s:{bold:true,align:"left",border:true}},
       {v:String(v2),t:"s",s:{align:"left",border:true}},"","",""]);
     rows.push([]);
+    /* 這個函式外層的 wsrc 是一個「回一個字串的函式」,不是字串 —— 直接串進
+       表頭會把函式原始碼印出來。來源名稱這裡自己取。 */
     const wsrc2=(typeof reconSrcLabel==="function")?reconSrcLabel():"WMS / TMS";
     rows.push([H(L("費用項目","Charge")),H("UPS"),H(L("應收","Chargeable")),
                H(wsrc2+L(" 實收"," billed")),H(L("差額(應收 − UPS)","Chargeable − UPS"))]);
-    for(const rw of RD.rows)
-      rows.push([c(rw.name,"","left"),c(rw.ups,MONEY,"right"),c(rw.rep,MONEY,"right"),
-                 c(rw.billed,MONEY,"right"),c(cents(rw.rep-rw.ups),MONEY,"right")]);
-    rows.push([c(L("合計","Total"),"","left",FOOT,true),c(RD.tot.ups,MONEY,"right",FOOT,true),
-               c(RD.tot.rep,MONEY,"right",FOOT,true),c(RD.tot.billed,MONEY,"right",FOOT,true),
-               c(cents(RD.tot.rep-RD.tot.ups),MONEY,"right",FOOT,true)]);
+    let tu=0,tr=0,tw=0;
+    for(const n of names){
+      const u2=cents(toNum(up[n])), r2=cents(toNum(rp[n])), w2=cents(toNum(bl[n]));
+      tu=cents(tu+u2); tr=cents(tr+r2); tw=cents(tw+w2);
+      rows.push([c(n,"","left"),c(u2,MONEY,"right"),c(r2,MONEY,"right"),
+                 c(w2,MONEY,"right"),c(cents(r2-u2),MONEY,"right")]);
+    }
+    rows.push([c(L("合計","Total"),"","left",FOOT,true),c(tu,MONEY,"right",FOOT,true),
+               c(tr,MONEY,"right",FOOT,true),c(tw,MONEY,"right",FOOT,true),
+               c(cents(tr-tu),MONEY,"right",FOOT,true)]);
     return rows;
   })();
   const name=("Tracking_"+trk+"_Breakdown").replace(/[^A-Za-z0-9_-]+/g,"")+".xlsx";
@@ -12410,10 +12371,7 @@ function bkdSection(r, wms, name0){
     +`<span class="v">${money2(s.upsTotal)}</span></div>`
     +`<div class="bt"><span class="l">${L("應收","Chargeable")}`
     +(BKD_LVL?`<span class="bkdlvl">${esc2(L("層級 ","Level ")+BKD_LVL)}</span>`:"")+`</span>`
-    /* 旁邊擺著「實收/應補收」的那一列(wms 有值的合併主卡)用對帳那一份
-       (整件合一):每期各自算再相加會把運費重複算,人一定會拿兩欄相減,
-       而那條減法沒有意義。各期稽核小卡沒有實收欄,維持各期自己的數。 */
-    +`<span class="v">${BKD_NOLVL?"—":money2((wms&&BKD_RD)?(BKD_RD.tot.rep||0):(r.total||0))}</span></div>`
+    +`<span class="v">${BKD_NOLVL?"—":money2(r.total||0)}</span></div>`
     +(wms?`<div class="bt"><span class="l">${esc2(wms.src)+L(" 實收"," billed")}</span>`
       +`<span class="v">${money2(wms.amt)}</span></div>`:"")
     +(wRb?`<div class="bt d"><span class="l">${(wms.rebill||0)<0?L("應退還","To refund"):L("應補收","To re-bill")}</span>`
