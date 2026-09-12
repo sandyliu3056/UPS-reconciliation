@@ -3978,7 +3978,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-12-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-12-b</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -12057,7 +12057,10 @@ async function bkdXlsx(){
             +(pr2.rtn?L(" · 回程:有"," · return leg: yes")+((pr2.rtn.acc&&Math.abs(pr2.rtn.acc["Large Package"]||0)>0.004)?" (+LPS)":"")
                      :L(" · 回程:無"," · return leg: none"));
         }catch(e2){ st="price error: "+String(e2&&e2.message||e2); }
+        const holes=((typeof RECON_ARCH_INFO!=="undefined"&&RECON_ARCH_INFO&&RECON_ARCH_INFO.idxOnly)||[]);
         return [[L("合併期別","Periods merged"), per.join(", ")||"—"],
+                ...(holes.length?[[L("缺明細的期別","Periods with no detail here"),
+                    holes.join(", ")+L("(只有期號,請重新匯入)"," (index only — re-import them)")]]:[]),
                 [L("計價尺寸","Dims priced"), d(x.dims)+(x.rtnSeg?L("(回程 "," (return ")+d(x.rtnSeg.dims)+")":"")],
                 [L("計價狀態","Priced as"), st],
                 [L("版本","Build"), String(($("#appBuild")||{}).textContent||"")]];
@@ -12067,8 +12070,11 @@ async function bkdXlsx(){
       {v:k2,t:"s",s:{bold:true,align:"left",border:true}},
       {v:String(v2),t:"s",s:{align:"left",border:true}},"","",""]);
     rows.push([]);
+    /* 這個函式外層的 wsrc 是一個「回一個字串的函式」,不是字串 —— 直接串進
+       表頭會把函式原始碼印出來。來源名稱這裡自己取。 */
+    const wsrc2=(typeof reconSrcLabel==="function")?reconSrcLabel():"WMS / TMS";
     rows.push([H(L("費用項目","Charge")),H("UPS"),H(L("應收","Chargeable")),
-               H(wsrc+L(" 實收"," billed")),H(L("差額(應收 − UPS)","Chargeable − UPS"))]);
+               H(wsrc2+L(" 實收"," billed")),H(L("差額(應收 − UPS)","Chargeable − UPS"))]);
     let tu=0,tr=0,tw=0;
     for(const n of names){
       const u2=cents(toNum(up[n])), r2=cents(toNum(rp[n])), w2=cents(toNum(bl[n]));
@@ -15810,9 +15816,16 @@ function reconRerunFrom(rows, quiet, fname0){
   const head=quiet?L("已用留著的 "+rows.length+" 筆重新比對。",
                      "Re-compared the "+rows.length+" row(s) kept from last time.")
                  :L("已重新比對 "+rows.length+" 筆。","Re-compared "+rows.length+" row(s).");
-  if(pf.blocked)
-    reconMsg(head+L("其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
-                    " "+pf.blocked+" customer(s) were not repriced — see the notice below."),false);
+  /* 歸檔裡「索引有、明細不在這個瀏覽器」的期別:那幾期的更正、回程、改判
+     全都進不了這一份對帳,少收了也看不見。這不是可以默默吞掉的事。 */
+  const holes=(typeof RECON_ARCH_INFO!=="undefined"&&RECON_ARCH_INFO&&RECON_ARCH_INFO.idxOnly)||[];
+  const holeTxt=holes.length
+    ? L(" 注意:有 "+holes.length+" 期只有期號、明細不在這個瀏覽器("+holes.join(", ")+")——那幾期的更正與回程沒有進來,請到「1. UPS 帳單匯入」重新匯入那幾期再開一次。",
+        " Warning: "+holes.length+" period(s) exist only as an index entry on this browser ("+holes.join(", ")+") — their corrections and return legs are missing from this comparison. Re-import those periods under step 1 and open the batch again.")
+    : "";
+  if(pf.blocked||holes.length)
+    reconMsg(head+(pf.blocked?L("其中 "+pf.blocked+" 個客戶沒有重算 —— 看下面紅框。",
+                    " "+pf.blocked+" customer(s) were not repriced — see the notice below."):"")+holeTxt,false);
   else reconMsg(head,true);
   return true;
 }
@@ -16240,8 +16253,21 @@ async function reconFetchArchived(list){
   if(!all.length && typeof HISTROWS!=="undefined" && HISTROWS && HISTROWS.length) all=HISTROWS;
   const inArch=new Set();
   for(const r of all){ const k=String((r&&r.invoice)||"").trim(); if(k) inArch.add(k); }
-  const idxOnly=Object.keys((typeof histInv==="function"&&histInv())||{})
+  let idxOnly=Object.keys((typeof histInv==="function"&&histInv())||{})
     .filter(k=>looksLikeInvKey(k) && !inArch.has(String(k).trim()));
+  /* 索引裡有、整批解碼卻沒有的期別,再一期一期單獨讀一次:整庫 getAll 裡
+     一筆壞掉會讓那一期整期消失,單讀那一筆常常還讀得出來。真的讀不到的
+     才留在 idxOnly —— 那幾期的更正、回程、改判進不了對帳,下面要講出來,
+     不能讓引擎安安靜靜地拿兩期當三期算。 */
+  if(idxOnly.length){
+    const still=[];
+    for(const k of idxOnly){
+      const r2=await idbRowsFor(k).catch(()=>[]);
+      if(r2.length){ for(const r of r2) all.push(r); inArch.add(String(k).trim()); }
+      else still.push(k);
+    }
+    idxOnly=still;
+  }
   /* 兩邊的帳號並排:模板追蹤號的貨主號(1Z 後六碼)對歸檔各期的帳號 ——
      「這台瀏覽器根本沒有那個帳號的期別」一眼就看得出來。 */
   const archAcct={};
