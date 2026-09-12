@@ -3978,7 +3978,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-12-b</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-12-c</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -16296,6 +16296,28 @@ async function reconFetchArchived(list){
      整筆缺席的補整筆;本期有、其他期別還有更正行(SCC、Zone 調整、改收)的,
      把那些行併進同一筆:UPS 那一側是這個追蹤號在系統內全部期別的總和。 */
   const loadedInv=new Set((ROWS||[]).map(r=>String((r&&r.invoice)||"").trim()).filter(Boolean));
+  /* 最後一道保險:歸檔紀錄半路寫壞時,整批解碼會少掉一段 —— 期號還在
+     (所以上面的 idxOnly 不會抓到),但某個追蹤號在那一期的行整組不見。
+     History 頁在記憶體裡的那一份(HISTROWS)是另一條獨立讀回來的:拆解
+     視窗就是讀它,所以「視窗看得到三期、對帳只算兩期」。這裡補的是整塊:
+     某個追蹤號在某一期,歸檔和載入兩邊都一行也沒有、HISTROWS 卻有 ——
+     整塊搬進來。只搬整塊,不做逐行去重,就不會把同一期裡真的重複的行
+     誤殺掉一半。 */
+  if(typeof HISTROWS!=="undefined" && HISTROWS && HISTROWS.length){
+    const have=new Set();
+    for(const r of all) if(r&&r.tracking) have.add(reconTrk(r.tracking)+"|"+String(r.invoice||"").trim());
+    for(const r of (ROWS||[])) if(r&&r.tracking) have.add(reconTrk(r.tracking)+"|"+String(r.invoice||"").trim());
+    let healed=0;
+    for(const r of HISTROWS){
+      if(!r||!r.tracking) continue;
+      const k=reconTrk(r.tracking);
+      if(!need.has(k)) continue;
+      if(have.has(k+"|"+String(r.invoice||"").trim())) continue;
+      all.push(r); healed++;
+    }
+    if(healed && RECON_ARCH_INFO) RECON_ARCH_INFO.healed=healed;
+  }
+
   const extra=all.filter(r=>r&&r.tracking&&need.has(reconTrk(r.tracking))
                           && !loadedInv.has(String(r.invoice||"").trim()));
   RECON_ARCH_INFO.matched=extra.length;
