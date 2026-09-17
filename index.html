@@ -3978,7 +3978,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-17-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-17-b</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -15250,7 +15250,15 @@ async function reconOpenRun(key, quiet){
   const srcFiles={}; srcFiles[(run.src==="TMS")?"TMS":"WMS"]=run.fname||"";
   if(sib.rows.length) srcFiles[sib.src]=sib.fname||"";
   const srcTxt=run.src+(sib.rows.length?" + "+sib.src:"");
-  reconRerunFrom((run.rows||[]).concat(sib.rows), true, run.fname||"");
+  const allRows=(run.rows||[]).concat(sib.rows);
+  /* 跨期的行要先撈齊再比對 —— 另外兩條重跑路徑都是這樣做的,只有這裡漏了。
+     漏掉的代價不是「慢一點」:這一批存的期別清單裡沒有的那幾期(更正、住商
+     改判、退件回程都常常單獨開在自己那一期),整批就當它們不存在,少收了也
+     不會出現在補收清單上 —— 而畫面另一邊的攤開視窗有自己的合併路徑,照樣把
+     那一段畫出來,於是同一個追蹤號兩個地方各講一個數。 */
+  if(typeof reconFetchArchived==="function")
+    await reconFetchArchived(allRows).catch(()=>0);
+  reconRerunFrom(allRows, true, run.fname||"");
   if(RECON){ RECON.fname=run.fname||""; RECON.srcFiles=srcFiles; }
   RECON_RUN_KEY=key;
   try{ localStorage.setItem(reconLastKey(), key); }catch(e){}
