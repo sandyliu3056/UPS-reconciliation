@@ -3978,7 +3978,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-12-g</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-17-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -16479,6 +16479,7 @@ function reconRun(list){
     let cost=0, rep=0;
     const missTrk=[], upsZones=new Set(), sysChans=new Set();
     const feesRep={}, feesUps={};    /* 這一列每一項費用兩側的數,匯出明細用 */
+    const feesRtn={}, feesUpsRtn={}; /* 回程段兩側的份額:補收把回程整段獨立開列 */
     const feesRev=new Set();         /* UPS 收過又整筆沖掉的欄:改收的證據 */
     const feesDesc={};               /* 每一欄在帳單上的原文描述,補收時開給客戶看 */
     const feesKnown=new Set();       /* 重算真的算過的費用:合約沒費率的不在裡面 */
@@ -16510,6 +16511,13 @@ function reconRun(list){
       for(const [col,v] of Object.entries(cf.fees)) feesUps[col]=cents((feesUps[col]||0)+v);
       for(const [col,ds] of Object.entries(cf.descs||{})){ const a=feesDesc[col]||(feesDesc[col]=[]); for(const d of ds) if(!a.includes(d)) a.push(d); }
       for(const col of (cf.reversed||[])) feesRev.add(col);
+      /* 回程段 UPS 收的那一份(RTN 層的行):補收把回程獨立開列時的對照欄。 */
+      {
+        const rls=(s.allLines||[]).filter(l=>String(l.layer||"")==="RTN");
+        if(rls.length){ const cr=consFeesOf(rls);
+          for(const [col,v] of Object.entries(cr.fees||{}))
+            feesUpsRtn[col]=cents((feesUpsRtn[col]||0)+v); }
+      }
       /* 重算需要費率,沒有層級就不算;逐項表三邊只收有重算的,免得歪一邊。 */
       if(!cfg) continue;
       try{
@@ -16579,8 +16587,22 @@ function reconRun(list){
         /* 重算算過哪幾項:acc 裡有、又不在 missFees 裡的,加上運費與燃油。 */
         const accKeys=Object.keys(priced.acc||{})
           .concat(Object.keys((priced.rtn&&priced.rtn.acc)||{}), Object.keys((priced.npb&&priced.npb.acc)||{}));
+        /* 回程段應收的那一份。欄名先記在報表欄空間,repPend 那一圈拿到完整的
+           codeCol 之後再換成這批帳單實際用的欄名 —— 和 feesRep 同一套換法,
+           兩份才對得上同一個欄。 */
+        const rtnCols={};
+        if(priced.rtn){
+          if(Math.abs(toNum(priced.rtn.base))>0.004)
+            rtnCols["Undeliverable Return"]=cents(toNum(priced.rtn.base));
+          for(const [k2,v2] of Object.entries(priced.rtn.acc||{})){
+            if(!(Math.abs(toNum(v2))>0.004)) continue;
+            const cn=REPORT_COL_OF[k2]||k2;
+            rtnCols[cn]=cents((rtnCols[cn]||0)+toNum(v2));
+          }
+        }
         repPend.push([e.cus, reportRowOf(priced), !!priced.residential, feesRep, feesKnown,
-                      accKeys, [...(priced.missFees||[])], !!priced.rtn, !priced.baseMissing]);
+                      accKeys, [...(priced.missFees||[])], !!priced.rtn, !priced.baseMissing,
+                      rtnCols, feesRtn]);
         for(const [col,v] of Object.entries(cf.fees)) chgBump(e.cus, col, "ups", v);
       }catch(err){}
     }
@@ -16610,7 +16632,7 @@ function reconRun(list){
              zone:String(e.zone||""), upsZone, zoneMis,
              chan, sysChan, chanMis, chanUnknown,
              wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"", arch:usedArch,
-             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc, zoneOld, zoneNew}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
+             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc, zoneOld, zoneNew, rtnRep:feesRtn, upsRtn:feesUpsRtn}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
              name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
              amt:e.amt, svc:cents((e.chg||{})[RECON_OTHER]||0),
@@ -16629,7 +16651,7 @@ function reconRun(list){
     a.amt+=reconNetAmt(o); a.cost+=o.cost; if(!block) a.rep+=o.rep;
   }
   /* 重算那一側現在才入桶:名字對到這批帳單上實際用的欄。 */
-  for(const [cus,row,resi,feesRep,known,accKeys,miss,hasRtn,hasBase] of repPend){
+  for(const [cus,row,resi,feesRep,known,accKeys,miss,hasRtn,hasBase,rtnCols,feesRtn] of repPend){
     /* 這條服務沒有費率表時運費與燃油都算不出來 —— 不算「算過」,補收與匯出照 UPS。 */
     if(hasBase){ known.add("Base Rate"); known.add("Fuel Surcharge"); }
     if(hasRtn) known.add("Undeliverable Return");
@@ -16640,6 +16662,10 @@ function reconRun(list){
       if(Math.abs(v)<=0.004) continue;
       const nm=audNameOf(c,resi,codeCol);
       chgBump(cus, nm, "rep", v); feesRep[nm]=cents((feesRep[nm]||0)+v);
+    }
+    for(const [c,v] of Object.entries(rtnCols||{})){
+      const nm=audNameOf(c,resi,codeCol);
+      feesRtn[nm]=cents((feesRtn[nm]||0)+v);
     }
   }
   const cus=[...perCus.values()].map(a=>{
@@ -16694,7 +16720,14 @@ function reconRun(list){
        的費用(flat fee、DAS、AHS…)要自己設,沒設就標「費率未設定」、金額 0,不替人
        猜;只有費率表裡沒有位置、或本來就照 UPS 轉嫁的(NPF、超大件、稽核費、認不得
        的代碼)才照 UPS 實收。帳號層級停用的是真的不收(列出來、金額 0)。 */
-    const rateOf=c=>rebillDisabled(c)?0:((!o.block && known.has(c) && cents(rep[c]||0)>0.004)?cents(rep[c]):(rebillConfigurable(c)?"unset":null));
+    /* 回程段獨立開列:主段的家族沖抵與逐項比對一律用「扣掉回程份額」的數。
+       不扣的話,回程的 AHS 會拿去抵主段的退款、回程的運費會混進運費那一條
+       「差額不追」—— 兩邊都看不見,補收合計就永遠比畫面上的回程應收少一段
+       (71.30 對 40.36 各說各話的那一單就是這樣來的)。 */
+    const rtnR=F.rtnRep||{}, upsRt=F.upsRtn||{};
+    const repM=c=>cents((rep[c]||0)-(toNum(rtnR[c])||0));
+    const upsM=c=>cents((upsF[c]||0)-(toNum(upsRt[c])||0));
+    const rateOf=c=>rebillDisabled(c)?0:((!o.block && known.has(c) && repM(c)>0.004)?repM(c):(rebillConfigurable(c)?"unset":null));
     const buckets=new Map();
     /* 被 UPS 整筆沖銷的欄(F.rev)也進桶:UPS 收了 AHS 又整筆沖掉、什麼都沒改收,
        那一欄的淨額是 0、不在 upsF 裡 —— 少了它,客戶收過的 AHS 就沒有地方退。 */
@@ -16802,10 +16835,23 @@ function reconRun(list){
           ups:0, billed:0, rate:AUD_FEE, amt:AUD_FEE, credit:0, creditFrom:[]}, base));
       }
     }
+    /* 回程段:客戶端從來沒有為回程收過錢 —— 整段照客戶費率補收,一項一列:
+       回程運費(Undeliverable Return)、回程的每一項附加費各自成列,燃油和
+       其他補收項目一樣最後算。不進家族沖抵、不進逐項比對:那兩條路問的是
+       「同一個名目主段收了沒有」,回程是另一趟運送,沒得比。 */
+    if(!o.block)
+      for(const c of Object.keys(rtnR)){
+        if(c==="Fuel Surcharge"||c===RECON_OTHER) continue;
+        const v=cents(rtnR[c]); if(!(v>0.004)) continue;
+        if(rebillDisabled(c)) continue;
+        items.push(Object.assign({kind:"miss", charge:c,
+          desc:L("退件回程","Return leg"),
+          ups:cents(upsRt[c]||0), billed:0, rate:v, amt:v, credit:0, creditFrom:[]}, base));
+      }
     for(const [k,cols] of buckets){
       if(k===SCC) continue;
       if(zoneDone.has(k)) continue;
-      const upsCols=cols.filter(c=>upsF[c]>0.004);
+      const upsCols=cols.filter(c=>upsM(c)>0.004);
       const isFam=k[0]==="f";
       /* UPS 一項都沒收的家族通常沒事;但 UPS 收過又整筆沖掉(量過之後什麼都不收)
          而客戶端收了的,要走下面的退款路 —— 只有沖銷的證據才退,從頭沒收的不退。 */
@@ -16813,7 +16859,7 @@ function reconRun(list){
         && ((REBILL_FAMILIES[+k.slice(1)]||{}).fees||[]).some(m=>(F.rev||new Set()).has(m));
       if(!upsCols.length && !revOnly) continue;
       const mk=c=>{
-        const u=cents(upsF[c]), r0=rateOf(c);
+        const u=upsM(c), r0=rateOf(c);
         const unset=r0==="unset", rate=unset?0:r0;
         return Object.assign({kind:"miss", charge:c, desc:(desc[c]||[]).join(" / "), ups:u, billed:0, rate, unset,
                               amt:unset?0:(rate!=null?rate:u), credit:0, creditFrom:[]}, base);
@@ -16923,11 +16969,11 @@ function reconRun(list){
         for(const f of famFees){
           if(already.has(f)) continue;
           if(o.block || !known.has(f)) continue;
-          const rv=cents(rep[f]||0);
+          const rv=repM(f);
           if(!(rv>0.004)) continue;
           items.push(Object.assign({kind:"miss", charge:f,
             desc:(desc[f]||[]).join(" / ")||L("依這個客戶的費率本來就成立","applies under this client's own rate"),
-            ups:cents(upsF[f]||0), billed:0, rate:rv, amt:rv, credit:0, creditFrom:[]}, base));
+            ups:upsM(f), billed:0, rate:rv, amt:rv, credit:0, creditFrom:[]}, base));
         }
       }
     }
@@ -16954,16 +17000,16 @@ function reconRun(list){
       /* 一項費用該向這個客戶收多少 —— 和匯出明細同一條:重算算過就照重算,
          合約裡有位置卻沒設費率的算 0(不替人猜),費率表裡沒有位置的照 UPS 轉嫁。 */
       const should1=c=>{
-        const rp=cents(rep[c]||0);
+        const rp=repM(c);
         if(!o.block && known.has(c) && rp>0.004) return rp;
         if(rebillDisabled(c)||rebillConfigurable(c)) return 0;
-        return cents(upsF[c]||0);
+        return upsM(c);
       };
       const shouldCol=c=>cents(memOfCol(c).reduce((a,f)=>a+should1(f),0));
       /* 這一欄的費率算得出來嗎。算不出來就不比 —— 「沒有費率」在補收那一側是
          「不收」(0),在退還這一側卻會變成「整筆退給客戶」,那是兩件完全不同
          的事。合約還沒設好的費用不該自動退錢,它要的是有人去把費率設起來。 */
-      const priced=c=>!o.block && memOfCol(c).some(f=>known.has(f) && cents(rep[f]||0)>0.004);
+      const priced=c=>!o.block && memOfCol(c).some(f=>known.has(f) && repM(f)>0.004);
       for(const c of Object.keys(b)){
         if(c===RECON_OTHER) continue;            /* 自家的服務費沒有 UPS 這一側可比 */
         /* 燃油不比。它是別的欄位乘出來的,不是一項獨立的費用 —— 本金已經
@@ -17001,7 +17047,9 @@ function reconRun(list){
      帳單上 UPS 自己的燃油比例。 */
   const dynMap=(CFG&&CFG.raw&&CFG.raw.dynamic_surcharge_mapping)||{};
   const fuelOn=name=>{
-    if(name==="Base Rate"||name==="Shipping Charge Correction"||name==="Zone Adjustment") return true;
+    /* Undeliverable Return 是回程的運費 —— 運費一律加燃油。 */
+    if(name==="Base Rate"||name==="Shipping Charge Correction"||name==="Zone Adjustment"
+       ||name==="Undeliverable Return") return true;
     /* 稽核費對不到任何費率桶,以前因此永遠是 0。它現在有自己的開關。 */
     if(name===AUDIT_FEE_NAME) return fuelOnFor(AUDIT_FEE_NAME);
     for(const d of Object.values(dynMap)) if(String(d.name||"").trim()===name) return d.fuel_eligible!==false;
