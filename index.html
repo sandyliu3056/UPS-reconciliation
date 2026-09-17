@@ -1267,6 +1267,10 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
 /* 第四欄:應補收。實收是已經收到的錢,應補收是還沒收到的錢 —— 併在同一欄
    會被讀成同一筆,所以自己一格,擺在最右邊。 */
 .bkdcols.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+/* 沒放大的視窗只有 860px:四欄並排每欄剩不到 200px,金額欄固定 82px,
+   名稱欄於是只有一百出頭 —— 每一個費用名稱都斷成兩三行,四欄看起來像
+   四堆碎字。這種寬度改排 2x2,每一欄就有一倍寬。放大的視窗照舊四欄並排。 */
+.modal:not(.max) .bkdcols.four{grid-template-columns:repeat(2,minmax(0,1fr))}
 .bkdside.rb{border:2px solid var(--rb)}
 .bkdside.rb .bkdside-lbl{background:var(--rb)}
 .bkdside.rb .bkdside-body{background:color-mix(in srgb, var(--rb) 9%, var(--panel))}
@@ -3978,7 +3982,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-17-b</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-17-d</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -11526,7 +11530,7 @@ function openBreakdown(){
   const esc2=x=>esc(String(x==null?"":x));
   if(!t){ body.innerHTML=`<div class="note plain">`
       +L("先在上面輸入單號。","Enter a tracking number above first.")+`</div>`;
-    $("#bkdBg").classList.add("on"); return; }
+    bkdMaxOn(); $("#bkdBg").classList.add("on"); return; }
   /* 也吃單號:輸入的不是任何一張帳單上的追蹤號時,當作單號去找。 */
   if(!bkdHasTrk(t)){ const h=bkdOrderLookup(t); if(h){ viaOrder=h; t=h.trk; } }
   /* 一票多件:模板那一列是整張訂單,對帳也是整單對的。查其中任何一件就把
@@ -11552,14 +11556,14 @@ function openBreakdown(){
       +L("已存帳單裡沒有這個追蹤號,對帳資料裡也沒有這個單號。請先匯入(或儲存)包含這筆的帳單,再回來查詢。",
          "This is not a tracking number on any stored invoice, nor an order number in the reconciliation data. Import or store the invoice that contains it, then look it up again.")
       +`</div>`;
-    $("#bkdBg").classList.add("on"); return;
+    bkdMaxOn(); $("#bkdBg").classList.add("on"); return;
   }
   if(!CFG){
     body.innerHTML=`<div class="note warn">`
       +L("還沒匯入費率設定,無法重新計價。請先在 Import Files 匯入設定檔。",
          "No rate configuration is loaded, so there is nothing to reprice with. Import the config file under Import Files first.")
       +`</div>`;
-    $("#bkdBg").classList.add("on"); return;
+    bkdMaxOn(); $("#bkdBg").classList.add("on"); return;
   }
   const nd=normYmd;   /* 2026/8/22 和 2026-08-01 混用也排得對,見 normYmd */
   const sortInv=m=>[...m.values()].sort((a,b)=>{
@@ -11800,7 +11804,7 @@ function openBreakdown(){
       bx.disabled=false;
     };
   }
-  $("#bkdBg").classList.add("on");
+  bkdMaxOn(); $("#bkdBg").classList.add("on");
 }
 /* 這次攤開的是哪一個追蹤號、算出了什麼 —— 給匯出用。 */
 let BKD_LAST=null;
@@ -11857,7 +11861,7 @@ function bkdWmsOf(trk, whole){
           zone:o.zone||"", wt:o.wt||"",
           pieces, share, whole:!!whole, trks:(o.trks||[]).slice(), orderAmt:cents(toNum(o.amt)), rebill, over,
           /* 補收不能只給一個總數 —— 要收客戶的錢,得說得出是哪幾項。 */
-          items:items.map(it=>({charge:it.charge, desc:it.desc||"", kind:it.kind,
+          items:items.map(it=>({charge:it.charge, desc:it.desc||"", kind:it.kind, seg:it.seg||"",
             amt:cents(toNum(it.amt)), fuel:cents(toNum(it.fuel)), fuelPct:it.fuelPct,
             total:cents(toNum(it.total)), over:cents(toNum(it.over))}))};
 }
@@ -12299,25 +12303,39 @@ function bkdSection(r, wms, name0){
                      : it.kind==="refund"?L("退還","Refund")
                      : it.kind==="zone"?L("Zone 更正","Zone correction")
                      : it.kind==="miss"?L("漏收","Not billed"):"";
-      const rbFuel=cents((wms.items||[]).reduce((a,it)=>a+(it.fuel||0),0));
       /* 燃油可以是負的:退還那一項的燃油也跟著退。以前用 >0.004 判,只有退款時燃油那一列
          就不見了,合計卻含著它 —— 列出來的數字加不出底下的總數。 */
-      const pct=((wms.items||[]).find(it=>Math.abs(it.fuel||0)>0.004)||{}).fuelPct;
       /* 說明和項目名一樣(或只是它的一部分)就不重複印 —— 整齊為先。 */
       const nk=x=>String(x||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
       /* 整單模式下每一項是某一件的:標出第幾件,同名的項目才看得出是不同的件。 */
       const pkgNo=it=>{ if(!(wms.whole&&wms.pieces>1)) return ""; const i=(wms.trks||[]).findIndex(t=>reconTrk(t)===reconTrk(it.trk)); return i>=0?`<span class="bkdtag pkg">${L("第 "+(i+1)+" 件","pkg "+(i+1))}</span>`:""; };
-      for(const it of (wms.items||[])){
-        if(!(Math.abs(it.amt)>0.004)) continue;
+      const rowOf=it=>{
         const tg=tagOf(it);
-        const showD=it.desc && !nk(it.charge).includes(nk(it.desc));
-        extra.push(`<tr><td>${esc2(it.charge)}`+pkgNo(it)
+        /* 分段標題已經寫了「退件回程」,底下不再重複同一句。 */
+        const showD=it.desc && !nk(it.charge).includes(nk(it.desc)) && it.seg!=="rtn";
+        return `<tr><td>${esc2(it.charge)}`+pkgNo(it)
           +(tg?`<span class="bkdtag">${esc2(tg)}</span>`:"")
           +(showD?`<span class="bkdsub">${esc2(it.desc)}</span>`:"")
-          +`</td><td class="num">${money(it.amt)}</td></tr>`);
+          +`</td><td class="num">${money(it.amt)}</td></tr>`;
+      };
+      /* 去程一段、回程一段,和左邊「UPS 實收」那一欄同一套分段標題。
+         混在一張清單裡的時候,同一個名目會連著出現兩列(去程一筆、回程
+         一筆),只有一行小灰字分得出來 —— 拿去跟客戶對帳的人看不懂那是
+         兩趟運送。燃油也各段自己算,一段就是一個看得完的小塊。 */
+      const live=(wms.items||[]).filter(it=>Math.abs(it.amt)>0.004);
+      const segs=[{lbl:L("原始出貨","Original shipment"), its:live.filter(it=>it.seg!=="rtn")},
+                  {lbl:L("退件回程","Return leg"),     its:live.filter(it=>it.seg==="rtn")}]
+                .filter(g=>g.its.length);
+      const manyS=segs.length>1;
+      for(const g of segs){
+        if(manyS) extra.push(`<tr><td colspan="2" class="bkdglbl">${esc2(g.lbl)}</td></tr>`);
+        for(const it of g.its) extra.push(rowOf(it));
+        const gf=cents(g.its.reduce((a,it)=>a+(it.fuel||0),0));
+        const gp=(g.its.find(it=>Math.abs(it.fuel||0)>0.004)||{}).fuelPct;
+        if(Math.abs(gf)>0.004)
+          extra.push(`<tr><td>${L("燃油附加費 ","Fuel Surcharge ")+(gp!=null?esc2(fmtPct2(gp))+"%":"")}</td>`
+            +`<td class="num">${money(gf)}</td></tr>`);
       }
-      if(Math.abs(rbFuel)>0.004) extra.push(`<tr><td>${L("燃油附加費 ","Fuel Surcharge ")+(pct!=null?esc2(fmtPct2(pct))+"%":"")}</td>`
-        +`<td class="num">${money(rbFuel)}</td></tr>`);
       /* 溢收是反方向的錢:掛在應補收合計下面,不併進去。整件只有溢收、沒有
          要補收的時候,這一格就是退款那一格,標題與合計一起換過來 —— 不會出現
          一格叫「應補收」、合計卻是 0.00。 */
@@ -12383,6 +12401,14 @@ function bkdSection(r, wms, name0){
 }
 $("#bTrkBreak") && ($("#bTrkBreak").onclick=openBreakdown);
 $("#bkdX") && ($("#bkdX").onclick=()=>$("#bkdBg").classList.remove("on"));
+/* 這個視窗一打開就是四欄的密表,860px 放不下 —— 預設就開大,要小再按 ⤡。
+   按鈕的字要跟著狀態,不然圖示和實際狀態對不起來。 */
+function bkdMaxOn(){
+  const m=$("#bkdModal"); if(!m||m.classList.contains("max")) return;
+  m.classList.add("max");
+  m.style.removeProperty("width"); m.style.removeProperty("height");
+  const b=$("#bkdMax"); if(b) b.textContent="\u2921";
+}
 $("#bkdMax") && ($("#bkdMax").onclick=()=>{
   const m=$("#bkdModal");
   m.classList.toggle("max");
@@ -16852,7 +16878,7 @@ function reconRun(list){
         if(c==="Fuel Surcharge"||c===RECON_OTHER) continue;
         const v=cents(rtnR[c]); if(!(v>0.004)) continue;
         if(rebillDisabled(c)) continue;
-        items.push(Object.assign({kind:"miss", charge:c,
+        items.push(Object.assign({kind:"miss", charge:c, seg:"rtn",
           desc:L("退件回程","Return leg"),
           ups:cents(upsRt[c]||0), billed:0, rate:v, amt:v, credit:0, creditFrom:[]}, base));
       }
