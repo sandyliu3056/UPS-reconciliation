@@ -3982,7 +3982,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-18-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-18-b</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -12062,7 +12062,21 @@ async function bkdXlsx(){
                      :L(" · 回程:無"," · return leg: none"));
         }catch(e2){ st="price error: "+String(e2&&e2.message||e2); }
         const holes=((typeof RECON_ARCH_INFO!=="undefined"&&RECON_ARCH_INFO&&RECON_ARCH_INFO.idxOnly)||[]);
+        /* 補收清單看不到一筆錢的時候,最常見的兩個閘門:UPS 那一行被歸到哪一個
+           欄(歸錯桶,差額就從那一桶算不出來),和補收最小差額設多少(差額不到
+           門檻整列不開)。兩個都印出來,匯出的檔就能直接回答,不必猜。 */
+        let route="—";
+        try{
+          route=(x.allLines||[]).filter(l2=>Math.abs(toNum(l2.net))>0.004).map(l2=>{
+            const col=Object.keys((consFeesOf([l2])||{}).fees||{})[0]||"?";
+            return String(l2.layer||"")+" "+String(l2.code||"").toUpperCase()+" "+String(l2.desc||"").trim()
+                   +" → "+col+" ("+money(toNum(l2.net))+")";
+          }).join("\n")||"—";
+        }catch(e3){ route="route error: "+String(e3&&e3.message||e3); }
+        const minDiff=(typeof rebillMinDiff==="function")?rebillMinDiff():"—";
         return [[L("合併期別","Periods merged"), per.join(", ")||"—"],
+                [L("補收最小差額","Re-bill min diff"), String(minDiff)],
+                [L("UPS 每行歸桶","UPS line routing"), route],
                 ...(holes.length?[[L("缺明細的期別","Periods with no detail here"),
                     holes.join(", ")+L("(只有期號,請重新匯入)"," (index only — re-import them)")]]:[]),
                 [L("計價尺寸","Dims priced"), d(x.dims)+(x.rtnSeg?L("(回程 "," (return ")+d(x.rtnSeg.dims)+")":"")],
@@ -12764,14 +12778,20 @@ function feeColumnOf(l){
   if(has("shipping charge correction")){
     if(has("over maximum")||as==="OVR") return "Over Maximum Size";
     if(has("weight")||as==="AHW") return "Additional Handling Surcharge - Weight";
+    /* 大包裹要在尺寸關鍵字之前判:UPS 的大包裹描述本身就帶著「Length + Girth」
+       「Cubic Volume」這些字(Large Package Surcharge - Length + Girth),先比尺寸
+       就會把大包裹更正整筆歸到額外處理-尺寸,UPS 那一側的大包裹從此是 0,
+       補收永遠追不到它。 */
+    if(has("large package")||PY_LP.indexOf(as)>=0) return "Large Package Surcharge";
     const dim=["second long","second longest","longest side","length+girth",
                "length + girth","length","girth","dimension","cubic"];
     if(dim.some(has)||as==="AHG"||as==="AHL"||as==="AHS")
       return "Additional Handling Surcharge - Dimension";
     if(has("packaging")||has("irregular")||as==="AHP"||as==="AHC")
       return "Additional Handling Surcharge - Packaging";
-    if(has("large package")||PY_LP.indexOf(as)>=0) return "Large Package Surcharge";
   }
+  /* 同一個理由:一般列的字面後備也先認大包裹。 */
+  if(has("large package")) return "Large Package Surcharge";
   if(has("length+girth")||has("length + girth")||has("longest side"))
     return "Additional Handling Surcharge - Dimension";
   if(has("handling weight")||has("addl. handling weight"))
@@ -17059,7 +17079,8 @@ function reconRun(list){
         if(it.refCol) done.add(it.refCol);
         /* 家族那一段已經照成員開過的,它的合併欄也算開過 —— 不然這裡拿合併欄
            再比一次「該收多少、收了多少」,同一筆短收會開成兩列。 */
-        for(const d of Object.values(RECON_GROUPS)) if(!d.auto && d.fees.includes(it.charge)) done.add(d.head);
+        if(it.seg!=="rtn")
+          for(const d of Object.values(RECON_GROUPS)) if(!d.auto && d.fees.includes(it.charge)) done.add(d.head);
       }
       /* 一項費用該向這個客戶收多少 —— 和匯出明細同一條:重算算過就照重算,
          合約裡有位置卻沒設費率的算 0(不替人猜),費率表裡沒有位置的照 UPS 轉嫁。 */
