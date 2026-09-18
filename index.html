@@ -1323,6 +1323,7 @@ tr.bkdjump:hover td{background:color-mix(in srgb, var(--select) 55%, var(--panel
 .bkdgone{font-size:10.5px;color:var(--muted);font-style:italic;padding-top:5px}
 .bkdmiss{color:var(--neg);border-bottom:1.5px dotted var(--neg);cursor:help}
 .bkdmissrow td:first-child{color:var(--neg)}
+.bkdside tr.bkdna td{color:var(--muted)}
 .bkdneg{color:var(--neg)}
 /* 帳戶層費用卡:UPS 釘在追蹤號上的整週調整,只列出、不算價,配色跟
    「UPS 實收」那一側同一組,主題一換就跟著換。 */
@@ -4094,7 +4095,7 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-18-d</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-18-e</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -12499,6 +12500,28 @@ function bkdSection(r, wms, name0){
         m?cellMiss(v,L("此渠道未設定該附加費之費率","This channel has no rate for that surcharge")
                      +" — "+feeDisplay(k)+" @ "+(res.channel||"")):money(v)}</td></tr>`);
       psub+=v;
+    }
+    /* 客戶收了、這一欄卻一個字都沒寫的項目(保價、簽名、住宅費…):不是漏掉,
+       是 UPS 這一筆沒收、我們也不重算 —— 可是空著看起來就像漏掉。列成灰字一列、
+       金額寫「—」,對著右邊客戶那一欄放。運費、燃油、更正(已含在運費裡)、
+       非承運的手續費、沒逐項列示的那一份不在此列;應收欄已經有的(含費率未設定
+       的 0)也不重複。 */
+    if(wms && !(typeof BKD_NOLVL!=="undefined"&&BKD_NOLVL)){
+      const upsCols=(typeof consFeesOf==="function")?(consFeesOf(groups.flatMap(g=>g.lines||[])).fees||{}):{};
+      const memOf=c=>{ const g=Object.values(RECON_GROUPS).find(d=>d.head===c); return g?g.fees.slice():[c]; };
+      const skip=new Set(["Base Rate","Fuel Surcharge","Shipping Charge Correction",RECON_OTHER,
+                          L("未逐項列示","Not itemised"),L("總額(未逐項)","Total amount (not itemised)")]);
+      const accKeys=new Set(Object.keys(res.acc||{}));
+      for(const [c,v] of (wms.rows||[])){
+        if(skip.has(c) || !(Math.abs(toNum(v))>0.004)) continue;
+        const mem=memOf(c);
+        const bks=mem.flatMap(m=>(typeof bucketsOf==="function")?bucketsOf(m):[]);
+        if(bks.some(b=>accKeys.has(b)) || accKeys.has(c)) continue;
+        const upsHas=mem.some(m=>Math.abs(toNum(upsCols[m]))>0.004);
+        P.push(`<tr class="bkdna"><td>${esc2(c)}<span class="bkdsub">${esc2(upsHas
+          ?L("不重算","Not repriced"):L("UPS 未收,不重算","Not on the UPS invoice — not repriced"))}</span></td>`
+          +`<td class="num">—</td></tr>`);
+      }
     }
     P.push(`<tr><td>${L("燃油附加費 ","Fuel Surcharge ")+esc2(fmtPct2(res.fuelPct))+"%"}</td><td class="num">${money(res.fuel||0)}</td></tr>`);
     psub+=res.fuel||0;
