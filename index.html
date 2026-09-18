@@ -3982,7 +3982,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-18-b</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-18-c</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -5638,6 +5638,11 @@ function priceShipment(cfg, s, force){
          ⑤ 都沒有、但帳單帶過 AH 代碼(含負額):照代碼型別。
      寫入:「有退又有收」= 重開價,寫正額;「只有退款」= 真沖銷,
      寫 -abs(費率)。其餘正額。 */
+  /* 大包裹代碼全掛在「修回程的更正單」上:判定在回程那一段(它量的尺寸在
+     那裡),主段這裡不告警,回程算完再核對。 */
+  const lpsLines=s.lines.filter(l=>LPS_CODE.has(String(l.code||"").toUpperCase()));
+  const lpsOnRtnFix=lpsLines.length>0 && !!s.rtnSeg
+    && lpsLines.every(l=>(s.legRtnLines||[]).indexOf(l)>=0);
   {
     const nW=scan.net["AHS Weight"]||0, nD=scan.net["AHS Dimension"]||0,
           nP=scan.net["AHS Packaging"]||0, nL=scan.net["Large Package"]||0;
@@ -5685,7 +5690,7 @@ function priceShipment(cfg, s, force){
       if(nP<-0.01) acc["AHS Packaging"]=signedAmt("AHS Packaging",nP);
     }
     s.__gate={applyLps:applyLps,applyW:applyW,applyD:applyD,applyP:applyP};
-    if((scan.seen["Large Package"]&&!applyLps)||(scan.seen["AHS Dimension"]&&!applyD&&!applyW&&!applyP))
+    if((scan.seen["Large Package"]&&!applyLps&&!lpsOnRtnFix)||(scan.seen["AHS Dimension"]&&!applyD&&!applyW&&!applyP))
       issues.push(L("UPS 帳單上有 AHS/大包裹代碼,但更正後的門檻判定不收(或改收別型)",
         "The invoice carries an AHS/Large Package code, but the threshold re-rate assigns none (or a different type)"));
   }
@@ -5885,6 +5890,10 @@ function priceShipment(cfg, s, force){
     rtn=priceShipment(cfg, s.rtnSeg);
     if(rtn.total!==null) total=(total===null?0:total)+rtn.total;
     for(const m of rtn.issues) issues.push(L("退件回程:","Return leg: ")+m);
+    if(lpsOnRtnFix && !(rtn.acc && toNum(rtn.acc["Large Package"])>0.004))
+      issues.push(L("退件回程:","Return leg: ")
+        +L("UPS 帳單上有 AHS/大包裹代碼,但更正後的門檻判定不收(或改收別型)",
+           "The invoice carries an AHS/Large Package code, but the threshold re-rate assigns none (or a different type)"));
   }
 
   let npb=null;
@@ -6109,6 +6118,29 @@ function shipmentsOf(rows){
     s.rtnLines=(rtnLines.length&&(hasShp||adjFixesOutbound))?rtnLines:[];
     if(s.rtnLines.length) s.lines=s.lines.filter(l=>s.rtnLines.indexOf(l)<0);
 
+    /* 修「回程」的更正單:退件之後 UPS 再量一次,沖掉回程的額外處理、改收
+       大包裹 —— 那一張的運費行寫的是 Undeliverable Return。它量到的尺寸屬於
+       回程那一段,不是原出貨那一段:主段照自己那一張更正(或報的尺寸)判,
+       回程照這一張判。以前整筆只認第一個量到的尺寸,同一顆箱子先量到 130
+       (剛好在門檻上,UPS 也沒收)、退件後量到 132 收了大包裹,第二次量的
+       就被丟掉,大包裹一毛都不進應收。行仍留在主段(SCC 差額、稽核費照舊),
+       這裡只做記號:尺寸與補收的 UPS 對照欄照記號分段。 */
+    s.legRtnLines=[];
+    if(s.rtnLines.length){
+      const byInv=new Map();
+      for(const l of s.lines){
+        if(l.layer!=="ADJ") continue;
+        const k=String(l.invoice||"").trim();
+        if(!byInv.has(k)) byInv.set(k,[]);
+        byInv.get(k).push(l);
+      }
+      for(const ls of byInv.values()){
+        const fixesRtn=ls.some(l=>String(l.cls||"").toUpperCase()==="FRT"
+          && /UNDELIVERABLE\s+RETURN/i.test(String(l.desc||"")));
+        if(fixesRtn) s.legRtnLines.push(...ls);
+      }
+    }
+
     /* 服務別不能取到附加費行:"Address Correction Ground" 會被
        guessService 認成 Ground Commercial,整筆渠道就判錯了。
        桌面版 _desc_is_accessorial(:17722)擋的就是這個。 */
@@ -6122,7 +6154,7 @@ function shipmentsOf(rows){
     s.zone=(zLines.find(l=>l.zone)||s.lines.find(l=>l.zone)||{}).zone||"";
     s.entered=Math.max(...s.lines.map(l=>l.entered),0);
     s.billedUPS=Math.max(...s.lines.map(l=>l.billed),0);
-    s.dims=parseDims((s.lines.find(l=>l.dimsC)||{}).dimsC)
+    s.dims=parseDims((s.lines.find(l=>l.dimsC&&s.legRtnLines.indexOf(l)<0)||{}).dimsC)
         || parseDims((s.lines.find(l=>l.dimsA)||{}).dimsA);
     s.upsTotal=s.allLines.reduce((a,l)=>a+l.net,0);
     /* 燃油按出貨日挑期間,所以要把日期帶上來。優先用運費那一行的。 */
@@ -6197,8 +6229,9 @@ function shipmentsOf(rows){
            回程那幾行只帶著出貨時報的尺寸;照它算,同一個包裹去程算大包裹、
            回程不算 —— 而 UPS 兩段都收了大包裹,我們只收一段。量過就以量過的為準,
            回程自己有量過的尺寸(重新包裝)才用它自己的。 */
-        dims:parseDims((s.rtnLines.find(l=>l.dimsC)||{}).dimsC)
-            ||parseDims((s.lines.find(l=>l.dimsC)||{}).dimsC)||gr.dims,
+        dims:parseDims((s.legRtnLines.filter(l=>l.dimsC).pop()||{}).dimsC)
+            ||parseDims((s.rtnLines.find(l=>l.dimsC)||{}).dimsC)
+            ||parseDims((s.lines.find(l=>l.dimsC&&s.legRtnLines.indexOf(l)<0)||{}).dimsC)||gr.dims,
         shipDate:gr.shipDate||s.shipDate,
         upsTotal:gr.net, layer:"RTN", npb:null,
         refEntered:gr.entered, refBilled:gr.billed, pureAdj:false, bwt:gr.bwt,
@@ -16571,6 +16604,17 @@ function reconRun(list){
         if(rls.length){ const cr=consFeesOf(rls);
           for(const [col,v] of Object.entries(cr.fees||{}))
             feesUpsRtn[col]=cents((feesUpsRtn[col]||0)+v); }
+        /* 修回程的更正單上的 AHS / 大包裹(沖掉回程的額外處理、改收大包裹):
+           計價判在回程那一段,UPS 這一側也記到回程,兩邊才對得起來 ——
+           不然主段留著一個 UPS 收了、我們應收 0 的大包裹,清單上多一列
+           金額 0 的「費率未設定」。 */
+        const rfl=s.legRtnLines||[];
+        if(rfl.length){
+          const famAL=new Set(((REBILL_FAMILIES.find(f=>/Large Package/.test(f.name))||{}).fees)||[]);
+          const cr=consFeesOf(rfl);
+          for(const [col,v] of Object.entries(cr.fees||{})) if(famAL.has(col))
+            feesUpsRtn[col]=cents((feesUpsRtn[col]||0)+v);
+        }
       }
       /* 重算需要費率,沒有層級就不算;逐項表三邊只收有重算的,免得歪一邊。 */
       if(!cfg) continue;
