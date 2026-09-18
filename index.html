@@ -3982,7 +3982,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-17-d</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-18-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -16988,6 +16988,33 @@ function reconRun(list){
           refShort:refundShortOf(revd[0]||n), refCol:revd[0]||"",
           ups:0, billed:w, rate:0, amt:cents(-w), credit:0, creditFrom:[], wms:w, over:0}, base));
       }
+      /* 合併欄涵蓋的成員不追差額,理由是「客戶用合併欄收的就是 UPS 收的那一件事,
+         金額差是毛利」。這句話只在客戶付的錢撐得起 UPS 收的那幾項時才成立:客戶照
+         額外處理費用合併欄收了 6.08,UPS 量過改收大包裹 42.90、照費率該收 57.20 ——
+         那 51.12 不是毛利,是漏收,而以前它整筆消失,補收清單上一個字都沒有。
+         合併欄的涵蓋只到它實際收的金額為止:UPS 收的成員照成員開列(短收),
+         已收的金額抵在最大的那一項上;差不到門檻的(住宅 DAS 對延伸住宅 DAS 的
+         幾毛錢)照舊不追。查不到費率的成員列出來當「費率未設定」警示 —— 少收一筆
+         而沒有人知道,比警示紅字糟得多。 */
+      if(headPaid.length && !refHeads.length && coveredMembers.size){
+        const cov=upsCols.filter(c=>coveredMembers.has(c) && !paidNames.includes(c));
+        if(cov.length){
+          const covRows=cov.map(mk).sort((x,y)=>y.amt-x.amt);
+          const rated=cents(covRows.reduce((a,r)=>a+(r.unset?0:r.amt),0));
+          const upsFam=cents(cov.reduce((a,c)=>a+upsM(c),0));
+          if(Math.max(rated,upsFam)-famBilled>=MIN_DIFF){
+            let left=famBilled;
+            for(const r of covRows){
+              if(r.unset){ items.push(r); continue; }
+              const take=cents(Math.min(left, r.amt)); left=cents(left-take);
+              const amt=cents(r.amt-take);
+              if(!(amt>0.004)) continue;
+              items.push(Object.assign(r,{kind:"short", amt, billed:take, wms:take,
+                desc:(r.desc?r.desc+" — ":"")+L("合併欄已收 "+money(take),"combined column paid "+money(take))}));
+            }
+          }
+        }
+      }
       const rows=upsCols.filter(c=>!paidNames.includes(c) && !coveredMembers.has(c)).map(mk).sort((x,y)=>y.amt-x.amt);
       /* 費率未設定的列出來當警示:這一家族有退有收、或一毛都沒收過的時候,
          少了費率就是少收一筆,必須看得見;同名已收、只是我們沒費率的不列 ——
@@ -17030,6 +17057,9 @@ function reconRun(list){
         done.add(it.charge);
         for(const f of memOfCol(it.charge)) done.add(f);
         if(it.refCol) done.add(it.refCol);
+        /* 家族那一段已經照成員開過的,它的合併欄也算開過 —— 不然這裡拿合併欄
+           再比一次「該收多少、收了多少」,同一筆短收會開成兩列。 */
+        for(const d of Object.values(RECON_GROUPS)) if(!d.auto && d.fees.includes(it.charge)) done.add(d.head);
       }
       /* 一項費用該向這個客戶收多少 —— 和匯出明細同一條:重算算過就照重算,
          合約裡有位置卻沒設費率的算 0(不替人猜),費率表裡沒有位置的照 UPS 轉嫁。 */
