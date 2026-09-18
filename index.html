@@ -4094,7 +4094,7 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-18-c</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-18-d</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -11944,7 +11944,7 @@ function openBreakdown(){
         isOrder?L("整單合計 · 不分帳單期","Whole order · all invoices"):L("整筆合計 · 不分帳單期","Whole tracking · all invoices")}</div><div class="bkdsum-row">`
       +c(L(wsrc+" 實收",wsrc+" billed"), money2(tWm))
       +c(L("應補收","To re-bill"), anyRb?money2(tRb):money2(0), "+")
-      +c(L("應收合計","Chargeable"), money2(tRev), "=")
+      +c(L("客戶合計","Client total"), money2(tRev), "=")
       +c(L("UPS 實收","UPS billed"), money2(tUp), "−")
       +c(L("毛利","Profit"), money2(tPf), "=", tPf<-0.0001)
       +c(L("毛利率","Margin"), tMg==null?"—":tMg.toFixed(1)+"%", "", tMg!=null&&tMg<0)
@@ -16760,6 +16760,7 @@ function reconRun(list){
     const feesKnown=new Set();       /* 重算真的算過的費用:合約沒費率的不在裡面 */
     const invDates=new Set();        /* 對到的帳單期別日期,匯出明細第一欄 */
     let upsWt=0, wtN=0, upsId=null, fuelPct=null, sccRate=null, zoneRate=null, zoneNote="", zoneAcc=null, zoneOld="", zoneNew="";
+    let wtRate=null, wtBase=0, wtFrom=0, wtTo=0;   /* 計費重差額:客戶重量 → 合約計費重的運費差 */
     let usedArch=false;
     const pieceFees=new Map();       /* 每一件各自的 UPS 費用(照 Consolidated 分欄),補收拆件用 */
     const pieceUps=new Map();        /* 每一件自己的帳單識別欄(尺寸、重量、Zone):匯出一件一列時用它,不用整單第一件的 */
@@ -16870,6 +16871,23 @@ function reconRun(list){
             if(!a.missing && !b.missing) sccRate=cents((sccRate||0)+(toNum(a.rate)-toNum(b.rate)));
           }
         }
+        /* 計費重差額(沒有運費更正的單):客戶照自己填的重量收運費,而合約的計費重
+           比它重 —— 材積重、或 UPS 開過 AHS 之後的最低計費重把它拉高了。差的那段
+           運費以前當毛利吞掉(6 磅對 20 磅的那一件,少收 6.96,整筆是虧的)。
+           補:客戶費率在合約計費重與在客戶重量的運費差,超過 150 磅以 150 計;
+           燃油最後和其他項目一起算。有運費更正的走上面那條(最後運費 − 已收運費,
+           已含這一段);多件的單一個重量對不上哪一件,不算。 */
+        if(e.trks.length===1 && toNum(e.wt)>0 && priced.bw && priced.bw.billable!=null
+           && !(Math.abs(cf.fees["Shipping Charge Correction"]||0)>0.004)){
+          const svc=guessService(s.service), zn=priced.zoneUsed||s.zone;
+          const cap=w=>Math.min(150, Math.max(0,toNum(w)));
+          const wC=Math.ceil(cap(priced.bw.billable)), wA=Math.ceil(cap(e.wt));
+          if(zn && wC>wA && wA>0){
+            const a=lookupBaseRate(cfg,svc,!!priced.residential,zn,wC), b=lookupBaseRate(cfg,svc,!!priced.residential,zn,wA);
+            const d=cents(toNum(a.rate)-toNum(b.rate));
+            if(!a.missing && !b.missing && d>0.004){ wtRate=d; wtBase=cents(toNum(a.rate)); wtFrom=wA; wtTo=wC; }
+          }
+        }
         /* 重算算過哪幾項:acc 裡有、又不在 missFees 裡的,加上運費與燃油。 */
         const accKeys=Object.keys(priced.acc||{})
           .concat(Object.keys((priced.rtn&&priced.rtn.acc)||{}), Object.keys((priced.npb&&priced.npb.acc)||{}));
@@ -16909,8 +16927,8 @@ function reconRun(list){
     const chanUnknown=!!(chan && !reconChanKnown(chan));
     const chanMis=!!(chan && sysChan && !chanUnknown
                      && ![...sysChans].some(c=>chanFamKey(c)===chanFamKey(chan)));
-    /* 計費重量只記錄、不核對:帳單上的是合約計費重量,向客戶收的重量本來
-       就不必一樣。兩個數字並排放在匯出的 Orders 分頁,給人參考。 */
+    /* 計費重量兩個數字並排放在匯出的 Orders 分頁;客戶收的比合約計費重輕、
+       又沒有運費更正時,差的那段運費照 wtRate 補(見上面計費重差額那段)。 */
     const o={ln:e.ln, oid, order:e.order, cus:e.cus, date:e.date||(upsId&&upsId.date)||"", carried:e.carried||null,
              src:(e.src||RECON_SRC)==="TMS"?"TMS":"WMS", sib:!!e.sib, pieceFees, pieceUps, pieceRev,
              trks:e.trks.slice(), ref1:e.ref1||(upsId&&upsId.ref1)||"", ref2:e.ref2||(upsId&&upsId.ref2)||"",
@@ -16918,7 +16936,7 @@ function reconRun(list){
              zone:String(e.zone||""), upsZone, zoneMis,
              chan, sysChan, chanMis, chanUnknown,
              wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"", arch:usedArch,
-             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc, zoneOld, zoneNew, rtnRep:feesRtn, upsRtn:feesUpsRtn}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
+             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc, zoneOld, zoneNew, rtnRep:feesRtn, upsRtn:feesUpsRtn, wtRate, wtBase, wtFrom, wtTo}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
              name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
              amt:e.amt, svc:cents((e.chg||{})[RECON_OTHER]||0),
@@ -16984,7 +17002,8 @@ function reconRun(list){
      沒有數字,就照 UPS 實收轉嫁。重算算出 0 的是合約沒有這一項,列出來但金額 0。
      同一家族先抵:出貨時收 LPS、UPS 量過改收 AHS;WMS 收商業 DAS、UPS 改判住宅
      DAS —— 客戶端收了而 UPS 沒收的那幾項,已收的錢抵在 UPS 收的項目上,只補多的
-     部分。運費不在家族裡:基本運費的小差額不追;UPS 的更正(SCC)自己一項。
+     部分。運費不在家族裡:基本運費的小差額不追;UPS 的更正(SCC)自己一項,
+     客戶重量比合約計費重輕的差額也自己一項(計費重差額)。
      沒有逐項費用欄的列看不出漏了什麼,不列,只計數。 */
   const famOf=new Map();
   REBILL_FAMILIES.forEach((f,i)=>f.fees.forEach(n=>famOf.set(n,i)));
@@ -17056,6 +17075,20 @@ function reconRun(list){
               ups:0, billed:0, rate:AUD_FEE, amt:AUD_FEE, credit:0, creditFrom:[]}, base));
           }
         }
+      }
+    }
+    /* 計費重差額:客戶照自己填的重量收了運費,合約的計費重比它重、而這一單沒有運費
+       更正 —— 補兩個重量之間的運費差(rate 欄是合約計費重的運費,實收欄是客戶收的
+       運費)。客戶連運費都沒收的不走這裡:未收清單會照最後運費整筆補。有運費更正、
+       或 Zone 更正一退一收的,那兩條路開的都是最後運費,已含這一段,不重複。 */
+    if(F.wtRate!=null && cents(F.wtRate)>=MIN_DIFF && !(upsF[SCC]>0.004)
+       && !(F.zoneRate!=null && cents(F.zoneRate)>0.004)){
+      const wB=billedOf("Base Rate");
+      if(wB!=null && Math.abs(wB)>0.004){
+        items.push(Object.assign({kind:"short", charge:"Base Rate",
+          desc:L("計費重 "+F.wtFrom+" → "+F.wtTo+" lb","Billable weight "+F.wtFrom+" → "+F.wtTo+" lb"),
+          ups:cents(upsF["Base Rate"]||0), billed:wB, wms:wB,
+          rate:cents(F.wtBase), amt:cents(F.wtRate), credit:0, creditFrom:[]}, base));
       }
     }
     /* ZONE 更正的補收,一正一負開在帳單上:退還客戶照舊 Zone 收的那一筆(負數),
