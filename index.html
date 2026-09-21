@@ -4095,7 +4095,7 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-18-e</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-21-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -16436,16 +16436,15 @@ async function reconTemplate(src){
   /* 自己收的服務費也要有一欄:沒有欄可填,它就只能從總額裡被算成
      「未逐項列示」,畫面上是一筆沒有名字的錢。 */
   feeCols.push(RECON_OTHER);
-  const HI=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF",wrap:true}});
-  const HU=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"FFC000",color:"1F1F1F",wrap:true}});
-  const HM=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"92D050",color:"1F1F1F",wrap:true}});
-  const HQ=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"1F5638",color:"FFFFFF",wrap:true}});
+  /* 表頭不上色:粗體、靠左、可換行就好。以前綠底、必填欄深綠底白字,拿到檔的人
+     覺得花;哪幾欄必填,Guide 分頁寫著。 */
+  const H=n=>({v:n,t:"s",s:{bold:true,align:"left",wrap:true}});
   /* 欄名不帶「- WMS / - TMS」了:整張表都是同仁要填的,沒有另一側可以混淆,
      後綴只是讓每個欄名長一截。參考號兩欄也拿掉 —— 對帳是照追蹤號比的,
      單號空白時本來就會退回用追蹤號。 */
-  const hd=[HM(RECON_COL.date), HQ(RECON_COL.trk), HM(RECON_COL.cusName), HQ(RECON_COL.cus),
-            HM(RECON_COL.order), HM("Channel"), HM("Zone"), HM("Billed Weight")]
-    .concat(feeCols.map(HM), [HQ("Total Amount")]);
+  const hd=[H(RECON_COL.date), H(RECON_COL.trk), H(RECON_COL.cusName), H(RECON_COL.cus),
+            H(RECON_COL.order), H("Channel"), H("Zone"), H("Billed Weight")]
+    .concat(feeCols.map(H), [H("Total Amount")]);
   const MONEY="#,##0.00";
   /* 模板是空白的:只有表頭,一列資料都不帶。以前它把手上那批帳單整個倒進去
      ——一次匯入三十九期就是十六萬列、混著三十九個期號的一份檔,沒辦法拿給
@@ -16454,7 +16453,7 @@ async function reconTemplate(src){
   const reg=cusReg();
   const fams=reconChanFamilies();
   /* 填寫說明放在活頁簿裡自己一頁:拿到檔的人不必另外找文件。 */
-  const G=n=>({v:n,t:"s",s:{bold:true,align:"left",fill:"351C15",color:"FFFFFF"}});
+  const G=n=>({v:n,t:"s",s:{bold:true,align:"left"}});
   const gRow=(c,f,n)=>[c,f,n];
   const guide=[[G("Column"),G("Fill with / 填什麼"),G("Notes / 說明")],
     gRow(RECON_COL.trk,"追蹤號 Tracking number","必填;對帳照它比對帳單,一票多件時一件一列 Required; the reconciliation matches on it — one row per package",
