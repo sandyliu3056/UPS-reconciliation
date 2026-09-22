@@ -3983,7 +3983,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-21-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-22-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -16589,6 +16589,7 @@ function reconRun(list){
     const missTrk=[], upsZones=new Set(), sysChans=new Set();
     const feesRep={}, feesUps={};    /* 這一列每一項費用兩側的數,匯出明細用 */
     const feesRtn={}, feesUpsRtn={}; /* 回程段兩側的份額:補收把回程整段獨立開列 */
+    const feesNpb={};                /* 第二段運送(Not Previously Billed)應收的份額:家族沖抵分段抵 */
     const feesRev=new Set();         /* UPS 收過又整筆沖掉的欄:改收的證據 */
     const feesDesc={};               /* 每一欄在帳單上的原文描述,補收時開給客戶看 */
     const feesKnown=new Set();       /* 重算真的算過的費用:合約沒費率的不在裡面 */
@@ -16738,9 +16739,19 @@ function reconRun(list){
             rtnCols[cn]=cents((rtnCols[cn]||0)+toNum(v2));
           }
         }
+        /* 第二段運送(NPB)應收的那一份附加費:補收的家族沖抵要分得出哪一份是
+           出貨段的、哪一份是 UPS 事後補開的。運費不進家族,不記。 */
+        const npbCols={};
+        if(priced.npb){
+          for(const [k2,v2] of Object.entries(priced.npb.acc||{})){
+            if(!(Math.abs(toNum(v2))>0.004)) continue;
+            const cn=REPORT_COL_OF[k2]||k2;
+            npbCols[cn]=cents((npbCols[cn]||0)+toNum(v2));
+          }
+        }
         repPend.push([e.cus, reportRowOf(priced), !!priced.residential, feesRep, feesKnown,
                       accKeys, [...(priced.missFees||[])], !!priced.rtn, !priced.baseMissing,
-                      rtnCols, feesRtn]);
+                      rtnCols, feesRtn, npbCols, feesNpb]);
         for(const [col,v] of Object.entries(cf.fees)) chgBump(e.cus, col, "ups", v);
       }catch(err){}
     }
@@ -16770,7 +16781,7 @@ function reconRun(list){
              zone:String(e.zone||""), upsZone, zoneMis,
              chan, sysChan, chanMis, chanUnknown,
              wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"", arch:usedArch,
-             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc, zoneOld, zoneNew, rtnRep:feesRtn, upsRtn:feesUpsRtn, wtRate, wtBase, wtFrom, wtTo}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
+             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc, zoneOld, zoneNew, rtnRep:feesRtn, upsRtn:feesUpsRtn, npbRep:feesNpb, wtRate, wtBase, wtFrom, wtTo}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
              name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
              amt:e.amt, svc:cents((e.chg||{})[RECON_OTHER]||0),
@@ -16789,7 +16800,7 @@ function reconRun(list){
     a.amt+=reconNetAmt(o); a.cost+=o.cost; if(!block) a.rep+=o.rep;
   }
   /* 重算那一側現在才入桶:名字對到這批帳單上實際用的欄。 */
-  for(const [cus,row,resi,feesRep,known,accKeys,miss,hasRtn,hasBase,rtnCols,feesRtn] of repPend){
+  for(const [cus,row,resi,feesRep,known,accKeys,miss,hasRtn,hasBase,rtnCols,feesRtn,npbCols,feesNpb] of repPend){
     /* 這條服務沒有費率表時運費與燃油都算不出來 —— 不算「算過」,補收與匯出照 UPS。 */
     if(hasBase){ known.add("Base Rate"); known.add("Fuel Surcharge"); }
     if(hasRtn) known.add("Undeliverable Return");
@@ -16804,6 +16815,10 @@ function reconRun(list){
     for(const [c,v] of Object.entries(rtnCols||{})){
       const nm=audNameOf(c,resi,codeCol);
       feesRtn[nm]=cents((feesRtn[nm]||0)+v);
+    }
+    for(const [c,v] of Object.entries(npbCols||{})){
+      const nm=audNameOf(c,resi,codeCol);
+      feesNpb[nm]=cents((feesNpb[nm]||0)+v);
     }
   }
   const cus=[...perCus.values()].map(a=>{
@@ -16863,7 +16878,7 @@ function reconRun(list){
        不扣的話,回程的 AHS 會拿去抵主段的退款、回程的運費會混進運費那一條
        「差額不追」—— 兩邊都看不見,補收合計就永遠比畫面上的回程應收少一段
        (71.30 對 40.36 各說各話的那一單就是這樣來的)。 */
-    const rtnR=F.rtnRep||{}, upsRt=F.upsRtn||{};
+    const rtnR=F.rtnRep||{}, upsRt=F.upsRtn||{}, npbR=F.npbRep||{};
     const repM=c=>cents((rep[c]||0)-(toNum(rtnR[c])||0));
     const upsM=c=>cents((upsF[c]||0)-(toNum(upsRt[c])||0));
     const rateOf=c=>rebillDisabled(c)?0:((!o.block && known.has(c) && repM(c)>0.004)?repM(c):(rebillConfigurable(c)?"unset":null));
@@ -17122,12 +17137,40 @@ function reconRun(list){
           const rated=cents(covRows.reduce((a,r)=>a+(r.unset?0:r.amt),0));
           const upsFam=cents(cov.reduce((a,c)=>a+upsM(c),0));
           if(Math.max(rated,upsFam)-famBilled>=MIN_DIFF){
+            /* 已收的錢先抵原出貨那一段的成員,再抵第二段運送(Not Previously Billed)的:
+               客戶是出貨當下收的,收的就是出貨那一段的額外處理;UPS 事後補開的第二段
+               運送,客戶端從來沒收過。以前一律抵在金額最大的那一項上 —— 出貨段的
+               AHS-Dimension 4.50 客戶收了 4.50,卻因為第二段的 AHS 8.31 比較大而把錢
+               抵到那邊,清單上變成 Dimension 短收 4.50,看起來像同一筆收了兩次。
+               同一段裡先抵金額剛好等於剩餘已收的那一項,再大的先;一毛都沒抵到的
+               成員就是漏收,照漏收列,不寫「合併欄已收 0.00」。 */
+            const npbOf=c=>cents(toNum(npbR[c])||0);
+            const parts=[];
+            for(const r of covRows){
+              if(r.unset) continue;
+              const nb=Math.min(r.amt, Math.max(0,npbOf(r.charge)));
+              const mn=cents(r.amt-nb);
+              if(mn>0.004) parts.push({r, tier:0, amt:mn});
+              if(nb>0.004) parts.push({r, tier:1, amt:cents(nb)});
+            }
+            const taken=new Map();
             let left=famBilled;
+            for(const tier of [0,1]){
+              const tp=parts.filter(p=>p.tier===tier);
+              while(tp.length && left>0.004){
+                let i=tp.findIndex(p=>Math.abs(p.amt-left)<=0.011);
+                if(i<0){ tp.sort((x,y)=>y.amt-x.amt); i=0; }
+                const p=tp.splice(i,1)[0];
+                const take=cents(Math.min(left, p.amt)); left=cents(left-take);
+                taken.set(p.r, cents((taken.get(p.r)||0)+take));
+              }
+            }
             for(const r of covRows){
               if(r.unset){ items.push(r); continue; }
-              const take=cents(Math.min(left, r.amt)); left=cents(left-take);
+              const take=cents(taken.get(r)||0);
               const amt=cents(r.amt-take);
               if(!(amt>0.004)) continue;
+              if(!(take>0.004)){ items.push(r); continue; }
               items.push(Object.assign(r,{kind:"short", amt, billed:take, wms:take,
                 desc:(r.desc?r.desc+" — ":"")+L("合併欄已收 "+money(take),"combined column paid "+money(take))}));
             }
