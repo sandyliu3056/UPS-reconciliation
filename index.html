@@ -4095,7 +4095,7 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-09-22-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-07-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -12519,7 +12519,8 @@ function bkdSection(r, wms, name0){
         if(bks.some(b=>accKeys.has(b)) || accKeys.has(c)) continue;
         const upsHas=mem.some(m=>Math.abs(toNum(upsCols[m]))>0.004);
         P.push(`<tr class="bkdna"><td>${esc2(c)}<span class="bkdsub">${esc2(upsHas
-          ?L("不重算","Not repriced"):L("UPS 未收,不重算","Not on the UPS invoice — not repriced"))}</span></td>`
+          ?L("不計入應收","Not counted in the chargeable amount")
+          :L("UPS 未收,不計入應收","Not on the UPS invoice — not counted in the chargeable amount"))}</span></td>`
           +`<td class="num">—</td></tr>`);
       }
     }
