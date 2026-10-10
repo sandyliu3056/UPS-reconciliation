@@ -96,7 +96,7 @@ ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft')
    '61 個 .sketch、17 個 .sketch-soft 都在(費率維護多一張「清除本層費率」)');
 ok(D.querySelectorAll('table').length===32&&D.querySelectorAll('.modalbg').length===27,
    '表格 32、視窗 27');
-ok(D.querySelectorAll('[data-i18n]').length===612, 'i18n 標記 612 個(清除本層費率:標題、說明、三個勾、一顆鈕)');
+ok(D.querySelectorAll('[data-i18n]').length===611, 'i18n 標記 611 個(清除本層費率:標題、說明、三個勾、一顆鈕;攤開視窗的標題固定英文,不再掛標記)');
 
 console.log('\n[8] \u7d19\u7684\u984f\u8272');
 ok(/--paper-mask:url\(/.test(face), '\u6709\u4e00\u5f35\u5c08\u9580\u7576\u906e\u7f69\u7684\u5642\u9ede');
