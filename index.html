@@ -3359,7 +3359,7 @@ label:has(#newChanOn){display:none !important}
 <div id="bkdBg" class="modalbg">
   <div class="modal sketch" id="bkdModal" style="width:min(860px,100%);height:min(78vh,900px);max-height:94vh">
     <div class="modalhd">
-      <span data-i18n="btn.breakdown">Rating Breakdown</span>
+      <span>Rating Breakdown</span>
       <span><button class="mx" id="bkdMax">⤢</button><button class="mx" id="bkdX">✕</button></span>
     </div>
     <div class="modalbody" id="bkdBody"></div>
@@ -3983,7 +3983,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-07-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-10-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -11555,7 +11555,13 @@ function bkdOrderLookup(q){
   if(!h) for(const run of ((typeof RECON_RUNS!=="undefined"&&RECON_RUNS)||[])){ h=hit(run.rows); if(h){ h.run=run.key; break; } }
   return h;
 }
+/* 攤開視窗固定英文:這一塊是拿去給客戶、給同事對帳用的,UPS 的名目本來就是英文,
+   介面切成中文時它不跟著變;匯出的活頁簿同理(bkdXlsx)。畫面其他地方照介面語言。 */
 function openBreakdown(){
+  const keepLang=LANG; LANG=1;
+  try{ return openBreakdown0(); } finally{ LANG=keepLang; }
+}
+function openBreakdown0(){
   let t=String(($("#trkSearch")||{}).value||"").trim().toUpperCase();
   let viaOrder=null;
   const body=$("#bkdBody");
@@ -11895,7 +11901,7 @@ function bkdWmsOf(trk, whole){
           zone:o.zone||"", wt:o.wt||"",
           pieces, share, whole:!!whole, trks:(o.trks||[]).slice(), orderAmt:cents(toNum(o.amt)), rebill, over,
           /* 補收不能只給一個總數 —— 要收客戶的錢,得說得出是哪幾項。 */
-          items:items.map(it=>({charge:it.charge, desc:it.desc||"", kind:it.kind, seg:it.seg||"",
+          items:items.map(it=>({charge:it.charge, desc:(it.descEn||it.desc)||"", kind:it.kind, seg:it.seg||"",
             amt:cents(toNum(it.amt)), fuel:cents(toNum(it.fuel)), fuelPct:it.fuelPct,
             total:cents(toNum(it.total)), over:cents(toNum(it.over))}))};
 }
@@ -11932,6 +11938,10 @@ function fmtPct2(v){
 }
 async function bkdXlsx(){
   if(!BKD_LAST||!BKD_LAST.out) return;
+  /* 活頁簿的分頁名、欄名、說明全部英文(和視窗一致);存檔之後的提示照介面語言。 */
+  const keepLang=LANG; LANG=1;
+  let sheets, name;
+  try{
   const {trk,out}=BKD_LAST;
   const MONEY="$#,##0.00", PCT="0.0%", DATE="mm/dd/yyyy";
   const HEAD="E8E2D6", UPSC="DDEBF7", UPSB="EFF6FD", REPC="FCE4D6", REPB="FDF3EC";
@@ -12139,8 +12149,8 @@ async function bkdXlsx(){
                c(cents(tr-tu),MONEY,"right",FOOT,true)]);
     return rows;
   })();
-  const name=("Tracking_"+trk+"_Breakdown").replace(/[^A-Za-z0-9_-]+/g,"")+".xlsx";
-  const ok=await xlWrite([
+  name=("Tracking_"+trk+"_Breakdown").replace(/[^A-Za-z0-9_-]+/g,"")+".xlsx";
+  sheets=[
     ...(reconRows?[{name:L("對帳計價","Reconciliation pricing"), rows:reconRows,
       cols:[{w:44},{w:26},{w:14},{w:14},{w:18}]}]:[]),
     {name:L("各期比較","Per invoice"), rows:sum, merges:sumMerges,
@@ -12148,8 +12158,11 @@ async function bkdXlsx(){
     {name:L("明細","Detail"), rows:det,
      cols:[{w:20}].concat(multi?[{w:22}]:[],[{w:16},{w:13},{w:38},{w:14}]), freeze:{r:1,c:0},
      filter:"A1:"+(multi?"F":"E")+det.length},
-  ], name);
-  toast(ok?L("已匯出 "+trk,"Exported "+trk):L("已取消存檔","Save cancelled"), ok);
+  ];
+  } finally { LANG=keepLang; }
+  const ok=await xlWrite(sheets, name);
+  const trk0=String(BKD_LAST.trk||"");
+  toast(ok?L("已匯出 "+trk0,"Exported "+trk0):L("已取消存檔","Save cancelled"), ok);
 }
 /* 跨期合成一筆:UPS 那一側把各期的行接起來(每一期原本是什麼段落照舊標著),
    重新計價那一側逐項相加。抵成 0 的項目不列 —— UPS 沖掉額外處理費改收大包裹,
@@ -16937,6 +16950,7 @@ function reconRun(list){
       if(wB!=null && Math.abs(wB)>0.004){
         items.push(Object.assign({kind:"short", charge:"Base Rate",
           desc:L("計費重 "+F.wtFrom+" → "+F.wtTo+" lb","Billable weight "+F.wtFrom+" → "+F.wtTo+" lb"),
+          descEn:"Billable weight "+F.wtFrom+" → "+F.wtTo+" lb",
           ups:cents(upsF["Base Rate"]||0), billed:wB, wms:wB,
           rate:cents(F.wtBase), amt:cents(F.wtRate), credit:0, creditFrom:[]}, base));
       }
@@ -17014,7 +17028,7 @@ function reconRun(list){
         const v=cents(rtnR[c]); if(!(v>0.004)) continue;
         if(rebillDisabled(c)) continue;
         items.push(Object.assign({kind:"miss", charge:c, seg:"rtn",
-          desc:L("退件回程","Return leg"),
+          desc:L("退件回程","Return leg"), descEn:"Return leg",
           ups:cents(upsRt[c]||0), billed:0, rate:v, amt:v, credit:0, creditFrom:[]}, base));
       }
     for(const [k,cols] of buckets){
@@ -17173,7 +17187,8 @@ function reconRun(list){
               if(!(amt>0.004)) continue;
               if(!(take>0.004)){ items.push(r); continue; }
               items.push(Object.assign(r,{kind:"short", amt, billed:take, wms:take,
-                desc:(r.desc?r.desc+" — ":"")+L("合併欄已收 "+money(take),"combined column paid "+money(take))}));
+                desc:(r.desc?r.desc+" — ":"")+L("合併欄已收 "+money(take),"combined column paid "+money(take)),
+                descEn:(r.desc?r.desc+" — ":"")+"combined column paid "+money(take)}));
             }
           }
         }
@@ -17197,6 +17212,7 @@ function reconRun(list){
           if(!(rv>0.004)) continue;
           items.push(Object.assign({kind:"miss", charge:f,
             desc:(desc[f]||[]).join(" / ")||L("依這個客戶的費率本來就成立","applies under this client's own rate"),
+            descEn:(desc[f]||[]).join(" / ")||"applies under this client's own rate",
             ups:upsM(f), billed:0, rate:rv, amt:rv, credit:0, creditFrom:[]}, base));
         }
       }
@@ -17260,10 +17276,12 @@ function reconRun(list){
         const dsc=(desc[c]||[]).join(" / ");
         if(d<0) items.push(Object.assign({kind:"over", charge:c,
             desc:dsc||L("向客戶收的高於這個客戶的費率","billed above this client's own rate"),
+            descEn:dsc||"billed above this client's own rate",
             ups:cents(upsF[c]||0), billed:w, rate:sh, amt:d, credit:0, creditFrom:[],
             wms:w, over:cents(-d), noFuel:true}, base));
         else items.push(Object.assign({kind:"short", charge:c,
             desc:dsc||L("向客戶收的低於這個客戶的費率","billed below this client's own rate"),
+            descEn:dsc||"billed below this client's own rate",
             ups:cents(upsF[c]||0), billed:w, rate:sh, amt:d, credit:0, creditFrom:[],
             wms:w, over:0, noFuel:true}, base));
       }
