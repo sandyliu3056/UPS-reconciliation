@@ -58,7 +58,8 @@ function runRecon(P){
   return {bw:pr.bw&&pr.bw.billable, mainAcc:pr.acc||{}, rtnAcc:(pr.rtn&&pr.rtn.acc)||null, npbAcc:(pr.npb&&pr.npb.acc)||null,
     mainDims:SHIPS[0]&&SHIPS[0].dims, rtnDims:SHIPS[0]&&SHIPS[0].rtnSeg&&SHIPS[0].rtnSeg.dims,
     rep:(o.fees&&o.fees.rep)||{}, rtnRep:(o.fees&&o.fees.rtnRep)||{}, npbRep:(o.fees&&o.fees.npbRep)||{},
-    wtRate:o.fees&&o.fees.wtRate, inv:o.inv, amt:o.amt, cost:o.cost, items, grand:res.rebill&&res.rebill.grand};
+    wtRate:o.fees&&o.fees.wtRate, inv:o.inv, amt:o.amt, cost:o.cost, items, grand:res.rebill&&res.rebill.grand,
+    mainBase:pr.base||0, npbBase:(pr.npb&&pr.npb.base)||0};
 }
 const TABLES=[baseTable('Ground Commercial'),baseTable('Ground Residential')];
 const tplOf=(trks,chg,extra)=>[Object.assign({ln:2,order:'K1',trks,cus:'CG',amt:20,src:'TMS',zone:'8',chan:'Ground',chg},extra||{})];
@@ -125,7 +126,7 @@ setTimeout(()=>{
       L('ADJ','CLB','FSC','FSC','Not Previously Billed Fuel Surcharge',2.35)];
     const acc=accOf({'AHS Dimension':4.50,'AHS Weight':6.08,'AHS Packaging':8.31,'Large Package':57.20,
       'Residential Surcharge':2.60,'DAS Residential':1.97,'DAS Commercial':1.35,'Missing PLD Fee':4.70});
-    const go=ahs=>inPage(runRecon,{tables:TABLES,acc,csv:csvOf(rows),tpl:tplOf([T],{'Base Rate':7.27,'Residential Surcharge':2.60,
+    const go=(ahs,extra)=>inPage(runRecon,{tables:TABLES,acc,csv:csvOf(rows.concat(extra||[])),tpl:tplOf([T],{'Base Rate':7.27,'Residential Surcharge':2.60,
       'Additional Handling + Large Package Surcharge':ahs,'Delivery Area / Remote Area Surcharge':1.97,'Fuel Surcharge':3.65,'Service Fee':0.20},{wt:23,zone:'2',amt:20.19})});
     const A=go(4.50); const fa=A.items.filter(x=>FAM.test(x.charge));
     ok(near(A.mainAcc['AHS Dimension'],4.50)&&A.npbAcc&&near(A.npbAcc['AHS Packaging'],8.31),'形狀對：出貨段 Dimension 4.50、第二段 Packaging 8.31',{m:A.mainAcc,n:A.npbAcc});
@@ -139,6 +140,19 @@ setTimeout(()=>{
     ok(fb.some(x=>/Dimension/.test(x.charge)&&x.kind==='short'&&near(x.amt,1.50)&&near(x.billed,3.00)),'收 3.00：Dimension 短收 1.50、已收 3.00',fb);
     ok(fb.some(x=>/Packaging/.test(x.charge)&&x.kind==='miss'&&near(x.amt,8.31)),'收 3.00：Packaging 仍整筆漏收',fb);
     ok(!go(12.81).items.some(x=>FAM.test(x.charge)),'收 12.81：家族一列都不開');
+    /* 第二段運送的運費:自己一列(客戶從來沒收過),主段的運費差額照舊、不重複 */
+    const nb=A.items.filter(x=>x.seg==='npb');
+    ok(A.npbBase>0&&nb.length===1&&nb[0].charge==='Base Rate'&&nb[0].kind==='miss'&&near(nb[0].amt,A.npbBase)&&near(nb[0].fuel,Math.round(A.npbBase*24)/100),
+       '第二段運送的運費自己一列，金額 = 第二段照客戶費率的運費、帶燃油',{npbBase:A.npbBase,nb});
+    ok(near(A.rep['Base Rate']-A.npbBase,A.mainBase),'應收的 Base Rate = 主段 + 第二段',{rep:A.rep['Base Rate'],main:A.mainBase,npb:A.npbBase});
+    const wr=A.items.filter(x=>x.charge==='Base Rate'&&x.kind==='short');
+    ok(wr.length===1&&near(wr[0].amt,Number((rateAt(58)-rateAt(23)).toFixed(2))),'主段的計費重差額（23 → 58）照舊、不含第二段',wr);
+    /* 同單另有運費更正:更正那一列 = 主段最後運費 − 已收(不含第二段),第二段仍自己一列 */
+    const S=go(4.50,[L('ADJ','SCC','FRT','003','Shipping Charge Correction Ground',0.50,20,25),
+                     L('ADJ','SCC','FSC','FSC','Shipping Charge Correction Fuel Surcharge',0.12)]);
+    const sc=S.items.find(x=>x.charge==='Shipping Charge Correction'), nb2=S.items.filter(x=>x.seg==='npb');
+    ok(sc&&near(sc.amt,Number((S.mainBase-7.27).toFixed(2))),'有更正：更正列 = 主段最後運費 − 已收，不含第二段',{sc,mainBase:S.mainBase});
+    ok(nb2.length===1&&near(nb2[0].amt,S.npbBase)&&!S.items.some(x=>x.charge==='Base Rate'&&x.kind==='short'),'有更正：第二段仍自己一列，計費重差額不另開',S.items);
   }
 
   /* ===== [3] 跨三期:出貨+更正(130 剛好在門檻)、退件回程、修回程的更正(大包裹) ===== */
