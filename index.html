@@ -2358,8 +2358,8 @@ label:has(#newChanOn){display:none !important}
       <th class="num" data-i18n="th.reconprofit">Profit</th>
       <th class="num" data-i18n="th.reconmargin">Margin</th>
       <th class="num" data-i18n="th.reconrep">Chargeable</th>
-      <th class="num" data-i18n="th.reconpgap">Billed vs recomputed</th>
-      <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
+      <th class="num" data-i18n="th.reconpgap">Billed vs Chargeable</th>
+      <th class="num" data-i18n="th.recongap">Chargeable vs UPS</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
     <p class="hint" style="margin:11px 0 0;max-width:76ch" data-i18n="hint.reconcols">Each customer is priced at its assigned rate level; billed, chargeable and UPS amounts yield the pricing and UPS variances. Definitions and edge cases are in the guide.</p>
 
@@ -2377,8 +2377,8 @@ label:has(#newChanOn){display:none !important}
       <th class="num c-cli"><span class="srcdot wms"></span><span data-i18n="th.chgbilled">Billed to client</span></th>
       <th class="num c-ups"><span class="srcdot ups"></span><span data-i18n="th.reconups">Charged by UPS</span></th>
       <th class="num c-rep"><span class="srcdot rep"></span><span data-i18n="th.reconrep">Chargeable</span></th>
-      <th class="num" data-i18n="th.chgpgap">Billed vs recomputed</th>
-      <th class="num" data-i18n="th.recongap">UPS vs recomputed</th>
+      <th class="num" data-i18n="th.chgpgap">Billed vs Chargeable</th>
+      <th class="num" data-i18n="th.recongap">Chargeable vs UPS</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table></div>
     </div>
     </div>
@@ -3741,7 +3741,7 @@ label:has(#newChanOn){display:none !important}
           <svg class="prthumb" viewBox="0 0 150 104" aria-hidden="true"><rect x="10" y="2" width="138" height="94" rx="4" fill="#fff" stroke="#c6cbd3"/><rect x="2" y="8" width="138" height="94" rx="4" fill="#fff" stroke="#c6cbd3"/><rect x="8" y="14" width="32" height="11" rx="1" fill="#E8E2D6"/><rect x="43" y="14" width="17" height="11" rx="1" fill="#DDEBF7"/><rect x="62" y="14" width="17" height="11" rx="1" fill="#DDEBF7"/><rect x="82" y="14" width="17" height="11" rx="1" fill="#FCE4D6"/><rect x="101" y="14" width="17" height="11" rx="1" fill="#FCE4D6"/><rect x="121" y="14" width="13" height="11" rx="1" fill="#E8E2D6"/><rect x="8" y="29" width="32" height="9" rx="1" fill="#edeff2"/><rect x="43" y="29" width="17" height="9" rx="1" fill="#EFF6FD"/><rect x="62" y="29" width="17" height="9" rx="1" fill="#EFF6FD"/><rect x="82" y="29" width="17" height="9" rx="1" fill="#FDF3EC"/><rect x="101" y="29" width="17" height="9" rx="1" fill="#FDF3EC"/><rect x="121" y="29" width="13" height="9" rx="1" fill="#edeff2"/><rect x="8" y="42" width="32" height="9" rx="1" fill="#edeff2"/><rect x="43" y="42" width="17" height="9" rx="1" fill="#EFF6FD"/><rect x="62" y="42" width="17" height="9" rx="1" fill="#EFF6FD"/><rect x="82" y="42" width="17" height="9" rx="1" fill="#FDF3EC"/><rect x="101" y="42" width="17" height="9" rx="1" fill="#FDF3EC"/><rect x="121" y="42" width="13" height="9" rx="1" fill="#edeff2"/><rect x="8" y="55" width="32" height="9" rx="1" fill="#edeff2"/><rect x="43" y="55" width="17" height="9" rx="1" fill="#EFF6FD"/><rect x="62" y="55" width="17" height="9" rx="1" fill="#EFF6FD"/><rect x="82" y="55" width="17" height="9" rx="1" fill="#FDF3EC"/><rect x="101" y="55" width="17" height="9" rx="1" fill="#FDF3EC"/><rect x="121" y="55" width="13" height="9" rx="1" fill="#edeff2"/><rect x="8" y="68" width="32" height="9" rx="1" fill="#edeff2"/><rect x="43" y="68" width="17" height="9" rx="1" fill="#EFF6FD"/><rect x="62" y="68" width="17" height="9" rx="1" fill="#EFF6FD"/><rect x="82" y="68" width="17" height="9" rx="1" fill="#FDF3EC"/><rect x="101" y="68" width="17" height="9" rx="1" fill="#FDF3EC"/><rect x="121" y="68" width="13" height="9" rx="1" fill="#edeff2"/><rect x="8" y="83" width="126" height="11" rx="1" fill="#FFF2CC"/></svg>
           <span class="prhd"><input type="radio" name="prPick" id="prInv">
             <b data-i18n="lb.prinv">This batch</b></span>
-          <i data-i18n="lb.prinvsub">The current reconciliation batch: its periods, rows, chargeable total and reconciliation profit — one coherent set of numbers.</i>
+          <i data-i18n="lb.prinvsub">The current reconciliation batch: its periods, rows, client total and reconciliation profit — one coherent set of numbers.</i>
           <em data-i18n="lb.prinvsh">2 sheets · Summary + Reconciliation profit</em>
           <u id="prInvWhat"></u></label>
         <label class="proption" id="prLabPer">
@@ -3983,7 +3983,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-h</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-i</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -9141,7 +9141,7 @@ function renderHome(){
       {html:money(pf)+(mg==null?"":`<small>${anaPct(mg)}</small>`), neg:pf<0},
       esc(runLabelOf(last))+" · "+esc(tplWhen(last.when))+(last.by?" · "+esc(last.by):""),
       `<div class="heq">
-        <div>${L("應收合計","Chargeable")}<b>${money(ch)}</b></div>
+        <div>${L("客戶合計","Client total")}<b>${money(ch)}</b></div>
         <div>UPS<b>${money(cost)}</b></div>
         <div>${L("對帳筆數","Rows")}<b>${toNum(last.n).toLocaleString()}</b></div>
       </div>`);
@@ -17976,7 +17976,7 @@ async function reconExport(){
   const sumCols=[["Customer Code","id"],["Customer Name","id"],["Rate Level","id"],["Repricing Status","id"],
     ["Rows","id"],["Packages Matched","id"],["Packages","id"],
     ["WMS / TMS","cli"],["UPS","ups"],["Chargeable","rep"],
-    ["Profit (Billed − UPS)","chk"],["WMS / TMS vs Chargeable","chk"],["UPS vs Chargeable","chk"]].map(([name,g])=>({name,g}));
+    ["Profit (Billed − UPS)","chk"],["WMS / TMS vs Chargeable","chk"],["Chargeable vs UPS","chk"]].map(([name,g])=>({name,g}));
   const sumRows=r.cus.map(a=>[a.code, a.name, lvl(a), why(a.block), a.orders, a.found, a.pkgs,
      m(a.amt,"cli"), m(a.cost,"ups"), m(a.rep,"rep"), m(a.profit), m(a.pgap), m(a.gap)]);
 
@@ -17988,7 +17988,7 @@ async function reconExport(){
     ["Channel","cli"],["Zone","cli"],["Billed Weight","cli"],["WMS / TMS","cli"],
     ["Channel (UPS)","ups"],["Zone (UPS)","ups"],["Billed Weight (UPS)","ups"],["UPS","ups"],
     ["Chargeable","rep"],
-    ["Channel Match","chk"],["Zone Match","chk"],["Profit (Billed − UPS)","chk"],["WMS / TMS vs Chargeable","chk"],["UPS vs Chargeable","chk"]]
+    ["Channel Match","chk"],["Zone Match","chk"],["Profit (Billed − UPS)","chk"],["WMS / TMS vs Chargeable","chk"],["Chargeable vs UPS","chk"]]
     .map(([name,g])=>({name,g}));
   const ordRows=r.orders.map(o=>[o.order, o.date, o.cus, lvl(o), why(o.block),
      (o.trks||[]).join(", "), o.ref1||"", o.ref2||"", o.pkgs, o.found, o.missTrk.join(", "),
@@ -19690,7 +19690,7 @@ $("#prGo") && ($("#prGo").onclick=prDownload);
 
 /* 對帳毛利頁:匯進來的 WMS / TMS 每一張單一列 —— 含沒有任何補收的單。
    利潤報表以前只有「重算 vs UPS」,對過帳的人看不到自己匯進來的那批單。
-   欄位就是儀表板那一條的展開:實收 + 應補收 = 應收合計,− UPS = 毛利;
+   欄位就是儀表板那一條的展開:實收 + 應補收 = 客戶合計,− UPS = 毛利;
    合計列和儀表板同一組數字。沒有對帳在畫面上就沒有這一頁。 */
 function prSheetRecon(){
   const r=(typeof RECON!=="undefined")&&RECON&&RECON.res;
@@ -19709,7 +19709,7 @@ function prSheetRecon(){
               L("單號","Order Number"),L("追蹤號","Tracking Number"),L("件數","Packages"),
               RECON_SRC+L(" 實收"," Billed")+(anySvc?L("(不含服務費)"," (excl. service fee)"):""),
               L("應補收(含燃油)","To Re-bill (incl. fuel)"),
-              L("應收合計","Chargeable"),"UPS",L("毛利","Profit"),L("毛利率","Margin")];
+              L("客戶合計","Client total"),"UPS",L("毛利","Profit"),L("毛利率","Margin")];
   const alignOf=c=>c<4?"left":"right";
   const grid=[head.map((h,c)=>({v:h,t:"s",s:{bold:true,fill:HEAD,align:alignOf(c),wrap:true,border:true}}))];
   const cell=(v,c,last)=>{
@@ -20258,7 +20258,7 @@ function renderDashBatches(body){
   }
   body.innerHTML=head+dashBarHTML()
     +`<div class="dflow">
-      <div class="dcell"><div class="dk">${L("應收合計","Chargeable")}</div>
+      <div class="dcell"><div class="dk">${L("客戶合計","Client total")}</div>
         <div class="dv">${money(cents(tot.ch))}</div>
         <div class="dsub">${money(cents(tot.amt))+L(" + 應補收 "," + to re-bill ")+money(cents(tot.rebill))}</div></div>
       <div class="dcell dop" data-op="−"><div class="dk">UPS</div>
@@ -20277,7 +20277,7 @@ function renderDashBatches(body){
         <th>${L("批次","Batch")}</th><th>${L("匯入時間","Imported")}</th>
         <th>${L("操作人","By")}</th><th>${L("筆數","Rows")}</th><th>${L("期數","Periods")}</th>
         <th>${L("實收","Billed")}</th><th>${L("應補收","To re-bill")}</th>
-        <th>${L("應收合計","Chargeable")}</th><th>UPS</th>
+        <th>${L("客戶合計","Client total")}</th><th>UPS</th>
         <th>${L("毛利","Profit")}</th><th>${L("毛利率","Margin")}</th>
       </tr></thead><tbody>${runs.map(r=>{ const v=of(r);
         const on=r.key===RECON_RUN_KEY;
@@ -20351,7 +20351,7 @@ function dashLevelHTML(){
     <table class="atbl"><thead><tr>
       <th>${L("層級","Rate level")}</th><th>${L("客戶","Clients")}</th>
       <th>${L("筆數","Orders")}</th>
-      <th>${L("應收合計","Chargeable")}</th><th>UPS</th>
+      <th>${L("客戶合計","Client total")}</th><th>UPS</th>
       <th>${L("毛利","Profit")}</th><th>${L("毛利率","Margin")}</th>
     </tr></thead><tbody>${rows.map(g=>`<tr>
       <td class="ak">${esc(anaLvlName(g.level))}</td>
@@ -20594,7 +20594,7 @@ function renderDashboard(){
     +(wmsAgg?(()=>{ const ch=Object.assign({},wmsAgg.buckets);
         const RBK=L("應補收","To re-bill");
         if(Math.abs(wmsAgg.rebill||0)>0.004) ch[RBK]=(ch[RBK]||0)+wmsAgg.rebill;
-        return oneP(ch,0,L("應收合計","CHARGEABLE"),wmsAgg.chargeable,{}); })():"")
+        return oneP(ch,0,L("客戶合計","CLIENT TOTAL"),wmsAgg.chargeable,{}); })():"")
     +`</div>`;
   const chItems=Object.entries((sc&&sc.chanAgg)||d.chanAgg||{})
     .filter(([,v])=>Math.abs(v)>0.004)
@@ -20623,7 +20623,7 @@ function renderDashboard(){
      內容和匯出都在 renderIssueCard()/exportIssues()。 */
   const lvlCard=dashLevelHTML();
   const uCard=renderIssueCard();
-  /* 毛利率跟著毛利走:應收合計是 0 就沒有比率可言(除以 0 會印出 Infinity%,
+  /* 毛利率跟著毛利走:客戶合計是 0 就沒有比率可言(除以 0 會印出 Infinity%,
      那比一格空白更難解釋)。分母取絕對值 —— 應收是負的時候,虧損不該顯示成賺。 */
   const wmsMargin=(wmsAgg&&Math.abs(wmsAgg.chargeable)>0.004)
     ? wmsAgg.profit/Math.abs(wmsAgg.chargeable)*100 : null;
@@ -20648,7 +20648,7 @@ function renderDashboard(){
     <!-- 毛利只從對帳算:向客戶實收 + 補收差額 − 那幾筆的 UPS 實收。重算不是毛利的基準,
          它只用來找漏收,所以放在第二行,和整批帳單的 UPS 總額、帳戶層費用並列。 -->
     ${wmsAgg?`<div class="dflow">
-      <div class="dcell"><div class="dk">${L("應收合計","Chargeable")}</div>
+      <div class="dcell"><div class="dk">${L("客戶合計","Client total")}</div>
         <div class="dv">${money(wmsAgg.chargeable)}</div>
         <div class="dsub">${esc(wmsAgg.src)+" "+money(wmsAgg.total)+L(" + 應補收 "," + to re-bill ")+money(wmsAgg.rebill)}</div></div>
       <div class="dcell dop" data-op="−"><div class="dk">UPS</div>
@@ -20657,7 +20657,7 @@ function renderDashboard(){
         <div class="dv ${wmsAgg.profit<0?"neg":"pos"}">${money(wmsAgg.profit)}</div></div>
       <div class="dcell"><div class="dk">${L("毛利率","Margin")}</div>
         <div class="dv ${wmsAgg.profit<0?"neg":"pos"}">${anaPct(wmsMargin)}</div>
-        <div class="dsub">${L("毛利 ÷ 應收合計","profit ÷ chargeable")}</div></div>
+        <div class="dsub">${L("毛利 ÷ 客戶合計","profit ÷ client total")}</div></div>
       <div class="dcell dapart"><div class="dk">${L("對帳筆數","Reconciled rows")}</div>
         <div class="dv">${wmsAgg.n}</div></div>
     </div>`:`<div class="dempty" style="padding:14px 18px;margin-bottom:12px">${L("毛利要等對帳:匯入 WMS / TMS 檔之後,這裡才會有「實收 + 應補收 − UPS」。",
@@ -20746,7 +20746,7 @@ function prSheetInvoice(){
     const cols=(lv||[]);
     const rows=[
       [hc2("Level","left")].concat(cols.map(g=>hc2(anaLvlName(g.level)))),
-      [hc2(L("應收合計","Chargeable"),"left")].concat(cols.map(g=>cell2(cents(g.chargeable),MONEY2))),
+      [hc2(L("客戶合計","Client total"),"left")].concat(cols.map(g=>cell2(cents(g.chargeable),MONEY2))),
       [hc2("UPS","left")].concat(cols.map(g=>cell2(cents(g.cost),MONEY2))),
       [hc2(L("毛利","Profit"),"left")].concat(cols.map(g=>cell2(cents(g.profit),MONEY2,true))),
       [hc2(L("毛利率","Margin"),"left")].concat(cols.map(g=>cell2(g.margin==null?0:g.margin/100,PCT2,true)))];
@@ -20805,14 +20805,14 @@ function prSheetInvoice(){
     kv(L("貨件數","Shipments"), d.n, INT),
     kv("UPS", cents(d.billed), MONEY),
     kv(L("帳戶層費用","Account charges"), cents(d.account), MONEY, true)];
-  /* 有對帳在畫面上時,摘要也要有它:實收、應補收、應收合計、對帳毛利 ——
+  /* 有對帳在畫面上時,摘要也要有它:實收、應補收、客戶合計、對帳毛利 ——
      和儀表板那一條同一份數字(dashWmsAgg),檔案和畫面對不起來的報表沒人信。 */
   const wa=(typeof dashWmsAgg==="function")&&dashWmsAgg();
   if(wa){
-    /* 實收與應補收併進應收合計一列 —— 組成寫在項目名裡,數字只留合計。 */
+    /* 實收與應補收併進客戶合計一列 —— 組成寫在項目名裡,數字只留合計。 */
     sum.push(
-      kv(L("應收合計("+wa.src+" 實收 + 應補收)","Chargeable ("+wa.src+" billed + re-bill)"), wa.chargeable, MONEY),
-      kv(L("對帳毛利(應收合計 − UPS)","Reconciliation profit (Chargeable − UPS)"), wa.profit, MONEY),
+      kv(L("客戶合計("+wa.src+" 實收 + 應補收)","Client total ("+wa.src+" billed + re-bill)"), wa.chargeable, MONEY),
+      kv(L("對帳毛利(客戶合計 − UPS)","Reconciliation profit (Client total − UPS)"), wa.profit, MONEY),
       kv(L("對帳毛利率","Reconciliation margin"), wa.chargeable?wa.profit/Math.abs(wa.chargeable):0, PCT),
       kv(L("對帳筆數","Reconciled rows"), wa.n, INT, true));
   }
@@ -23924,7 +23924,7 @@ const I18N={
   "hd.profitrep":["利潤報表","Profit report"],
   "hint.profitrep":["同一份資料的兩種報表:單期成本結構,或跨期損益彙總。請擇一。","Two reports from the same data: one invoice in cost detail, or every period summarised. Select one."],
   "lb.prinv":["本批次","This batch"],
-  "lb.prinvsub":["目前這一份對帳批次:它的期別、筆數、應收合計與對帳毛利 —— 同一份對帳的同一組數字。","The current reconciliation batch: its periods, rows, chargeable total and reconciliation profit — one coherent set of numbers."],
+  "lb.prinvsub":["目前這一份對帳批次:它的期別、筆數、客戶合計與對帳毛利 —— 同一份對帳的同一組數字。","The current reconciliation batch: its periods, rows, client total and reconciliation profit — one coherent set of numbers."],
   "lb.prinvsh":["2 頁 · 摘要 + 對帳毛利","2 sheets · Summary + Reconciliation profit"],
   "lb.prper":["各期","All periods"],
   "lb.prpersub":["跨期損益彙總。一期一列,依帳單日排序,含毛利、毛利率與合計。","Profit and margin across periods. One row per invoice period, ordered by invoice date, with totals."],
@@ -24156,7 +24156,7 @@ const I18N={
   "hint.recondetail":["補收完再看:漏收的項目補上之後,利潤與毛利率才是準的。","Read this after re-billing: profit and margin are only accurate once the missed charges above have been billed."],
   "btn.recondetail":["展開","Show"],
   "hint.reconchg":["同一筆費用由左到右三個數字:向客戶收多少(WMS/TMS 檔填的)、UPS 實際收多少、這個客戶的費率層級算出來應該收多少。最後兩欄是差異:向客戶收對應收是你的定價落差,UPS 收對應收是帳單和合約的落差 —— 差最多的排前面。",
-    "Every charge on the matched shipments, left to right: what you billed the client (from the WMS/TMS file), what UPS actually charged, and what this customer's rate level says it should be. The last two columns are the variances: billed vs chargeable is your pricing variance, UPS vs chargeable is where the invoice departs from the agreement — sorted with the largest gap first."],
+    "Every charge on the matched shipments, left to right: what you billed the client (from the WMS/TMS file), what UPS actually charged, and what this customer's rate level says it should be. The last two columns are the variances: billed vs chargeable is your pricing variance, chargeable vs UPS is where the invoice departs from the agreement — sorted with the largest gap first."],
   "lb.reconscope":["檢視範圍","Showing"],
   "hd.cusreg":["客戶","Customers"],
   "hint.cusreg":["你自己維護的清單。指定費率層級後,這個客戶的出貨就照那一層的費率重算。客戶名單為整個帳號共用,不隨層級切換而改變。",
@@ -24257,8 +24257,8 @@ const I18N={
   "th.reconprofit":["毛利","Profit"],
   "th.reconmargin":["毛利率","Margin"],
   "th.reconrep":["應收","Chargeable"],
-  "th.recongap":["UPS 差異","UPS vs recomputed"],
-  "th.reconpgap":["定價差異","Billed vs recomputed"],
+  "th.recongap":["UPS 差異","Chargeable vs UPS"],
+  "th.reconpgap":["定價差異","Billed vs Chargeable"],
   "hint.reconcols":["各客戶依其指派之費率層級計價;實收、應收與 UPS 三數推出定價差異與 UPS 差異。定義與特殊情況詳見說明(PDF)。","Each customer is priced at its assigned rate level; billed, chargeable and UPS amounts yield the pricing and UPS variances. Definitions and edge cases are in the guide."],
   "tab.setting":["🧭 費率層級","🧭 Rate levels"],
   "tab.rate":["帳戶與客戶","Account & Client Setup"],
@@ -24338,7 +24338,7 @@ const I18N={
   "hint.anaempty":["還沒有東西可以分析。這一頁讀的是對帳結果 —— 填好的模板導入之後,數字會出現在這裡,整份也才匯得出去。",
     "Nothing to analyse yet. This page reads the reconciliation — once the filled template is imported, the numbers land here and the whole analysis can be exported."],
   "th.chgbilled":["WMS / TMS","WMS / TMS"],
-  "th.chgpgap":["實收 vs 應收","Billed vs recomputed"],
+  "th.chgpgap":["實收 vs 應收","Billed vs Chargeable"],
   "lb.tplchg":["逐項費用(選填)","Itemised charges (optional)"],
   "hd.analvl":["依費率層級","By rate level"],
   "hint.analvl":["同一層費率的客戶加總起來。某一層的毛利率明顯低於其他層,不是費率訂錯,就是客戶放錯層。",
