@@ -3983,7 +3983,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-f</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-h</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -12052,6 +12052,7 @@ async function bkdXlsx(){
       if(wms && (wms.items||[]).length){
         const tag=it=>it.kind==="refund"?L("退還","Refund"):it.kind==="swap"?L("改收","Substituted")
                    :it.kind==="short"?L("短收","Short-billed"):it.kind==="audit"?L("稽核費","Audit fee")
+                   :it.kind==="over"?L("多收","Over-collected")
                    :L("漏收","Not billed");
         for(const it of wms.items){
           if(!(Math.abs(it.amt)>0.004)) continue;
@@ -12385,6 +12386,7 @@ function bkdSection(r, wms, name0){
          才算,所以它自己一列。只給一個總數沒辦法拿去跟客戶對。 */
       const extra=[];
       const tagOf=it=> it.kind==="swap"?L("改收","Substituted")
+                     : it.kind==="over"?L("多收","Over-collected")
                      : it.kind==="short"?L("短收","Short-billed")
                      : it.kind==="audit"?L("稽核費","Audit fee")
                      : it.kind==="refund"?L("退還","Refund")
@@ -16975,6 +16977,21 @@ function reconRun(list){
         }
       }
     }
+    /* 負向的運費更正(UPS 把重量改輕、運費改低):以前這裡什麼都不開,Detail 匯出
+       卻把運費標成多收,兩邊對不起來。客戶收過運費、重算算得出最後運費時,
+       「最後運費 − 已收」是負的就列成多收,退給客戶,燃油跟著退;退錢的更正不收稽核費。 */
+    else if(upsF[SCC]<-0.004){
+      const wS=billedOf(SCC);
+      if(!(wS!=null && Math.abs(wS)>0.004)){
+        const wB=billedOf("Base Rate"), rB0=rateOf("Base Rate"), rB=(rB0==="unset")?null:rB0;
+        if(rB!=null && wB!=null && Math.abs(wB)>0.004){
+          const d=cents(rB-wB);
+          if(d<-0.004 && Math.abs(d)>=MIN_DIFF)
+            items.push(Object.assign({kind:"over", charge:SCC, desc:(desc[SCC]||[]).join(" / "),
+              ups:cents(upsF[SCC]), billed:wB, rate:rB, amt:d, credit:0, creditFrom:[], wms:wB, over:cents(-d)}, base));
+        }
+      }
+    }
     /* 計費重差額:客戶照自己填的重量收了運費,合約的計費重比它重、而這一單沒有運費
        更正 —— 補兩個重量之間的運費差(rate 欄是合約計費重的運費,實收欄是客戶收的
        運費)。客戶連運費都沒收的不走這裡:未收清單會照最後運費整筆補。有運費更正、
@@ -16983,11 +17000,17 @@ function reconRun(list){
        && !(F.zoneRate!=null && cents(F.zoneRate)>0.004)){
       const wB=billedOf("Base Rate");
       if(wB!=null && Math.abs(wB)>0.004){
-        items.push(Object.assign({kind:"short", charge:"Base Rate",
-          desc:L("計費重 "+F.wtFrom+" → "+F.wtTo+" lb","Billable weight "+F.wtFrom+" → "+F.wtTo+" lb"),
-          descEn:"Billable weight "+F.wtFrom+" → "+F.wtTo+" lb",
-          ups:cents(upsF["Base Rate"]||0), billed:wB, wms:wB,
-          rate:cents(F.wtBase), amt:cents(F.wtRate), credit:0, creditFrom:[]}, base));
+        /* 補的不能超過「主段最後運費 − 客戶實收運費」:客戶照自己的重量收的若比費率表
+           高,重量差額已經有一部分收在裡面,整筆重量差再補上去就多收了
+           (rate 14.42 / 實收 8.95 / 補 6.96 那種列自相矛盾)。 */
+        const gap=cents(repM("Base Rate")-wB);
+        const amt=cents(Math.min(cents(F.wtRate), gap));
+        if(amt>=MIN_DIFF)
+          items.push(Object.assign({kind:"short", charge:"Base Rate",
+            desc:L("計費重 "+F.wtFrom+" → "+F.wtTo+" lb","Billable weight "+F.wtFrom+" → "+F.wtTo+" lb"),
+            descEn:"Billable weight "+F.wtFrom+" → "+F.wtTo+" lb",
+            ups:cents(upsF["Base Rate"]||0), billed:wB, wms:wB,
+            rate:cents(F.wtBase), amt, credit:0, creditFrom:[]}, base));
       }
     }
     /* ZONE 更正的補收,一正一負開在帳單上:退還客戶照舊 Zone 收的那一筆(負數),
@@ -16995,7 +17018,7 @@ function reconRun(list){
        附加費(額外處理、大包裹)各一組;客戶那筆沒收過的照全額補、不退。
        照運費更正的慣例收一筆稽核費(同單已因 SCC 收過、或帳單上已有稽核費行的
        不重複)。同單另有重量更正(SCC)時運費walk那一條路,不重複。 */
-    if((F.zoneRate!=null && cents(F.zoneRate)>0.004) || F.zoneAcc){
+    if((F.zoneRate!=null && Math.abs(cents(F.zoneRate))>0.004) || F.zoneAcc){
       /* 呈現:敘述用全句「Zone corrected from 2 to 6 — reversed / rebilled」;
          退還列 Zone 欄寫原本的 Zone,補收列寫更正後的,對帳單一眼分得出一負一正。 */
       const zOldTxt=String(F.zoneOld||""), zNewTxt=String(F.zoneNew||"");
@@ -17017,13 +17040,15 @@ function reconRun(list){
         items.push(Object.assign({kind:"zone", charge:nm, desc:zn+" — rebilled",
           ups:0, billed:0, rate:cents(newAmt), amt:cents(newAmt), credit:0, creditFrom:[]}, base));
       };
-      let did=false;
+      let did=false, zoneNeg=false;
       const hasSCC=upsF[SCC]>0.004;
-      if(F.zoneRate!=null && cents(F.zoneRate)>0.004 && !hasSCC){
+      /* Zone 改低(更正後的費率比原本低)也走同一組一退一收:退原收的、照更正後的
+         Zone 補,淨額是負的 —— 以前只處理改高,改低一列都不開。退錢的不收稽核費。 */
+      if(F.zoneRate!=null && Math.abs(cents(F.zoneRate))>0.004 && !hasSCC){
         const rB=cents(toNum(rep2["Base Rate"]||0)-(toNum(npbR["Base Rate"])||0));
         const bB=billedOf("Base Rate");
         if(rB>0.004 && bB!=null && Math.abs(bB)>0.004){
-          swapPair("Base Rate", rB); did=true;
+          swapPair("Base Rate", rB); did=true; zoneNeg=cents(F.zoneRate)<0;
         }
       }
       if(!did && !hasSCC && F.zoneRate!=null && cents(F.zoneRate)>0.004){
@@ -17047,7 +17072,7 @@ function reconRun(list){
         /* 這一家族在下面的家族路不要再比一次:一退一收已經處理完。 */
         if(famOf.has(nm)) zoneDone.add("f"+famOf.get(nm));
       }
-      if(did && AUD_FEE>0 && !auditPushed){
+      if(did && !zoneNeg && AUD_FEE>0 && !auditPushed){
         auditPushed=true;
         items.push(Object.assign({kind:"audit", charge:AUDIT_FEE_NAME, desc:zn,
           ups:0, billed:0, rate:AUD_FEE, amt:AUD_FEE, credit:0, creditFrom:[]}, base));
@@ -17826,7 +17851,7 @@ function renderRebill(){
   const dash=`<span class="empty">—</span>`;
   const tb=$("#tRebill")&&$("#tRebill").tBodies[0];
   /* 畫面上只放費用名稱和一個標籤;帳單原文和「抵已收」的細節滑上去看,匯出的 To re-bill 也都有。 */
-  const tagOf=it=>it.kind==="zone"?L("Zone 更正","Zone correction"):it.kind==="refund"?L("退還","Refund"):it.kind==="swap"?L("改收","Substituted"):it.kind==="short"?L("短收","Short-billed"):it.kind==="audit"?L("稽核費","Audit fee"):it.unset?L("費率未設定","Rate not set"):(it.rate===0?L("合約無此項","No contract rate"):L("漏收","Not billed"));
+  const tagOf=it=>it.kind==="zone"?L("Zone 更正","Zone correction"):it.kind==="refund"?L("退還","Refund"):it.kind==="swap"?L("改收","Substituted"):it.kind==="over"?L("多收","Over-collected"):it.kind==="short"?L("短收","Short-billed"):it.kind==="audit"?L("稽核費","Audit fee"):it.unset?L("費率未設定","Rate not set"):(it.rate===0?L("合約無此項","No contract rate"):L("漏收","Not billed"));
   const chgCell=it=>`${esc(it.charge)} <span class="chggrp">${esc(tagOf(it))}</span>`;
   const chgTip=it=>esc([it.desc?L("UPS 名目:","UPS: ")+it.desc:"",
     L("客戶端實收 ","billed to the client ")+money(it.wms)
