@@ -16,22 +16,23 @@
    03 是「有哪些」(目錄)、04 是「收多少」(費率),兩者用字分開。 */
 var RENAME={
   /* 左欄 */
-  "tab.general":["定價設定",           "Pricing Configuration"],
+  "nav.recon":  ["日常作業",           "Operations"],
+  "tab.general":["計價設定",           "Pricing Configuration"],
   "tab.rate":   ["客戶管理",           "Customer Management"],
   "tab.cat":    ["渠道與附加費目錄",   "Channel & Surcharge Catalog"],
-  "tab.fill":   ["渠道與附加費費率",   "Channel & Surcharge Rates"],
+  "tab.fill":   ["費率維護",           "Rate Maintenance"],
   "tab.wmsdata":["WMS / TMS 匯入",     "WMS / TMS Import"],
   "tab.files":  ["UPS 帳單匯入",       "UPS Invoice Import"],
   /* 01 */
   "rt.levels":  ["1. 費率層級",        "1. Rate Levels"],
-  "rt.chgcode": ["2. 費用代碼對照",    "2. Charge Code Mapping"],
-  "rt.sys":     ["3. 系統設定",        "3. System Settings"],
+  "rt.chgcode": ["2. UPS 代碼查詢",    "2. UPS Code Lookup"],
+  "rt.sys":     ["1. 一般設定",        "1. General Settings"],
+  "tab.sys":    ["一般設定",          "General Settings"],
   /* 02 */
   "rt.customers":["1. 客戶名錄",       "1. Customer Directory"],
   /* 03 */
   "rt.chan":    ["1. 渠道",            "1. Channels"],
-  "rt.rules":   ["2. 附加費目錄",      "2. Surcharge Catalog"],
-  "rt.demand":  ["3. Demand 期間",     "3. Demand Periods"]
+  "rt.rules":   ["2. 附加費目錄",      "2. Surcharge Catalog"]
 };
 function boot(){
   if(typeof I18N==="undefined") return;

@@ -51,7 +51,7 @@ document.addEventListener("keydown",function(e){
    做法是在捕捉階段擋住原本的 input,延後再補送一次同樣的事件 ——
    原本的 oninput 一行都不用碰,重新繫結也不會把這層蓋掉。 */
 var DEB_MS=180;
-var DEB_IDS=["accMgrSearch","cusSearch","chanSearch","accSearch","demSearch",
+var DEB_IDS=["accMgrSearch","cusSearch","chanSearch","accSearch",
              "trkSearch","lvlSearch","sysSearch","codeSearch","chgSearch"];
 var pend={};
 document.addEventListener("input",function(e){
@@ -172,7 +172,8 @@ function armSort(t){
 
 /* ── 4. 首欄凍結 ───────────────────────────────────────────────────────
    十一到十三欄的表往右捲之後,看到一排數字卻不知道是誰的。
-   第一欄釘住,身分就一直在。 */
+   第一欄釘住,身分就一直在。tHist 不釘:那張表首欄是期號,同一頁幾乎同值,
+   釘住只會蓋掉資料。 */
 var PIN_IDS=["tRecon","tReconChg","tSize"];
 
 function arm(){
