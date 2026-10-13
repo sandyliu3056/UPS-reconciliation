@@ -340,6 +340,25 @@ setTimeout(async()=>{
     ok(!banner.err&&!banner.hidden&&/hit an error while pricing/.test(banner.text)&&/TER2/.test(banner.text)&&/boom TER2/.test(banner.text),'畫面上講出來:哪幾筆、什麼訊息',banner);
   }
 
+  /* ===== [8] Void:UPS 開了又整筆沖掉,淨額 0 —— 這一件沒有走,不向客戶計價 ===== */
+  console.log('\n[8] Void 沖銷');
+  {
+    const T='TVD1';
+    const L=(cat,det,cls,code,desc,net,ent,bil)=>['2026-07-18','INV1','A1','2026-07-10',T,T,ent==null?'':ent,bil==null?'':bil,'','','008',cat,det,cls,code,desc,net.toFixed(2),'',''];
+    const acc=accOf({'AHS Dimension':6.08,'AHS Weight':6.08,'Large Package':57.20,'DAS Commercial':1.35,'Residential Surcharge':2.60});
+    const chg={'Base Rate':11.50,'Fuel Surcharge':2.76};
+    const full=[L('SHP','ISS','FRT','003','Ground Commercial',12.00,10,10),L('SHP','ISS','FSC','FSC','Fuel Surcharge',2.88),
+                L('ADJ','VOD','FRT','003','Void Shipment',-12.00,10,10),L('ADJ','VOD','FSC','FSC','Void Shipment Fuel Surcharge',-2.88)];
+    const V=inPage(runRecon,{tables:TABLES,acc,csv:csvOf(full),tpl:tplOf([T],chg,{wt:10,amt:14.26})});
+    ok(V.mainBase===0&&!(V.rep['Base Rate']>0)&&!(V.rep['Fuel Surcharge']>0),'整筆沖銷、淨額 0:運費與燃油都不計價',{base:V.mainBase,rep:V.rep});
+    ok(near(V.cost,0),'UPS 那一側 0',V.cost);
+    ok(!V.items.some(x=>x.amt>0.004),'沒有任何一列補收(UPS 一毛都沒收)',V.items);
+    /* 部分沖銷(淨額不為零)照原價計。 */
+    const part=full.slice(0,3);
+    const Pp=inPage(runRecon,{tables:TABLES,acc,csv:csvOf(part),tpl:tplOf([T],chg,{wt:10,amt:14.26})});
+    ok(near(Pp.mainBase,rateAt(10)),'只沖掉一部分、淨額不為零:仍照原價計',{base:Pp.mainBase,want:rateAt(10)});
+  }
+
   console.log('\n── '+pass+' pass / '+fail+' fail ──');
   process.exit(fail?1:0);
 }, 900);
