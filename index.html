@@ -1404,7 +1404,7 @@ main.home #p-home.on{flex:1 0 auto;display:flex;flex-direction:column}
    大片底色反而變成畫面上最大的一塊東西。 */
 /* 首頁面板。三塊:最近一次對帳(大)、待補收、帳單歷史,底下三顆快捷。
    數字用標題字型 —— 首頁是用看的,不是用讀的。 */
-.homeboard{display:grid;grid-template-columns:1.7fr 1fr 1fr;gap:14px;margin:20px 0 4px}
+.homeboard{display:grid;grid-template-columns:1.7fr 1fr;gap:14px;margin:20px 0 4px}
 .homeboard .hcard{position:relative;padding:16px 18px 15px;border-radius:12px;
   background:var(--panel);border:2px solid var(--line);box-shadow:0 2px 0 rgba(0,0,0,.07)}
 .homeboard .hcard.hero{border-color:var(--accent)}
@@ -3983,7 +3983,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-b</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-c</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -9088,6 +9088,9 @@ function renderClaimCard(){
 }
 /* 首頁那一塊。數字全部取自已經存好的東西 —— 對帳批次的摘要、帳單歷史的索引,
    不重算、不打資料庫的明細,所以進首頁是即時的。 */
+/* UPS Billing Center 的入口:固定用 billing.ups.com,它自己會轉到當下有效的登入頁
+   (登入頁的網址帶一次性的 nonce / state,不能寫死)。 */
+const UPS_BILLING_URL="https://billing.ups.com/";
 function renderHome(){
   const box=$("#homeBoard"); if(!box) return;
   let runs=(typeof RECON_RUNS!=="undefined"&&RECON_RUNS)?RECON_RUNS:null;
@@ -9145,9 +9148,8 @@ function renderHome(){
   const rb=card("", L("這一批的應補收","To re-bill · latest batch"),
       {html:money(rebill), neg:rebill<0},
       esc(L("向客戶補收的差額","the shortfall to bill the client")));
-  const hist=card("", L("帳單歷史","Invoices filed"),
-    {html:String(per.length)+`<small>${L("期","periods")}</small>`},
-    per.length?esc(L("最新:","Latest: ")+per[0].key+" · "+(per[0].date||"—")):esc(L("還沒有帳單","nothing filed yet")));
+  /* 「帳單歷史」那張卡拿掉了:期數在帳單歷史分頁本來就看得到;這個位置改放
+     一顆到 UPS Billing Center 的按鈕(下面 hacts),帳單從那裡下載。 */
   const rows=runs.slice(0,5).map(r=>{
     const v=r.sum||{}; const c=cents(toNum(v.amt)+toNum(v.rebill));
     const p=cents(c-toNum(v.cost));
@@ -9157,9 +9159,10 @@ function renderHome(){
       <span class="hnum">${toNum(r.n).toLocaleString()}${L(" 筆"," rows")}</span>
       <span class="hnum">${money(c)}</span>
       <span class="hnum ${p<0?"neg":"pos"}">${money(p)}</span></button>`; }).join("");
-  box.innerHTML=`<div class="homeboard">${hero}${rb}${hist}</div>
+  box.innerHTML=`<div class="homeboard">${hero}${rb}</div>
     <div class="hacts">
       <button class="act ghost" data-go="analysis">📈 ${esc(L("儀表板","Dashboard"))}</button>
+      <a class="act ghost" href="${UPS_BILLING_URL}" target="_blank" rel="noopener">UPS Billing Center ↗</a>
     </div>
     <div class="hlist"><div class="hlisthd">${esc(L("最近的對帳批次","Recent reconciliations"))}
       <span>${esc(L("點一下開起來看","open one to look at it"))}</span></div>${rows}</div>`;
