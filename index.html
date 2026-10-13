@@ -4095,7 +4095,7 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-j</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-k</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -5974,6 +5974,21 @@ function priceShipment(cfg, s, force){
 
   /* 燃油。自訂附加費標 Fuel Eligible = NO 的不進燃油底,但仍然算進
      合約總額 —— 桌面版 fuel_base 那一段的算法。內建附加費一律計燃油。 */
+  /* UPS 開了又整筆沖掉(Void Shipment):這一件沒有走,UPS 最後收 $0.00。
+     照費率表向客戶收一筆,等於把一件不存在的出貨開進帳單;而儀表板會把
+     那一期算成 100% 毛利率。條件收得很緊 —— 帳上要有沖銷行,而且整個
+     追蹤號的淨額要歸零。部分沖銷仍照原價計,只記一條異常讓人自己看。
+     (reprice 站的引擎早有這一段;兩站的 priceShipment 要一樣。) */
+  if((s.allLines||[]).some(l=>/\bvoid/i.test(String(l.desc||"")))){
+    if(Math.abs(toNum(s.upsTotal))<0.005){
+      base=0; for(const k of Object.keys(acc)) acc[k]=0;
+      issues.push(L("UPS 已整筆沖銷(Void),未向客戶計價",
+                    "Voided by UPS — nothing charged to the customer"));
+    } else {
+      issues.push(L("帳上有沖銷行,但整筆淨額不為零 —— 仍照原價計",
+                    "A void line is present but the tracking does not net to zero — priced as normal"));
+    }
+  }
   const accTotal=Object.values(acc).reduce((a,b)=>a+b,0);
   const noFuel=scan.nonFuel||new Set();
   const nonFuelSum=Object.entries(acc)
