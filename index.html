@@ -2294,7 +2294,7 @@ label:has(#newChanOn){display:none !important}
 
   <div class="lf sketch" id="reconResCard" hidden>
     <h3 class="display"><span class="em">📌</span><span data-i18n="hd.rebill">To re-bill</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:80ch" data-i18n="hint.rebill">Charges UPS billed that WMS / TMS did not bill the client, one item per row, largest first. To re-bill is the customer's own rate where the rate level gives one, otherwise the UPS amount. Profit is only accurate once these are re-billed; the full comparison is folded below.</p>
+    <p class="hint" style="margin:0 0 11px;max-width:80ch" data-i18n="hint.rebill">Charges UPS billed that the client was not charged for, at the client's own rates; substitutions and reversals as a refund-and-rebill pair, fuel added last.</p>
     <div class="row" style="margin-bottom:9px">
       <button class="act sm" id="bReconRerun" data-i18n="btn.reconrerun">Analyse</button>
       <label class="inlab" style="margin-left:0" data-i18n="lb.reconscope">Showing</label>
@@ -4095,7 +4095,7 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-b</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -24241,8 +24241,8 @@ const I18N={
   "ct.recon":["對帳","Reconciliation"],
   "hd.reconchg":["逐項比對","By charge"],
   "hd.rebill":["補收清單","To re-bill"],
-  "hint.rebill":["UPS 有收、WMS / TMS 沒向客戶收的項目,一項一列,金額大的在前;名稱用 UPS 的細項名,底下帶帳單上的原文,可以直接開給客戶。「應補收」用客戶自己的費率(重算有算這一項就用它),合約沒有費率或 UPS 才有的項目照 UPS 實收。燃油最後算:應補收 × 這一筆客戶的燃油 %,只算 UPS 本來就加燃油的項目。UPS 量過改收別的費用(例如額外處理改成大包裹)、或收了又整筆沖掉時,客戶原本收的那一項列成「退還」、燃油跟著退,改收的那一項照全額補收;兩者相抵的數看下面的「淨額」磚。補收完利潤才準;完整的比對收在下面。",
-    "Charges UPS billed that WMS / TMS did not bill the client, one item per row, largest first, under UPS's own itemised name with the invoice wording beneath, ready to pass on to the customer. To re-bill is the customer's own rate where the rate level priced the charge, otherwise the UPS amount. Fuel comes last: to re-bill times the customer's fuel percent, only on charges UPS itself fuels. When UPS re-measured a package and billed a different surcharge (for example Large Package instead of Additional Handling), or reversed a charge outright, the charge the client already paid is listed as a Refund with its fuel and the new charge is re-billed in full; the Net tile below shows the balance. Profit is only accurate once these are re-billed; the full comparison is folded below."],
+  "hint.rebill":["UPS 有收、客戶端沒收的項目,照客戶自己的費率補收;改收與沖銷一退一收,燃油最後加。",
+    "Charges UPS billed that the client was not charged for, at the client's own rates; substitutions and reversals as a refund-and-rebill pair, fuel added last."],
   "th.rebillorder":["單號","Order Number"],
   "th.rebilltrk":["追蹤號","Tracking Number"],
   "th.rebillrate":["應收","Chargeable"],
