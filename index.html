@@ -4095,7 +4095,7 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-i</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-j</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -16176,7 +16176,7 @@ const reconTxt=v=>String(v==null?"":v).trim();
    理由給呼叫端去講。以前的寫法是靜靜地套用現在使用中的那一層 —— 算得出數
    字,報表看起來也正常,但那不是這個客戶的費率;而且畫面切換層級之後,同一
    批資料會算出不同的答案。空著比一個看不出錯的錯數字安全。 */
-const RL_OK="", RL_NONE="none", RL_GONE="gone";
+const RL_OK="", RL_NONE="none", RL_GONE="gone", RL_ERR="err";   /* err:計價丟出例外,這一單沒重算 */
 const RECON_CFG=new Map();
 function reconResolve(level){
   const o=rlStore();
@@ -16792,6 +16792,7 @@ function reconRun(list){
   const reg=cusReg();
   const byCode=new Map(reg.map(c=>[c.code,c]));
   const orders=[], perCus=new Map(), lostLevel=new Set(), noLevel=new Set();
+  const priceErrs=[];  /* 計價丟出例外的單:講出來,不能悄悄當 0 */
   const notOnInv=[];   /* WMS / TMS 有、這期帳單上沒有的:另外收著,不進對帳 */
   /* 三邊都講 Consolidated 的名字。UPS 那一側每一行照稽核中心的分欄歸位 ——
      帳單上有收的一欄都不缺;重算那一側的欄名事後對過去(audNameOf)。對名字
@@ -16823,6 +16824,11 @@ function reconRun(list){
     let upsWt=0, wtN=0, upsId=null, fuelPct=null, sccRate=null, zoneRate=null, zoneNote="", zoneAcc=null, zoneOld="", zoneNew="";
     let wtRate=null, wtBase=0, wtFrom=0, wtTo=0;   /* 計費重差額:客戶重量 → 合約計費重的運費差 */
     let usedArch=false;
+    /* 計價丟出例外(程式的錯,不是資料的):以前 catch 裡什麼都不做,這一單就安安靜靜
+       地變成「重算 0、全部漏收」。現在記下來,整單當沒重算,畫面上講出來。
+       重算與 UPS 兩側要整單每一件都算得出來才入桶,所以先收在單裡,最後一起放。 */
+    let priceErr="";
+    const repLocal=[], upsLocal=[];
     const pieceFees=new Map();       /* 每一件各自的 UPS 費用(照 Consolidated 分欄),補收拆件用 */
     const pieceUps=new Map();        /* 每一件自己的帳單識別欄(尺寸、重量、Zone):匯出一件一列時用它,不用整單第一件的 */
     const pieceRev=new Map();        /* 每一件被 UPS 整筆沖銷的欄:退款要落在真的收過那一項的那一件 */
@@ -16985,16 +16991,24 @@ function reconRun(list){
             npbCols[cn]=cents((npbCols[cn]||0)+toNum(v2));
           }
         }
-        repPend.push([e.cus, reportRowOf(priced), !!priced.residential, feesRep, feesKnown,
+        repLocal.push([e.cus, reportRowOf(priced), !!priced.residential, feesRep, feesKnown,
                       accKeys, [...(priced.missFees||[])], !!priced.rtn, !priced.baseMissing,
                       rtnCols, feesRtn, npbCols, feesNpb]);
-        for(const [col,v] of Object.entries(cf.fees)) chgBump(e.cus, col, "ups", v);
-      }catch(err){}
+        upsLocal.push(cf.fees);
+      }catch(err){
+        priceErr=String((err&&err.message)||err)||"error";
+        console.warn("priceShipment failed:", t, err);
+      }
     }
+    if(!priceErr){
+      for(const r0 of repLocal) repPend.push(r0);
+      for(const f0 of upsLocal) for(const [col,v] of Object.entries(f0)) chgBump(e.cus, col, "ups", v);
+    } else priceErrs.push({trk:e.trks.join(", "), order:e.order, cus:e.cus, msg:priceErr});
+    const oBlock=block||(priceErr?RL_ERR:"");
     /* 整筆一個追蹤號都不在這期帳單上:沒有 UPS 那一側可比,不進對帳、不進合計,
        另外收著,匯出時自成一頁。一票多件只缺幾件的照常對,缺的那幾件成本算 0。 */
     const offInv=e.trks.length>0 && missTrk.length===e.trks.length;
-    if(e.chg && !block && !offInv)
+    if(e.chg && !oBlock && !offInv)
       /* 逐項向客戶收:一列一次入桶。沒重算的列三側都不進逐項表 ——
          只有 billed 進的話,三方對比會歪一邊。 */
       for(const [nm,v] of Object.entries(e.chg)) chgBump(e.cus, nm, "billed", v);
@@ -17018,22 +17032,25 @@ function reconRun(list){
              chan, sysChan, chanMis, chanUnknown,
              wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"", arch:usedArch,
              fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc, zoneOld, zoneNew, rtnRep:feesRtn, upsRtn:feesUpsRtn, npbRep:feesNpb, upsNpb:feesUpsNpb, wtRate, wtBase, wtFrom, wtTo}, billedFees:e.chg||null, invDate:[...invDates].join(" / "), inv:[...invNums].join(" / "),
-             name:(c.name||e.cus), level:c.level||"", block,
+             name:(c.name||e.cus), level:c.level||"", block:oBlock, priceErr,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
              amt:e.amt, svc:cents((e.chg||{})[RECON_OTHER]||0),
-             cost:cents(cost), rep:block?null:cents(rep)};
+             cost:cents(cost), rep:oBlock?null:cents(rep)};
     /* 毛利只要 WMS 和帳單,沒有層級也算得出來。另外兩個要重算,擋下來就留空。 */
     o.profit=cents(reconNetAmt(o)-o.cost);
-    o.gap  = block?null:cents(o.rep-o.cost);   /* UPS 差異:帳單 vs 費率表 */
-    o.pgap = block?null:cents(reconNetAmt(o)-o.rep);  /* 定價差異:實收 vs 應收 */
+    o.gap  = oBlock?null:cents(o.rep-o.cost);   /* UPS 差異:帳單 vs 費率表 */
+    o.pgap = oBlock?null:cents(reconNetAmt(o)-o.rep);  /* 定價差異:實收 vs 應收 */
     if(offInv){ notOnInv.push(o); continue; }
     orders.push(o);
     let a=perCus.get(e.cus);
     if(!a){ a={code:e.cus, name:o.name, level:o.level, block, srcs:{},
-               orders:0, pkgs:0, found:0, amt:0, cost:0, rep:0}; perCus.set(e.cus,a); }
+               orders:0, pkgs:0, found:0, amt:0, cost:0, rep:0, repAmt:0, repCost:0, errs:0}; perCus.set(e.cus,a); }
     a.srcs[o.src]=1;
     a.orders++; a.pkgs+=o.pkgs; a.found+=o.found;
-    a.amt+=reconNetAmt(o); a.cost+=o.cost; if(!block) a.rep+=o.rep;
+    a.amt+=reconNetAmt(o); a.cost+=o.cost;
+    /* 重算那三個數只加算得出來的單:一單出錯,這個客戶的差異照其餘的單算,不混進去。 */
+    if(!oBlock){ a.rep+=o.rep; a.repAmt+=reconNetAmt(o); a.repCost+=o.cost; }
+    else if(priceErr) a.errs++;
   }
   /* 重算那一側現在才入桶:名字對到這批帳單上實際用的欄。 */
   for(const [cus,row,resi,feesRep,known,accKeys,miss,hasRtn,hasBase,rtnCols,feesRtn,npbCols,feesNpb] of repPend){
@@ -17060,10 +17077,12 @@ function reconRun(list){
   const cus=[...perCus.values()].map(a=>{
     a.src=Object.keys(a.srcs||{}).sort().join(" / "); delete a.srcs;
     a.amt=cents(a.amt); a.cost=cents(a.cost);
-    a.rep=a.block?null:cents(a.rep);
+    a.repAmt=cents(a.repAmt); a.repCost=cents(a.repCost);
+    const none=a.block||(a.errs>0&&a.errs===a.orders);   /* 一單都沒算出來:三個數留空 */
+    a.rep=none?null:cents(a.rep);
     a.profit=cents(a.amt-a.cost);
-    a.gap  = a.block?null:cents(a.rep-a.cost);
-    a.pgap = a.block?null:cents(a.amt-a.rep);
+    a.gap  = none?null:cents(a.rep-a.repCost);
+    a.pgap = none?null:cents(a.repAmt-a.rep);
     a.margin=a.amt?a.profit/Math.abs(a.amt)*100:null;
     return a;
   }).sort((x,y)=>y.amt-x.amt);
@@ -17071,10 +17090,10 @@ function reconRun(list){
      合計會小於實際,而且看不出來少了誰。 */
   const tot=cus.reduce((t,a)=>({orders:t.orders+a.orders, pkgs:t.pkgs+a.pkgs,
       found:t.found+a.found, amt:cents(t.amt+a.amt), cost:cents(t.cost+a.cost),
-      rep:cents(t.rep+(a.block?0:a.rep)),
-      repAmt:cents(t.repAmt+(a.block?0:a.amt)),
-      repCost:cents(t.repCost+(a.block?0:a.cost)),
-      blocked:t.blocked+(a.block?a.orders:0)}),
+      rep:cents(t.rep+(a.rep||0)),
+      repAmt:cents(t.repAmt+(a.block?0:a.repAmt)),
+      repCost:cents(t.repCost+(a.block?0:a.repCost)),
+      blocked:t.blocked+(a.block?a.orders:a.errs)}),
       {orders:0,pkgs:0,found:0,amt:0,cost:0,rep:0,repAmt:0,repCost:0,blocked:0});
   tot.profit=cents(tot.amt-tot.cost);
   tot.gap  = tot.blocked===tot.orders?null:cents(tot.rep-tot.repCost);
@@ -17096,6 +17115,8 @@ function reconRun(list){
   for(const g of active) for(const f of RECON_GROUPS[g].fees) heads.set(f, RECON_GROUPS[g].head);
   const items=[]; let skipped=0;
   for(const o of orders){
+    /* 計價丟出例外的單整張跳過:它的重算是空的,照 UPS 轉嫁會把整張單開成漏收。 */
+    if(o.block===RL_ERR) continue;
     const F=o.fees||{}, upsF=F.ups||{}, rep=F.rep||{}, known=F.known||new Set(), desc=F.desc||{};
     /* 這一單的項目從 items 的哪裡開始。要「這一單已經開過哪幾欄」時,
        切這一段就好 —— 每一單都掃整個 items 的話是 O(n²):兩萬張單、
@@ -17672,7 +17693,7 @@ function reconRun(list){
   };
   const byCus={};
   for(const [k,m] of chgBy) byCus[k]=chgRows(m);
-  return {orders, cus, tot, lostLevel:[...lostLevel], noLevel:[...noLevel],
+  return {orders, cus, tot, lostLevel:[...lostLevel], noLevel:[...noLevel], priceErrs,
           unmatched:orders.filter(o=>o.found<o.pkgs), notOnInv, hasBilled,
           chg:chgRows(chgAll), chgBy:byCus, groups:[...active], rebill};
 }
@@ -17845,6 +17866,13 @@ function renderRecon(){
       r.lostLevel.length+" customer(s) point at a rate level that no longer exists, so nothing was recomputed for them."))}</b>`
     +esc(L("改派到一個還在的層級之後再匯一次。","Reassign them to a level that still exists, then import again."))
     +chips(r.lostLevel.map(c=>cusNameOf(c))));
+  const pe=r.priceErrs||[];
+  if(pe.length) block.push(
+    `<b>${esc(L("這 "+pe.length+" 筆計價時出錯,沒有重算。",
+      pe.length+" row(s) hit an error while pricing, so nothing was recomputed for them."))}</b>`
+    +esc(L("這是程式的問題,不是資料的:請把追蹤號和這句訊息回報。這幾筆的重算、兩個差異都是空的,也不進補收。",
+           "This is a program fault, not a data one: report the tracking number and this message. Recomputed, both variances and the re-bill are blank for these."))
+    +chips(pe.map(x=>x.trk))+`<code>${esc(pe[0].msg)}</code>`);
   const warn=[];
   const cIn=(r.orders||[]).filter(o=>o.carried).length, cOff=(r.notOnInv||[]).filter(o=>o.carried).length;
   if(cIn+cOff) warn.push(L(
@@ -18165,7 +18193,8 @@ async function reconExport(){
             filter:"A2:"+xlColName(cols.length)+"2", cols:widths.map(w=>({w}))};
   };
   const why=b=>b===RL_NONE?"NOT PRICED — no rate level assigned"
-             :b===RL_GONE?"NOT PRICED — rate level deleted":"";
+             :b===RL_GONE?"NOT PRICED — rate level deleted"
+             :b===RL_ERR?"NOT PRICED — pricing error":"";
   /* 沒指派層級的客戶寫出來,不留白 —— 空格看起來像漏了資料;層級被刪的 cusLevelLabel 會自己註明。 */
   const lvl=x=>x.block===RL_NONE?"(not assigned)":(x.level?cusLevelLabel(x.level):(x.block?"":""));
 
