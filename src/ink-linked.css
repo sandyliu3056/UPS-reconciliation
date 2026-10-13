@@ -29,8 +29,8 @@
 /* 介面是全英文,所以字體堆疊也只留英文 —— 沒有中文要顯示,就不必掛
    楷體那一串備援。萬一真的出現中文,落回系統預設的無襯線,版面不會壞。 */
 :root{
-  --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='160' height='160' filter='url(%23g)' opacity='0.05'/></svg>");
-  --paper-tex:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.62 0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.55'/></feComponentTransfer></filter><rect width='180' height='180' filter='url(%23p)' opacity='0.17'/></svg>");
+  --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='160' height='160' filter='url(%23g)' opacity='0.035'/></svg>");
+  --paper-tex:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.62 0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.55'/></feComponentTransfer></filter><rect width='180' height='180' filter='url(%23p)' opacity='0.12'/></svg>");
   --paper-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.62 0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.62'/></feComponentTransfer></filter><rect width='180' height='180' filter='url(%23m)'/></svg>");
   --brush:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 10' preserveAspectRatio='none'><path d='M2 5.6C40 2.8 68 7.6 100 4.8 132 2.0 168 6.8 198 4.4L198 7.2C168 9.6 132 4.8 100 7.6 68 10.4 40 5.6 2 8.4Z' fill='%23000'/></svg>");
 }
@@ -49,13 +49,14 @@ html.ink .subhd{font-family:var(--titlefam);font-size:16.5px}
 html.ink .nav button{font-size:14.5px}
 html.ink .nav .navgrp{font-size:11.5px;letter-spacing:.1em}
 html.ink .titlebar #appTitle{letter-spacing:1.5px;font-size:26px}
-html.ink .titlebar .devby{font-size:11.5px;letter-spacing:1px}
+html.ink .statusbar .devby{font-size:11px;letter-spacing:1.5px}
 html.ink .titlebar select,html.ink .titlebar button{font-size:12.5px}
 html.ink #who{font-size:13px}
 html.ink button.act,html.ink a.act{font-size:15px}
 html.ink button.act.sm,html.ink a.act.sm{font-size:13.5px}
 html.ink .setnav-tabs button{font-size:13.5px}
-html.ink .setnav-lvl,html.ink .setnav-lvl select{font-size:12.5px}
+html.ink .setnav-lvl{font-size:12.5px}
+html.ink .setnav-lvl select{font-size:15px}
 
 /* 內文也手寫時才補字級。「手寫標題」那一段內文還是原本的黑體,
    補了反而整頁跳一下。 */
@@ -156,7 +157,7 @@ html.ink .titlebar select,
 html.ink .titlebar button{color:var(--chrome-ink);border-color:var(--chrome-ink);opacity:.92}
 html.ink .titlebar select:hover,
 html.ink .titlebar button:hover{opacity:1}
-html.ink .titlebar .devby{opacity:.7}
+html.ink .statusbar .devby{opacity:.7}
 html.ink .bigclock #clkSub{opacity:.78}
 
 html.ink .nav button{color:var(--chrome-ink);opacity:1}
