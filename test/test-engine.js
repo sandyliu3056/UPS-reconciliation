@@ -87,9 +87,10 @@ setTimeout(async()=>{
     const go=(extra,rows,c)=>inPage(runRecon,{tables:TABLES,acc,csv:csvOf(rows||shapeA),tpl:tplOf([T],c||chg,extra)});
     const A=go({wt:6});
     const wA=A.items.filter(x=>x.charge==='Base Rate'&&x.kind==='short');
-    const exp=Number((rateAt(40)-rateAt(6)).toFixed(2));
+    /* 補的是 min(重量差, 合約運費 − 實收):這裡客戶收的 7.46 比費率@6(6.04)高,所以是後者 */
+    const exp=Number(Math.min(rateAt(40)-rateAt(6), rateAt(40)-7.46).toFixed(2));
     ok(A.bw===40,'合約計費重被 AHS 最低計費重拉到 40',A.bw);
-    ok(wA.length===1&&near(wA[0].amt,exp),'運費短收 = 費率@40 − 費率@6 = '+exp,wA);
+    ok(wA.length===1&&near(wA[0].amt,exp),'運費短收 = min(費率@40 − 費率@6, 費率@40 − 實收 7.46) = '+exp,wA);
     ok(wA.length===1&&/6 → 40 lb/.test(wA[0].desc),'說明寫計費重 6 → 40 lb',wA);
     ok(wA.length===1&&near(wA[0].fuel,Math.round(exp*24)/100),'帶燃油 24%',wA);
     ok(A.items.some(x=>x.kind==='refund'&&near(x.amt,-6.08)),'AHL 被沖掉：合併欄收的 6.08 照舊退',A.items);
@@ -106,6 +107,12 @@ setTimeout(async()=>{
     ok(scc&&near(scc.amt,Number((rateAt(21)-7.46).toFixed(2)))&&!E.items.some(x=>x.charge==='Base Rate'),
        '有運費更正：更正那一列 = 最後運費 − 已收，計費重差額不另開',E.items);
     ok(E.items.some(x=>x.kind==='audit'&&near(x.amt,1.65)),'更正收一筆稽核費 1.65',E.items);
+    /* 客戶照自己的重量收得比費率表高:補的不能超過「合約運費 − 實收」 */
+    const Hh=go({wt:6},null,{'Base Rate':9.00,'Fuel Surcharge':2.16,'Service Fee':0.20});
+    const wH=Hh.items.filter(x=>x.charge==='Base Rate'&&x.kind==='short');
+    ok(wH.length===1&&near(wH[0].amt,Number((rateAt(40)-9.00).toFixed(2)))&&near(wH[0].billed,9.00),'實收 9.00 高於費率@6：補 min(重量差, 合約運費 − 實收) = '+(rateAt(40)-9.00).toFixed(2),wH);
+    const Hc=go({wt:6},null,{'Base Rate':25.90,'Fuel Surcharge':6.22,'Service Fee':0.20});
+    ok(!Hc.items.some(x=>x.charge==='Base Rate'),'實收 25.90 已接近合約運費 26.22：差 0.32 不到門檻，不開',Hc.items);
     const G=go({wt:6},null,{'Additional Handling + Large Package Surcharge':6.08,'Fuel Surcharge':1.46});
     const gB=G.items.filter(x=>x.charge==='Base Rate');
     ok(gB.length===1&&gB[0].kind==='miss'&&near(gB[0].amt,rateAt(40)),'運費整筆沒收：照舊整筆補一列，不是差額',gB);
@@ -239,6 +246,41 @@ setTimeout(async()=>{
     ok(R.guardAfter===0&&!R.unloadAfter,'寫完：關分頁的擋放開',R);
     ok(R.toastsAfterRepeat===1,'同一個錯再發生：不再重複跳',R.toastsAfterRepeat);
     ok(!!R.lastAfterOk&&R.toastsAfterOk===1&&R.errCleared==='','存成功：記下「上一次」、沒有紅字、錯誤記號清掉',{last:R.lastAfterOk,n:R.toastsAfterOk,err:R.errCleared});
+  }
+
+  /* ===== [6] 負向更正:UPS 把運費改低 / Zone 改低,客戶收過的要退,不收稽核費 ===== */
+  console.log('\n[6] 負向更正');
+  {
+    const T='TNEG1';
+    const L=(cat,det,cls,code,desc,net,ent,bil,bwt,zone)=>['2026-07-18','INV1','A1','2026-07-10',T,T,ent==null?'':ent,bil==null?'':bil,bwt||'','',zone||'008',cat,det,cls,code,desc,net.toFixed(2),'20x12x8',''];
+    const acc=accOf({'AHS Dimension':6.08,'Residential Surcharge':2.60});
+    /* 運費改低:出貨 15 磅,更正改成 10 磅、運費退 2.50 */
+    const rowsScc=[L('SHP','ISS','FRT','003','Ground Commercial',10.22,5,15),
+      L('SHP','ISS','FSC','FSC','Fuel Surcharge',2.45),
+      L('ADJ','SCC','FRT','003','Shipping Charge Correction Ground',-2.50,5,10,'09'),
+      L('ADJ','SCC','FSC','FSC','Shipping Charge Correction Fuel Surcharge',-0.60)];
+    const A=inPage(runRecon,{tables:TABLES,acc,csv:csvOf(rowsScc),tpl:tplOf([T],{'Base Rate':14.31,'Fuel Surcharge':3.43,'Service Fee':0.20},{wt:15,amt:17.94})});
+    const ov=A.items.filter(x=>x.kind==='over'&&x.charge==='Shipping Charge Correction');
+    const want=Number((A.rep['Base Rate']-14.31).toFixed(2));
+    ok(want<0,'重算的最後運費低於客戶收的 14.31（差 '+want+'）',{rep:A.rep['Base Rate']});
+    ok(ov.length===1&&near(ov[0].amt,want)&&near(ov[0].billed,14.31),'開一列「多收」= 最後運費 − 已收（負數）',ov);
+    ok(ov.length===1&&ov[0].fuel<-0.004&&near(ov[0].fuel,Math.round(want*24)/100),'燃油跟著退',ov);
+    ok(!A.items.some(x=>x.kind==='audit'),'退錢的更正不收稽核費',A.items);
+    ok(!A.items.some(x=>x.charge==='Base Rate'),'計費重差額那一列不開（這單有更正）',A.items);
+    /* Zone 改低:費率表各 Zone 不同(每 Zone 差 0.50),出貨 Zone 8、更正成 Zone 6 */
+    const zTable=svc=>({service:svc, residential:String(svc==='Ground Residential'),
+      columns:['Weight',...ZONES.map(z=>'Zone '+z)],
+      rows:Array.from({length:150},(_,i)=>{const w=i+1; return [String(w),...ZONES.map(z=>(rateAt(w)+(z-2)*0.5).toFixed(2))];})});
+    const rowsZone=[L('SHP','ISS','FRT','003','Ground Commercial',12.00,10,10,'','008'),
+      L('SHP','ISS','FSC','FSC','Fuel Surcharge',2.88),
+      L('ADJ','ZONE','FRT','003','Zone Adjustment',-1.20,10,10,'','006'),
+      L('ADJ','ZONE','FSC','FSC','Zone Adjustment Fuel Surcharge',-0.29)];
+    const Z=inPage(runRecon,{tables:[zTable('Ground Commercial'),zTable('Ground Residential')],acc,csv:csvOf(rowsZone),
+      tpl:tplOf([T],{'Base Rate':11.50,'Fuel Surcharge':2.76,'Service Fee':0.20},{wt:10,zone:'8',amt:14.46})});
+    const rf=Z.items.find(x=>x.kind==='refund'&&x.charge==='Base Rate'), zr=Z.items.find(x=>x.kind==='zone'&&x.charge==='Base Rate');
+    ok(near(Z.rep['Base Rate'],rateAt(Z.bw)+2.0),'重算照更正後的 Zone 6 算運費（Zone 6 ＝ 表價 +2.00）',{rep:Z.rep['Base Rate'],bw:Z.bw,want:rateAt(Z.bw)+2.0});
+    ok(rf&&near(rf.amt,-11.50)&&zr&&near(zr.amt,Z.rep['Base Rate']),'Zone 改低：退原收的 11.50、照 Zone 6 補 '+(rateAt(Z.bw)+2.0).toFixed(2)+'，淨額為負',{rf,zr});
+    ok(!Z.items.some(x=>x.kind==='audit'),'Zone 改低不收稽核費',Z.items);
   }
 
   console.log('\n── '+pass+' pass / '+fail+' fail ──');
