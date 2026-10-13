@@ -22,6 +22,8 @@ const ok=(c,m,d)=>{ c?(pass++,console.log('  ✓ '+m)):(fail++,console.log('  �
 const near=(a,b,eps=0.011)=>Math.abs((+a||0)-(+b||0))<eps;
 /* 在頁面那個 realm 裡跑一段函式,結果用 JSON 帶回來(top-level const 只有 eval 看得到)。 */
 const inPage=(fn,args)=>JSON.parse(W.eval('JSON.stringify(('+fn.toString()+')('+JSON.stringify(args||{})+'))'));
+/* 非同步的版本:頁面端回一個 Promise,等它完成再把結果帶回來。 */
+const inPageAsync=async(fn,args)=>JSON.parse(JSON.stringify(await W.eval('(('+fn.toString()+')('+JSON.stringify(args||{})+'))')));
 
 /* ---- 共用費率:線性運費表、固定附加費 ---- */
 const ZONES=[2,3,4,5,6,7,8];
@@ -65,7 +67,7 @@ const TABLES=[baseTable('Ground Commercial'),baseTable('Ground Residential')];
 const tplOf=(trks,chg,extra)=>[Object.assign({ln:2,order:'K1',trks,cus:'CG',amt:20,src:'TMS',zone:'8',chan:'Ground',chg},extra||{})];
 const FAM=/Additional Handling|Large Package/;
 
-setTimeout(()=>{
+setTimeout(async()=>{
   const real=errs.filter(e=>!/getContext|setTransform|Not implemented/.test(e));
   ok(real.length===0,'頁面開得起來，除了 canvas 沒有別的錯'+(real.length?'：'+real[0].slice(0,80):''));
 
@@ -202,6 +204,41 @@ setTimeout(()=>{
     ok(!A.items.some(x=>x.charge==='Base Rate'),'重量三邊都 28 磅：沒有運費列',A.items);
     const B=inPage(runRecon,{tables:TABLES,acc,csv:csvOf([L('FRT','003','Ground Commercial',12.47,28,28),L('ACC','EVS','Declared Value',8.50,0,0,500),L('FSC','FSC','Fuel Surcharge',2.20)]),tpl:tplOf([T],chg,{wt:28,zone:'6',amt:42.81})});
     ok(near(B.mainAcc['Declared Value'],8.50),'UPS 有開保價：應收照 UPS 實收 8.50（無合約費率時）',B.mainAcc);
+  }
+
+  /* ===== [5] 對帳存檔失敗要講出來:跳紅字、不把「上一次」指到沒存進去的那一份、寫入中擋關分頁 ===== */
+  console.log('\n[5] 對帳存檔失敗');
+  {
+    const T='TDV1';
+    const chg={'Base Rate':14.31,'Fuel Surcharge':3.43,'Service Fee':0.20};
+    const R=await inPageAsync(function(P){
+      const res=reconRun(P.tpl);
+      const toasts=[]; const realToast=window.toast; window.toast=(m,ok)=>{ toasts.push({m:String(m),ok:!!ok}); };
+      const realPut=window.idbRunPut;
+      try{ localStorage.removeItem(reconLastKey()); }catch(e){}
+      window.idbRunPut=()=>Promise.reject(new Error('QuotaExceededError'));
+      const p1=reconRunSave(P.tpl,res,'t.xlsx');
+      const out={guardDuring:HIST_WRITES.size, unloadDuring:typeof window.onbeforeunload==='function'};
+      return p1.then(()=>{
+        out.toastsAfterFail=toasts.slice(); out.lastAfterFail=localStorage.getItem(reconLastKey());
+        out.guardAfter=HIST_WRITES.size; out.unloadAfter=!!window.onbeforeunload; out.runKey=RECON_RUN_KEY;
+        return reconRunSave(P.tpl,res,'t.xlsx');
+      }).then(()=>{
+        out.toastsAfterRepeat=toasts.length;
+        window.idbRunPut=()=>Promise.resolve(true); RECON_RUNS=[];
+        return reconRunSave(P.tpl,res,'t.xlsx');
+      }).then(()=>{
+        out.lastAfterOk=localStorage.getItem(reconLastKey()); out.toastsAfterOk=toasts.length; out.errCleared=RECON_SAVE_ERR;
+        window.idbRunPut=realPut; window.toast=realToast;
+        return out;
+      });
+    },{tpl:tplOf([T],chg,{wt:28,zone:'6',amt:17.94})});
+    ok(R.guardDuring>=1&&R.unloadDuring,'寫入中：擋關分頁（HIST_WRITES）',R);
+    ok(R.toastsAfterFail.length===1&&!R.toastsAfterFail[0].ok&&/QuotaExceededError/.test(R.toastsAfterFail[0].m),'存失敗：跳一次紅字，帶錯誤訊息',R.toastsAfterFail);
+    ok(R.lastAfterFail===null&&!!R.runKey,'存失敗：「上一次對帳」不指向沒存進去的那一份，畫面的 key 照設',{last:R.lastAfterFail,key:R.runKey});
+    ok(R.guardAfter===0&&!R.unloadAfter,'寫完：關分頁的擋放開',R);
+    ok(R.toastsAfterRepeat===1,'同一個錯再發生：不再重複跳',R.toastsAfterRepeat);
+    ok(!!R.lastAfterOk&&R.toastsAfterOk===1&&R.errCleared==='','存成功：記下「上一次」、沒有紅字、錯誤記號清掉',{last:R.lastAfterOk,n:R.toastsAfterOk,err:R.errCleared});
   }
 
   console.log('\n── '+pass+' pass / '+fail+' fail ──');

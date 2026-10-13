@@ -4095,7 +4095,7 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-e</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-f</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -15345,6 +15345,7 @@ function reconGroupOf(name){
   return "";
 }
 let RECON=null;
+let RECON_SAVE_ERR="";   /* 上一次對帳存檔失敗的訊息:同一個錯只跳一次紅字,存成功就清掉 */
 let RECON_SRC="WMS";
 
 /* 重新整理之後留什麼 —— 這件事要講清楚,不能靠運氣。
@@ -15363,8 +15364,11 @@ function reconRowsSave(rows){
   /* localStorage 那份是舊版留下的,搬過來之後就不需要了 —— 順手清掉,
      設定區也跟著鬆一口氣。 */
   try{ localStorage.removeItem(reconRowsKey()); }catch(e){}
-  if(!rows||!rows.length) return metaDel(RECON_ROWS_META);
-  return metaPut({k:RECON_ROWS_META, v:3, at:Date.now(), rows});
+  /* 列存不進去也要講:這一份是重開頁、重跑對帳的底。 */
+  const say=e=>toast(L("對帳的列存不進去("+String((e&&e.message)||e||"")+")",
+                       "The reconciliation rows could not be saved ("+String((e&&e.message)||e||"")+")"), false);
+  if(!rows||!rows.length) return Promise.resolve(metaDel(RECON_ROWS_META)).catch(say);
+  return Promise.resolve(metaPut({k:RECON_ROWS_META, v:3, at:Date.now(), rows})).catch(say);
 }
 function reconRowsLoad(){
   /* 舊版在 localStorage 的那一份先收下來、搬進 IndexedDB,再把舊的清掉。 */
@@ -15455,8 +15459,20 @@ function reconRunSave(rows,res,fname){
     when:Date.now(), fname:fname||"", by:(typeof ME!=="undefined"&&ME&&(ME.name||ME.user))||"",
     n:own.length, rows:own, pending, matched, sum};
   RECON_RUN_KEY=key;
-  try{ localStorage.setItem(reconLastKey(), key); }catch(e){}
-  return idbRunPut(run).then(()=>{ RECON_RUNS=null; renderReconRuns(); }).catch(()=>{});
+  /* 存檔失敗要講出來:以前 catch 裡什麼都沒做,畫面說已對帳、重開頁整份不見。
+     寫入中擋關分頁、登出會等(和歸檔帳單同一個 HIST_WRITES);成功才把「上一次
+     對帳」指到這一份,免得重開頁去找一份不存在的紀錄。自動重跑每次都會存,
+     DB 整個壞掉時同一個錯只跳一次。 */
+  const done=idbRunPut(run)
+    .then(()=>{ try{ localStorage.setItem(reconLastKey(), key); }catch(e){}
+                RECON_SAVE_ERR=""; RECON_RUNS=null; renderReconRuns(); })
+    .catch(e=>{ const m=String((e&&e.message)||e||"");
+                if(RECON_SAVE_ERR!==m){ RECON_SAVE_ERR=m;
+                  toast(L("這一份對帳存不進去("+m+")—— 重開頁會不見;重匯同一份模板即可補回。",
+                          "This reconciliation could not be saved ("+m+") — it will be gone on reload; re-import the same template to redo it."), false); } })
+    .finally(()=>{ HIST_WRITES.delete(done); histWriteGuard(); });
+  HIST_WRITES.add(done); histWriteGuard();
+  return done;
 }
 /* 前期沒對到帳單的列自動帶進這一期:每一份存過的對帳都留了 pending;
    這一期檔案裡已經有的、或在任何一期已經對到過的追蹤號不帶。帶進來的列標 carried。 */
