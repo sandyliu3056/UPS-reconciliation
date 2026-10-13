@@ -4095,7 +4095,7 @@ button.act.sm,a.act.sm{padding:4px 11px;border-radius:7px;box-shadow:none}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-c</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-d</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -16799,6 +16799,7 @@ function reconRun(list){
     const feesDesc={};               /* 每一欄在帳單上的原文描述,補收時開給客戶看 */
     const feesKnown=new Set();       /* 重算真的算過的費用:合約沒費率的不在裡面 */
     const invDates=new Set();        /* 對到的帳單期別日期,匯出明細第一欄 */
+    const invNums=new Set();         /* 這一單的追蹤號出現在哪幾張帳單上(跨期的全列) */
     let upsWt=0, wtN=0, upsId=null, fuelPct=null, sccRate=null, zoneRate=null, zoneNote="", zoneAcc=null, zoneOld="", zoneNew="";
     let wtRate=null, wtBase=0, wtFrom=0, wtTo=0;   /* 計費重差額:客戶重量 → 合約計費重的運費差 */
     let usedArch=false;
@@ -16814,6 +16815,7 @@ function reconRun(list){
          沒有層級、沒計價的才直接用帳單上的。 */
       if(s.zone && !cfg) upsZones.add(normZoneKey(s.zone));
       for(const l of (s.allLines||[])){ const d=l.invDate?(normYmd(l.invDate)||String(l.invDate)):""; if(d){ invDates.add(d); break; } }
+      for(const l of (s.allLines||[])){ const n=String(l.invoice||"").trim(); if(n) invNums.add(n); }
       cost+=toNum(s.upsTotal);
       /* 帳單上的識別欄(尺寸、重量、Zone、渠道),匯出明細照 Consolidated 列。 */
       const idT=consIdentityOf(s.allLines||[]);
@@ -16986,7 +16988,7 @@ function reconRun(list){
              zone:String(e.zone||""), upsZone, zoneMis,
              chan, sysChan, chanMis, chanUnknown,
              wt:e.wt==null?"":e.wt, upsWt:wtN?upsWt:"", arch:usedArch,
-             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc, zoneOld, zoneNew, rtnRep:feesRtn, upsRtn:feesUpsRtn, npbRep:feesNpb, wtRate, wtBase, wtFrom, wtTo}, billedFees:e.chg||null, invDate:[...invDates].join(" / "),
+             fees:{rep:feesRep, ups:feesUps, desc:feesDesc, known:feesKnown, rev:feesRev, fuelPct, sccRate, zoneRate, zoneNote, zoneAcc, zoneOld, zoneNew, rtnRep:feesRtn, upsRtn:feesUpsRtn, npbRep:feesNpb, wtRate, wtBase, wtFrom, wtTo}, billedFees:e.chg||null, invDate:[...invDates].join(" / "), inv:[...invNums].join(" / "),
              name:(c.name||e.cus), level:c.level||"", block,
              pkgs:e.trks.length, found:e.trks.length-missTrk.length, missTrk,
              amt:e.amt, svc:cents((e.chg||{})[RECON_OTHER]||0),
@@ -18201,7 +18203,8 @@ async function reconExport(){
     if(!o.block && known.has(c) && rp>0.004) return rp;
     if(rebillDisabled(c) || rebillConfigurable(c)) return 0;   /* 沒設費率就是 0,不替人猜 */
     return cents((F.ups||{})[c]||0); };
-  const idNames=["Invoice Date","Transaction Date","Customer Code","Customer Level","Order Number","Tracking Number",
+  /* 第一欄是帳單號:追蹤號在哪一張(或哪幾張)帳單上,一眼看得到;跨期的用「 / 」連起來。 */
+  const idNames=["Invoice Number","Invoice Date","Transaction Date","Customer Code","Customer Level","Order Number","Tracking Number",
     "Shipment Reference Number 1","Shipment Reference Number 2","Package Dimensions","Detail Keyed Dim",
     "Entered Weight","Billed Weight","Zone","Shipping Channel","Source"];
   /* 表頭兩列:第一列一項費用一格(合併),不上色、置中;第二列是那一項底下的
@@ -18226,7 +18229,7 @@ async function reconExport(){
   if(anyCarried){ const c=h1.length; h1.push(h1c("Carried From")); h2.push(blank()); merges.push({s:{r:0,c},e:{r:1,c}}); }
   const dRows=r.orders.map(o=>{
     const fees=o.fees||{rep:{},ups:{}}, billed=o.billedFees||null, u=o.ups||{};
-    const row=[dcell(o.invDate), dcell(o.date), o.cus, lvl(o), o.order, (o.trks||[]).join(", "),
+    const row=[o.inv||"", dcell(o.invDate), dcell(o.date), o.cus, lvl(o), o.order, (o.trks||[]).join(", "),
                o.ref1||"", o.ref2||"", dimTxt(u.dimsC), dimTxt(u.dimsA),
                wt0(u.entered),
                /* 計費重與 Zone 都照重算實際採用的(ZONE 更正、最低計費重之後的
@@ -18266,7 +18269,7 @@ async function reconExport(){
     if(anyCarried) row.push(carriedTxt(o));
     return row;
   });
-  const dWidths=[12,12,16,16,20,22,22,22,16,16,10,10,7,26,9]
+  const dWidths=[20,12,12,16,16,20,22,22,22,16,16,10,10,7,26,9]
     .concat(charges.flatMap(()=>[14,14,14]),[14,14,14],anyCarried?[26]:[]);
   const detailSheet={name:"Detail", rows:[h1,h2,...dRows], merges, freeze:{r:2,c:0},
     cols:dWidths.map(w=>({w})), ignoreTextNumbers:true};
