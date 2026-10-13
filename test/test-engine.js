@@ -283,6 +283,63 @@ setTimeout(async()=>{
     ok(!Z.items.some(x=>x.kind==='audit'),'Zone 改低不收稽核費',Z.items);
   }
 
+  /* ===== [7] 計價丟出例外:那一單不重算、要講出來,不能悄悄變成「重算 0、全部漏收」 ===== */
+  console.log('\n[7] 計價例外');
+  {
+    const L=(trk,cat,det,cls,code,desc,net,ent,bil)=>['2026-07-18','INV1','A1','2026-07-10',trk,trk,ent==null?'':ent,bil==null?'':bil,'','','008',cat,det,cls,code,desc,net.toFixed(2),'',''];
+    const rows=[L('TER1','SHP','ISS','FRT','003','Ground Commercial',12.00,10,10),L('TER1','SHP','ISS','FSC','FSC','Fuel Surcharge',2.88),
+                L('TER2','SHP','ISS','FRT','003','Ground Commercial',12.00,10,10),L('TER2','SHP','ISS','FSC','FSC','Fuel Surcharge',2.88)];
+    const acc=accOf({'AHS Dimension':6.08,'AHS Weight':6.08,'Large Package':57.20,'DAS Commercial':1.35,'Residential Surcharge':2.60});
+    const chg={'Base Rate':11.50,'Fuel Surcharge':2.76};
+    const tpl=[{ln:2,order:'K1',trks:['TER1'],cus:'CG',amt:14.26,src:'TMS',zone:'8',chan:'Ground',chg},
+               {ln:3,order:'K2',trks:['TER2'],cus:'CG',amt:14.26,src:'TMS',zone:'8',chan:'Ground',chg}];
+    const E=inPage(function(P){
+      setMe({id:'u1',user:'s',name:'S',role:'admin'}); cfgPush=async()=>true;
+      const raw=JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+      raw.customers=[{code:'CG',name:'Demo',level:'L1'}];
+      raw.rate_levels={active:'L1', list:[{id:'L1', name:'JL'}], cfg:{}};
+      raw.base_rate_tables=P.tables;
+      raw.accessorial_rate_table=Object.assign({},raw.accessorial_rate_table,P.acc);
+      raw.global_rules.fuel_percent='24';
+      raw.global_rules.scc_audit_fee='1.65';
+      applyConfig(JSON.stringify(raw),'t.json',false);
+      ROWS=ingest(P.csv).rows; SHIPS=shipmentsOf(ROWS);
+      const orig=priceShipment;
+      RATED=SHIPS.map(x=>orig(CFG,x));
+      priceShipment=function(cfg,s){ if(String(s.tracking)===P.bad) throw new Error('boom '+P.bad); return orig(cfg,s); };
+      let res; try{ res=reconRun(P.tpl); } finally{ priceShipment=orig; }
+      const pick=o=>({order:o.order, block:o.block, rep:o.rep, gap:o.gap, pgap:o.pgap, cost:o.cost, err:o.priceErr||''});
+      return {orders:(res.orders||[]).map(pick), priceErrs:res.priceErrs||[],
+        cus:(res.cus||[]).map(a=>({code:a.code, orders:a.orders, errs:a.errs, rep:a.rep, gap:a.gap, pgap:a.pgap, amt:a.amt})),
+        tot:{rep:res.tot.rep, gap:res.tot.gap, pgap:res.tot.pgap, blocked:res.tot.blocked, orders:res.tot.orders},
+        chg:(res.chg||[]).map(c=>({name:c.name, rep:c.rep, ups:c.ups, billed:c.billed})),
+        items:((res.rebill&&res.rebill.items)||[]).map(x=>({order:x.order, charge:x.charge, amt:x.amt}))};
+    },{tables:TABLES,acc,csv:csvOf(rows),tpl,bad:'TER2'});
+    const k1=E.orders.find(o=>o.order==='K1')||{}, k2=E.orders.find(o=>o.order==='K2')||{};
+    ok(k1.block===''&&k1.rep>0,'沒出錯的那一單照常重算',k1);
+    ok(k2.block==='err'&&k2.rep===null&&k2.gap===null&&k2.pgap===null&&/boom TER2/.test(k2.err),'出錯的那一單:標 err、重算與兩個差異留空、訊息記著',k2);
+    ok(E.priceErrs.length===1&&E.priceErrs[0].trk==='TER2'&&E.priceErrs[0].order==='K2','結果帶著出錯清單(追蹤號、單號、訊息)',E.priceErrs);
+    const c=E.cus[0]||{};
+    ok(c.orders===2&&c.errs===1&&near(c.rep,k1.rep)&&near(c.gap,k1.rep-k1.cost)&&near(c.pgap,14.26-k1.rep),'客戶層的重算與差異只照算得出來的那一單',c);
+    ok(E.tot.blocked===1&&near(E.tot.rep,k1.rep)&&near(E.tot.gap,k1.rep-k1.cost),'合計:出錯的單算「擋下來」,重算只加另一單',E.tot);
+    const br=E.chg.find(x=>x.name==='Base Rate')||{};
+    ok(near(br.ups,12.00)&&near(br.billed,11.50),'逐項表三邊都只有沒出錯的那一單(UPS 12.00,不是 24.00)',br);
+    ok(!E.items.some(x=>x.order==='K2'),'出錯的單不進補收清單',E.items);
+    /* 畫面:擋下來的那一塊要講出哪幾筆、什麼訊息(設定、帳單、貨件都還是上一段留下的)。 */
+    const banner=inPage(function(P){
+      try{
+        const orig=priceShipment;
+        priceShipment=function(cfg,s){ if(String(s.tracking)===P.bad) throw new Error('boom '+P.bad); return orig(cfg,s); };
+        let res; try{ res=reconRun(P.tpl); } finally{ priceShipment=orig; }
+        RECON={res, list:P.tpl, src:'TMS'}; RECON_VIEW='res';
+        renderRecon();
+        const w=document.querySelector('#reconWarn');
+        return {hidden:w.hidden, text:w.textContent};
+      }catch(e){ return {err:String((e&&e.stack)||e).slice(0,300)}; }
+    },{tpl,bad:'TER2'});
+    ok(!banner.err&&!banner.hidden&&/hit an error while pricing/.test(banner.text)&&/TER2/.test(banner.text)&&/boom TER2/.test(banner.text),'畫面上講出來:哪幾筆、什麼訊息',banner);
+  }
+
   console.log('\n── '+pass+' pass / '+fail+' fail ──');
   process.exit(fail?1:0);
 }, 900);
