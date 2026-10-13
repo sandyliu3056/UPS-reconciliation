@@ -3983,7 +3983,7 @@ label:has(#newChanOn){display:none !important}
 
 <!-- 版本戳:改一次就換一次。瀏覽器抓到舊檔的時候,畫面上看起來一切正常,
      只有數字不對 —— 有這一行,「你看到的是哪一版」一眼就知道,不必猜。 -->
-<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-10-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
+<div class="statusbar"><span id="status" data-i18n="ready">Ready</span><span class="devby" id="appBuild" title="Build">B-2026-10-13-a</span><span class="devby" id="appBy" style="margin-left:14px">DEVELOPED BY SANDY LIU</span></div>
 
 <!-- Supabase 用戶端放在自己的網站裡,不跟 CDN 拿。理由跟 SheetJS 鎖版本一樣:
      這支工具在算客戶的錢,不能讓一個隨時會變的外部檔案跑在頁面上。
@@ -20149,7 +20149,8 @@ function dashCutFilters(){
         n+" of "+all.length+" rows")}</span>` : "";
   return sel("dcPer",L("帳單期別","Invoice period"),pers,DASH_CUT_F.per,L("全部期別","All periods"))
     +sel("dcLvl",L("客戶層級","Rate level"),lvls,DASH_CUT_F.lvl,L("全部層級","All levels"))
-    +sel("dcCus",L("客戶代碼","Customer code"),cuss,DASH_CUT_F.cus,L("全部客戶","All customers"))
+    /* 客戶代碼不帶件數:代碼已經夠長,後面再掛「(95)」只是雜訊。 */
+    +sel("dcCus",L("客戶代碼","Customer code"),cuss.map(x=>({k:x.k,t:x.t})),DASH_CUT_F.cus,L("全部客戶","All customers"))
     +clr+note;
 }
 /* ---- 全部批次:每一份對帳並排 --------------------------------------
