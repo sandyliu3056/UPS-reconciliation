@@ -2653,22 +2653,6 @@ label:has(#newChanOn){display:none !important}
     <p class="hint" style="margin:10px 0 0;max-width:78ch" data-i18n="hint.demshare">Periods, categories and mapping are shared by every rate level; amounts belong to each level.</p>
   </div>
 
-  <!-- 換約的時候要的:把這一層填過的費率一次清掉,再匯入新的一份。以前只能
-       一條渠道一條渠道覆蓋,或是另開一層、把客戶一個一個改指過去。
-       只動目前這一層,客戶名單、對應規則、費用代號都不碰 —— 那三樣是整個
-       帳號共用的,和費率無關。清之前先自動存一份設定檔到你電腦上。 -->
-  <div class="lf sketch">
-    <h3 class="display"><span class="em">🧹</span><span data-i18n="hd.clearrate">Clear this level's rates</span></h3>
-    <p class="hint" style="margin:0 0 11px;max-width:78ch" data-i18n="hint.clearrate">Empties what you tick, for the rate level you are on now — nothing else changes level, and the client list, mapping and charge codes are untouched. A configuration file is downloaded first, so a mis-click is recoverable: load it back and save.</p>
-    <div class="row">
-      <label class="bulkchk"><input type="checkbox" id="clrBase" checked> <span data-i18n="lb.clrbase">Base rate tables</span></label>
-      <label class="bulkchk"><input type="checkbox" id="clrAcc" checked> <span data-i18n="lb.clracc">Surcharge rates</span></label>
-      <label class="bulkchk"><input type="checkbox" id="clrFuel"> <span data-i18n="lb.clrfuel">Fuel</span></label>
-      <span style="flex:1 1 auto"></span>
-      <button class="act alt" id="bClearRate" data-i18n="btn.clearrate">Clear</button>
-    </div>
-    <div id="clearRateState"></div>
-  </div>
 </section>
 
 
@@ -2986,6 +2970,23 @@ label:has(#newChanOn){display:none !important}
         <button class="act ghost" id="bCfgDown" data-i18n="btn.cfgdown">⤓ Download JSON</button>
         <span id="cfgSum" class="affsum"></span>
       </div>
+    </div>
+
+    <!-- 清除本層費率。換約的時候要的:把這一層填過的費率一次清掉,再載入新的
+         設定檔。擺在費率設定檔正下方 —— 清掉、載入是同一件事的前後兩步。
+         原本放在 04 費率維護的最底下,但那一頁的子分頁只露自己那幾張卡,
+         這一張不屬於任何一個子分頁,所以永遠是藏著的。 -->
+    <div class="sketch-soft" id="cardClearRate" style="padding:14px 16px;margin:0 0 14px">
+      <div class="subhd" style="margin-top:0"><span>🧹 </span><span data-i18n="hd.clearrate">Clear this level's rates</span></div>
+      <p class="hint" style="margin:8px 0 10px;max-width:880px" data-i18n="hint.clearrate">Empties what you tick, for the rate level you are on now — nothing else changes level, and the client list, mapping and charge codes are untouched. A configuration file is downloaded first, so a mis-click is recoverable: load it back and save.</p>
+      <div class="row">
+        <label class="bulkchk"><input type="checkbox" id="clrBase" checked> <span data-i18n="lb.clrbase">Base rate tables</span></label>
+        <label class="bulkchk"><input type="checkbox" id="clrAcc" checked> <span data-i18n="lb.clracc">Surcharge rates</span></label>
+        <label class="bulkchk"><input type="checkbox" id="clrFuel"> <span data-i18n="lb.clrfuel">Fuel</span></label>
+        <span style="flex:1 1 auto"></span>
+        <button class="act alt" id="bClearRate" data-i18n="btn.clearrate">Clear</button>
+      </div>
+      <div id="clearRateState"></div>
     </div>
 
     <!-- 追蹤 API:貨況查詢走哪一條路。憑證永遠不在這裡 —— 這一格只收端點網址,
@@ -21995,6 +21996,7 @@ function clearLevelRates(){
       if(raw.global_rules) raw.global_rules.fuel_percent="";
     }
     CFG=readConfig(raw); DIRTY=true; renderConfigTabs();
+    if(typeof renderLevels==="function") renderLevels();
     if(RATED&&SHIPS){ RATED=SHIPS.map(x=>priceShipment(CFG,x)); renderRate(); }
     saveSettings();
     const msg=L("已清除:"+names.join("、")+"。"+(lvl?"("+lvl+")":"") ,

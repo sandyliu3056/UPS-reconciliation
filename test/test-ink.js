@@ -92,12 +92,12 @@ ok(px('html.ink .lf>h3')>=19, '\u6bb5\u843d\u6a19\u984c \u2265 19px');
 ok(px('html.ink .nav button')>=14.5, '\u5074\u6b04 \u2265 14.5px');
 
 console.log('\n[7] \u6c92\u640d\u5230\u539f\u672c\u7684\u6771\u897f');
-ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft').length===17,
-   '61 個 .sketch、17 個 .sketch-soft 都在(費率維護多一張「清除本層費率」)');
+ok(D.querySelectorAll('.sketch').length===60&&D.querySelectorAll('.sketch-soft').length===18,
+   '60 個 .sketch、18 個 .sketch-soft 都在(「清除本層費率」在設定頁)');
 ok(D.querySelectorAll('table').length===32&&D.querySelectorAll('.modalbg').length===27,
    '表格 32、視窗 27');
-ok(D.querySelectorAll('.sketch').length===61&&D.querySelectorAll('.sketch-soft').length===17,
-   '61 個 .sketch、17 個 .sketch-soft 都在(費率維護多一張「清除本層費率」)');
+ok(D.querySelectorAll('.sketch').length===60&&D.querySelectorAll('.sketch-soft').length===18,
+   '60 個 .sketch、18 個 .sketch-soft 都在(「清除本層費率」在設定頁)');
 ok(D.querySelectorAll('table').length===32&&D.querySelectorAll('.modalbg').length===27,
    '表格 32、視窗 27');
 ok(D.querySelectorAll('[data-i18n]').length===613, 'i18n 標記 613 個(清除本層費率:標題、說明、三個勾、一顆鈕;攤開視窗的標題固定英文,不再掛標記)');
